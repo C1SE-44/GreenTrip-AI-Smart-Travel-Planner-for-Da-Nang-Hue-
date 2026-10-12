@@ -35,24 +35,24 @@ export default function Navbar() {
           className={`
             w-full transition-all duration-500 ease-out
             ${scrolled 
-              ? 'max-w-[1400px] bg-cream/95 backdrop-blur-md shadow-card border border-white/60 rounded-full' 
+              ? 'max-w-[1400px] bg-white/95 backdrop-blur-md shadow-card border border-gray-100 rounded-full' 
               : 'max-w-full bg-transparent rounded-none border-transparent'
             }
           `}
         >
-          <nav className={`mx-auto max-w-[1400px] flex w-full items-center justify-between transition-all duration-500 ${scrolled ? 'h-[50px]' : 'h-16'} px-6 lg:px-8`}>
+          <nav className={`mx-auto w-full max-w-full flex items-center justify-between transition-all duration-500 ${scrolled ? 'h-[50px]' : 'h-[60px]'} px-6 lg:px-8`}>
             <Link to="/explore" className="flex items-center outline-none focus:outline-none">
               <Logo size="md" />
             </Link>
 
             {/* Desktop nav */}
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="hidden items-center gap-1.5 md:flex">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `rounded-full px-5 py-2 text-[15px] transition-all duration-300 outline-none focus:outline-none ${
+                    `rounded-full px-4 py-1.5 text-[13px] transition-all duration-300 outline-none focus:outline-none ${
                       isActive
                         ? 'text-black bg-black/5 font-medium'
                         : 'text-black hover:bg-black/5 font-normal'
@@ -68,7 +68,7 @@ export default function Navbar() {
             <div className="hidden items-center gap-3 md:flex">
               <button
                 onClick={() => setIsLoginOpen(true)}
-                className="px-5 py-2 text-[15px] text-black hover:bg-black/5 font-normal rounded-full transition-all duration-300 outline-none focus:outline-none"
+                className="px-4 py-1.5 text-[13px] text-black hover:bg-black/5 font-normal rounded-full transition-all duration-300 outline-none focus:outline-none"
               >
                 Đăng nhập
               </button>

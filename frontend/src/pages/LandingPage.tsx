@@ -160,9 +160,9 @@ export default function LandingPage() {
     ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-cream">
+    <div className="flex min-h-screen flex-col bg-white">
       {/* 1. HERO SECTION */}
-      <section className="relative flex min-h-screen flex-col items-center justify-end overflow-hidden pb-12 text-center bg-cream">
+      <section className="relative flex min-h-screen flex-col items-center justify-end overflow-hidden pb-12 text-center bg-white">
         {/* Ảnh nền chiếm 80% màn hình phía trên */}
         <div className="absolute top-0 left-0 right-0 h-[80vh] z-0">
           <img
@@ -171,7 +171,7 @@ export default function LandingPage() {
             className="h-full w-full object-cover"
           />
           {/* Lớp gradient phủ phần dưới của ảnh để hòa vào nền */}
-          <div className="absolute inset-x-0 bottom-0 h-[30vh] bg-gradient-to-t from-cream via-cream/90 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-[30vh] bg-gradient-to-t from-white via-white/90 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
         </div>
 
@@ -206,7 +206,7 @@ export default function LandingPage() {
         <div className="flex flex-col gap-8 pt-24 pb-12">
           {features.map((feature) => (
             <section key={feature.id} id={feature.id} className="px-4 md:px-8 scroll-mt-[57px]">
-              <div className={`relative mx-auto max-w-[1400px] overflow-hidden rounded-[40px] text-cream min-h-[500px] ${feature.bgColor}`}>
+              <div className={`relative mx-auto max-w-[1200px] overflow-hidden rounded-[40px] text-white min-h-[500px] ${feature.bgColor}`}>
                 <div className="flex flex-col lg:flex-row min-h-[500px]">
                   {/* Left Content */}
                   <div className="flex flex-col justify-center p-8 lg:p-12 lg:w-1/2 z-20">
@@ -216,7 +216,7 @@ export default function LandingPage() {
                         <button
                           key={f.id}
                           onClick={() => scrollTo(f.id)}
-                          className={`rounded-full px-5 py-2 text-sm font-medium transition-colors cursor-pointer ${ f.id === feature.id ? 'border border-white bg-transparent text-white' : 'text-cream/50 hover:text-cream/80 hover:bg-white/5' }`}
+                          className={`rounded-full px-5 py-2 text-sm font-medium transition-colors cursor-pointer ${ f.id === feature.id ? 'border border-white bg-transparent text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5' }`}
                         >
                           {f.label}
                         </button>
@@ -248,11 +248,11 @@ export default function LandingPage() {
           ))}
         </div>
 
-              <div className="bg-gradient-to-b from-cream to-[#dce0e5] rounded-b-[40px] lg:rounded-b-[80px] relative z-20 pb-[250px]">
+              <div className="bg-gradient-to-b from-white via-[#F5F5F7] via-15% to-[#EAEAEF] rounded-b-[40px] lg:rounded-b-[80px] relative z-20 pb-[200px]">
         {/* 3. GRID FEATURES */}
         <section className="px-4 pt-16 md:px-8">
           <div className="mx-auto max-w-[1200px]">
-            <div className="mb-16 text-left flex flex-col items-start">
+            <div className="mb-10 text-left flex flex-col items-start">
               <h2 className="font-heading text-4xl font-extrabold tracking-tight text-black sm:text-5xl lg:text-[4.5rem] leading-[1.05] max-w-4xl">
                 Tận dụng tối đa trợ lý du lịch của bạn.
               </h2>
@@ -351,7 +351,7 @@ export default function LandingPage() {
                   <p className="text-[13px] font-light text-gray-500 leading-relaxed">Bản đồ đa lớp (Multi-layer map) giúp tìm những địa điểm, sự kiện thú vị xung quanh bạn.</p>
                   
                   {/* Graphics */}
-                  <div className="absolute bottom-2 left-4 right-4 h-32 flex items-center justify-start pointer-events-none">
+                  <div className="absolute -bottom-10 left-4 right-4 h-32 flex items-center justify-start pointer-events-none">
                       
                       {/* Back Card */}
                       <div className="absolute left-[10%] w-[42%] rotate-[-6deg] translate-y-0 z-0">
@@ -393,8 +393,8 @@ export default function LandingPage() {
       </div>
 
       {/* 4. DESTINATIONS CAROUSEL */}
-          <section className="px-4 py-20 md:px-8 bg-cream">
-          <div className="mx-auto max-w-[1400px]">
+          <section className="px-4 py-20 md:px-8 bg-white">
+          <div className="mx-auto max-w-[1200px]">
             <h2 className="font-heading text-4xl font-extrabold tracking-tight text-charcoal sm:text-5xl lg:text-6xl max-w-3xl leading-[1.1]">
               Từ Đại Nội cổ kính đến Cầu Rồng rực lửa.
             </h2>
@@ -452,7 +452,7 @@ export default function LandingPage() {
                 <p className="text-[12px] font-light text-muted mt-1 flex items-center gap-1">
                   <MapPin size={11} className="shrink-0" /> {item.location}
                 </p>
-                <span className="inline-block mt-1.5 text-[10px] font-light text-muted bg-beige px-2 py-0.5 rounded-full">{item.tag}</span>
+                <span className="inline-block mt-1.5 text-[10px] font-light text-muted bg-gray-100 px-2 py-0.5 rounded-full">{item.tag}</span>
               </div>
             ))}
           </div>
@@ -472,28 +472,38 @@ export default function LandingPage() {
 
 
       {/* 6. FINAL CTA */}
-      <section className="px-4 py-20 md:px-8 bg-cream">
-        <div className="mx-auto max-w-[1000px] overflow-hidden rounded-[40px] bg-charcoal text-cream text-center p-12 md:p-20">
-          <h2 className="font-heading text-5xl font-extrabold leading-tight tracking-tight lg:text-6xl">
-            Mỗi chuyến đi,<br />nhiều bản sắc hơn.
-          </h2>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-cream/80">
-            Trả lời vài câu hỏi để giúp GreenTrip AI làm quen với phong cách của bạn. Trợ lý du lịch sẽ học hỏi những điều bạn quan tâm và giúp mọi chuyến đi trở nên mượt mà hơn.
-          </p>
-          <div className="mt-10">
-            <Link
-              to="/explore"
-              className="inline-flex items-center gap-2 rounded-full bg-cream px-8 py-4 text-base font-bold text-charcoal transition-transform hover:scale-105"
-            >
-              Thiết lập lịch trình ngay
-            </Link>
+      <section className="px-4 py-24 md:px-8 bg-white">
+        <div className="relative mx-auto max-w-[1260px] overflow-hidden rounded-[40px] text-white text-center flex flex-col justify-center min-h-[680px] p-12 md:p-20 shadow-2xl">
+          {/* Background Image */}
+          <div className="absolute inset-0 z-0">
+            <img src="https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&q=80" alt="Resort Pool" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"></div>
+          </div>
+          
+          <div className="relative z-10 mx-auto max-w-3xl">
+            <h2 className="font-heading text-5xl font-extrabold leading-tight tracking-tight lg:text-[5.5rem] drop-shadow-lg">
+              Mỗi chuyến đi,<br />nhiều bản sắc hơn.
+            </h2>
+            <div className="mt-20">
+              <p className="mx-auto max-w-3xl text-[18px] font-light text-white drop-shadow-md leading-relaxed">
+                Trả lời vài câu hỏi để giúp GreenTrip hiểu hơn về phong cách của bạn. Trợ lý du lịch sẽ học hỏi những điều bạn quan tâm và giúp mọi chuyến đi trở nên mượt mà hơn.
+              </p>
+              <div className="mt-8">
+                <Link
+                  to="/explore"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-[17px] font-normal text-black transition-transform hover:scale-105 shadow-xl"
+                >
+                  Thiết lập lịch trình ngay
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* 7. FOOTER */}
-      <footer className="bg-white px-4 py-16 md:px-8 border-t border-beige">
-        <div className="mx-auto max-w-[1400px] grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
+      <footer className="bg-white px-4 py-16 md:px-8 border-t border-gray-100">
+        <div className="mx-auto max-w-[1200px] grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
           <div className="col-span-2 lg:col-span-2">
             <div className="flex items-center gap-2 mb-6">
               <Leaf size={28} className="text-forest-600" />
@@ -538,7 +548,7 @@ export default function LandingPage() {
             </ul>
           </div>
         </div>
-        <div className="mx-auto max-w-[1400px] mt-16 pt-8 border-t border-beige text-center text-sm text-muted/70">
+        <div className="mx-auto max-w-[1200px] mt-16 pt-8 border-t border-gray-100 text-center text-sm text-muted/70">
           © 2026 GreenTrip AI. All rights reserved. Capstone Project for Da Nang - Hue.
         </div>
       </footer>

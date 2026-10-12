@@ -37,7 +37,7 @@
 
 /* Leaflet overrides for warm tone */
 .leaflet-container {
-  font-family: 'Be Vietnam Pro', sans-serif;
+  font-family: 'Inter', sans-serif;
   background: #EFE6D6;
 }
 .leaflet-control-zoom {

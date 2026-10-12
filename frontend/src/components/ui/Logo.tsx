@@ -8,9 +8,9 @@ interface LogoProps {
 }
 
 const sizeMap = {
-  sm: { icon: 20, text: 'text-xl' },
-  md: { icon: 26, text: 'text-[26px]' },
-  lg: { icon: 32, text: 'text-[32px]' },
+  sm: { icon: 18, text: 'text-lg' },
+  md: { icon: 24, text: 'text-[24px]' },
+  lg: { icon: 28, text: 'text-[28px]' },
 };
 
 export default function Logo({
@@ -22,7 +22,7 @@ export default function Logo({
   const s = sizeMap[size];
 
   return (
-    <div className={`flex items-center gap-[10px] ${className}`}>
+    <div className={`flex items-center gap-[5px] ${className}`}>
       {/* Icon lá màu đen đứng độc lập không có nền */}
       <Leaf size={s.icon} strokeWidth={2.5} className="text-black" />
       

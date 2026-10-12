@@ -26,14 +26,14 @@ class FakeCursor:
     def __exit__(self, *args: object) -> None:
         return None
 
-    def execute(self, query: str, parameters: tuple[int, int] | None = None) -> None:
+    def execute(self, query: str, parameters: tuple[Any, ...] | None = None) -> None:
         self.queries.append((query, parameters))
         if "COUNT(*)" in query:
             self.rows = [(len(self.records),)]
             return
 
-        limit, offset = parameters or (0, 0)
-        ordered = sorted(self.records, key=lambda poi: poi.id)
+        limit, offset = (parameters[-2], parameters[-1]) if parameters else (0, 0)
+        ordered = sorted(self.records, key=lambda poi: int(poi.id) if str(poi.id).isdigit() else poi.id)
         page = ordered[offset : offset + limit]
         self.rows = [
             (
@@ -151,7 +151,7 @@ def test_custom_page_and_limit_use_database_limit_offset(
         "has_previous": True,
     }
     page_query, page_parameters = queries[0]
-    assert "ORDER BY id ASC" in page_query
+    assert "ORDER BY p.name ASC" in page_query
     assert "LIMIT %s OFFSET %s" in page_query
     assert page_parameters == (5, 5)
     assert "COUNT(*)" in queries[1][0]

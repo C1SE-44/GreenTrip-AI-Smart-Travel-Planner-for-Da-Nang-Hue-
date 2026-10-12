@@ -34,7 +34,10 @@ def test_signup_success() -> None:
     # First fetchone checks existing user (returns None), second returns created user
     mock_cursor.fetchone.side_effect = [None, mock_user_row]
 
-    with patch("app.auth.router.get_connection") as mock_get_conn:
+    with (
+        patch("app.auth.router.get_connection") as mock_get_conn,
+        patch("app.auth.router.send_verification_email") as mock_send_email,
+    ):
         mock_get_conn.return_value.__enter__.return_value = mock_conn
 
         response = client.post(

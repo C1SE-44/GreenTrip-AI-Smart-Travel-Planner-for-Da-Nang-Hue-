@@ -216,6 +216,7 @@ def test_google_login_success() -> None:
     with (
         patch("app.auth.router.verify_google_token") as mock_verify_google,
         patch("app.auth.router.get_connection") as mock_get_conn,
+        patch("app.auth.router.send_otp_email") as mock_send_otp,
         patch("app.config.get_settings") as mock_get_settings,
     ):
         mock_verify_google.return_value = mock_google_profile

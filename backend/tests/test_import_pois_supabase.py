@@ -27,7 +27,7 @@ def valid_csv_row(**overrides: str) -> dict[str, str]:
             "city_code": "DANANG",
             "city_name": "Da Nang",
             "name": "Chùa Linh Ứng",
-            "category_name": "Tôn giáo & Tâm linh",
+            "category_name": "Tâm linh và chùa thiền",
             "latitude": "16.1042",
             "longitude": "108.2764",
             "is_local_business": "False",
@@ -103,14 +103,9 @@ def test_read_pois_csv_rejects_duplicate_osm_identifiers(tmp_path: Path) -> None
 
 def test_visit_baselines_cover_every_csv_category() -> None:
     assert set(VISIT_MINUTES_BY_CATEGORY) == {
-        "Di tích & Lịch sử",
-        "Tôn giáo & Tâm linh",
-        "Văn hóa & Nghệ thuật",
-        "Điểm tham quan & Cảnh quan",
-        "Khách sạn & Lưu trú",
-        "Ẩm thực & Cafe",
-        "Mua sắm & Chợ",
-        "Công viên & Thiên nhiên",
-        "Thể thao & Giải trí",
-        "Dịch vụ du lịch",
+        "Ẩm thực và quán ăn",
+        "Quán cafe giải khát",
+        "Di tích lịch sử và văn hóa",
+        "Cảnh quan và thiên nhiên",
+        "Tâm linh và chùa thiền",
     }

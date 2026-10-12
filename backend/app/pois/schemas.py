@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 class POIResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: str | int
     name: str
     category: str | None = None
     description: str | None = None

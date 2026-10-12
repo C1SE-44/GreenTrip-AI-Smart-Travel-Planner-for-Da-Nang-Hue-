@@ -107,3 +107,47 @@ def test_login_is_in_openapi(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert "post" in response.json()["paths"]["/auth/login"]
+
+
+def test_get_me_success(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from datetime import datetime, timezone
+    from unittest.mock import MagicMock
+    from app.auth.service import create_access_token
+    from app.auth import router as auth_router
+
+    now = datetime.now(timezone.utc)
+    user_row = (
+        "user-123",
+        "Nguyen Van A",
+        "user@example.com",
+        "0901234567",
+        "USER",
+        "ACTIVE",
+        now,
+        now,
+    )
+    connection = MagicMock()
+    connection.__enter__.return_value = connection
+    cursor = connection.cursor.return_value.__enter__.return_value
+    cursor.fetchone.return_value = user_row
+    monkeypatch.setattr(auth_router, "get_connection", lambda: connection)
+
+    token = create_access_token("user-123")
+    response = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["user_id"] == "user-123"
+    assert data["email"] == "user@example.com"
+    assert data["full_name"] == "Nguyen Van A"
+
+
+def test_get_me_unauthorized(client: TestClient) -> None:
+    response = client.get("/auth/me")
+    assert response.status_code == 401
+
+    response = client.get("/auth/me", headers={"Authorization": "Bearer invalid.token"})
+    assert response.status_code == 401

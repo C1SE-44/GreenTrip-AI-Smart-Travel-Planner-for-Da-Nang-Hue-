@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Header, HTTPException, status
 from psycopg.errors import UniqueViolation
 
 from app.auth.email import send_otp_email, send_verification_email
 from app.auth.password import hash_password
 from app.auth.schemas import (
+    CheckEmailRequest,
+    CheckEmailResponse,
     GoogleLoginRequest,
     GoogleLoginResponse,
     LoginRequest,
@@ -15,6 +17,7 @@ from app.auth.schemas import (
     SignupRequest,
     SignupResponse,
     TokenResponse,
+    UserResponse,
     VerifyEmailRequest,
     VerifyEmailResponse,
     VerifyOtpRequest,
@@ -26,6 +29,7 @@ from app.auth.service import (
     create_access_token,
     create_otp_session_token,
     create_verification_token,
+    decode_access_token,
     generate_otp_code,
     verify_email_token,
     verify_google_token,
@@ -38,6 +42,82 @@ router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
 )
+
+
+@router.get("/me", response_model=UserResponse)
+def get_current_user_profile(authorization: str | None = Header(default=None)) -> UserResponse:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Yêu cầu tiêu đề Authorization với mã Bearer token.",
+        )
+    token = authorization.split("Bearer ", 1)[1].strip()
+    user_id = decode_access_token(token)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Phiên đăng nhập không hợp lệ hoặc đã hết hạn.",
+        )
+
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT user_id, full_name, email, phone, role, status, created_at, updated_at
+                    FROM public.users
+                    WHERE user_id = %s
+                    """,
+                    (user_id,),
+                )
+                user = cursor.fetchone()
+                if not user:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Không tìm thấy thông tin người dùng.",
+                    )
+
+                return UserResponse(
+                    user_id=str(user[0]),
+                    full_name=user[1],
+                    email=user[2],
+                    phone=user[3],
+                    role=user[4],
+                    status=user[5],
+                    created_at=user[6],
+                    updated_at=user[7],
+                )
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể tải thông tin tài khoản lúc này.",
+        ) from error
+
+
+@router.post("/check-email", response_model=CheckEmailResponse)
+def check_email(request: CheckEmailRequest) -> CheckEmailResponse:
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT status
+                    FROM public.users
+                    WHERE email = %s
+                    """,
+                    (request.email.lower(),),
+                )
+                user = cursor.fetchone()
+                if user:
+                    return CheckEmailResponse(exists=True, email=request.email.lower(), status=user[0])
+                return CheckEmailResponse(exists=False, email=request.email.lower(), status=None)
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể kiểm tra email lúc này.",
+        ) from error
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -117,14 +197,37 @@ def signup(request: SignupRequest) -> dict:
                             ),
                         )
                         user = cursor.fetchone()
+                        
+                        # Generate 6-digit OTP and store in public.email_otps
+                        otp_code = generate_otp_code()
+                        cursor.execute(
+                            """
+                            INSERT INTO public.email_otps (
+                                email,
+                                otp_code,
+                                purpose,
+                                expires_at
+                            )
+                            VALUES (%s, %s, 'SIGNUP_OTP', CURRENT_TIMESTAMP + INTERVAL '10 minutes')
+                            """,
+                            (request.email, otp_code),
+                        )
                         connection.commit()
 
-                        # Re-generate and dispatch verification email
+                        # Dispatch OTP via Gmail SMTP
+                        try:
+                            send_otp_email(request.email, request.full_name, otp_code)
+                        except Exception:
+                            pass
+
+                        # Re-generate and dispatch verification email (for backward compatibility)
                         try:
                             token = create_verification_token(request.email)
                             send_verification_email(request.email, request.full_name, token)
                         except AuthServiceUnavailable:
                             pass
+
+                        otp_session_token = create_otp_session_token(request.email, str(user[0]))
 
                         return {
                             "message": "User registered successfully.",
@@ -138,6 +241,8 @@ def signup(request: SignupRequest) -> dict:
                                 "created_at": user[6],
                                 "updated_at": user[7],
                             },
+                            "require_otp": True,
+                            "otp_session_token": otp_session_token,
                         }
 
                     raise HTTPException(
@@ -175,14 +280,37 @@ def signup(request: SignupRequest) -> dict:
                     )
 
                     user = cursor.fetchone()
+
+                    # Generate 6-digit OTP and store in public.email_otps
+                    otp_code = generate_otp_code()
+                    cursor.execute(
+                        """
+                        INSERT INTO public.email_otps (
+                            email,
+                            otp_code,
+                            purpose,
+                            expires_at
+                        )
+                        VALUES (%s, %s, 'SIGNUP_OTP', CURRENT_TIMESTAMP + INTERVAL '10 minutes')
+                        """,
+                        (request.email, otp_code),
+                    )
                     connection.commit()
 
-                    # Generate and dispatch verification email
+                    # Dispatch OTP via Gmail SMTP
+                    try:
+                        send_otp_email(request.email, request.full_name, otp_code)
+                    except Exception:
+                        pass
+
+                    # Generate and dispatch verification email (for backward compatibility)
                     try:
                         token = create_verification_token(request.email)
                         send_verification_email(request.email, request.full_name, token)
                     except AuthServiceUnavailable:
                         pass
+
+                    otp_session_token = create_otp_session_token(request.email, str(user[0]))
 
                     return {
                         "message": "User registered successfully.",
@@ -196,6 +324,8 @@ def signup(request: SignupRequest) -> dict:
                             "created_at": user[6],
                             "updated_at": user[7],
                         },
+                        "require_otp": True,
+                        "otp_session_token": otp_session_token,
                     }
                 except UniqueViolation:
                     connection.rollback()
@@ -435,7 +565,7 @@ def verify_otp(request: VerifyOtpRequest) -> TokenResponse:
                     """
                     SELECT id, otp_code, attempts, expires_at, is_used
                     FROM public.email_otps
-                    WHERE email = %s AND purpose = 'GOOGLE_2FA' AND is_used = FALSE
+                    WHERE email = %s AND purpose IN ('GOOGLE_2FA', 'SIGNUP_OTP') AND is_used = FALSE
                     ORDER BY created_at DESC
                     LIMIT 1
                     """,
@@ -484,7 +614,7 @@ def verify_otp(request: VerifyOtpRequest) -> TokenResponse:
                         detail=detail_msg,
                     )
 
-                # Correct OTP: Mark as used
+                # Correct OTP: Mark as used and activate user
                 cursor.execute(
                     """
                     UPDATE public.email_otps
@@ -492,6 +622,15 @@ def verify_otp(request: VerifyOtpRequest) -> TokenResponse:
                     WHERE id = %s
                     """,
                     (otp_id,),
+                )
+                cursor.execute(
+                    """
+                    UPDATE public.users
+                    SET status = 'ACTIVE',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = %s
+                    """,
+                    (session["user_id"],),
                 )
                 connection.commit()
 
@@ -521,17 +660,20 @@ def resend_otp(request: ResendOtpRequest) -> ResendOtpResponse:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT created_at
+                    SELECT created_at, purpose
                     FROM public.email_otps
-                    WHERE email = %s AND purpose = 'GOOGLE_2FA'
+                    WHERE email = %s AND purpose IN ('GOOGLE_2FA', 'SIGNUP_OTP')
                     ORDER BY created_at DESC
                     LIMIT 1
                     """,
                     (request.email.lower(),),
                 )
                 last_otp = cursor.fetchone()
+                last_purpose = 'SIGNUP_OTP'
                 if last_otp:
                     last_created = last_otp[0]
+                    if len(last_otp) > 1 and last_otp[1]:
+                        last_purpose = last_otp[1]
                     diff_sec = (datetime.now(timezone.utc) - last_created).total_seconds()
                     if diff_sec < 60:
                         wait_time = int(60 - diff_sec)
@@ -560,9 +702,9 @@ def resend_otp(request: ResendOtpRequest) -> ResendOtpResponse:
                         purpose,
                         expires_at
                     )
-                    VALUES (%s, %s, 'GOOGLE_2FA', CURRENT_TIMESTAMP + INTERVAL '5 minutes')
+                    VALUES (%s, %s, %s, CURRENT_TIMESTAMP + INTERVAL '10 minutes')
                     """,
-                    (request.email.lower(), otp_code),
+                    (request.email.lower(), otp_code, last_purpose),
                 )
                 connection.commit()
 

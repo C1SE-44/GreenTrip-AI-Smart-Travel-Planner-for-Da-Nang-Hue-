@@ -55,9 +55,29 @@ class UserResponse(BaseModel):
     updated_at: datetime
 
 
+class CheckEmailRequest(BaseModel):
+    email: str = Field(..., max_length=255)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not EMAIL_REGEX.match(v):
+            raise ValueError("Invalid email format.")
+        return v
+
+
+class CheckEmailResponse(BaseModel):
+    exists: bool
+    email: str
+    status: str | None = None
+
+
 class SignupResponse(BaseModel):
     message: str
     user: UserResponse
+    require_otp: bool = True
+    otp_session_token: str | None = None
 
 
 class LoginRequest(BaseModel):

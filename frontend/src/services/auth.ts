@@ -19,6 +19,12 @@ export interface SignupPayload {
   password: string;
 }
 
+export interface CheckEmailResponse {
+  exists: boolean;
+  email: string;
+  status?: string | null;
+}
+
 export interface SignupResponse {
   message: string;
   user: {
@@ -31,6 +37,31 @@ export interface SignupResponse {
     created_at: string;
     updated_at: string;
   };
+  require_otp?: boolean;
+  otp_session_token?: string;
+}
+
+export async function checkEmail(email: string): Promise<CheckEmailResponse> {
+  const response = await fetch(`${API_BASE_URL}/auth/check-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    let errorMessage = 'Kiểm tra email thất bại. Vui lòng thử lại.';
+
+    if (errorData && typeof errorData.detail === 'string') {
+      errorMessage = errorData.detail;
+    }
+
+    throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
+  }
+
+  return response.json();
 }
 
 export interface VerifyEmailResponse {
@@ -226,6 +257,43 @@ export async function resendOtp(payload: ResendOtpPayload): Promise<ResendOtpRes
       errorMessage = errorData.detail;
     }
 
+    throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
+  }
+
+  return response.json();
+}
+
+export interface UserProfile {
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  role: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getMe(): Promise<UserProfile> {
+  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+  if (!token) {
+    throw new ApiError('Chưa đăng nhập', 401);
+  }
+
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    let errorMessage = 'Không thể tải thông tin người dùng.';
+    if (errorData && typeof errorData.detail === 'string') {
+      errorMessage = errorData.detail;
+    }
     throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
   }
 

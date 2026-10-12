@@ -7,6 +7,7 @@ import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
+import { getMe, type UserProfile } from '@/services/auth';
 
 type CityFilter = 'all' | PoiCity;
 type CategoryFilter = 'all' | PoiCategory;
@@ -31,6 +32,41 @@ export default function ExplorePage() {
   const [error, setError] = useState<string | null>(null);
   const [allPois, setAllPois] = useState<Poi[]>([]);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUserProfile() {
+      try {
+        const profile = await getMe();
+        if (active) setCurrentUser(profile);
+      } catch {
+        if (active) setCurrentUser(null);
+      }
+    }
+
+    loadUserProfile();
+
+    const onAuthChange = () => {
+      loadUserProfile();
+    };
+
+    window.addEventListener('auth-change', onAuthChange);
+    return () => {
+      active = false;
+      window.removeEventListener('auth-change', onAuthChange);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    sessionStorage.removeItem('access_token');
+    window.dispatchEvent(new Event('auth-change'));
+    setCurrentUser(null);
+    setShowProfileMenu(false);
+  };
 
   useEffect(() => {
     let active = true;
@@ -146,20 +182,50 @@ export default function ExplorePage() {
         </div>
 
         {/* Sidebar Bottom / User & Footer */}
-        <div className="flex flex-col gap-4 pt-4 border-t border-gray-100">
+        <div className="flex flex-col gap-4 pt-4 border-t border-gray-100 relative">
+          {/* Profile Dropdown Menu */}
+          {showProfileMenu && (
+            <div className="absolute bottom-20 left-2 right-2 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 animate-fadeIn">
+              {currentUser ? (
+                <div className="flex flex-col">
+                  <div className="px-3 py-2 border-b border-gray-100">
+                    <p className="text-xs font-bold text-gray-900 truncate">{currentUser.full_name}</p>
+                    <p className="text-[11px] text-gray-400 truncate">{currentUser.email}</p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition mt-1 cursor-pointer"
+                  >
+                    Đăng xuất
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  className="block text-center px-3 py-2 text-xs font-bold text-white bg-black hover:bg-gray-800 rounded-xl transition"
+                >
+                  Đăng nhập
+                </Link>
+              )}
+            </div>
+          )}
+
           {/* Profile Button */}
-          <div className="flex items-center justify-between px-2 cursor-pointer hover:bg-gray-50 py-1.5 rounded-xl transition">
+          <div
+            onClick={() => setShowProfileMenu((prev) => !prev)}
+            className="flex items-center justify-between px-2 cursor-pointer hover:bg-gray-50 py-1.5 rounded-xl transition"
+          >
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 border border-gray-100">
-                <img
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150"
-                />
+              <div className="w-9 h-9 rounded-full overflow-hidden bg-black text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                {currentUser?.full_name ? currentUser.full_name.charAt(0).toUpperCase() : 'G'}
               </div>
               <div className="flex flex-col text-left">
-                <span className="text-xs font-semibold text-gray-900 leading-tight">Du khách</span>
-                <span className="text-[11px] text-gray-400 font-normal leading-tight">@greentrip-user</span>
+                <span className="text-xs font-semibold text-gray-900 leading-tight">
+                  {currentUser?.full_name || 'Du khách'}
+                </span>
+                <span className="text-[11px] text-gray-400 font-normal leading-tight">
+                  {currentUser?.email ? `@${currentUser.email.split('@')[0]}` : '@greentrip-user'}
+                </span>
               </div>
             </div>
             <i className="ph ph-dots-three text-lg text-gray-600"></i>

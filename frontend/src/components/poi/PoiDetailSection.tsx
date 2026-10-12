@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { Poi } from '@/data/pois';
-import { categoryLabels } from '@/data/pois';
+import { categoryLabels, getGalleryImages } from '@/data/pois';
 
 interface PoiDetailSectionProps {
   poi: Poi;
@@ -22,14 +22,8 @@ export default function PoiDetailSection({
   const [addedToTrip, setAddedToTrip] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Generate 5 contextual images for gallery (1 main large + 4 in 2x2 grid)
-  const galleryImages = [
-    poi.image,
-    `https://picsum.photos/seed/${poi.id}_dish1/600/600`,
-    `https://picsum.photos/seed/${poi.id}_dish2/600/600`,
-    `https://picsum.photos/seed/${poi.id}_ambiance/600/600`,
-    `https://picsum.photos/seed/${poi.id}_detail/600/600`,
-  ];
+  // Generate 5 contextual, authentic images for gallery (1 main large + 4 in 2x2 grid)
+  const galleryImages = useMemo(() => getGalleryImages(poi), [poi]);
 
   const reviewCount = `${Math.floor(poi.rating * 2.4 * 10) / 10}k`;
   const categoryName = categoryLabels[poi.category] || 'Địa điểm';

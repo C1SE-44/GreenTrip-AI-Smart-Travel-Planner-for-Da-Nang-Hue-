@@ -69,6 +69,21 @@ def create_access_token(subject: str) -> str:
         raise AuthServiceUnavailable from None
 
 
+def decode_access_token(token: str) -> str | None:
+    settings = get_settings()
+    if not settings.JWT_SECRET_KEY:
+        raise AuthServiceUnavailable
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+        return str(payload.get("sub")) if payload.get("sub") else None
+    except (jwt.PyJWTError, ValueError, TypeError):
+        return None
+
+
 def create_verification_token(email: str, expires_in_hours: int = 24) -> str:
     """Create a signed JWT token for email verification valid for 24 hours."""
     settings = get_settings()

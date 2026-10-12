@@ -53,9 +53,10 @@ export default {
         successText: '#3A6B2A',
       },
       fontFamily: {
-        body: ['"Be Vietnam Pro"', 'sans-serif'],
-        display: ['"Fraunces"', 'serif'],
+        sans: ['"Inter"', 'sans-serif'],
+        body: ['"Inter"', 'sans-serif'],
         heading: ['"Plus Jakarta Sans"', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'sans-serif'],
       },
       borderRadius: {
         '2xl': '1rem',

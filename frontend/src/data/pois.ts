@@ -105,6 +105,19 @@ export function normalizePois(items: BackendPoiItem[] = []): Poi[] {
 
 export const pois: Poi[] = [
   {
+    id: 'madame-lan',
+    name: 'Nhà hàng Madame Lân',
+    category: 'quan-an',
+    city: 'Đà Nẵng',
+    lat: 16.0825,
+    lng: 108.2238,
+    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800',
+    description: 'Madame Lân là nhà hàng ẩm thực Việt nổi tiếng bên bờ sông Hàn, tái hiện nét văn hóa phố cổ với hơn 300 món ăn đặc trưng 3 miền Bắc - Trung - Nam.',
+    rating: 4.8,
+    visitDuration: '1–1.5 giờ',
+    ecoScore: 89,
+  },
+  {
     id: 'cau-rong',
     name: 'Cầu Rồng',
     category: 'di-tich',

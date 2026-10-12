@@ -90,27 +90,28 @@ export default function Navbar() {
         <header
           className={`
             w-full transition-all duration-500 ease-out
-            ${scrolled
-              ? 'max-w-[1400px] bg-cream/95 backdrop-blur-md shadow-card border border-white/60 rounded-full'
+            ${scrolled 
+              ? 'max-w-[1400px] bg-white/95 backdrop-blur-md shadow-card border border-gray-100 rounded-full' 
               : 'max-w-full bg-transparent rounded-none border-transparent'
             }
           `}
         >
-          <nav className={`mx-auto max-w-[1400px] flex w-full items-center justify-between transition-all duration-500 ${scrolled ? 'h-[50px]' : 'h-16'} px-6 lg:px-8`}>
+          <nav className={`mx-auto w-full max-w-[1400px] flex items-center justify-between transition-all duration-500 ${scrolled ? 'h-[50px]' : 'h-[60px]'} px-6 lg:px-8`}>
             <Link to="/" className="flex items-center outline-none focus:outline-none">
               <Logo size="md" />
             </Link>
 
             {/* Desktop nav */}
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="hidden items-center gap-1.5 md:flex">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `rounded-full px-5 py-2 text-[15px] transition-all duration-300 outline-none focus:outline-none ${isActive
-                      ? 'text-black bg-black/5 font-medium'
-                      : 'text-black hover:bg-black/5 font-normal'
+                    `rounded-full px-4 py-1.5 text-[14px] transition-all duration-300 outline-none focus:outline-none ${
+                      isActive
+                        ? 'text-black bg-black/5 font-medium'
+                        : 'text-black hover:bg-black/5 font-normal'
                     }`
                   }
                 >
@@ -125,13 +126,13 @@ export default function Navbar() {
                 <>
                   <NavLink
                     to="/my-trips"
-                    className="px-4 py-2 text-[14px] text-charcoal/80 hover:text-black hover:bg-black/5 font-medium rounded-full transition-all"
+                    className="px-4 py-1.5 text-[14px] text-charcoal/80 hover:text-black hover:bg-black/5 font-medium rounded-full transition-all"
                   >
                     Chuyến đi của tôi
                   </NavLink>
                   <button
                     onClick={handleLogout}
-                    className="px-4 py-2 text-[14px] text-charcoal/60 hover:text-red-600 hover:bg-red-50 font-medium rounded-full transition-all cursor-pointer"
+                    className="px-4 py-1.5 text-[14px] text-charcoal/60 hover:text-red-600 hover:bg-red-50 font-medium rounded-full transition-all cursor-pointer"
                   >
                     Đăng xuất
                   </button>
@@ -140,13 +141,13 @@ export default function Navbar() {
                 <>
                   <Link
                     to="/login"
-                    className="px-5 py-2 text-[15px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-all duration-300 outline-none focus:outline-none cursor-pointer"
+                    className="px-4 py-1.5 text-[14px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-all duration-300 outline-none focus:outline-none cursor-pointer"
                   >
                     Đăng nhập
                   </Link>
                   <Link
                     to="/register"
-                    className="px-5 py-2 text-[15px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-all duration-300 outline-none focus:outline-none cursor-pointer"
+                    className="px-4 py-1.5 text-[14px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-all duration-300 outline-none focus:outline-none cursor-pointer"
                   >
                     Đăng ký
                   </Link>

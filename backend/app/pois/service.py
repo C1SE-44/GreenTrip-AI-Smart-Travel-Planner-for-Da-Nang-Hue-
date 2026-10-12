@@ -8,10 +8,20 @@ class POIServiceUnavailable(Exception):
     """Raised when POI data cannot be retrieved."""
 
 
-def get_poi_page(page: int, limit: int) -> PaginatedPOIResponse:
+def get_poi_page(
+    page: int,
+    limit: int,
+    category: str | None = None,
+    city: str | None = None,
+) -> PaginatedPOIResponse:
     offset = (page - 1) * limit
     try:
-        items, total = list_pois(limit=limit, offset=offset)
+        items, total = list_pois(
+            limit=limit,
+            offset=offset,
+            category=category,
+            city=city,
+        )
     except Exception as exc:
         raise POIServiceUnavailable from exc
 

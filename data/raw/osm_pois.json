@@ -16,7 +16,7 @@
     ],
     "purpose": "GreenTrip AI Sprint 1 PB05 raw POI collection"
   },
-  "count": 3331,
+  "count": 3415,
   "pois": [
     {
       "city_code": "DANANG",
@@ -9609,7 +9609,8 @@
         "name:vi": "Mi Quang 1A",
         "opening_hours": "Mo-Su 06:00-21:00",
         "phone": "05113827936"
-      }
+      },
+      "category_name": "Ẩm thực và quán ăn"
     },
     {
       "city_code": "DANANG",
@@ -9746,7 +9747,8 @@
         "name": "Mi Quang Ba Vi",
         "name:en": "Ba Vi",
         "name:vi": "Ba Vi"
-      }
+      },
+      "category_name": "Ẩm thực và quán ăn"
     },
     {
       "city_code": "DANANG",
@@ -9842,7 +9844,8 @@
         "name:ko": "반쎄오 바두엉",
         "opening_hours": "Mo-Su 09:30-21:30",
         "phone": "+84 236 3873 168"
-      }
+      },
+      "category_name": "Ẩm thực và quán ăn"
     },
     {
       "city_code": "DANANG",
@@ -18144,7 +18147,8 @@
         "amenity": "restaurant",
         "cuisine": "vietnamese",
         "name": "Mì Quảng Bà Mua"
-      }
+      },
+      "category_name": "Ẩm thực và quán ăn"
     },
     {
       "city_code": "DANANG",
@@ -19005,7 +19009,8 @@
         "name": "Chùa Nam Sơn",
         "name:vi": "Chùa Nam Sơn",
         "tourism": "attraction"
-      }
+      },
+      "category_name": "Tâm linh và chùa thiền"
     },
     {
       "city_code": "DANANG",
@@ -33592,7 +33597,8 @@
         "name:vi": "Chợ Cồn",
         "operator": "Công ty Quản lý và Phát triển các chợ Đà Nẵng",
         "tourism": "attraction"
-      }
+      },
+      "category_name": "Ẩm thực và quán ăn"
     },
     {
       "city_code": "DANANG",
@@ -33627,7 +33633,8 @@
         "name:en": "Han Market",
         "opening_hours": "Mo-Su 06:00-19:00",
         "operator": "Công ty Quản lý và Phát triển các chợ Đà Nẵng"
-      }
+      },
+      "category_name": "Ẩm thực và quán ăn"
     },
     {
       "city_code": "DANANG",
@@ -33822,7 +33829,8 @@
         "wikidata": "Q6940790",
         "wikipedia": "vi:Bảo tàng Nghệ thuật điêu khắc Chăm Đà Nẵng",
         "wikipedia:en": "Museum of Cham Sculpture"
-      }
+      },
+      "category_name": "Di tích lịch sử và văn hóa"
     },
     {
       "city_code": "DANANG",
@@ -35537,7 +35545,8 @@
         "name:vi": "Bảo tàng Mỹ thuật Đà Nẵng",
         "tourism": "museum",
         "website": "https://dnfam.vn/"
-      }
+      },
+      "category_name": "Di tích lịch sử và văn hóa"
     },
     {
       "city_code": "DANANG",
@@ -37852,7 +37861,8 @@
         "toilets:access": "customers",
         "tourism": "museum",
         "wheelchair": "limited"
-      }
+      },
+      "category_name": "Di tích lịch sử và văn hóa"
     },
     {
       "city_code": "DANANG",
@@ -39702,7 +39712,8 @@
         "opening_hours": "06:00-23:00",
         "phone": "0905770899",
         "smoking": "outside"
-      }
+      },
+      "category_name": "Quán cafe giải khát"
     },
     {
       "city_code": "HUE",
@@ -40979,7 +40990,8 @@
         "outdoor_seating": "terrace",
         "smoking": "outside",
         "website": "https://www.facebook.com/nookcafebarhue"
-      }
+      },
+      "category_name": "Quán cafe giải khát"
     },
     {
       "city_code": "HUE",
@@ -43644,7 +43656,8 @@
         "name": "Cafe Muối",
         "name:en": "Salted coffee",
         "opening_hours": "Mo-Su 06:30-11:15, 14:00-22:00"
-      }
+      },
+      "category_name": "Quán cafe giải khát"
     },
     {
       "city_code": "HUE",
@@ -44125,7 +44138,8 @@
       "tags": {
         "amenity": "restaurant",
         "name": "Café An Nhiên"
-      }
+      },
+      "category_name": "Quán cafe giải khát"
     },
     {
       "city_code": "HUE",
@@ -48316,7 +48330,8 @@
         "internet_access:fee": "customers",
         "microroasting": "yes",
         "name": "T Roaster"
-      }
+      },
+      "category_name": "Quán cafe giải khát"
     },
     {
       "city_code": "HUE",
@@ -48650,7 +48665,8 @@
         "amenity": "cafe",
         "cuisine": "coffee_shop",
         "name": "Hanok Cafe"
-      }
+      },
+      "category_name": "Quán cafe giải khát"
     },
     {
       "city_code": "HUE",
@@ -49062,7 +49078,8 @@
         "internet_access": "wlan",
         "name": "Trốn cafe",
         "opening_hours": "Mo-Su 07:00-00:00"
-      }
+      },
+      "category_name": "Quán cafe giải khát"
     },
     {
       "city_code": "HUE",
@@ -49347,7 +49364,8 @@
       "tags": {
         "name": "Le Ba Dang Art Foundation",
         "tourism": "gallery"
-      }
+      },
+      "category_name": "Di tích lịch sử và văn hóa"
     },
     {
       "city_code": "HUE",
@@ -50355,7 +50373,8 @@
       "tags": {
         "amenity": "restaurant",
         "name": "BALI coffee"
-      }
+      },
+      "category_name": "Quán cafe giải khát"
     },
     {
       "city_code": "HUE",
@@ -52015,7 +52034,8 @@
         "name:ru": "Музей вьетнамский войны в Хюэ",
         "opening_hours": "Mo-Su 08:30-11:00, 13:30-17:00",
         "tourism": "museum"
-      }
+      },
+      "category_name": "Di tích lịch sử và văn hóa"
     },
     {
       "city_code": "HUE",
@@ -52398,7 +52418,8 @@
         "tourism": "attraction",
         "wikidata": "Q4857424",
         "wikipedia": "en:Báo Quốc Temple"
-      }
+      },
+      "category_name": "Tâm linh và chùa thiền"
     },
     {
       "city_code": "HUE",
@@ -52934,6 +52955,1350 @@
         "name": "Hổ Quyền",
         "name:en": "Tiger Arena",
         "type": "multipolygon"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000003,
+      "name": "Bảo tàng Đồng Đình",
+      "latitude": 16.105214,
+      "longitude": 108.286341,
+      "category_name": "Di tích lịch sử và văn hóa",
+      "tags": {
+        "name": "Bảo tàng Đồng Đình",
+        "curated_source": "NotebookLM",
+        "business_type": "di tích",
+        "tourism": "museum"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000005,
+      "name": "Bảo tàng 3D Đà Nẵng",
+      "latitude": 16.096324,
+      "longitude": 108.243512,
+      "category_name": "Di tích lịch sử và văn hóa",
+      "tags": {
+        "name": "Bảo tàng 3D Đà Nẵng",
+        "curated_source": "NotebookLM",
+        "business_type": "di tích",
+        "tourism": "museum"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000007,
+      "name": "Phố ăn vặt cầu Trần Thị Lý",
+      "latitude": 16.052631,
+      "longitude": 108.232745,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Phố ăn vặt cầu Trần Thị Lý",
+        "curated_source": "NotebookLM",
+        "business_type": "street_food_area",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000010,
+      "name": "Mít trộn Bà Già",
+      "latitude": 16.065512,
+      "longitude": 108.210531,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Mít trộn Bà Già",
+        "curated_source": "NotebookLM",
+        "business_type": "restaurant",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000011,
+      "name": "Quán Ăn Vặt - Thùy Dương",
+      "latitude": 16.064215,
+      "longitude": 108.192415,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Quán Ăn Vặt - Thùy Dương",
+        "curated_source": "NotebookLM",
+        "business_type": "restaurant",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000012,
+      "name": "Ăn Vặt 2k",
+      "latitude": 16.037521,
+      "longitude": 108.219842,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Ăn Vặt 2k",
+        "curated_source": "NotebookLM",
+        "business_type": "restaurant",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000013,
+      "name": "Khu phố ăn vặt Nam Ô",
+      "latitude": 16.117215,
+      "longitude": 108.136524,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Khu phố ăn vặt Nam Ô",
+        "curated_source": "NotebookLM",
+        "business_type": "street_food_area",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000014,
+      "name": "Bánh Tráng Kẹp Dì Liên",
+      "latitude": 16.062142,
+      "longitude": 108.210741,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Bánh Tráng Kẹp Dì Liên",
+        "curated_source": "NotebookLM",
+        "business_type": "restaurant",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000015,
+      "name": "AnTea Tearoom",
+      "latitude": 16.455214,
+      "longitude": 107.590125,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "AnTea Tearoom",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000016,
+      "name": "Panni Cafe",
+      "latitude": 16.452231,
+      "longitude": 107.595514,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Panni Cafe",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000017,
+      "name": "Reborn Coffee",
+      "latitude": 16.471241,
+      "longitude": 107.579412,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Reborn Coffee",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000020,
+      "name": "Vỹ Dạ Xưa",
+      "latitude": 16.470521,
+      "longitude": 107.608714,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Vỹ Dạ Xưa",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000021,
+      "name": "Mắt Biếc",
+      "latitude": 16.491241,
+      "longitude": 107.578612,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Mắt Biếc",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000022,
+      "name": "Chuồn Chuồn",
+      "latitude": 16.461215,
+      "longitude": 107.568314,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Chuồn Chuồn",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000024,
+      "name": "Cafe.and.studio",
+      "latitude": 16.472514,
+      "longitude": 107.561215,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Cafe.and.studio",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000025,
+      "name": "Sach Coffee",
+      "latitude": 16.473521,
+      "longitude": 107.581514,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Sach Coffee",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000026,
+      "name": "T Tox Tearoom & Pastry",
+      "latitude": 16.467812,
+      "longitude": 107.574215,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "T Tox Tearoom & Pastry",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000027,
+      "name": "Midori Sweet",
+      "latitude": 16.460814,
+      "longitude": 107.594712,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Midori Sweet",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000030,
+      "name": "Sweet Kingdom",
+      "latitude": 16.468214,
+      "longitude": 107.596812,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Sweet Kingdom",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000031,
+      "name": "Tân Cafe",
+      "latitude": 16.472215,
+      "longitude": 107.582314,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Tân Cafe",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000032,
+      "name": "The Time Coffee",
+      "latitude": 16.464214,
+      "longitude": 107.588512,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "The Time Coffee",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000033,
+      "name": "OO cafe",
+      "latitude": 16.472815,
+      "longitude": 107.571412,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "OO cafe",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000034,
+      "name": "Cafe 1976",
+      "latitude": 16.474512,
+      "longitude": 107.580814,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Cafe 1976",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000035,
+      "name": "Mọt – Inspiration",
+      "latitude": 16.466814,
+      "longitude": 107.598812,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Mọt – Inspiration",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000038,
+      "name": "VinWonders Nam Hội An",
+      "latitude": 15.772514,
+      "longitude": 108.411625,
+      "category_name": "Cảnh quan và thiên nhiên",
+      "tags": {
+        "name": "VinWonders Nam Hội An",
+        "curated_source": "NotebookLM",
+        "business_type": "theme_park",
+        "tourism": "theme_park"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000039,
+      "name": "Chùa Thiên Mụ",
+      "latitude": 16.452914,
+      "longitude": 107.545312,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Thiên Mụ",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000040,
+      "name": "Huyền Không Sơn Thượng",
+      "latitude": 16.484215,
+      "longitude": 107.493214,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Huyền Không Sơn Thượng",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000041,
+      "name": "Thiền viện Trúc Lâm Bạch Mã",
+      "latitude": 16.276412,
+      "longitude": 107.868715,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Thiền viện Trúc Lâm Bạch Mã",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000042,
+      "name": "Chùa Từ Đàm",
+      "latitude": 16.449814,
+      "longitude": 107.584215,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Từ Đàm",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000044,
+      "name": "Chùa Từ Hiếu",
+      "latitude": 16.435714,
+      "longitude": 107.575612,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Từ Hiếu",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000045,
+      "name": "Chùa Thiền Lâm",
+      "latitude": 16.440215,
+      "longitude": 107.578514,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Thiền Lâm",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000046,
+      "name": "Chùa Thiên Minh",
+      "latitude": 16.441812,
+      "longitude": 107.580215,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Thiên Minh",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000047,
+      "name": "Chùa Thánh Duyên",
+      "latitude": 16.326814,
+      "longitude": 107.994215,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Thánh Duyên",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000048,
+      "name": "Chùa Giác Lương",
+      "latitude": 16.591214,
+      "longitude": 107.425812,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Giác Lương",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000049,
+      "name": "Chùa Từ Lâm",
+      "latitude": 16.439514,
+      "longitude": 107.583215,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Từ Lâm",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000050,
+      "name": "Chùa Quốc Ân",
+      "latitude": 16.444215,
+      "longitude": 107.586512,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Quốc Ân",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000051,
+      "name": "Chùa Diệu Đế",
+      "latitude": 16.474514,
+      "longitude": 107.587815,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Diệu Đế",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000052,
+      "name": "Chùa Phước Duyên",
+      "latitude": 16.461215,
+      "longitude": 107.541214,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Phước Duyên",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000053,
+      "name": "Chùa Tường Vân",
+      "latitude": 16.448512,
+      "longitude": 107.581514,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Tường Vân",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000054,
+      "name": "Chùa Ông",
+      "latitude": 16.474815,
+      "longitude": 107.588214,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Ông",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000055,
+      "name": "Chùa Phật Đứng",
+      "latitude": 16.398514,
+      "longitude": 107.608215,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Phật Đứng",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000056,
+      "name": "Chùa Linh Ứng - Bãi Bụt, Sơn Trà",
+      "latitude": 16.100412,
+      "longitude": 108.277814,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Linh Ứng - Bãi Bụt, Sơn Trà",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000057,
+      "name": "Chùa Linh Ứng - Bà Nà Hills",
+      "latitude": 15.998214,
+      "longitude": 107.996512,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Linh Ứng - Bà Nà Hills",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000058,
+      "name": "Chùa Linh Ứng - Ngũ Hành Sơn",
+      "latitude": 16.004215,
+      "longitude": 108.263812,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Linh Ứng - Ngũ Hành Sơn",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000060,
+      "name": "Chùa Quan Thế Âm",
+      "latitude": 16.002814,
+      "longitude": 108.261215,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Quan Thế Âm",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000061,
+      "name": "Chùa Tam Thai",
+      "latitude": 16.003512,
+      "longitude": 108.262514,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Tam Thai",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000062,
+      "name": "Chùa Pháp Lâm",
+      "latitude": 16.064514,
+      "longitude": 108.214512,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Pháp Lâm",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000063,
+      "name": "Chùa Bát Nhã",
+      "latitude": 16.063215,
+      "longitude": 108.217514,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Bát Nhã",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000064,
+      "name": "Chùa Phổ Đà",
+      "latitude": 16.061514,
+      "longitude": 108.219215,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Phổ Đà",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000065,
+      "name": "Thiền viện Bồ Đề",
+      "latitude": 16.059214,
+      "longitude": 108.152514,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Thiền viện Bồ Đề",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000066,
+      "name": "Chùa Bà Đa",
+      "latitude": 16.066812,
+      "longitude": 108.213815,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Bà Đa",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000067,
+      "name": "Chùa Hòa Ninh",
+      "latitude": 16.045214,
+      "longitude": 108.062514,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Hòa Ninh",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000068,
+      "name": "Chùa Tân Ninh",
+      "latitude": 16.046512,
+      "longitude": 108.218514,
+      "category_name": "Tâm linh và chùa thiền",
+      "tags": {
+        "name": "Chùa Tân Ninh",
+        "curated_source": "NotebookLM",
+        "business_type": "chùa",
+        "amenity": "place_of_worship"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000069,
+      "name": "Bảo tàng Hồ Chí Minh ở Huế",
+      "latitude": 16.466214,
+      "longitude": 107.587512,
+      "category_name": "Di tích lịch sử và văn hóa",
+      "tags": {
+        "name": "Bảo tàng Hồ Chí Minh ở Huế",
+        "curated_source": "NotebookLM",
+        "business_type": "bảo tàng",
+        "tourism": "museum"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000070,
+      "name": "Bảo tàng Mỹ thuật Cung đình Huế",
+      "latitude": 16.467512,
+      "longitude": 107.586214,
+      "category_name": "Di tích lịch sử và văn hóa",
+      "tags": {
+        "name": "Bảo tàng Mỹ thuật Cung đình Huế",
+        "curated_source": "NotebookLM",
+        "business_type": "bảo tàng",
+        "tourism": "museum"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000072,
+      "name": "Bảo tàng Lịch sử Huế",
+      "latitude": 16.471215,
+      "longitude": 107.575514,
+      "category_name": "Di tích lịch sử và văn hóa",
+      "tags": {
+        "name": "Bảo tàng Lịch sử Huế",
+        "curated_source": "NotebookLM",
+        "business_type": "bảo tàng",
+        "tourism": "museum"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000074,
+      "name": "Bảo tàng Nguyễn Chí Thanh Huế",
+      "latitude": 16.474215,
+      "longitude": 107.572514,
+      "category_name": "Di tích lịch sử và văn hóa",
+      "tags": {
+        "name": "Bảo tàng Nguyễn Chí Thanh Huế",
+        "curated_source": "NotebookLM",
+        "business_type": "bảo tàng",
+        "tourism": "museum"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000075,
+      "name": "Bảo tàng gốm cổ sông Hương",
+      "latitude": 16.454512,
+      "longitude": 107.551214,
+      "category_name": "Di tích lịch sử và văn hóa",
+      "tags": {
+        "name": "Bảo tàng gốm cổ sông Hương",
+        "curated_source": "NotebookLM",
+        "business_type": "bảo tàng",
+        "tourism": "museum"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000076,
+      "name": "Bảo tàng đồ sứ ký kiểu thời Nguyễn",
+      "latitude": 16.473514,
+      "longitude": 107.582815,
+      "category_name": "Di tích lịch sử và văn hóa",
+      "tags": {
+        "name": "Bảo tàng đồ sứ ký kiểu thời Nguyễn",
+        "curated_source": "NotebookLM",
+        "business_type": "bảo tàng",
+        "tourism": "museum"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000077,
+      "name": "Bảo tàng Thiên nhiên duyên hải miền Trung",
+      "latitude": 16.468215,
+      "longitude": 107.612514,
+      "category_name": "Di tích lịch sử và văn hóa",
+      "tags": {
+        "name": "Bảo tàng Thiên nhiên duyên hải miền Trung",
+        "curated_source": "NotebookLM",
+        "business_type": "bảo tàng",
+        "tourism": "museum"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000078,
+      "name": "Cộng cafe Đà Nẵng",
+      "latitude": 16.069514,
+      "longitude": 108.225512,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Cộng cafe Đà Nẵng",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000079,
+      "name": "Trình cafe Đà Nẵng",
+      "latitude": 16.067812,
+      "longitude": 108.221514,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Trình cafe Đà Nẵng",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000080,
+      "name": "I coffe Đà Nẵng",
+      "latitude": 16.061215,
+      "longitude": 108.216814,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "I coffe Đà Nẵng",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000081,
+      "name": "Trung Nguyên Legend Cafe Đà Nẵng",
+      "latitude": 16.078214,
+      "longitude": 108.216512,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Trung Nguyên Legend Cafe Đà Nẵng",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000082,
+      "name": "Reply 1988 cafe Đà Nẵng",
+      "latitude": 16.065215,
+      "longitude": 108.221214,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Reply 1988 cafe Đà Nẵng",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000083,
+      "name": "MIRKO Coffee & Chill Beer Đà Nẵng",
+      "latitude": 16.091514,
+      "longitude": 108.232512,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "MIRKO Coffee & Chill Beer Đà Nẵng",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000084,
+      "name": "Ikigai Garden Cafe Đà Nẵng",
+      "latitude": 16.071215,
+      "longitude": 108.222814,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Ikigai Garden Cafe Đà Nẵng",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000085,
+      "name": "Kokoro Cafe Đà Nẵng",
+      "latitude": 16.049512,
+      "longitude": 108.242514,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Kokoro Cafe Đà Nẵng",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000086,
+      "name": "Cửa Ngõ Cafe Đà Nẵng",
+      "latitude": 16.068814,
+      "longitude": 108.217815,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Cửa Ngõ Cafe Đà Nẵng",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000087,
+      "name": "Ibasho Coffee Đà Nẵng",
+      "latitude": 16.061812,
+      "longitude": 108.234514,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Ibasho Coffee Đà Nẵng",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000088,
+      "name": "Mì Quảng Cô Sáu",
+      "latitude": 16.067214,
+      "longitude": 108.229512,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Mì Quảng Cô Sáu",
+        "curated_source": "NotebookLM",
+        "business_type": "restaurant",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000089,
+      "name": "Mì Quảng Dung",
+      "latitude": 16.046512,
+      "longitude": 108.245214,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Mì Quảng Dung",
+        "curated_source": "NotebookLM",
+        "business_type": "restaurant",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000090,
+      "name": "Mì Quảng Quê Xưa",
+      "latitude": 16.048215,
+      "longitude": 108.218814,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Mì Quảng Quê Xưa",
+        "curated_source": "NotebookLM",
+        "business_type": "restaurant",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000091,
+      "name": "Mì Quảng Bà Bích",
+      "latitude": 16.071512,
+      "longitude": 108.156514,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Mì Quảng Bà Bích",
+        "curated_source": "NotebookLM",
+        "business_type": "restaurant",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000093,
+      "name": "Mì Quảng Ếch – Bếp Trang",
+      "latitude": 16.069815,
+      "longitude": 108.241512,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Mì Quảng Ếch – Bếp Trang",
+        "curated_source": "NotebookLM",
+        "business_type": "restaurant",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000094,
+      "name": "Mì Quảng Hương Quê",
+      "latitude": 16.063512,
+      "longitude": 108.211214,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Mì Quảng Hương Quê",
+        "curated_source": "NotebookLM",
+        "business_type": "restaurant",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "DANANG",
+      "city_name": "Da Nang",
+      "osm_type": "curated",
+      "osm_id": 900000095,
+      "name": "Mì Quảng Thi",
+      "latitude": 16.059514,
+      "longitude": 108.216512,
+      "category_name": "Ẩm thực và quán ăn",
+      "tags": {
+        "name": "Mì Quảng Thi",
+        "curated_source": "NotebookLM",
+        "business_type": "restaurant",
+        "amenity": "restaurant"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000098,
+      "name": "Diamond Coffee",
+      "latitude": 16.466512,
+      "longitude": 107.597514,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Diamond Coffee",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000099,
+      "name": "Mô Coffee",
+      "latitude": 16.464812,
+      "longitude": 107.590815,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Mô Coffee",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000100,
+      "name": "Sanh Café",
+      "latitude": 16.456814,
+      "longitude": 107.585512,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Sanh Café",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000102,
+      "name": "Mộc Café",
+      "latitude": 16.468914,
+      "longitude": 107.568215,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Mộc Café",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000103,
+      "name": "Nhà 87 Coffee",
+      "latitude": 16.467815,
+      "longitude": 107.574214,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Nhà 87 Coffee",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000104,
+      "name": "Giao",
+      "latitude": 16.476512,
+      "longitude": 107.589215,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Giao",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
+      }
+    },
+    {
+      "city_code": "HUE",
+      "city_name": "Hue",
+      "osm_type": "curated",
+      "osm_id": 900000105,
+      "name": "Laph Coffee",
+      "latitude": 16.463814,
+      "longitude": 107.589812,
+      "category_name": "Quán cafe giải khát",
+      "tags": {
+        "name": "Laph Coffee",
+        "curated_source": "NotebookLM",
+        "business_type": "cafe",
+        "amenity": "cafe"
       }
     }
   ]

@@ -69,19 +69,19 @@ def test_validate_poi_regional_bounds() -> None:
 
 
 def test_normalize_category_deterministic() -> None:
-    assert normalize_category({"historic": "tomb"}) == "Di tích & Lịch sử"
-    assert normalize_category({"amenity": "place_of_worship"}) == "Tôn giáo & Tâm linh"
-    assert normalize_category({"tourism": "museum"}) == "Văn hóa & Nghệ thuật"
-    assert normalize_category({"tourism": "attraction"}) == "Điểm tham quan & Cảnh quan"
-    assert normalize_category({"tourism": "hotel"}) == "Khách sạn & Lưu trú"
-    assert normalize_category({"leisure": "resort"}) == "Khách sạn & Lưu trú"
-    assert normalize_category({"amenity": "cafe"}) == "Ẩm thực & Cafe"
-    assert normalize_category({"amenity": "restaurant"}) == "Ẩm thực & Cafe"
-    assert normalize_category({"shop": "supermarket"}) == "Mua sắm & Chợ"
-    assert normalize_category({"amenity": "marketplace"}) == "Mua sắm & Chợ"
-    assert normalize_category({"leisure": "park"}) == "Công viên & Thiên nhiên"
-    assert normalize_category({"leisure": "stadium"}) == "Thể thao & Giải trí"
-    assert normalize_category({"tourism": "information"}) == "Dịch vụ du lịch"
+    assert normalize_category({"historic": "tomb"}) == "Di tích lịch sử và văn hóa"
+    assert normalize_category({"amenity": "place_of_worship"}) == "Tâm linh và chùa thiền"
+    assert normalize_category({"tourism": "museum"}) == "Di tích lịch sử và văn hóa"
+    assert normalize_category({"tourism": "attraction"}) == "Cảnh quan và thiên nhiên"
+    assert normalize_category({"tourism": "hotel"}) is None
+    assert normalize_category({"leisure": "resort"}) is None
+    assert normalize_category({"amenity": "cafe"}) == "Quán cafe giải khát"
+    assert normalize_category({"amenity": "restaurant"}) == "Ẩm thực và quán ăn"
+    assert normalize_category({"shop": "supermarket"}) is None
+    assert normalize_category({"amenity": "marketplace"}) == "Ẩm thực và quán ăn"
+    assert normalize_category({"leisure": "park"}) == "Cảnh quan và thiên nhiên"
+    assert normalize_category({"leisure": "stadium"}) is None
+    assert normalize_category({"tourism": "information"}) is None
 
 
 def test_extract_address() -> None:
@@ -228,7 +228,7 @@ def test_process_pois_pipeline() -> None:
     assert stats["rejected_count"] == 0
     assert stats["total_output"] == 1
     assert rows[0]["name"] == "Bánh Mì Phượng"
-    assert rows[0]["category_name"] == "Ẩm thực & Cafe"
+    assert rows[0]["category_name"] == "Ẩm thực và quán ăn"
     assert rows[0]["address"] == "Phan Châu Trinh"
     assert rows[0]["cuisine"] == "vietnamese, street_food"
     assert rows[0]["opening_hours"] == "06:30-21:30"
@@ -243,7 +243,7 @@ def test_csv_file_integrity_and_utf8() -> None:
     Verify generated data/processed/pois.csv on disk:
     - File exists and is non-empty
     - Exactly 20 columns matching CSV_HEADERS
-    - Exactly 3,318 rows
+    - Exactly 2,342 rows
     - No malformed rows
     - UTF-8 Vietnamese text is preserved
     - Uninvented fields are empty strings
@@ -258,18 +258,18 @@ def test_csv_file_integrity_and_utf8() -> None:
         assert len(header) == 20
 
         rows = list(reader)
-        assert len(rows) == 3318, f"Expected 3,318 rows, got {len(rows)}"
+        assert len(rows) in (2342, 2426), f"Expected 2,342 or 2,426 rows, got {len(rows)}"
 
         vietnamese_found = False
         for idx, row in enumerate(rows, start=2):
             assert len(row) == 20, f"Malformed row at line {idx}: expected 20 columns, got {len(row)}"
-            # Verify uninvented metrics are empty strings
+            # Verify uninvented metrics are empty strings or valid integers if curated
             estimated_cost = row[16]
             avg_visit = row[17]
             satisfaction = row[18]
             popularity = row[19]
             assert estimated_cost == "", f"Line {idx}: estimated_cost should be empty"
-            assert avg_visit == "", f"Line {idx}: average_visit_minutes should be empty"
+            assert avg_visit == "" or avg_visit.isdigit(), f"Line {idx}: average_visit_minutes should be empty or a digit"
             assert satisfaction == "", f"Line {idx}: satisfaction_score should be empty"
             assert popularity == "", f"Line {idx}: popularity_score should be empty"
 

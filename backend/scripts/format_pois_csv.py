@@ -97,120 +97,125 @@ KNOWN_CHAINS = {
 # Category Normalization
 # ============================================================
 
-def normalize_category(tags: dict[str, Any]) -> str:
+CONTROLLED_CATEGORIES: tuple[str, ...] = (
+    "Ẩm thực và quán ăn",
+    "Quán cafe giải khát",
+    "Di tích lịch sử và văn hóa",
+    "Cảnh quan và thiên nhiên",
+    "Tâm linh và chùa thiền",
+)
+
+
+def normalize_category(tags: dict[str, Any], name: str = "") -> str | None:
     """
-    Map raw OpenStreetMap tags into a travel-facing controlled category.
+    Map raw OpenStreetMap tags and names into 5 controlled travel categories.
 
     Controlled categories:
-    - Di tích & Lịch sử
-    - Tôn giáo & Tâm linh
-    - Văn hóa & Nghệ thuật
-    - Điểm tham quan & Cảnh quan
-    - Khách sạn & Lưu trú
-    - Ẩm thực & Cafe
-    - Mua sắm & Chợ
-    - Công viên & Thiên nhiên
-    - Thể thao & Giải trí
-    - Dịch vụ du lịch
+    1. Ẩm thực và quán ăn
+    2. Quán cafe giải khát
+    3. Di tích lịch sử và văn hóa
+    4. Cảnh quan và thiên nhiên
+    5. Tâm linh và chùa thiền
     """
     historic = tags.get("historic")
     tourism = tags.get("tourism")
     amenity = tags.get("amenity")
     leisure = tags.get("leisure")
     shop = tags.get("shop")
+    name_clean = (name or str(tags.get("name", ""))).strip().lower()
 
-    # 1. Di tích & Lịch sử
-    if historic:
-        return "Di tích & Lịch sử"
-
-    # 2. Tôn giáo & Tâm linh
-    if amenity in {"place_of_worship", "monastery"}:
-        return "Tôn giáo & Tâm linh"
-
-    # 3. Văn hóa & Nghệ thuật
-    if tourism in {"museum", "gallery", "artwork"} or amenity in {
-        "museum",
-        "arts_centre",
-        "theatre",
-    }:
-        return "Văn hóa & Nghệ thuật"
-
-    # 4. Điểm tham quan & Cảnh quan
-    if tourism in {"attraction", "viewpoint", "zoo"}:
-        return "Điểm tham quan & Cảnh quan"
-
-    # 5. Khách sạn & Lưu trú
-    if (
-        tourism
-        in {
-            "hotel",
-            "hostel",
-            "guest_house",
-            "apartment",
-            "motel",
-            "camp_site",
-            "chalet",
-            "alpine_hut",
-        }
-        or leisure == "resort"
+    # 1. Tâm linh và chùa thiền (Priority 1)
+    if amenity in {"place_of_worship", "monastery"} or any(
+        w in name_clean
+        for w in ["chùa ", "thiền viện", "tịnh xá", "tu viện", "nhà thờ", "giáo xứ"]
     ):
-        return "Khách sạn & Lưu trú"
+        if "chợ" not in name_clean:
+            return "Tâm linh và chùa thiền"
+    if (historic or any(w in name_clean for w in ["đền ", "miếu"])) and any(
+        w in name_clean for w in ["đền ", "miếu"]
+    ) and "chợ" not in name_clean:
+        return "Tâm linh và chùa thiền"
 
-    # 6. Ẩm thực & Cafe
-    if amenity in {"cafe", "restaurant", "internet_cafe"} or shop in {
-        "coffee",
-        "bakery",
-    }:
-        return "Ẩm thực & Cafe"
-
-    # 7. Mua sắm & Chợ
+    # 2. Di tích lịch sử và văn hóa (Priority 2)
     if (
-        shop
-        in {
-            "supermarket",
-            "gift",
-            "mall",
-            "department_store",
-            "craft",
-        }
-        or amenity == "marketplace"
+        historic
+        or tourism in {"museum", "gallery", "artwork"}
+        or amenity in {"museum", "arts_centre", "theatre"}
+        or any(
+            w in name_clean
+            for w in [
+                "bảo tàng",
+                "di tích",
+                "lăng ",
+                "lăng mộ",
+                "hoàng thành",
+                "đại nội",
+                "cố đô",
+                "cổng thành",
+                "di sản",
+            ]
+        )
     ):
-        return "Mua sắm & Chợ"
+        return "Di tích lịch sử và văn hóa"
 
-    # 8. Công viên & Thiên nhiên
-    if leisure in {"park", "garden", "nature_reserve", "common"}:
-        return "Công viên & Thiên nhiên"
-
-    # 9. Thể thao & Giải trí
+    # 3. Cảnh quan và thiên nhiên (Priority 3)
     if (
-        leisure
-        in {
-            "fitness_centre",
-            "sports_centre",
-            "stadium",
-            "pitch",
-            "swimming_pool",
-            "golf_course",
-            "sports_hall",
-            "amusement_arcade",
-            "water_park",
-            "sauna",
-            "adult_gaming_centre",
-            "playground",
-        }
-        or amenity in {"cinema"}
+        tourism in {"attraction", "viewpoint", "zoo", "theme_park"}
+        or leisure in {"park", "garden", "nature_reserve", "common"}
+        or any(
+            w in name_clean
+            for w in [
+                "bãi biển",
+                "bãi tắm",
+                "bán đảo",
+                "đỉnh ",
+                "đèo ",
+                "suối ",
+                "thác ",
+                "công viên",
+                "hồ ",
+            ]
+        )
     ):
-        return "Thể thao & Giải trí"
+        return "Cảnh quan và thiên nhiên"
 
-    # 10. Dịch vụ du lịch
+    # 4. Quán cafe giải khát (Priority 4)
     if (
-        tourism == "information"
-        or amenity == "ferry_terminal"
-        or leisure == "marina"
+        amenity in {"cafe", "internet_cafe", "ice_cream", "bar", "pub"}
+        or shop in {"coffee", "tea", "beverages"}
+        or any(
+            w in name_clean
+            for w in ["cafe", "cà phê", "coffee", "trà sữa", "trà chanh", "nước mía", "giải khát"]
+        )
     ):
-        return "Dịch vụ du lịch"
+        return "Quán cafe giải khát"
 
-    return "Khác"
+    # 5. Ẩm thực và quán ăn (Priority 5)
+    if (
+        amenity in {"restaurant", "fast_food", "food_court", "marketplace"}
+        or shop in {"bakery", "pastry", "deli"}
+        or any(
+            w in name_clean
+            for w in [
+                "nhà hàng",
+                "quán ăn",
+                "ẩm thực",
+                "bún ",
+                "phở ",
+                "cơm ",
+                "bánh mì",
+                "hải sản",
+                "đặc sản",
+                "chợ đêm",
+                "lẩu",
+                "nướng",
+                "chè",
+            ]
+        )
+    ):
+        return "Ẩm thực và quán ăn"
+
+    return None
 
 
 # ============================================================
@@ -484,10 +489,11 @@ def process_pois(
 
     for p in deduped_pois:
         tags = p.get("tags", {})
-        cat_name = normalize_category(tags)
-        category_counts[cat_name] += 1
-
         name = str(p.get("name", "")).strip()
+        cat_name = normalize_category(tags, name=name)
+        if not cat_name:
+            continue
+        category_counts[cat_name] += 1
         address = extract_address(tags)
         if not address:
             missing_addr_count += 1

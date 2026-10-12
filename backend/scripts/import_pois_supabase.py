@@ -31,16 +31,11 @@ from scripts.format_pois_csv import CSV_HEADERS
 DEFAULT_CSV_PATH: Path = PROJECT_ROOT / "data" / "processed" / "pois.csv"
 
 VISIT_MINUTES_BY_CATEGORY: dict[str, int] = {
-    "Di tích & Lịch sử": 90,
-    "Tôn giáo & Tâm linh": 45,
-    "Văn hóa & Nghệ thuật": 90,
-    "Điểm tham quan & Cảnh quan": 90,
-    "Khách sạn & Lưu trú": 60,
-    "Ẩm thực & Cafe": 60,
-    "Mua sắm & Chợ": 90,
-    "Công viên & Thiên nhiên": 90,
-    "Thể thao & Giải trí": 120,
-    "Dịch vụ du lịch": 30,
+    "Ẩm thực và quán ăn": 60,
+    "Quán cafe giải khát": 45,
+    "Di tích lịch sử và văn hóa": 90,
+    "Cảnh quan và thiên nhiên": 90,
+    "Tâm linh và chùa thiền": 45,
 }
 
 CSV_FIELDS_NOT_STORED: tuple[str, ...] = (
@@ -231,7 +226,7 @@ def read_pois_csv(csv_path: Path) -> list[PoiRecord]:
     return records
 
 
-def import_pois(records: list[PoiRecord]) -> tuple[int, int]:
+def import_pois(records: list[PoiRecord], replace: bool = False) -> tuple[int, int]:
     category_names = sorted({record.category_name for record in records})
     city_codes = sorted({record.city_code for record in records})
     inserted_category_count = 0
@@ -241,10 +236,16 @@ def import_pois(records: list[PoiRecord]) -> tuple[int, int]:
             cursor.execute("SELECT count(*) FROM public.pois")
             existing_poi_count = cursor.fetchone()[0]
             if existing_poi_count:
-                raise RuntimeError(
-                    f"public.pois already contains {existing_poi_count} rows. "
-                    "Import stopped to prevent duplicates; this schema has no "
-                    "OSM identifier or natural key for safe re-imports."
+                if not replace:
+                    raise RuntimeError(
+                        f"public.pois already contains {existing_poi_count} rows. "
+                        "Import stopped to prevent duplicates; this schema has no "
+                        "OSM identifier or natural key for safe re-imports. Pass --replace to overwrite."
+                    )
+                cursor.execute("TRUNCATE TABLE public.pois CASCADE;")
+                cursor.execute(
+                    "DELETE FROM public.poi_categories WHERE NOT (name = ANY(%s));",
+                    (category_names,),
                 )
 
             cursor.execute(
@@ -402,6 +403,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Validate the CSV without connecting to or changing Supabase.",
     )
+    parser.add_argument(
+        "--replace",
+        action="store_true",
+        help="Replace existing POIs and clean old categories in Supabase.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -410,7 +416,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.dry_run:
             return 0
 
-        imported_count, inserted_category_count = import_pois(records)
+        imported_count, inserted_category_count = import_pois(
+            records, replace=args.replace
+        )
     except (OSError, ValueError, RuntimeError, psycopg.Error) as exc:
         print(f"[ERROR] POI import aborted: {exc}", file=sys.stderr)
         return 1

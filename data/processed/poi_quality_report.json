@@ -1,56 +1,56 @@
 {
   "report_version": 1,
-  "generated_at": "2026-10-09T12:12:32.312236+00:00",
+  "generated_at": "2026-10-12T08:43:18.114969+00:00",
   "source": {
     "provider": "OpenStreetMap",
     "license": "ODbL-1.0",
     "retrieved_at": "2026-10-06T09:07:51.163436+00:00",
-    "age_days_at_generation": 3,
+    "age_days_at_generation": 5,
     "external_google_maps_api_check_performed": false
   },
   "summary": {
-    "csv_rows": 3318,
-    "raw_source_rows": 3331,
-    "raw_source_declared_count": 3331,
+    "csv_rows": 2426,
+    "raw_source_rows": 3415,
+    "raw_source_declared_count": 3415,
     "raw_source_count_matches_declared": true,
-    "raw_source_ids_not_in_csv": 13,
+    "raw_source_ids_not_in_csv": 989,
     "csv_ids_missing_from_source": 0,
     "duplicate_csv_osm_ids": 0,
     "duplicate_source_osm_ids": 0,
     "csv_source_mismatches": 0,
     "outside_city_bbox": 0,
-    "nearby_same_name_pairs_for_review": 66
+    "nearby_same_name_pairs_for_review": 40
   },
   "completeness": {
     "address": {
-      "missing": 2166,
-      "present": 1152,
-      "missing_percent": 65.3
+      "missing": 1592,
+      "present": 834,
+      "missing_percent": 65.6
     },
     "description": {
-      "missing": 2116,
-      "present": 1202,
-      "missing_percent": 63.8
+      "missing": 1406,
+      "present": 1020,
+      "missing_percent": 58.0
     },
     "phone": {
-      "missing": 2863,
-      "present": 455,
-      "missing_percent": 86.3
+      "missing": 2146,
+      "present": 280,
+      "missing_percent": 88.5
     },
     "website": {
-      "missing": 3072,
-      "present": 246,
-      "missing_percent": 92.6
+      "missing": 2302,
+      "present": 124,
+      "missing_percent": 94.9
     },
     "opening_hours": {
-      "missing": 2824,
-      "present": 494,
-      "missing_percent": 85.1
+      "missing": 2014,
+      "present": 412,
+      "missing_percent": 83.0
     },
     "cuisine": {
-      "missing": 2647,
+      "missing": 1755,
       "present": 671,
-      "missing_percent": 79.8
+      "missing_percent": 72.3
     }
   },
   "integrity_findings": {
@@ -80,29 +80,6 @@
           "longitude": 108.2226583,
           "osm_url": "https://www.openstreetmap.org/node/12372805701",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=G%C3%A9+Cafe+Da+Nang+16.063920%2C108.222658"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "HÙNGđn",
-      "city_name": "Da Nang",
-      "distance_meters": 4.2,
-      "places": [
-        {
-          "osm_ref": "node/7296009586",
-          "latitude": 16.0705085,
-          "longitude": 108.2133449,
-          "osm_url": "https://www.openstreetmap.org/node/7296009586",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=H%C3%99NG%C4%91n+Da+Nang+16.070508%2C108.213345"
-        },
-        {
-          "osm_ref": "node/7300993486",
-          "latitude": 16.0704863,
-          "longitude": 108.2133763,
-          "osm_url": "https://www.openstreetmap.org/node/7300993486",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=H%C3%99NG%C4%91n+Da+Nang+16.070486%2C108.213376"
         }
       ]
     },
@@ -201,29 +178,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Mikazuki Đà Nẵng Hotel",
-      "city_name": "Da Nang",
-      "distance_meters": 8.0,
-      "places": [
-        {
-          "osm_ref": "node/10054034978",
-          "latitude": 16.0935456,
-          "longitude": 108.1444194,
-          "osm_url": "https://www.openstreetmap.org/node/10054034978",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Mikazuki+%C4%90%C3%A0+N%E1%BA%B5ng+Hotel+Da+Nang+16.093546%2C108.144419"
-        },
-        {
-          "osm_ref": "way/1098017439",
-          "latitude": 16.0935848,
-          "longitude": 108.1443569,
-          "osm_url": "https://www.openstreetmap.org/way/1098017439",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Mikazuki+%C4%90%C3%A0+N%E1%BA%B5ng+Hotel+Da+Nang+16.093585%2C108.144357"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Buddha",
       "city_name": "Da Nang",
       "distance_meters": 8.9,
@@ -241,75 +195,6 @@
           "longitude": 108.2639436,
           "osm_url": "https://www.openstreetmap.org/node/12424938201",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004468%2C108.263944"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Ocean Pool",
-      "city_name": "Da Nang",
-      "distance_meters": 11.4,
-      "places": [
-        {
-          "osm_ref": "way/118666408",
-          "latitude": 16.0403145,
-          "longitude": 108.2517371,
-          "osm_url": "https://www.openstreetmap.org/way/118666408",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ocean+Pool+Da+Nang+16.040315%2C108.251737"
-        },
-        {
-          "osm_ref": "way/485394029",
-          "latitude": 16.0403574,
-          "longitude": 108.2518345,
-          "osm_url": "https://www.openstreetmap.org/way/485394029",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ocean+Pool+Da+Nang+16.040357%2C108.251835"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Golden Star Villa",
-      "city_name": "Hue",
-      "distance_meters": 12.2,
-      "places": [
-        {
-          "osm_ref": "way/1251149947",
-          "latitude": 16.4608893,
-          "longitude": 107.5560931,
-          "osm_url": "https://www.openstreetmap.org/way/1251149947",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460889%2C107.556093"
-        },
-        {
-          "osm_ref": "way/1251149945",
-          "latitude": 16.4608392,
-          "longitude": 107.5559911,
-          "osm_url": "https://www.openstreetmap.org/way/1251149945",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460839%2C107.555991"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Lotte Duty Free",
-      "city_name": "Da Nang",
-      "distance_meters": 16.6,
-      "places": [
-        {
-          "osm_ref": "node/14045111563",
-          "latitude": 16.0561299,
-          "longitude": 108.2020188,
-          "osm_url": "https://www.openstreetmap.org/node/14045111563",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056130%2C108.202019"
-        },
-        {
-          "osm_ref": "node/14045136237",
-          "latitude": 16.0560661,
-          "longitude": 108.202159,
-          "osm_url": "https://www.openstreetmap.org/node/14045136237",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056066%2C108.202159"
         }
       ]
     },
@@ -339,52 +224,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Sân vận động Cẩm Lệ",
-      "city_name": "Da Nang",
-      "distance_meters": 19.0,
-      "places": [
-        {
-          "osm_ref": "node/3762853481",
-          "latitude": 16.0148875,
-          "longitude": 108.1891412,
-          "osm_url": "https://www.openstreetmap.org/node/3762853481",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n+v%E1%BA%ADn+%C4%91%E1%BB%99ng+C%E1%BA%A9m+L%E1%BB%87+Da+Nang+16.014888%2C108.189141"
-        },
-        {
-          "osm_ref": "way/372735507",
-          "latitude": 16.0147913,
-          "longitude": 108.1889946,
-          "osm_url": "https://www.openstreetmap.org/way/372735507",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n+v%E1%BA%ADn+%C4%91%E1%BB%99ng+C%E1%BA%A9m+L%E1%BB%87+Da+Nang+16.014791%2C108.188995"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Golden Star Villa",
-      "city_name": "Hue",
-      "distance_meters": 20.0,
-      "places": [
-        {
-          "osm_ref": "way/1251149945",
-          "latitude": 16.4608392,
-          "longitude": 107.5559911,
-          "osm_url": "https://www.openstreetmap.org/way/1251149945",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460839%2C107.555991"
-        },
-        {
-          "osm_ref": "way/1251149946",
-          "latitude": 16.4606719,
-          "longitude": 107.5560612,
-          "osm_url": "https://www.openstreetmap.org/way/1251149946",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460672%2C107.556061"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Quán Chay Thanh Liễu",
       "city_name": "Hue",
       "distance_meters": 21.0,
@@ -402,29 +241,6 @@
           "longitude": 107.5977764,
           "osm_url": "https://www.openstreetmap.org/node/4634514389",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Qu%C3%A1n+Chay+Thanh+Li%E1%BB%85u+Hue+16.470983%2C107.597776"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Lotte Duty Free",
-      "city_name": "Da Nang",
-      "distance_meters": 23.4,
-      "places": [
-        {
-          "osm_ref": "node/14045111563",
-          "latitude": 16.0561299,
-          "longitude": 108.2020188,
-          "osm_url": "https://www.openstreetmap.org/node/14045111563",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056130%2C108.202019"
-        },
-        {
-          "osm_ref": "node/14045145879",
-          "latitude": 16.0563392,
-          "longitude": 108.201992,
-          "osm_url": "https://www.openstreetmap.org/node/14045145879",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056339%2C108.201992"
         }
       ]
     },
@@ -454,52 +270,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Golden lotus",
-      "city_name": "Da Nang",
-      "distance_meters": 24.0,
-      "places": [
-        {
-          "osm_ref": "node/12382574001",
-          "latitude": 16.0509684,
-          "longitude": 108.2471195,
-          "osm_url": "https://www.openstreetmap.org/node/12382574001",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+lotus+Da+Nang+16.050968%2C108.247119"
-        },
-        {
-          "osm_ref": "node/12839924378",
-          "latitude": 16.0508817,
-          "longitude": 108.2469142,
-          "osm_url": "https://www.openstreetmap.org/node/12839924378",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Lotus+Da+Nang+16.050882%2C108.246914"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Golden Star Villa",
-      "city_name": "Hue",
-      "distance_meters": 24.4,
-      "places": [
-        {
-          "osm_ref": "way/1251149947",
-          "latitude": 16.4608893,
-          "longitude": 107.5560931,
-          "osm_url": "https://www.openstreetmap.org/way/1251149947",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460889%2C107.556093"
-        },
-        {
-          "osm_ref": "way/1251149946",
-          "latitude": 16.4606719,
-          "longitude": 107.5560612,
-          "osm_url": "https://www.openstreetmap.org/way/1251149946",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460672%2C107.556061"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Thia Go",
       "city_name": "Da Nang",
       "distance_meters": 27.9,
@@ -523,29 +293,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Jade Hotel",
-      "city_name": "Hue",
-      "distance_meters": 28.2,
-      "places": [
-        {
-          "osm_ref": "node/4156824589",
-          "latitude": 16.4646678,
-          "longitude": 107.593736,
-          "osm_url": "https://www.openstreetmap.org/node/4156824589",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Jade+Hotel+Hue+16.464668%2C107.593736"
-        },
-        {
-          "osm_ref": "node/4233774189",
-          "latitude": 16.4645423,
-          "longitude": 107.5935062,
-          "osm_url": "https://www.openstreetmap.org/node/4233774189",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Jade+Hotel+Hue+16.464542%2C107.593506"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Boi Tran Garden",
       "city_name": "Hue",
       "distance_meters": 32.7,
@@ -563,75 +310,6 @@
           "longitude": 107.5847299,
           "osm_url": "https://www.openstreetmap.org/way/1050684699",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Boi+Tran+Garden+Hue+16.407163%2C107.584730"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "GIOANG",
-      "city_name": "Da Nang",
-      "distance_meters": 32.8,
-      "places": [
-        {
-          "osm_ref": "node/6797860085",
-          "latitude": 16.0754888,
-          "longitude": 108.2103505,
-          "osm_url": "https://www.openstreetmap.org/node/6797860085",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=GIOANG+Da+Nang+16.075489%2C108.210351"
-        },
-        {
-          "osm_ref": "node/6801113785",
-          "latitude": 16.0756899,
-          "longitude": 108.2101253,
-          "osm_url": "https://www.openstreetmap.org/node/6801113785",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=GIOANG+Da+Nang+16.075690%2C108.210125"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Lotte Duty Free",
-      "city_name": "Da Nang",
-      "distance_meters": 35.2,
-      "places": [
-        {
-          "osm_ref": "node/14045136237",
-          "latitude": 16.0560661,
-          "longitude": 108.202159,
-          "osm_url": "https://www.openstreetmap.org/node/14045136237",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056066%2C108.202159"
-        },
-        {
-          "osm_ref": "node/14045145879",
-          "latitude": 16.0563392,
-          "longitude": 108.201992,
-          "osm_url": "https://www.openstreetmap.org/node/14045145879",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056339%2C108.201992"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "WinMart",
-      "city_name": "Da Nang",
-      "distance_meters": 45.8,
-      "places": [
-        {
-          "osm_ref": "node/5277226022",
-          "latitude": 16.0716248,
-          "longitude": 108.2303226,
-          "osm_url": "https://www.openstreetmap.org/node/5277226022",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=WinMart+Da+Nang+16.071625%2C108.230323"
-        },
-        {
-          "osm_ref": "node/13619329407",
-          "latitude": 16.0712239,
-          "longitude": 108.2304225,
-          "osm_url": "https://www.openstreetmap.org/node/13619329407",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=WinMart+Da+Nang+16.071224%2C108.230423"
         }
       ]
     },
@@ -678,75 +356,6 @@
           "longitude": 107.5855555,
           "osm_url": "https://www.openstreetmap.org/way/1167513742",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ironwood+Foot+Bridge+Hue+16.463643%2C107.585555"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Kinh Do",
-      "city_name": "Hue",
-      "distance_meters": 50.3,
-      "places": [
-        {
-          "osm_ref": "node/5061569321",
-          "latitude": 16.4686966,
-          "longitude": 107.5953464,
-          "osm_url": "https://www.openstreetmap.org/node/5061569321",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Kinh+Do+Hue+16.468697%2C107.595346"
-        },
-        {
-          "osm_ref": "node/5063048921",
-          "latitude": 16.4682934,
-          "longitude": 107.5951323,
-          "osm_url": "https://www.openstreetmap.org/node/5063048921",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Kinh+Do+Hue+16.468293%2C107.595132"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Lucky Gift Shop",
-      "city_name": "Da Nang",
-      "distance_meters": 52.1,
-      "places": [
-        {
-          "osm_ref": "node/9921286579",
-          "latitude": 16.0534676,
-          "longitude": 108.2030432,
-          "osm_url": "https://www.openstreetmap.org/node/9921286579",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.053468%2C108.203043"
-        },
-        {
-          "osm_ref": "node/13542877612",
-          "latitude": 16.0530035,
-          "longitude": 108.2031119,
-          "osm_url": "https://www.openstreetmap.org/node/13542877612",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.053003%2C108.203112"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Deli Mart",
-      "city_name": "Da Nang",
-      "distance_meters": 53.6,
-      "places": [
-        {
-          "osm_ref": "node/13301356138",
-          "latitude": 16.053208,
-          "longitude": 108.2024232,
-          "osm_url": "https://www.openstreetmap.org/node/13301356138",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Deli+Mart+Da+Nang+16.053208%2C108.202423"
-        },
-        {
-          "osm_ref": "node/13542877610",
-          "latitude": 16.0536855,
-          "longitude": 108.2023552,
-          "osm_url": "https://www.openstreetmap.org/node/13542877610",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Deli+Mart+Da+Nang+16.053686%2C108.202355"
         }
       ]
     },
@@ -891,29 +500,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Nha Mo Luc",
-      "city_name": "Da Nang",
-      "distance_meters": 75.8,
-      "places": [
-        {
-          "osm_ref": "node/4548775189",
-          "latitude": 15.9883793,
-          "longitude": 108.2088177,
-          "osm_url": "https://www.openstreetmap.org/node/4548775189",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Nha+Mo+Luc+Da+Nang+15.988379%2C108.208818"
-        },
-        {
-          "osm_ref": "node/4548775589",
-          "latitude": 15.9881107,
-          "longitude": 108.2094699,
-          "osm_url": "https://www.openstreetmap.org/node/4548775589",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Nha+Mo+Luc+Da+Nang+15.988111%2C108.209470"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Highlands Coffee",
       "city_name": "Da Nang",
       "distance_meters": 77.1,
@@ -954,29 +540,6 @@
           "longitude": 108.223993,
           "osm_url": "https://www.openstreetmap.org/node/13288936111",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.062228%2C108.223993"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Naman Retreat",
-      "city_name": "Da Nang",
-      "distance_meters": 90.5,
-      "places": [
-        {
-          "osm_ref": "node/13624595101",
-          "latitude": 15.96915,
-          "longitude": 108.2847535,
-          "osm_url": "https://www.openstreetmap.org/node/13624595101",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Naman+Retreat+Da+Nang+15.969150%2C108.284753"
-        },
-        {
-          "osm_ref": "way/1541277999",
-          "latitude": 15.9697058,
-          "longitude": 108.2853717,
-          "osm_url": "https://www.openstreetmap.org/way/1541277999",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Naman+Retreat+Da+Nang+15.969706%2C108.285372"
         }
       ]
     },
@@ -1075,29 +638,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Moonlight Hotel Suites & Spa",
-      "city_name": "Da Nang",
-      "distance_meters": 123.3,
-      "places": [
-        {
-          "osm_ref": "node/12346327601",
-          "latitude": 16.065119,
-          "longitude": 108.2199896,
-          "osm_url": "https://www.openstreetmap.org/node/12346327601",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Moonlight+Hotel+Suites+%26+Spa+Da+Nang+16.065119%2C108.219990"
-        },
-        {
-          "osm_ref": "node/12346362901",
-          "latitude": 16.0640178,
-          "longitude": 108.2198533,
-          "osm_url": "https://www.openstreetmap.org/node/12346362901",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Moonlight+Hotel+Suites+%26+Spa+Da+Nang+16.064018%2C108.219853"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Risotto Restaurant",
       "city_name": "Hue",
       "distance_meters": 129.0,
@@ -1121,29 +661,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Pilgrimage Village",
-      "city_name": "Hue",
-      "distance_meters": 139.6,
-      "places": [
-        {
-          "osm_ref": "node/697249882",
-          "latitude": 16.4250786,
-          "longitude": 107.5794609,
-          "osm_url": "https://www.openstreetmap.org/node/697249882",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Pilgrimage+Village+Hue+16.425079%2C107.579461"
-        },
-        {
-          "osm_ref": "way/1545362967",
-          "latitude": 16.4250177,
-          "longitude": 107.5781537,
-          "osm_url": "https://www.openstreetmap.org/way/1545362967",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Pilgrimage+Village+Hue+16.425018%2C107.578154"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Highlands Coffee",
       "city_name": "Da Nang",
       "distance_meters": 140.0,
@@ -1161,52 +678,6 @@
           "longitude": 108.2030428,
           "osm_url": "https://www.openstreetmap.org/node/13542865076",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.052531%2C108.203043"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Sandy Beach Non Nuoc Resort",
-      "city_name": "Da Nang",
-      "distance_meters": 144.7,
-      "places": [
-        {
-          "osm_ref": "node/13893330292",
-          "latitude": 15.9983139,
-          "longitude": 108.2712766,
-          "osm_url": "https://www.openstreetmap.org/node/13893330292",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Sandy+Beach+Non+Nuoc+Resort+Da+Nang+15.998314%2C108.271277"
-        },
-        {
-          "osm_ref": "way/164333089",
-          "latitude": 15.997562,
-          "longitude": 108.2701716,
-          "osm_url": "https://www.openstreetmap.org/way/164333089",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Sandy+Beach+Non+Nuoc+Resort+Da+Nang+15.997562%2C108.270172"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Charming Hotel",
-      "city_name": "Hue",
-      "distance_meters": 146.8,
-      "places": [
-        {
-          "osm_ref": "node/4273118340",
-          "latitude": 16.4679947,
-          "longitude": 107.5954077,
-          "osm_url": "https://www.openstreetmap.org/node/4273118340",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Charming+Hotel+Hue+16.467995%2C107.595408"
-        },
-        {
-          "osm_ref": "node/4273144690",
-          "latitude": 16.4684097,
-          "longitude": 107.5967146,
-          "osm_url": "https://www.openstreetmap.org/node/4273144690",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Charming+Hotel+Hue+16.468410%2C107.596715"
         }
       ]
     },
@@ -1282,29 +753,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Lucky Gift Shop",
-      "city_name": "Da Nang",
-      "distance_meters": 166.4,
-      "places": [
-        {
-          "osm_ref": "node/9921286579",
-          "latitude": 16.0534676,
-          "longitude": 108.2030432,
-          "osm_url": "https://www.openstreetmap.org/node/9921286579",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.053468%2C108.203043"
-        },
-        {
-          "osm_ref": "node/14045110792",
-          "latitude": 16.0547741,
-          "longitude": 108.2022835,
-          "osm_url": "https://www.openstreetmap.org/node/14045110792",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.054774%2C108.202283"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Buddha",
       "city_name": "Da Nang",
       "distance_meters": 175.5,
@@ -1322,29 +770,6 @@
           "longitude": 108.2622574,
           "osm_url": "https://www.openstreetmap.org/node/13525483886",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004315%2C108.262257"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Nhat Le Hotel",
-      "city_name": "Hue",
-      "distance_meters": 178.2,
-      "places": [
-        {
-          "osm_ref": "node/4196910690",
-          "latitude": 16.4648397,
-          "longitude": 107.5911108,
-          "osm_url": "https://www.openstreetmap.org/node/4196910690",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Nhat+Le+Hotel+Hue+16.464840%2C107.591111"
-        },
-        {
-          "osm_ref": "node/4666728590",
-          "latitude": 16.4641867,
-          "longitude": 107.5926369,
-          "osm_url": "https://www.openstreetmap.org/node/4666728590",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Nhat+Le+Hotel+Hue+16.464187%2C107.592637"
         }
       ]
     },
@@ -1506,29 +931,6 @@
           "longitude": 108.2225171,
           "osm_url": "https://www.openstreetmap.org/node/5429181331",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Thai+Market+Da+Nang+16.065133%2C108.222517"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Lucky Gift Shop",
-      "city_name": "Da Nang",
-      "distance_meters": 215.9,
-      "places": [
-        {
-          "osm_ref": "node/13542877612",
-          "latitude": 16.0530035,
-          "longitude": 108.2031119,
-          "osm_url": "https://www.openstreetmap.org/node/13542877612",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.053003%2C108.203112"
-        },
-        {
-          "osm_ref": "node/14045110792",
-          "latitude": 16.0547741,
-          "longitude": 108.2022835,
-          "osm_url": "https://www.openstreetmap.org/node/14045110792",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.054774%2C108.202283"
         }
       ]
     },
@@ -1767,75 +1169,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Sân vận động Cẩm Lệ",
-      "city_name": "Da Nang",
-      "distance_meters": 19.0,
-      "places": [
-        {
-          "osm_ref": "node/3762853481",
-          "latitude": 16.0148875,
-          "longitude": 108.1891412,
-          "osm_url": "https://www.openstreetmap.org/node/3762853481",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n+v%E1%BA%ADn+%C4%91%E1%BB%99ng+C%E1%BA%A9m+L%E1%BB%87+Da+Nang+16.014888%2C108.189141"
-        },
-        {
-          "osm_ref": "way/372735507",
-          "latitude": 16.0147913,
-          "longitude": 108.1889946,
-          "osm_url": "https://www.openstreetmap.org/way/372735507",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=S%C3%A2n+v%E1%BA%ADn+%C4%91%E1%BB%99ng+C%E1%BA%A9m+L%E1%BB%87+Da+Nang+16.014791%2C108.188995"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Nha Mo Luc",
-      "city_name": "Da Nang",
-      "distance_meters": 75.8,
-      "places": [
-        {
-          "osm_ref": "node/4548775189",
-          "latitude": 15.9883793,
-          "longitude": 108.2088177,
-          "osm_url": "https://www.openstreetmap.org/node/4548775189",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Nha+Mo+Luc+Da+Nang+15.988379%2C108.208818"
-        },
-        {
-          "osm_ref": "node/4548775589",
-          "latitude": 15.9881107,
-          "longitude": 108.2094699,
-          "osm_url": "https://www.openstreetmap.org/node/4548775589",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Nha+Mo+Luc+Da+Nang+15.988111%2C108.209470"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "WinMart",
-      "city_name": "Da Nang",
-      "distance_meters": 45.8,
-      "places": [
-        {
-          "osm_ref": "node/5277226022",
-          "latitude": 16.0716248,
-          "longitude": 108.2303226,
-          "osm_url": "https://www.openstreetmap.org/node/5277226022",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=WinMart+Da+Nang+16.071625%2C108.230323"
-        },
-        {
-          "osm_ref": "node/13619329407",
-          "latitude": 16.0712239,
-          "longitude": 108.2304225,
-          "osm_url": "https://www.openstreetmap.org/node/13619329407",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=WinMart+Da+Nang+16.071224%2C108.230423"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Thai Market",
       "city_name": "Da Nang",
       "distance_meters": 215.7,
@@ -2112,52 +1445,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "GIOANG",
-      "city_name": "Da Nang",
-      "distance_meters": 32.8,
-      "places": [
-        {
-          "osm_ref": "node/6797860085",
-          "latitude": 16.0754888,
-          "longitude": 108.2103505,
-          "osm_url": "https://www.openstreetmap.org/node/6797860085",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=GIOANG+Da+Nang+16.075489%2C108.210351"
-        },
-        {
-          "osm_ref": "node/6801113785",
-          "latitude": 16.0756899,
-          "longitude": 108.2101253,
-          "osm_url": "https://www.openstreetmap.org/node/6801113785",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=GIOANG+Da+Nang+16.075690%2C108.210125"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "HÙNGđn",
-      "city_name": "Da Nang",
-      "distance_meters": 4.2,
-      "places": [
-        {
-          "osm_ref": "node/7296009586",
-          "latitude": 16.0705085,
-          "longitude": 108.2133449,
-          "osm_url": "https://www.openstreetmap.org/node/7296009586",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=H%C3%99NG%C4%91n+Da+Nang+16.070508%2C108.213345"
-        },
-        {
-          "osm_ref": "node/7300993486",
-          "latitude": 16.0704863,
-          "longitude": 108.2133763,
-          "osm_url": "https://www.openstreetmap.org/node/7300993486",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=H%C3%99NG%C4%91n+Da+Nang+16.070486%2C108.213376"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Cây Sung",
       "city_name": "Da Nang",
       "distance_meters": 18.3,
@@ -2198,98 +1485,6 @@
           "longitude": 108.2148832,
           "osm_url": "https://www.openstreetmap.org/node/7705143985",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=IT+ca+phe+Da+Nang+16.000435%2C108.214883"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Lucky Gift Shop",
-      "city_name": "Da Nang",
-      "distance_meters": 52.1,
-      "places": [
-        {
-          "osm_ref": "node/9921286579",
-          "latitude": 16.0534676,
-          "longitude": 108.2030432,
-          "osm_url": "https://www.openstreetmap.org/node/9921286579",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.053468%2C108.203043"
-        },
-        {
-          "osm_ref": "node/13542877612",
-          "latitude": 16.0530035,
-          "longitude": 108.2031119,
-          "osm_url": "https://www.openstreetmap.org/node/13542877612",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.053003%2C108.203112"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Lucky Gift Shop",
-      "city_name": "Da Nang",
-      "distance_meters": 166.4,
-      "places": [
-        {
-          "osm_ref": "node/9921286579",
-          "latitude": 16.0534676,
-          "longitude": 108.2030432,
-          "osm_url": "https://www.openstreetmap.org/node/9921286579",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.053468%2C108.203043"
-        },
-        {
-          "osm_ref": "node/14045110792",
-          "latitude": 16.0547741,
-          "longitude": 108.2022835,
-          "osm_url": "https://www.openstreetmap.org/node/14045110792",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.054774%2C108.202283"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Lucky Gift Shop",
-      "city_name": "Da Nang",
-      "distance_meters": 215.9,
-      "places": [
-        {
-          "osm_ref": "node/13542877612",
-          "latitude": 16.0530035,
-          "longitude": 108.2031119,
-          "osm_url": "https://www.openstreetmap.org/node/13542877612",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.053003%2C108.203112"
-        },
-        {
-          "osm_ref": "node/14045110792",
-          "latitude": 16.0547741,
-          "longitude": 108.2022835,
-          "osm_url": "https://www.openstreetmap.org/node/14045110792",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lucky+Gift+Shop+Da+Nang+16.054774%2C108.202283"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Mikazuki Đà Nẵng Hotel",
-      "city_name": "Da Nang",
-      "distance_meters": 8.0,
-      "places": [
-        {
-          "osm_ref": "node/10054034978",
-          "latitude": 16.0935456,
-          "longitude": 108.1444194,
-          "osm_url": "https://www.openstreetmap.org/node/10054034978",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Mikazuki+%C4%90%C3%A0+N%E1%BA%B5ng+Hotel+Da+Nang+16.093546%2C108.144419"
-        },
-        {
-          "osm_ref": "way/1098017439",
-          "latitude": 16.0935848,
-          "longitude": 108.1443569,
-          "osm_url": "https://www.openstreetmap.org/way/1098017439",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Mikazuki+%C4%90%C3%A0+N%E1%BA%B5ng+Hotel+Da+Nang+16.093585%2C108.144357"
         }
       ]
     },
@@ -2342,213 +1537,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Moonlight Hotel Suites & Spa",
-      "city_name": "Da Nang",
-      "distance_meters": 123.3,
-      "places": [
-        {
-          "osm_ref": "node/12346327601",
-          "latitude": 16.065119,
-          "longitude": 108.2199896,
-          "osm_url": "https://www.openstreetmap.org/node/12346327601",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Moonlight+Hotel+Suites+%26+Spa+Da+Nang+16.065119%2C108.219990"
-        },
-        {
-          "osm_ref": "node/12346362901",
-          "latitude": 16.0640178,
-          "longitude": 108.2198533,
-          "osm_url": "https://www.openstreetmap.org/node/12346362901",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Moonlight+Hotel+Suites+%26+Spa+Da+Nang+16.064018%2C108.219853"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Golden lotus",
-      "city_name": "Da Nang",
-      "distance_meters": 24.0,
-      "places": [
-        {
-          "osm_ref": "node/12382574001",
-          "latitude": 16.0509684,
-          "longitude": 108.2471195,
-          "osm_url": "https://www.openstreetmap.org/node/12382574001",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+lotus+Da+Nang+16.050968%2C108.247119"
-        },
-        {
-          "osm_ref": "node/12839924378",
-          "latitude": 16.0508817,
-          "longitude": 108.2469142,
-          "osm_url": "https://www.openstreetmap.org/node/12839924378",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Lotus+Da+Nang+16.050882%2C108.246914"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Deli Mart",
-      "city_name": "Da Nang",
-      "distance_meters": 53.6,
-      "places": [
-        {
-          "osm_ref": "node/13301356138",
-          "latitude": 16.053208,
-          "longitude": 108.2024232,
-          "osm_url": "https://www.openstreetmap.org/node/13301356138",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Deli+Mart+Da+Nang+16.053208%2C108.202423"
-        },
-        {
-          "osm_ref": "node/13542877610",
-          "latitude": 16.0536855,
-          "longitude": 108.2023552,
-          "osm_url": "https://www.openstreetmap.org/node/13542877610",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Deli+Mart+Da+Nang+16.053686%2C108.202355"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Naman Retreat",
-      "city_name": "Da Nang",
-      "distance_meters": 90.5,
-      "places": [
-        {
-          "osm_ref": "node/13624595101",
-          "latitude": 15.96915,
-          "longitude": 108.2847535,
-          "osm_url": "https://www.openstreetmap.org/node/13624595101",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Naman+Retreat+Da+Nang+15.969150%2C108.284753"
-        },
-        {
-          "osm_ref": "way/1541277999",
-          "latitude": 15.9697058,
-          "longitude": 108.2853717,
-          "osm_url": "https://www.openstreetmap.org/way/1541277999",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Naman+Retreat+Da+Nang+15.969706%2C108.285372"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Sandy Beach Non Nuoc Resort",
-      "city_name": "Da Nang",
-      "distance_meters": 144.7,
-      "places": [
-        {
-          "osm_ref": "node/13893330292",
-          "latitude": 15.9983139,
-          "longitude": 108.2712766,
-          "osm_url": "https://www.openstreetmap.org/node/13893330292",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Sandy+Beach+Non+Nuoc+Resort+Da+Nang+15.998314%2C108.271277"
-        },
-        {
-          "osm_ref": "way/164333089",
-          "latitude": 15.997562,
-          "longitude": 108.2701716,
-          "osm_url": "https://www.openstreetmap.org/way/164333089",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Sandy+Beach+Non+Nuoc+Resort+Da+Nang+15.997562%2C108.270172"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Lotte Duty Free",
-      "city_name": "Da Nang",
-      "distance_meters": 16.6,
-      "places": [
-        {
-          "osm_ref": "node/14045111563",
-          "latitude": 16.0561299,
-          "longitude": 108.2020188,
-          "osm_url": "https://www.openstreetmap.org/node/14045111563",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056130%2C108.202019"
-        },
-        {
-          "osm_ref": "node/14045136237",
-          "latitude": 16.0560661,
-          "longitude": 108.202159,
-          "osm_url": "https://www.openstreetmap.org/node/14045136237",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056066%2C108.202159"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Lotte Duty Free",
-      "city_name": "Da Nang",
-      "distance_meters": 23.4,
-      "places": [
-        {
-          "osm_ref": "node/14045111563",
-          "latitude": 16.0561299,
-          "longitude": 108.2020188,
-          "osm_url": "https://www.openstreetmap.org/node/14045111563",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056130%2C108.202019"
-        },
-        {
-          "osm_ref": "node/14045145879",
-          "latitude": 16.0563392,
-          "longitude": 108.201992,
-          "osm_url": "https://www.openstreetmap.org/node/14045145879",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056339%2C108.201992"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Lotte Duty Free",
-      "city_name": "Da Nang",
-      "distance_meters": 35.2,
-      "places": [
-        {
-          "osm_ref": "node/14045136237",
-          "latitude": 16.0560661,
-          "longitude": 108.202159,
-          "osm_url": "https://www.openstreetmap.org/node/14045136237",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056066%2C108.202159"
-        },
-        {
-          "osm_ref": "node/14045145879",
-          "latitude": 16.0563392,
-          "longitude": 108.201992,
-          "osm_url": "https://www.openstreetmap.org/node/14045145879",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Lotte+Duty+Free+Da+Nang+16.056339%2C108.201992"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Ocean Pool",
-      "city_name": "Da Nang",
-      "distance_meters": 11.4,
-      "places": [
-        {
-          "osm_ref": "way/118666408",
-          "latitude": 16.0403145,
-          "longitude": 108.2517371,
-          "osm_url": "https://www.openstreetmap.org/way/118666408",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ocean+Pool+Da+Nang+16.040315%2C108.251737"
-        },
-        {
-          "osm_ref": "way/485394029",
-          "latitude": 16.0403574,
-          "longitude": 108.2518345,
-          "osm_url": "https://www.openstreetmap.org/way/485394029",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ocean+Pool+Da+Nang+16.040357%2C108.251835"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Công viên An Nhơn",
       "city_name": "Da Nang",
       "distance_meters": 157.2,
@@ -2595,29 +1583,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Pilgrimage Village",
-      "city_name": "Hue",
-      "distance_meters": 139.6,
-      "places": [
-        {
-          "osm_ref": "node/697249882",
-          "latitude": 16.4250786,
-          "longitude": 107.5794609,
-          "osm_url": "https://www.openstreetmap.org/node/697249882",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Pilgrimage+Village+Hue+16.425079%2C107.579461"
-        },
-        {
-          "osm_ref": "way/1545362967",
-          "latitude": 16.4250177,
-          "longitude": 107.5781537,
-          "osm_url": "https://www.openstreetmap.org/way/1545362967",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Pilgrimage+Village+Hue+16.425018%2C107.578154"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Risotto Restaurant",
       "city_name": "Hue",
       "distance_meters": 129.0,
@@ -2635,52 +1600,6 @@
           "longitude": 107.5960722,
           "osm_url": "https://www.openstreetmap.org/node/11139263505",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Risotto+Restaurant+Hue+16.470865%2C107.596072"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Jade Hotel",
-      "city_name": "Hue",
-      "distance_meters": 28.2,
-      "places": [
-        {
-          "osm_ref": "node/4156824589",
-          "latitude": 16.4646678,
-          "longitude": 107.593736,
-          "osm_url": "https://www.openstreetmap.org/node/4156824589",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Jade+Hotel+Hue+16.464668%2C107.593736"
-        },
-        {
-          "osm_ref": "node/4233774189",
-          "latitude": 16.4645423,
-          "longitude": 107.5935062,
-          "osm_url": "https://www.openstreetmap.org/node/4233774189",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Jade+Hotel+Hue+16.464542%2C107.593506"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Nhat Le Hotel",
-      "city_name": "Hue",
-      "distance_meters": 178.2,
-      "places": [
-        {
-          "osm_ref": "node/4196910690",
-          "latitude": 16.4648397,
-          "longitude": 107.5911108,
-          "osm_url": "https://www.openstreetmap.org/node/4196910690",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Nhat+Le+Hotel+Hue+16.464840%2C107.591111"
-        },
-        {
-          "osm_ref": "node/4666728590",
-          "latitude": 16.4641867,
-          "longitude": 107.5926369,
-          "osm_url": "https://www.openstreetmap.org/node/4666728590",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Nhat+Le+Hotel+Hue+16.464187%2C107.592637"
         }
       ]
     },
@@ -2710,29 +1629,6 @@
     {
       "reason": "nearby_same_name",
       "review_status": "needs_manual_review",
-      "name": "Charming Hotel",
-      "city_name": "Hue",
-      "distance_meters": 146.8,
-      "places": [
-        {
-          "osm_ref": "node/4273118340",
-          "latitude": 16.4679947,
-          "longitude": 107.5954077,
-          "osm_url": "https://www.openstreetmap.org/node/4273118340",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Charming+Hotel+Hue+16.467995%2C107.595408"
-        },
-        {
-          "osm_ref": "node/4273144690",
-          "latitude": 16.4684097,
-          "longitude": 107.5967146,
-          "osm_url": "https://www.openstreetmap.org/node/4273144690",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Charming+Hotel+Hue+16.468410%2C107.596715"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
       "name": "Highlands Coffee",
       "city_name": "Hue",
       "distance_meters": 197.9,
@@ -2750,29 +1646,6 @@
           "longitude": 107.590604,
           "osm_url": "https://www.openstreetmap.org/way/1343922562",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Hue+16.463318%2C107.590604"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Kinh Do",
-      "city_name": "Hue",
-      "distance_meters": 50.3,
-      "places": [
-        {
-          "osm_ref": "node/5061569321",
-          "latitude": 16.4686966,
-          "longitude": 107.5953464,
-          "osm_url": "https://www.openstreetmap.org/node/5061569321",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Kinh+Do+Hue+16.468697%2C107.595346"
-        },
-        {
-          "osm_ref": "node/5063048921",
-          "latitude": 16.4682934,
-          "longitude": 107.5951323,
-          "osm_url": "https://www.openstreetmap.org/node/5063048921",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Kinh+Do+Hue+16.468293%2C107.595132"
         }
       ]
     },
@@ -2911,75 +1784,6 @@
           "longitude": 107.5928099,
           "osm_url": "https://www.openstreetmap.org/node/12631846150",
           "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Phinholic+Hue+16.464959%2C107.592810"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Golden Star Villa",
-      "city_name": "Hue",
-      "distance_meters": 12.2,
-      "places": [
-        {
-          "osm_ref": "way/1251149947",
-          "latitude": 16.4608893,
-          "longitude": 107.5560931,
-          "osm_url": "https://www.openstreetmap.org/way/1251149947",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460889%2C107.556093"
-        },
-        {
-          "osm_ref": "way/1251149945",
-          "latitude": 16.4608392,
-          "longitude": 107.5559911,
-          "osm_url": "https://www.openstreetmap.org/way/1251149945",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460839%2C107.555991"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Golden Star Villa",
-      "city_name": "Hue",
-      "distance_meters": 24.4,
-      "places": [
-        {
-          "osm_ref": "way/1251149947",
-          "latitude": 16.4608893,
-          "longitude": 107.5560931,
-          "osm_url": "https://www.openstreetmap.org/way/1251149947",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460889%2C107.556093"
-        },
-        {
-          "osm_ref": "way/1251149946",
-          "latitude": 16.4606719,
-          "longitude": 107.5560612,
-          "osm_url": "https://www.openstreetmap.org/way/1251149946",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460672%2C107.556061"
-        }
-      ]
-    },
-    {
-      "reason": "nearby_same_name",
-      "review_status": "needs_manual_review",
-      "name": "Golden Star Villa",
-      "city_name": "Hue",
-      "distance_meters": 20.0,
-      "places": [
-        {
-          "osm_ref": "way/1251149945",
-          "latitude": 16.4608392,
-          "longitude": 107.5559911,
-          "osm_url": "https://www.openstreetmap.org/way/1251149945",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460839%2C107.555991"
-        },
-        {
-          "osm_ref": "way/1251149946",
-          "latitude": 16.4606719,
-          "longitude": 107.5560612,
-          "osm_url": "https://www.openstreetmap.org/way/1251149946",
-          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Golden+Star+Villa+Hue+16.460672%2C107.556061"
         }
       ]
     },

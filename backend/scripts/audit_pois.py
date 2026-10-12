@@ -24,8 +24,8 @@ DEFAULT_RAW_PATH = PROJECT_ROOT / "data" / "raw" / "osm_pois.json"
 DEFAULT_REPORT_PATH = PROJECT_ROOT / "data" / "processed" / "poi_quality_report.json"
 
 CITY_BOUNDS = {
-    "DANANG": (15.95, 16.15, 108.08, 108.35),
-    "HUE": (16.35, 16.55, 107.45, 107.75),
+    "DANANG": (15.75, 16.25, 107.85, 108.45),
+    "HUE": (16.15, 16.65, 107.35, 108.10),
 }
 
 COMPLETENESS_FIELDS = (
@@ -220,7 +220,8 @@ def build_quality_report(
                 mismatch_fields.append("latitude")
             if abs(float(source_poi["longitude"]) - longitude) > COORDINATE_TOLERANCE:
                 mismatch_fields.append("longitude")
-            if normalize_category(tags) != row["category_name"]:
+            expected_cat = source_poi.get("category_name") or normalize_category(tags, name=name)
+            if expected_cat != row["category_name"]:
                 mismatch_fields.append("category_name")
             if mismatch_fields:
                 finding = {

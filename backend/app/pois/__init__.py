@@ -1,0 +1,1 @@
+"""POI listing API components."""

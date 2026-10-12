@@ -1,0 +1,368 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+		"name": "GreenTrip - PB01 User Signup API",
+		"description": "Bộ kiểm thử API Đăng ký người dùng (Task PB01 - Backend User Signup API) cho GreenTrip AI Travel Planner.\nBao gồm tất cả các trường hợp: Thành công (201), Trùng email (409), Validate đầu vào (422), và Kiểm tra CORS Preflight.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Đăng ký thành công (201 Created)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201 Created\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Response có cấu trúc message và user hợp lệ\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.eql(\"User registered successfully.\");",
+							"    pm.expect(jsonData.user).to.have.property(\"user_id\");",
+							"    pm.expect(jsonData.user.role).to.eql(\"USER\");",
+							"    pm.expect(jsonData.user.status).to.eql(\"ACTIVE\");",
+							"    pm.expect(jsonData.user).to.have.property(\"created_at\");",
+							"    pm.expect(jsonData.user).to.have.property(\"updated_at\");",
+							"});",
+							"",
+							"pm.test(\"Bảo mật: Không để lộ password hoặc password_hash\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.not.have.property(\"password\");",
+							"    pm.expect(jsonData).to.not.have.property(\"password_hash\");",
+							"    pm.expect(jsonData.user).to.not.have.property(\"password\");",
+							"    pm.expect(jsonData.user).to.not.have.property(\"password_hash\");",
+							"});",
+							"",
+							"// Lưu lại email này vào biến môi trường để test case 2 kiểm tra trùng email",
+							"if (pm.response.code === 201) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set(\"registered_email\", jsonData.user.email);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"full_name\": \"Nguyễn Văn Postman\",\n  \"email\": \"postman_{{$timestamp}}@greentrip.vn\",\n  \"password\": \"SecurePassword123!\",\n  \"phone\": \"0912345678\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/signup",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"signup"
+					]
+				},
+				"description": "Tạo mới tài khoản với email ngẫu nhiên theo timestamp để tránh trùng lặp khi chạy lại nhiều lần."
+			},
+			"response": []
+		},
+		{
+			"name": "2. Đăng ký trùng email (409 Conflict)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 409 Conflict\", function () {",
+							"    pm.response.to.have.status(409);",
+							"});",
+							"",
+							"pm.test(\"Thông báo lỗi đúng thông điệp 'Email is already registered.'\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.detail).to.eql(\"Email is already registered.\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"full_name\": \"Người Dùng Trùng Email\",\n  \"email\": \"{{registered_email}}\",\n  \"password\": \"AnotherSecurePass123!\",\n  \"phone\": null\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/signup",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"signup"
+					]
+				},
+				"description": "Sử dụng lại email vừa tạo thành công ở Request 1 để kiểm tra cơ chế bắt trùng email của hệ thống."
+			},
+			"response": []
+		},
+		{
+			"name": "3. Mật khẩu ngắn dưới 8 ký tự (422 Unprocessable Entity)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 422 Unprocessable Entity\", function () {",
+							"    pm.response.to.have.status(422);",
+							"});",
+							"",
+							"pm.test(\"Báo lỗi validation trường password\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.detail).to.be.an(\"array\");",
+							"    var hasPwdError = jsonData.detail.some(function(item) {",
+							"        return item.loc && item.loc.includes(\"password\");",
+							"    });",
+							"    pm.expect(hasPwdError).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"full_name\": \"Nguyễn Văn A\",\n  \"email\": \"short_pwd_{{$timestamp}}@greentrip.vn\",\n  \"password\": \"short1\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/signup",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"signup"
+					]
+				},
+				"description": "Gửi mật khẩu chỉ có 6 ký tự. Backend phải từ chối với mã 422."
+			},
+			"response": []
+		},
+		{
+			"name": "4. Email sai định dạng (422 Unprocessable Entity)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 422 Unprocessable Entity\", function () {",
+							"    pm.response.to.have.status(422);",
+							"});",
+							"",
+							"pm.test(\"Báo lỗi validation trường email\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.detail).to.be.an(\"array\");",
+							"    var hasEmailError = jsonData.detail.some(function(item) {",
+							"        return item.loc && item.loc.includes(\"email\");",
+							"    });",
+							"    pm.expect(hasEmailError).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"full_name\": \"Nguyễn Văn A\",\n  \"email\": \"dinh-dang-email-khong-hop-le\",\n  \"password\": \"SecurePass123!\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/signup",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"signup"
+					]
+				},
+				"description": "Gửi email không có ký tự @ và domain. Backend phải trả về 422."
+			},
+			"response": []
+		},
+		{
+			"name": "5. Để trống họ và tên (422 Unprocessable Entity)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 422 Unprocessable Entity\", function () {",
+							"    pm.response.to.have.status(422);",
+							"});",
+							"",
+							"pm.test(\"Báo lỗi validation trường full_name\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.detail).to.be.an(\"array\");",
+							"    var hasNameError = jsonData.detail.some(function(item) {",
+							"        return item.loc && item.loc.includes(\"full_name\");",
+							"    });",
+							"    pm.expect(hasNameError).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"full_name\": \"   \",\n  \"email\": \"empty_name_{{$timestamp}}@greentrip.vn\",\n  \"password\": \"SecurePass123!\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/signup",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"signup"
+					]
+				},
+				"description": "Gửi chuỗi khoảng trắng cho họ tên. Validator của Pydantic sẽ bắt và trả về 422."
+			},
+			"response": []
+		},
+		{
+			"name": "6. Kiểm tra CORS Preflight (200 OK)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"CORS header cho phép origin http://localhost:5173\", function () {",
+							"    pm.expect(pm.response.headers.get(\"access-control-allow-origin\")).to.eql(\"http://localhost:5173\");",
+							"});",
+							"",
+							"pm.test(\"CORS header cho phép phương thức POST\", function () {",
+							"    var methods = pm.response.headers.get(\"access-control-allow-methods\");",
+							"    pm.expect(methods).to.include(\"POST\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "OPTIONS",
+				"header": [
+					{
+						"key": "Origin",
+						"value": "http://localhost:5173"
+					},
+					{
+						"key": "Access-Control-Request-Method",
+						"value": "POST"
+					},
+					{
+						"key": "Access-Control-Request-Headers",
+						"value": "content-type"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/auth/signup",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"signup"
+					]
+				},
+				"description": "Giả lập trình duyệt gửi request OPTIONS kiểm tra CORS trước khi POST từ Frontend localhost:5173."
+			},
+			"response": []
+		},
+		{
+			"name": "7. Health Check API (200 OK)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Service status là ok\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql(\"ok\");",
+							"    pm.expect(jsonData.service).to.eql(\"greentrip-api\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/health",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"health"
+					]
+				},
+				"description": "Kiểm tra tình trạng sống của máy chủ FastAPI backend."
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000"
+		}
+	]
+}

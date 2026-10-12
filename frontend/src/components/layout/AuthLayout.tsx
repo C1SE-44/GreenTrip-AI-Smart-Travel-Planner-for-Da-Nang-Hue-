@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Leaf, MapPin, Wallet, Users } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 
@@ -34,7 +35,9 @@ export default function AuthLayout({
         <div className="absolute inset-0 bg-gradient-to-t from-forest-900/95 via-forest-900/40 to-transparent" />
 
         <div className="relative z-10 flex justify-between items-start">
-          <Logo size="md" showBadge textClassName="text-cream" />
+          <Link to="/" className="outline-none focus:outline-none hover:opacity-85 transition-opacity">
+            <Logo size="md" textClassName="text-cream" />
+          </Link>
           <div className="hidden lg:flex items-center gap-1.5 rounded-full bg-cream/20 px-3 py-1.5 backdrop-blur-md">
             <Users size={14} className="text-cream" />
             <span className="text-xs font-medium text-cream">1.200+ chuyến đã lên lịch</span>

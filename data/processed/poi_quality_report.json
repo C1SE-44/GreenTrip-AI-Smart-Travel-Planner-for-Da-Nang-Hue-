@@ -1,0 +1,1907 @@
+{
+  "report_version": 1,
+  "generated_at": "2026-10-12T08:43:18.114969+00:00",
+  "source": {
+    "provider": "OpenStreetMap",
+    "license": "ODbL-1.0",
+    "retrieved_at": "2026-10-06T09:07:51.163436+00:00",
+    "age_days_at_generation": 5,
+    "external_google_maps_api_check_performed": false
+  },
+  "summary": {
+    "csv_rows": 2426,
+    "raw_source_rows": 3415,
+    "raw_source_declared_count": 3415,
+    "raw_source_count_matches_declared": true,
+    "raw_source_ids_not_in_csv": 989,
+    "csv_ids_missing_from_source": 0,
+    "duplicate_csv_osm_ids": 0,
+    "duplicate_source_osm_ids": 0,
+    "csv_source_mismatches": 0,
+    "outside_city_bbox": 0,
+    "nearby_same_name_pairs_for_review": 40
+  },
+  "completeness": {
+    "address": {
+      "missing": 1592,
+      "present": 834,
+      "missing_percent": 65.6
+    },
+    "description": {
+      "missing": 1406,
+      "present": 1020,
+      "missing_percent": 58.0
+    },
+    "phone": {
+      "missing": 2146,
+      "present": 280,
+      "missing_percent": 88.5
+    },
+    "website": {
+      "missing": 2302,
+      "present": 124,
+      "missing_percent": 94.9
+    },
+    "opening_hours": {
+      "missing": 2014,
+      "present": 412,
+      "missing_percent": 83.0
+    },
+    "cuisine": {
+      "missing": 1755,
+      "present": 671,
+      "missing_percent": 72.3
+    }
+  },
+  "integrity_findings": {
+    "duplicate_csv_osm_ids": [],
+    "duplicate_source_osm_ids": [],
+    "csv_source_mismatches": [],
+    "outside_city_bbox": []
+  },
+  "possible_duplicates": [
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Gé Cafe",
+      "city_name": "Da Nang",
+      "distance_meters": 4.0,
+      "places": [
+        {
+          "osm_ref": "node/12345255101",
+          "latitude": 16.0639538,
+          "longitude": 108.2226683,
+          "osm_url": "https://www.openstreetmap.org/node/12345255101",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=G%C3%A9+Cafe+Da+Nang+16.063954%2C108.222668"
+        },
+        {
+          "osm_ref": "node/12372805701",
+          "latitude": 16.0639195,
+          "longitude": 108.2226583,
+          "osm_url": "https://www.openstreetmap.org/node/12372805701",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=G%C3%A9+Cafe+Da+Nang+16.063920%2C108.222658"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Cơm Bà Thôi",
+      "city_name": "Da Nang",
+      "distance_meters": 5.0,
+      "places": [
+        {
+          "osm_ref": "node/6594176685",
+          "latitude": 16.0613578,
+          "longitude": 108.2227325,
+          "osm_url": "https://www.openstreetmap.org/node/6594176685",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C6%A1m+B%C3%A0+Th%C3%B4i+Da+Nang+16.061358%2C108.222733"
+        },
+        {
+          "osm_ref": "node/6594185186",
+          "latitude": 16.0613662,
+          "longitude": 108.2227782,
+          "osm_url": "https://www.openstreetmap.org/node/6594185186",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C6%A1m+b%C3%A0+th%C3%B4i+Da+Nang+16.061366%2C108.222778"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 5.5,
+      "places": [
+        {
+          "osm_ref": "node/11171035936",
+          "latitude": 16.0043207,
+          "longitude": 108.2622067,
+          "osm_url": "https://www.openstreetmap.org/node/11171035936",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004321%2C108.262207"
+        },
+        {
+          "osm_ref": "node/13525483886",
+          "latitude": 16.0043147,
+          "longitude": 108.2622574,
+          "osm_url": "https://www.openstreetmap.org/node/13525483886",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004315%2C108.262257"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Trung tâm Thanh thiếu nhi Huế",
+      "city_name": "Hue",
+      "distance_meters": 6.8,
+      "places": [
+        {
+          "osm_ref": "way/118541971",
+          "latitude": 16.4592467,
+          "longitude": 107.5822457,
+          "osm_url": "https://www.openstreetmap.org/way/118541971",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Trung+t%C3%A2m+Thanh+thi%E1%BA%BFu+nhi+Hu%E1%BA%BF+Hue+16.459247%2C107.582246"
+        },
+        {
+          "osm_ref": "way/695775607",
+          "latitude": 16.4592349,
+          "longitude": 107.5823079,
+          "osm_url": "https://www.openstreetmap.org/way/695775607",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Trung+t%C3%A2m+Thanh+thi%E1%BA%BFu+nhi+Hu%E1%BA%BF+Hue+16.459235%2C107.582308"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Chốt Cafe",
+      "city_name": "Hue",
+      "distance_meters": 7.9,
+      "places": [
+        {
+          "osm_ref": "node/9921316651",
+          "latitude": 16.4554113,
+          "longitude": 107.5974954,
+          "osm_url": "https://www.openstreetmap.org/node/9921316651",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ch%E1%BB%91t+Cafe+Hue+16.455411%2C107.597495"
+        },
+        {
+          "osm_ref": "node/11491185593",
+          "latitude": 16.4554367,
+          "longitude": 107.5975647,
+          "osm_url": "https://www.openstreetmap.org/node/11491185593",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ch%E1%BB%91t+Cafe+Hue+16.455437%2C107.597565"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 8.9,
+      "places": [
+        {
+          "osm_ref": "node/11171038441",
+          "latitude": 16.004402,
+          "longitude": 108.2638971,
+          "osm_url": "https://www.openstreetmap.org/node/11171038441",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004402%2C108.263897"
+        },
+        {
+          "osm_ref": "node/12424938201",
+          "latitude": 16.0044679,
+          "longitude": 108.2639436,
+          "osm_url": "https://www.openstreetmap.org/node/12424938201",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004468%2C108.263944"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Cây Sung",
+      "city_name": "Da Nang",
+      "distance_meters": 18.3,
+      "places": [
+        {
+          "osm_ref": "node/7088117187",
+          "latitude": 16.0730509,
+          "longitude": 108.2448801,
+          "osm_url": "https://www.openstreetmap.org/node/7088117187",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C3%A2y+Sung+Da+Nang+16.073051%2C108.244880"
+        },
+        {
+          "osm_ref": "node/13423557381",
+          "latitude": 16.0731168,
+          "longitude": 108.2447235,
+          "osm_url": "https://www.openstreetmap.org/node/13423557381",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C3%A2y+Sung+Da+Nang+16.073117%2C108.244724"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Quán Chay Thanh Liễu",
+      "city_name": "Hue",
+      "distance_meters": 21.0,
+      "places": [
+        {
+          "osm_ref": "node/4260153090",
+          "latitude": 16.4709169,
+          "longitude": 107.5979611,
+          "osm_url": "https://www.openstreetmap.org/node/4260153090",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Qu%C3%A1n+Chay+Thanh+Li%E1%BB%85u+Hue+16.470917%2C107.597961"
+        },
+        {
+          "osm_ref": "node/4634514389",
+          "latitude": 16.4709827,
+          "longitude": 107.5977764,
+          "osm_url": "https://www.openstreetmap.org/node/4634514389",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Qu%C3%A1n+Chay+Thanh+Li%E1%BB%85u+Hue+16.470983%2C107.597776"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Vạc đồng",
+      "city_name": "Hue",
+      "distance_meters": 23.9,
+      "places": [
+        {
+          "osm_ref": "node/5841558900",
+          "latitude": 16.4690844,
+          "longitude": 107.5779533,
+          "osm_url": "https://www.openstreetmap.org/node/5841558900",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=V%E1%BA%A1c+%C4%91%E1%BB%93ng+Hue+16.469084%2C107.577953"
+        },
+        {
+          "osm_ref": "node/5841558901",
+          "latitude": 16.469204,
+          "longitude": 107.5781398,
+          "osm_url": "https://www.openstreetmap.org/node/5841558901",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=V%E1%BA%A1c+%C4%91%E1%BB%93ng+Hue+16.469204%2C107.578140"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Thia Go",
+      "city_name": "Da Nang",
+      "distance_meters": 27.9,
+      "places": [
+        {
+          "osm_ref": "node/10126113417",
+          "latitude": 16.0529621,
+          "longitude": 108.2415067,
+          "osm_url": "https://www.openstreetmap.org/node/10126113417",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Thia+Go+Da+Nang+16.052962%2C108.241507"
+        },
+        {
+          "osm_ref": "node/10875254005",
+          "latitude": 16.0532123,
+          "longitude": 108.24153,
+          "osm_url": "https://www.openstreetmap.org/node/10875254005",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Thia+Go+Da+Nang+16.053212%2C108.241530"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Boi Tran Garden",
+      "city_name": "Hue",
+      "distance_meters": 32.7,
+      "places": [
+        {
+          "osm_ref": "node/9518711737",
+          "latitude": 16.4074433,
+          "longitude": 107.5846393,
+          "osm_url": "https://www.openstreetmap.org/node/9518711737",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Boi+Tran+Garden+Hue+16.407443%2C107.584639"
+        },
+        {
+          "osm_ref": "way/1050684699",
+          "latitude": 16.4071627,
+          "longitude": 107.5847299,
+          "osm_url": "https://www.openstreetmap.org/way/1050684699",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Boi+Tran+Garden+Hue+16.407163%2C107.584730"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Khai Dinh",
+      "city_name": "Hue",
+      "distance_meters": 47.3,
+      "places": [
+        {
+          "osm_ref": "node/6114438287",
+          "latitude": 16.3989537,
+          "longitude": 107.5902801,
+          "osm_url": "https://www.openstreetmap.org/node/6114438287",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Khai+Dinh+Hue+16.398954%2C107.590280"
+        },
+        {
+          "osm_ref": "node/11171467430",
+          "latitude": 16.3992686,
+          "longitude": 107.5905785,
+          "osm_url": "https://www.openstreetmap.org/node/11171467430",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Khai+Dinh+Hue+16.399269%2C107.590579"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Ironwood Foot Bridge",
+      "city_name": "Hue",
+      "distance_meters": 48.6,
+      "places": [
+        {
+          "osm_ref": "way/1167513732",
+          "latitude": 16.4640341,
+          "longitude": 107.5857605,
+          "osm_url": "https://www.openstreetmap.org/way/1167513732",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ironwood+Foot+Bridge+Hue+16.464034%2C107.585761"
+        },
+        {
+          "osm_ref": "way/1167513742",
+          "latitude": 16.4636435,
+          "longitude": 107.5855555,
+          "osm_url": "https://www.openstreetmap.org/way/1167513742",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ironwood+Foot+Bridge+Hue+16.463643%2C107.585555"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 54.2,
+      "places": [
+        {
+          "osm_ref": "node/5625696021",
+          "latitude": 16.057248,
+          "longitude": 108.2021585,
+          "osm_url": "https://www.openstreetmap.org/node/5625696021",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.057248%2C108.202158"
+        },
+        {
+          "osm_ref": "node/13204937554",
+          "latitude": 16.056994,
+          "longitude": 108.2025915,
+          "osm_url": "https://www.openstreetmap.org/node/13204937554",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.056994%2C108.202591"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Star Cafe",
+      "city_name": "Da Nang",
+      "distance_meters": 60.5,
+      "places": [
+        {
+          "osm_ref": "node/13200843861",
+          "latitude": 16.0555905,
+          "longitude": 108.2028009,
+          "osm_url": "https://www.openstreetmap.org/node/13200843861",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Star+Cafe+Da+Nang+16.055591%2C108.202801"
+        },
+        {
+          "osm_ref": "node/14045090483",
+          "latitude": 16.0554912,
+          "longitude": 108.2022446,
+          "osm_url": "https://www.openstreetmap.org/node/14045090483",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Star+Cafe+Da+Nang+16.055491%2C108.202245"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Hữu Trường Lang",
+      "city_name": "Hue",
+      "distance_meters": 66.1,
+      "places": [
+        {
+          "osm_ref": "way/617944738",
+          "latitude": 16.4695801,
+          "longitude": 107.5764888,
+          "osm_url": "https://www.openstreetmap.org/way/617944738",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=H%E1%BB%AFu+Tr%C6%B0%E1%BB%9Dng+Lang+Hue+16.469580%2C107.576489"
+        },
+        {
+          "osm_ref": "way/695810789",
+          "latitude": 16.4690849,
+          "longitude": 107.576146,
+          "osm_url": "https://www.openstreetmap.org/way/695810789",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=H%E1%BB%AFu+Tr%C6%B0%E1%BB%9Dng+Lang+Hue+16.469085%2C107.576146"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 68.9,
+      "places": [
+        {
+          "osm_ref": "node/5922491536",
+          "latitude": 16.0043609,
+          "longitude": 108.2645787,
+          "osm_url": "https://www.openstreetmap.org/node/5922491536",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004361%2C108.264579"
+        },
+        {
+          "osm_ref": "node/12424938201",
+          "latitude": 16.0044679,
+          "longitude": 108.2639436,
+          "osm_url": "https://www.openstreetmap.org/node/12424938201",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004468%2C108.263944"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Lăng Dục Đức",
+      "city_name": "Hue",
+      "distance_meters": 71.5,
+      "places": [
+        {
+          "osm_ref": "node/12411957519",
+          "latitude": 16.4510937,
+          "longitude": 107.5931525,
+          "osm_url": "https://www.openstreetmap.org/node/12411957519",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=L%C4%83ng+D%E1%BB%A5c+%C4%90%E1%BB%A9c+Hue+16.451094%2C107.593153"
+        },
+        {
+          "osm_ref": "relation/17957939",
+          "latitude": 16.451731,
+          "longitude": 107.593063,
+          "osm_url": "https://www.openstreetmap.org/relation/17957939",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=L%C4%83ng+D%E1%BB%A5c+%C4%90%E1%BB%A9c+Hue+16.451731%2C107.593063"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 73.0,
+      "places": [
+        {
+          "osm_ref": "node/5922491536",
+          "latitude": 16.0043609,
+          "longitude": 108.2645787,
+          "osm_url": "https://www.openstreetmap.org/node/5922491536",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004361%2C108.264579"
+        },
+        {
+          "osm_ref": "node/11171038441",
+          "latitude": 16.004402,
+          "longitude": 108.2638971,
+          "osm_url": "https://www.openstreetmap.org/node/11171038441",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004402%2C108.263897"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 77.1,
+      "places": [
+        {
+          "osm_ref": "node/6698378752",
+          "latitude": 16.0536062,
+          "longitude": 108.2023623,
+          "osm_url": "https://www.openstreetmap.org/node/6698378752",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.053606%2C108.202362"
+        },
+        {
+          "osm_ref": "node/9921315930",
+          "latitude": 16.0534077,
+          "longitude": 108.2030538,
+          "osm_url": "https://www.openstreetmap.org/node/9921315930",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.053408%2C108.203054"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 78.6,
+      "places": [
+        {
+          "osm_ref": "node/7138469785",
+          "latitude": 16.0617279,
+          "longitude": 108.2234726,
+          "osm_url": "https://www.openstreetmap.org/node/7138469785",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.061728%2C108.223473"
+        },
+        {
+          "osm_ref": "node/13288936111",
+          "latitude": 16.0622281,
+          "longitude": 108.223993,
+          "osm_url": "https://www.openstreetmap.org/node/13288936111",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.062228%2C108.223993"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 97.5,
+      "places": [
+        {
+          "osm_ref": "node/9921315930",
+          "latitude": 16.0534077,
+          "longitude": 108.2030538,
+          "osm_url": "https://www.openstreetmap.org/node/9921315930",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.053408%2C108.203054"
+        },
+        {
+          "osm_ref": "node/13542865076",
+          "latitude": 16.0525308,
+          "longitude": 108.2030428,
+          "osm_url": "https://www.openstreetmap.org/node/13542865076",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.052531%2C108.203043"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Cung An Định",
+      "city_name": "Hue",
+      "distance_meters": 100.5,
+      "places": [
+        {
+          "osm_ref": "way/1172894104",
+          "latitude": 16.4574668,
+          "longitude": 107.5979417,
+          "osm_url": "https://www.openstreetmap.org/way/1172894104",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Cung+An+%C4%90%E1%BB%8Bnh+Hue+16.457467%2C107.597942"
+        },
+        {
+          "osm_ref": "way/1172897446",
+          "latitude": 16.4566343,
+          "longitude": 107.5983094,
+          "osm_url": "https://www.openstreetmap.org/way/1172897446",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Cung+An+%C4%90%E1%BB%8Bnh+Hue+16.456634%2C107.598309"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Lăng Tự Đức",
+      "city_name": "Hue",
+      "distance_meters": 106.6,
+      "places": [
+        {
+          "osm_ref": "node/669249193",
+          "latitude": 16.4331813,
+          "longitude": 107.5645857,
+          "osm_url": "https://www.openstreetmap.org/node/669249193",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=L%C4%83ng+T%E1%BB%B1+%C4%90%E1%BB%A9c+Hue+16.433181%2C107.564586"
+        },
+        {
+          "osm_ref": "relation/18005954",
+          "latitude": 16.4329409,
+          "longitude": 107.5655529,
+          "osm_url": "https://www.openstreetmap.org/relation/18005954",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=L%C4%83ng+T%E1%BB%B1+%C4%90%E1%BB%A9c+Hue+16.432941%2C107.565553"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Bánh Gánh",
+      "city_name": "Hue",
+      "distance_meters": 116.3,
+      "places": [
+        {
+          "osm_ref": "node/7273743589",
+          "latitude": 16.4691746,
+          "longitude": 107.5956388,
+          "osm_url": "https://www.openstreetmap.org/node/7273743589",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=B%C3%A1nh+G%C3%A1nh+Hue+16.469175%2C107.595639"
+        },
+        {
+          "osm_ref": "node/10651610775",
+          "latitude": 16.4701933,
+          "longitude": 107.5958847,
+          "osm_url": "https://www.openstreetmap.org/node/10651610775",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=B%C3%A1nh+G%C3%A1nh+Hue+16.470193%2C107.595885"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Risotto Restaurant",
+      "city_name": "Hue",
+      "distance_meters": 129.0,
+      "places": [
+        {
+          "osm_ref": "node/3307229661",
+          "latitude": 16.4719303,
+          "longitude": 107.5955931,
+          "osm_url": "https://www.openstreetmap.org/node/3307229661",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Risotto+Restaurant+Hue+16.471930%2C107.595593"
+        },
+        {
+          "osm_ref": "node/11139263505",
+          "latitude": 16.4708647,
+          "longitude": 107.5960722,
+          "osm_url": "https://www.openstreetmap.org/node/11139263505",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Risotto+Restaurant+Hue+16.470865%2C107.596072"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 140.0,
+      "places": [
+        {
+          "osm_ref": "node/6698378752",
+          "latitude": 16.0536062,
+          "longitude": 108.2023623,
+          "osm_url": "https://www.openstreetmap.org/node/6698378752",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.053606%2C108.202362"
+        },
+        {
+          "osm_ref": "node/13542865076",
+          "latitude": 16.0525308,
+          "longitude": 108.2030428,
+          "osm_url": "https://www.openstreetmap.org/node/13542865076",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.052531%2C108.203043"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "AnhLinh Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 147.3,
+      "places": [
+        {
+          "osm_ref": "node/729406411",
+          "latitude": 16.0703982,
+          "longitude": 108.2013201,
+          "osm_url": "https://www.openstreetmap.org/node/729406411",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=AnhLinh+Coffee+Da+Nang+16.070398%2C108.201320"
+        },
+        {
+          "osm_ref": "node/729406581",
+          "latitude": 16.069094,
+          "longitude": 108.2015631,
+          "osm_url": "https://www.openstreetmap.org/node/729406581",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=AnhLinh+Coffee+Da+Nang+16.069094%2C108.201563"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Công viên An Nhơn",
+      "city_name": "Da Nang",
+      "distance_meters": 157.2,
+      "places": [
+        {
+          "osm_ref": "way/962129077",
+          "latitude": 16.0688547,
+          "longitude": 108.2330704,
+          "osm_url": "https://www.openstreetmap.org/way/962129077",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C3%B4ng+vi%C3%AAn+An+Nh%C6%A1n+Da+Nang+16.068855%2C108.233070"
+        },
+        {
+          "osm_ref": "way/962129078",
+          "latitude": 16.0680608,
+          "longitude": 108.2342877,
+          "osm_url": "https://www.openstreetmap.org/way/962129078",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C3%B4ng+vi%C3%AAn+An+Nh%C6%A1n+Da+Nang+16.068061%2C108.234288"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "IT Ca phe",
+      "city_name": "Da Nang",
+      "distance_meters": 162.1,
+      "places": [
+        {
+          "osm_ref": "node/7705143488",
+          "latitude": 16.0013713,
+          "longitude": 108.2137212,
+          "osm_url": "https://www.openstreetmap.org/node/7705143488",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=IT+Ca+phe+Da+Nang+16.001371%2C108.213721"
+        },
+        {
+          "osm_ref": "node/7705143985",
+          "latitude": 16.0004347,
+          "longitude": 108.2148832,
+          "osm_url": "https://www.openstreetmap.org/node/7705143985",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=IT+ca+phe+Da+Nang+16.000435%2C108.214883"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 175.5,
+      "places": [
+        {
+          "osm_ref": "node/11171038441",
+          "latitude": 16.004402,
+          "longitude": 108.2638971,
+          "osm_url": "https://www.openstreetmap.org/node/11171038441",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004402%2C108.263897"
+        },
+        {
+          "osm_ref": "node/13525483886",
+          "latitude": 16.0043147,
+          "longitude": 108.2622574,
+          "osm_url": "https://www.openstreetmap.org/node/13525483886",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004315%2C108.262257"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 180.9,
+      "places": [
+        {
+          "osm_ref": "node/11171035936",
+          "latitude": 16.0043207,
+          "longitude": 108.2622067,
+          "osm_url": "https://www.openstreetmap.org/node/11171035936",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004321%2C108.262207"
+        },
+        {
+          "osm_ref": "node/11171038441",
+          "latitude": 16.004402,
+          "longitude": 108.2638971,
+          "osm_url": "https://www.openstreetmap.org/node/11171038441",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004402%2C108.263897"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 181.0,
+      "places": [
+        {
+          "osm_ref": "node/12424938201",
+          "latitude": 16.0044679,
+          "longitude": 108.2639436,
+          "osm_url": "https://www.openstreetmap.org/node/12424938201",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004468%2C108.263944"
+        },
+        {
+          "osm_ref": "node/13525483886",
+          "latitude": 16.0043147,
+          "longitude": 108.2622574,
+          "osm_url": "https://www.openstreetmap.org/node/13525483886",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004315%2C108.262257"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 186.4,
+      "places": [
+        {
+          "osm_ref": "node/11171035936",
+          "latitude": 16.0043207,
+          "longitude": 108.2622067,
+          "osm_url": "https://www.openstreetmap.org/node/11171035936",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004321%2C108.262207"
+        },
+        {
+          "osm_ref": "node/12424938201",
+          "latitude": 16.0044679,
+          "longitude": 108.2639436,
+          "osm_url": "https://www.openstreetmap.org/node/12424938201",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004468%2C108.263944"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Hue",
+      "distance_meters": 197.9,
+      "places": [
+        {
+          "osm_ref": "way/1343922555",
+          "latitude": 16.4624654,
+          "longitude": 107.5889756,
+          "osm_url": "https://www.openstreetmap.org/way/1343922555",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Hue+16.462465%2C107.588976"
+        },
+        {
+          "osm_ref": "way/1343922562",
+          "latitude": 16.4633183,
+          "longitude": 107.590604,
+          "osm_url": "https://www.openstreetmap.org/way/1343922562",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Hue+16.463318%2C107.590604"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 198.7,
+      "places": [
+        {
+          "osm_ref": "node/13288936111",
+          "latitude": 16.0622281,
+          "longitude": 108.223993,
+          "osm_url": "https://www.openstreetmap.org/node/13288936111",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.062228%2C108.223993"
+        },
+        {
+          "osm_ref": "node/13290098752",
+          "latitude": 16.0638962,
+          "longitude": 108.2233249,
+          "osm_url": "https://www.openstreetmap.org/node/13290098752",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.063896%2C108.223325"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Phinholic",
+      "city_name": "Hue",
+      "distance_meters": 212.9,
+      "places": [
+        {
+          "osm_ref": "node/10677707584",
+          "latitude": 16.4647037,
+          "longitude": 107.5947886,
+          "osm_url": "https://www.openstreetmap.org/node/10677707584",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Phinholic+Hue+16.464704%2C107.594789"
+        },
+        {
+          "osm_ref": "node/12631846150",
+          "latitude": 16.4649588,
+          "longitude": 107.5928099,
+          "osm_url": "https://www.openstreetmap.org/node/12631846150",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Phinholic+Hue+16.464959%2C107.592810"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Thai Market",
+      "city_name": "Da Nang",
+      "distance_meters": 215.7,
+      "places": [
+        {
+          "osm_ref": "node/5429167110",
+          "latitude": 16.0661423,
+          "longitude": 108.2242408,
+          "osm_url": "https://www.openstreetmap.org/node/5429167110",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Thai+Market+Da+Nang+16.066142%2C108.224241"
+        },
+        {
+          "osm_ref": "node/5429181331",
+          "latitude": 16.0651331,
+          "longitude": 108.2225171,
+          "osm_url": "https://www.openstreetmap.org/node/5429181331",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Thai+Market+Da+Nang+16.065133%2C108.222517"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 241.6,
+      "places": [
+        {
+          "osm_ref": "node/7138469785",
+          "latitude": 16.0617279,
+          "longitude": 108.2234726,
+          "osm_url": "https://www.openstreetmap.org/node/7138469785",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.061728%2C108.223473"
+        },
+        {
+          "osm_ref": "node/13290098752",
+          "latitude": 16.0638962,
+          "longitude": 108.2233249,
+          "osm_url": "https://www.openstreetmap.org/node/13290098752",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.063896%2C108.223325"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 248.2,
+      "places": [
+        {
+          "osm_ref": "node/5922491536",
+          "latitude": 16.0043609,
+          "longitude": 108.2645787,
+          "osm_url": "https://www.openstreetmap.org/node/5922491536",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004361%2C108.264579"
+        },
+        {
+          "osm_ref": "node/13525483886",
+          "latitude": 16.0043147,
+          "longitude": 108.2622574,
+          "osm_url": "https://www.openstreetmap.org/node/13525483886",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004315%2C108.262257"
+        }
+      ]
+    }
+  ],
+  "review_queue": [
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "AnhLinh Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 147.3,
+      "places": [
+        {
+          "osm_ref": "node/729406411",
+          "latitude": 16.0703982,
+          "longitude": 108.2013201,
+          "osm_url": "https://www.openstreetmap.org/node/729406411",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=AnhLinh+Coffee+Da+Nang+16.070398%2C108.201320"
+        },
+        {
+          "osm_ref": "node/729406581",
+          "latitude": 16.069094,
+          "longitude": 108.2015631,
+          "osm_url": "https://www.openstreetmap.org/node/729406581",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=AnhLinh+Coffee+Da+Nang+16.069094%2C108.201563"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 54.2,
+      "places": [
+        {
+          "osm_ref": "node/5625696021",
+          "latitude": 16.057248,
+          "longitude": 108.2021585,
+          "osm_url": "https://www.openstreetmap.org/node/5625696021",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.057248%2C108.202158"
+        },
+        {
+          "osm_ref": "node/13204937554",
+          "latitude": 16.056994,
+          "longitude": 108.2025915,
+          "osm_url": "https://www.openstreetmap.org/node/13204937554",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.056994%2C108.202591"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 77.1,
+      "places": [
+        {
+          "osm_ref": "node/6698378752",
+          "latitude": 16.0536062,
+          "longitude": 108.2023623,
+          "osm_url": "https://www.openstreetmap.org/node/6698378752",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.053606%2C108.202362"
+        },
+        {
+          "osm_ref": "node/9921315930",
+          "latitude": 16.0534077,
+          "longitude": 108.2030538,
+          "osm_url": "https://www.openstreetmap.org/node/9921315930",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.053408%2C108.203054"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 140.0,
+      "places": [
+        {
+          "osm_ref": "node/6698378752",
+          "latitude": 16.0536062,
+          "longitude": 108.2023623,
+          "osm_url": "https://www.openstreetmap.org/node/6698378752",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.053606%2C108.202362"
+        },
+        {
+          "osm_ref": "node/13542865076",
+          "latitude": 16.0525308,
+          "longitude": 108.2030428,
+          "osm_url": "https://www.openstreetmap.org/node/13542865076",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.052531%2C108.203043"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 78.6,
+      "places": [
+        {
+          "osm_ref": "node/7138469785",
+          "latitude": 16.0617279,
+          "longitude": 108.2234726,
+          "osm_url": "https://www.openstreetmap.org/node/7138469785",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.061728%2C108.223473"
+        },
+        {
+          "osm_ref": "node/13288936111",
+          "latitude": 16.0622281,
+          "longitude": 108.223993,
+          "osm_url": "https://www.openstreetmap.org/node/13288936111",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.062228%2C108.223993"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 241.6,
+      "places": [
+        {
+          "osm_ref": "node/7138469785",
+          "latitude": 16.0617279,
+          "longitude": 108.2234726,
+          "osm_url": "https://www.openstreetmap.org/node/7138469785",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.061728%2C108.223473"
+        },
+        {
+          "osm_ref": "node/13290098752",
+          "latitude": 16.0638962,
+          "longitude": 108.2233249,
+          "osm_url": "https://www.openstreetmap.org/node/13290098752",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.063896%2C108.223325"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 97.5,
+      "places": [
+        {
+          "osm_ref": "node/9921315930",
+          "latitude": 16.0534077,
+          "longitude": 108.2030538,
+          "osm_url": "https://www.openstreetmap.org/node/9921315930",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.053408%2C108.203054"
+        },
+        {
+          "osm_ref": "node/13542865076",
+          "latitude": 16.0525308,
+          "longitude": 108.2030428,
+          "osm_url": "https://www.openstreetmap.org/node/13542865076",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.052531%2C108.203043"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Da Nang",
+      "distance_meters": 198.7,
+      "places": [
+        {
+          "osm_ref": "node/13288936111",
+          "latitude": 16.0622281,
+          "longitude": 108.223993,
+          "osm_url": "https://www.openstreetmap.org/node/13288936111",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.062228%2C108.223993"
+        },
+        {
+          "osm_ref": "node/13290098752",
+          "latitude": 16.0638962,
+          "longitude": 108.2233249,
+          "osm_url": "https://www.openstreetmap.org/node/13290098752",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Da+Nang+16.063896%2C108.223325"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Thai Market",
+      "city_name": "Da Nang",
+      "distance_meters": 215.7,
+      "places": [
+        {
+          "osm_ref": "node/5429167110",
+          "latitude": 16.0661423,
+          "longitude": 108.2242408,
+          "osm_url": "https://www.openstreetmap.org/node/5429167110",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Thai+Market+Da+Nang+16.066142%2C108.224241"
+        },
+        {
+          "osm_ref": "node/5429181331",
+          "latitude": 16.0651331,
+          "longitude": 108.2225171,
+          "osm_url": "https://www.openstreetmap.org/node/5429181331",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Thai+Market+Da+Nang+16.065133%2C108.222517"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 73.0,
+      "places": [
+        {
+          "osm_ref": "node/5922491536",
+          "latitude": 16.0043609,
+          "longitude": 108.2645787,
+          "osm_url": "https://www.openstreetmap.org/node/5922491536",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004361%2C108.264579"
+        },
+        {
+          "osm_ref": "node/11171038441",
+          "latitude": 16.004402,
+          "longitude": 108.2638971,
+          "osm_url": "https://www.openstreetmap.org/node/11171038441",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004402%2C108.263897"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 68.9,
+      "places": [
+        {
+          "osm_ref": "node/5922491536",
+          "latitude": 16.0043609,
+          "longitude": 108.2645787,
+          "osm_url": "https://www.openstreetmap.org/node/5922491536",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004361%2C108.264579"
+        },
+        {
+          "osm_ref": "node/12424938201",
+          "latitude": 16.0044679,
+          "longitude": 108.2639436,
+          "osm_url": "https://www.openstreetmap.org/node/12424938201",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004468%2C108.263944"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 248.2,
+      "places": [
+        {
+          "osm_ref": "node/5922491536",
+          "latitude": 16.0043609,
+          "longitude": 108.2645787,
+          "osm_url": "https://www.openstreetmap.org/node/5922491536",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004361%2C108.264579"
+        },
+        {
+          "osm_ref": "node/13525483886",
+          "latitude": 16.0043147,
+          "longitude": 108.2622574,
+          "osm_url": "https://www.openstreetmap.org/node/13525483886",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004315%2C108.262257"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 180.9,
+      "places": [
+        {
+          "osm_ref": "node/11171035936",
+          "latitude": 16.0043207,
+          "longitude": 108.2622067,
+          "osm_url": "https://www.openstreetmap.org/node/11171035936",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004321%2C108.262207"
+        },
+        {
+          "osm_ref": "node/11171038441",
+          "latitude": 16.004402,
+          "longitude": 108.2638971,
+          "osm_url": "https://www.openstreetmap.org/node/11171038441",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004402%2C108.263897"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 186.4,
+      "places": [
+        {
+          "osm_ref": "node/11171035936",
+          "latitude": 16.0043207,
+          "longitude": 108.2622067,
+          "osm_url": "https://www.openstreetmap.org/node/11171035936",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004321%2C108.262207"
+        },
+        {
+          "osm_ref": "node/12424938201",
+          "latitude": 16.0044679,
+          "longitude": 108.2639436,
+          "osm_url": "https://www.openstreetmap.org/node/12424938201",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004468%2C108.263944"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 5.5,
+      "places": [
+        {
+          "osm_ref": "node/11171035936",
+          "latitude": 16.0043207,
+          "longitude": 108.2622067,
+          "osm_url": "https://www.openstreetmap.org/node/11171035936",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004321%2C108.262207"
+        },
+        {
+          "osm_ref": "node/13525483886",
+          "latitude": 16.0043147,
+          "longitude": 108.2622574,
+          "osm_url": "https://www.openstreetmap.org/node/13525483886",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004315%2C108.262257"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 8.9,
+      "places": [
+        {
+          "osm_ref": "node/11171038441",
+          "latitude": 16.004402,
+          "longitude": 108.2638971,
+          "osm_url": "https://www.openstreetmap.org/node/11171038441",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004402%2C108.263897"
+        },
+        {
+          "osm_ref": "node/12424938201",
+          "latitude": 16.0044679,
+          "longitude": 108.2639436,
+          "osm_url": "https://www.openstreetmap.org/node/12424938201",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004468%2C108.263944"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 175.5,
+      "places": [
+        {
+          "osm_ref": "node/11171038441",
+          "latitude": 16.004402,
+          "longitude": 108.2638971,
+          "osm_url": "https://www.openstreetmap.org/node/11171038441",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004402%2C108.263897"
+        },
+        {
+          "osm_ref": "node/13525483886",
+          "latitude": 16.0043147,
+          "longitude": 108.2622574,
+          "osm_url": "https://www.openstreetmap.org/node/13525483886",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004315%2C108.262257"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Buddha",
+      "city_name": "Da Nang",
+      "distance_meters": 181.0,
+      "places": [
+        {
+          "osm_ref": "node/12424938201",
+          "latitude": 16.0044679,
+          "longitude": 108.2639436,
+          "osm_url": "https://www.openstreetmap.org/node/12424938201",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004468%2C108.263944"
+        },
+        {
+          "osm_ref": "node/13525483886",
+          "latitude": 16.0043147,
+          "longitude": 108.2622574,
+          "osm_url": "https://www.openstreetmap.org/node/13525483886",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Buddha+Da+Nang+16.004315%2C108.262257"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Cơm Bà Thôi",
+      "city_name": "Da Nang",
+      "distance_meters": 5.0,
+      "places": [
+        {
+          "osm_ref": "node/6594176685",
+          "latitude": 16.0613578,
+          "longitude": 108.2227325,
+          "osm_url": "https://www.openstreetmap.org/node/6594176685",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C6%A1m+B%C3%A0+Th%C3%B4i+Da+Nang+16.061358%2C108.222733"
+        },
+        {
+          "osm_ref": "node/6594185186",
+          "latitude": 16.0613662,
+          "longitude": 108.2227782,
+          "osm_url": "https://www.openstreetmap.org/node/6594185186",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C6%A1m+b%C3%A0+th%C3%B4i+Da+Nang+16.061366%2C108.222778"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Star Cafe",
+      "city_name": "Da Nang",
+      "distance_meters": 60.5,
+      "places": [
+        {
+          "osm_ref": "node/13200843861",
+          "latitude": 16.0555905,
+          "longitude": 108.2028009,
+          "osm_url": "https://www.openstreetmap.org/node/13200843861",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Star+Cafe+Da+Nang+16.055591%2C108.202801"
+        },
+        {
+          "osm_ref": "node/14045090483",
+          "latitude": 16.0554912,
+          "longitude": 108.2022446,
+          "osm_url": "https://www.openstreetmap.org/node/14045090483",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Star+Cafe+Da+Nang+16.055491%2C108.202245"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Cây Sung",
+      "city_name": "Da Nang",
+      "distance_meters": 18.3,
+      "places": [
+        {
+          "osm_ref": "node/7088117187",
+          "latitude": 16.0730509,
+          "longitude": 108.2448801,
+          "osm_url": "https://www.openstreetmap.org/node/7088117187",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C3%A2y+Sung+Da+Nang+16.073051%2C108.244880"
+        },
+        {
+          "osm_ref": "node/13423557381",
+          "latitude": 16.0731168,
+          "longitude": 108.2447235,
+          "osm_url": "https://www.openstreetmap.org/node/13423557381",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C3%A2y+Sung+Da+Nang+16.073117%2C108.244724"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "IT Ca phe",
+      "city_name": "Da Nang",
+      "distance_meters": 162.1,
+      "places": [
+        {
+          "osm_ref": "node/7705143488",
+          "latitude": 16.0013713,
+          "longitude": 108.2137212,
+          "osm_url": "https://www.openstreetmap.org/node/7705143488",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=IT+Ca+phe+Da+Nang+16.001371%2C108.213721"
+        },
+        {
+          "osm_ref": "node/7705143985",
+          "latitude": 16.0004347,
+          "longitude": 108.2148832,
+          "osm_url": "https://www.openstreetmap.org/node/7705143985",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=IT+ca+phe+Da+Nang+16.000435%2C108.214883"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Thia Go",
+      "city_name": "Da Nang",
+      "distance_meters": 27.9,
+      "places": [
+        {
+          "osm_ref": "node/10126113417",
+          "latitude": 16.0529621,
+          "longitude": 108.2415067,
+          "osm_url": "https://www.openstreetmap.org/node/10126113417",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Thia+Go+Da+Nang+16.052962%2C108.241507"
+        },
+        {
+          "osm_ref": "node/10875254005",
+          "latitude": 16.0532123,
+          "longitude": 108.24153,
+          "osm_url": "https://www.openstreetmap.org/node/10875254005",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Thia+Go+Da+Nang+16.053212%2C108.241530"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Gé Cafe",
+      "city_name": "Da Nang",
+      "distance_meters": 4.0,
+      "places": [
+        {
+          "osm_ref": "node/12345255101",
+          "latitude": 16.0639538,
+          "longitude": 108.2226683,
+          "osm_url": "https://www.openstreetmap.org/node/12345255101",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=G%C3%A9+Cafe+Da+Nang+16.063954%2C108.222668"
+        },
+        {
+          "osm_ref": "node/12372805701",
+          "latitude": 16.0639195,
+          "longitude": 108.2226583,
+          "osm_url": "https://www.openstreetmap.org/node/12372805701",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=G%C3%A9+Cafe+Da+Nang+16.063920%2C108.222658"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Công viên An Nhơn",
+      "city_name": "Da Nang",
+      "distance_meters": 157.2,
+      "places": [
+        {
+          "osm_ref": "way/962129077",
+          "latitude": 16.0688547,
+          "longitude": 108.2330704,
+          "osm_url": "https://www.openstreetmap.org/way/962129077",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C3%B4ng+vi%C3%AAn+An+Nh%C6%A1n+Da+Nang+16.068855%2C108.233070"
+        },
+        {
+          "osm_ref": "way/962129078",
+          "latitude": 16.0680608,
+          "longitude": 108.2342877,
+          "osm_url": "https://www.openstreetmap.org/way/962129078",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=C%C3%B4ng+vi%C3%AAn+An+Nh%C6%A1n+Da+Nang+16.068061%2C108.234288"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Lăng Tự Đức",
+      "city_name": "Hue",
+      "distance_meters": 106.6,
+      "places": [
+        {
+          "osm_ref": "node/669249193",
+          "latitude": 16.4331813,
+          "longitude": 107.5645857,
+          "osm_url": "https://www.openstreetmap.org/node/669249193",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=L%C4%83ng+T%E1%BB%B1+%C4%90%E1%BB%A9c+Hue+16.433181%2C107.564586"
+        },
+        {
+          "osm_ref": "relation/18005954",
+          "latitude": 16.4329409,
+          "longitude": 107.5655529,
+          "osm_url": "https://www.openstreetmap.org/relation/18005954",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=L%C4%83ng+T%E1%BB%B1+%C4%90%E1%BB%A9c+Hue+16.432941%2C107.565553"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Risotto Restaurant",
+      "city_name": "Hue",
+      "distance_meters": 129.0,
+      "places": [
+        {
+          "osm_ref": "node/3307229661",
+          "latitude": 16.4719303,
+          "longitude": 107.5955931,
+          "osm_url": "https://www.openstreetmap.org/node/3307229661",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Risotto+Restaurant+Hue+16.471930%2C107.595593"
+        },
+        {
+          "osm_ref": "node/11139263505",
+          "latitude": 16.4708647,
+          "longitude": 107.5960722,
+          "osm_url": "https://www.openstreetmap.org/node/11139263505",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Risotto+Restaurant+Hue+16.470865%2C107.596072"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Quán Chay Thanh Liễu",
+      "city_name": "Hue",
+      "distance_meters": 21.0,
+      "places": [
+        {
+          "osm_ref": "node/4260153090",
+          "latitude": 16.4709169,
+          "longitude": 107.5979611,
+          "osm_url": "https://www.openstreetmap.org/node/4260153090",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Qu%C3%A1n+Chay+Thanh+Li%E1%BB%85u+Hue+16.470917%2C107.597961"
+        },
+        {
+          "osm_ref": "node/4634514389",
+          "latitude": 16.4709827,
+          "longitude": 107.5977764,
+          "osm_url": "https://www.openstreetmap.org/node/4634514389",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Qu%C3%A1n+Chay+Thanh+Li%E1%BB%85u+Hue+16.470983%2C107.597776"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Highlands Coffee",
+      "city_name": "Hue",
+      "distance_meters": 197.9,
+      "places": [
+        {
+          "osm_ref": "way/1343922555",
+          "latitude": 16.4624654,
+          "longitude": 107.5889756,
+          "osm_url": "https://www.openstreetmap.org/way/1343922555",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Hue+16.462465%2C107.588976"
+        },
+        {
+          "osm_ref": "way/1343922562",
+          "latitude": 16.4633183,
+          "longitude": 107.590604,
+          "osm_url": "https://www.openstreetmap.org/way/1343922562",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Highlands+Coffee+Hue+16.463318%2C107.590604"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Vạc đồng",
+      "city_name": "Hue",
+      "distance_meters": 23.9,
+      "places": [
+        {
+          "osm_ref": "node/5841558900",
+          "latitude": 16.4690844,
+          "longitude": 107.5779533,
+          "osm_url": "https://www.openstreetmap.org/node/5841558900",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=V%E1%BA%A1c+%C4%91%E1%BB%93ng+Hue+16.469084%2C107.577953"
+        },
+        {
+          "osm_ref": "node/5841558901",
+          "latitude": 16.469204,
+          "longitude": 107.5781398,
+          "osm_url": "https://www.openstreetmap.org/node/5841558901",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=V%E1%BA%A1c+%C4%91%E1%BB%93ng+Hue+16.469204%2C107.578140"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Khai Dinh",
+      "city_name": "Hue",
+      "distance_meters": 47.3,
+      "places": [
+        {
+          "osm_ref": "node/6114438287",
+          "latitude": 16.3989537,
+          "longitude": 107.5902801,
+          "osm_url": "https://www.openstreetmap.org/node/6114438287",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Khai+Dinh+Hue+16.398954%2C107.590280"
+        },
+        {
+          "osm_ref": "node/11171467430",
+          "latitude": 16.3992686,
+          "longitude": 107.5905785,
+          "osm_url": "https://www.openstreetmap.org/node/11171467430",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Khai+Dinh+Hue+16.399269%2C107.590579"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Bánh Gánh",
+      "city_name": "Hue",
+      "distance_meters": 116.3,
+      "places": [
+        {
+          "osm_ref": "node/7273743589",
+          "latitude": 16.4691746,
+          "longitude": 107.5956388,
+          "osm_url": "https://www.openstreetmap.org/node/7273743589",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=B%C3%A1nh+G%C3%A1nh+Hue+16.469175%2C107.595639"
+        },
+        {
+          "osm_ref": "node/10651610775",
+          "latitude": 16.4701933,
+          "longitude": 107.5958847,
+          "osm_url": "https://www.openstreetmap.org/node/10651610775",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=B%C3%A1nh+G%C3%A1nh+Hue+16.470193%2C107.595885"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Boi Tran Garden",
+      "city_name": "Hue",
+      "distance_meters": 32.7,
+      "places": [
+        {
+          "osm_ref": "node/9518711737",
+          "latitude": 16.4074433,
+          "longitude": 107.5846393,
+          "osm_url": "https://www.openstreetmap.org/node/9518711737",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Boi+Tran+Garden+Hue+16.407443%2C107.584639"
+        },
+        {
+          "osm_ref": "way/1050684699",
+          "latitude": 16.4071627,
+          "longitude": 107.5847299,
+          "osm_url": "https://www.openstreetmap.org/way/1050684699",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Boi+Tran+Garden+Hue+16.407163%2C107.584730"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Chốt Cafe",
+      "city_name": "Hue",
+      "distance_meters": 7.9,
+      "places": [
+        {
+          "osm_ref": "node/9921316651",
+          "latitude": 16.4554113,
+          "longitude": 107.5974954,
+          "osm_url": "https://www.openstreetmap.org/node/9921316651",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ch%E1%BB%91t+Cafe+Hue+16.455411%2C107.597495"
+        },
+        {
+          "osm_ref": "node/11491185593",
+          "latitude": 16.4554367,
+          "longitude": 107.5975647,
+          "osm_url": "https://www.openstreetmap.org/node/11491185593",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ch%E1%BB%91t+Cafe+Hue+16.455437%2C107.597565"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Phinholic",
+      "city_name": "Hue",
+      "distance_meters": 212.9,
+      "places": [
+        {
+          "osm_ref": "node/10677707584",
+          "latitude": 16.4647037,
+          "longitude": 107.5947886,
+          "osm_url": "https://www.openstreetmap.org/node/10677707584",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Phinholic+Hue+16.464704%2C107.594789"
+        },
+        {
+          "osm_ref": "node/12631846150",
+          "latitude": 16.4649588,
+          "longitude": 107.5928099,
+          "osm_url": "https://www.openstreetmap.org/node/12631846150",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Phinholic+Hue+16.464959%2C107.592810"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Lăng Dục Đức",
+      "city_name": "Hue",
+      "distance_meters": 71.5,
+      "places": [
+        {
+          "osm_ref": "node/12411957519",
+          "latitude": 16.4510937,
+          "longitude": 107.5931525,
+          "osm_url": "https://www.openstreetmap.org/node/12411957519",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=L%C4%83ng+D%E1%BB%A5c+%C4%90%E1%BB%A9c+Hue+16.451094%2C107.593153"
+        },
+        {
+          "osm_ref": "relation/17957939",
+          "latitude": 16.451731,
+          "longitude": 107.593063,
+          "osm_url": "https://www.openstreetmap.org/relation/17957939",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=L%C4%83ng+D%E1%BB%A5c+%C4%90%E1%BB%A9c+Hue+16.451731%2C107.593063"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Trung tâm Thanh thiếu nhi Huế",
+      "city_name": "Hue",
+      "distance_meters": 6.8,
+      "places": [
+        {
+          "osm_ref": "way/118541971",
+          "latitude": 16.4592467,
+          "longitude": 107.5822457,
+          "osm_url": "https://www.openstreetmap.org/way/118541971",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Trung+t%C3%A2m+Thanh+thi%E1%BA%BFu+nhi+Hu%E1%BA%BF+Hue+16.459247%2C107.582246"
+        },
+        {
+          "osm_ref": "way/695775607",
+          "latitude": 16.4592349,
+          "longitude": 107.5823079,
+          "osm_url": "https://www.openstreetmap.org/way/695775607",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Trung+t%C3%A2m+Thanh+thi%E1%BA%BFu+nhi+Hu%E1%BA%BF+Hue+16.459235%2C107.582308"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Hữu Trường Lang",
+      "city_name": "Hue",
+      "distance_meters": 66.1,
+      "places": [
+        {
+          "osm_ref": "way/617944738",
+          "latitude": 16.4695801,
+          "longitude": 107.5764888,
+          "osm_url": "https://www.openstreetmap.org/way/617944738",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=H%E1%BB%AFu+Tr%C6%B0%E1%BB%9Dng+Lang+Hue+16.469580%2C107.576489"
+        },
+        {
+          "osm_ref": "way/695810789",
+          "latitude": 16.4690849,
+          "longitude": 107.576146,
+          "osm_url": "https://www.openstreetmap.org/way/695810789",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=H%E1%BB%AFu+Tr%C6%B0%E1%BB%9Dng+Lang+Hue+16.469085%2C107.576146"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Ironwood Foot Bridge",
+      "city_name": "Hue",
+      "distance_meters": 48.6,
+      "places": [
+        {
+          "osm_ref": "way/1167513732",
+          "latitude": 16.4640341,
+          "longitude": 107.5857605,
+          "osm_url": "https://www.openstreetmap.org/way/1167513732",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ironwood+Foot+Bridge+Hue+16.464034%2C107.585761"
+        },
+        {
+          "osm_ref": "way/1167513742",
+          "latitude": 16.4636435,
+          "longitude": 107.5855555,
+          "osm_url": "https://www.openstreetmap.org/way/1167513742",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Ironwood+Foot+Bridge+Hue+16.463643%2C107.585555"
+        }
+      ]
+    },
+    {
+      "reason": "nearby_same_name",
+      "review_status": "needs_manual_review",
+      "name": "Cung An Định",
+      "city_name": "Hue",
+      "distance_meters": 100.5,
+      "places": [
+        {
+          "osm_ref": "way/1172894104",
+          "latitude": 16.4574668,
+          "longitude": 107.5979417,
+          "osm_url": "https://www.openstreetmap.org/way/1172894104",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Cung+An+%C4%90%E1%BB%8Bnh+Hue+16.457467%2C107.597942"
+        },
+        {
+          "osm_ref": "way/1172897446",
+          "latitude": 16.4566343,
+          "longitude": 107.5983094,
+          "osm_url": "https://www.openstreetmap.org/way/1172897446",
+          "google_maps_search_url": "https://www.google.com/maps/search/?api=1&query=Cung+An+%C4%90%E1%BB%8Bnh+Hue+16.456634%2C107.598309"
+        }
+      ]
+    }
+  ],
+  "review_policy": "Nearby matching names are candidates only. Confirm the place and its active status against an authoritative source before merging or deleting records. This report does not verify Google Maps data."
+}

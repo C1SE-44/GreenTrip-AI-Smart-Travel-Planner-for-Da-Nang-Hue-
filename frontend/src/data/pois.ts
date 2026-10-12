@@ -15,6 +15,31 @@ export interface Poi {
   ecoScore: number;
 }
 
+export interface BackendPoiItem {
+  id: number;
+  name?: string | null;
+  category?: string | null;
+  description?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  address?: string | null;
+  city?: string | null;
+}
+
+export interface PaginationMetadata {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+export interface PaginatedPoisResponse {
+  items: BackendPoiItem[];
+  pagination: PaginationMetadata;
+}
+
 export const categoryLabels: Record<PoiCategory, string> = {
   'chua': 'Chùa',
   'quan-an': 'Quán ăn',
@@ -22,8 +47,63 @@ export const categoryLabels: Record<PoiCategory, string> = {
   'di-tich': 'Di tích',
 };
 
+const DEFAULT_IMAGE_BY_CATEGORY: Record<PoiCategory, string> = {
+  chua: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80',
+  'quan-an': 'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=80',
+  'canh-quan': 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
+  'di-tich': 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80',
+};
+
+export function normalizeCategory(value?: string | null): PoiCategory {
+  const normalized = (value ?? '').trim().toLowerCase();
+  if (normalized === 'chua' || normalized === 'chùa') return 'chua';
+  if (normalized === 'quan-an' || normalized === 'quan an' || normalized === 'food') return 'quan-an';
+  if (normalized === 'canh-quan' || normalized === 'cảnh quan' || normalized === 'landscape') return 'canh-quan';
+  if (normalized === 'di-tich' || normalized === 'di tích' || normalized === 'heritage') return 'di-tich';
+  return 'di-tich';
+}
+
+export function normalizeCity(value?: string | null): PoiCity {
+  const normalized = (value ?? '').trim().toLowerCase();
+  if (normalized.includes('da nang') || normalized.includes('da-nang') || normalized === 'danang') return 'Đà Nẵng';
+  if (normalized.includes('hue') || normalized.includes('huế')) return 'Huế';
+  return 'Đà Nẵng';
+}
+
+export function normalizePoi(item: BackendPoiItem): Poi | null {
+  const latitude = Number(item.latitude);
+  const longitude = Number(item.longitude);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  const category = normalizeCategory(item.category);
+  const city = normalizeCity(item.city);
+  const name = (item.name ?? 'POI').trim() || 'POI';
+
+  return {
+    id: String(item.id),
+    name,
+    category,
+    city,
+    lat: latitude,
+    lng: longitude,
+    image: DEFAULT_IMAGE_BY_CATEGORY[category],
+    description: (item.description ?? '').trim() || 'Địa điểm đáng ghé thăm trong hành trình của bạn.',
+    rating: 4.5,
+    visitDuration: '1–2 giờ',
+    ecoScore: 80,
+  };
+}
+
+export function normalizePois(items: BackendPoiItem[] = []): Poi[] {
+  return items
+    .map((item) => normalizePoi(item))
+    .filter((item): item is Poi => item !== null);
+}
+
 export const pois: Poi[] = [
-  // Đà Nẵng
   {
     id: 'madame-lan',
     name: 'Nhà hàng Madame Lân',
@@ -128,7 +208,6 @@ export const pois: Poi[] = [
     visitDuration: '30–45 phút',
     ecoScore: 82,
   },
-  // Huế
   {
     id: 'dai-noi',
     name: 'Đại Nội (Hoàng Thành)',

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { CalendarCheck, Compass, Eye, CloudRain, ArrowRight, MapPin, Navigation, Clock, Leaf, Star, ChevronDown, Check, Bell, Quote, Instagram, Twitter, Facebook, Github } from 'lucide-react';
+import { CalendarCheck, Compass, MapPin, Navigation, Leaf, Star, ChevronDown, Check, Bell, Instagram, Twitter, Facebook, Github } from 'lucide-react';
 
 export default function LandingPage() {
   const scrollTo = (id: string) => {

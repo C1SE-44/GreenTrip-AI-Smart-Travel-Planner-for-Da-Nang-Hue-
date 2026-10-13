@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     )
 
     DATABASE_URL: str = ""
+    SUPABASE_URL: str = ""
+    SUPABASE_PUBLISHABLE_KEY: str = ""
+    SUPABASE_SECRET_KEY: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+    SUPABASE_ANON_KEY: str = ""
     NEO4J_URI: str = ""
     NEO4J_USERNAME: str = ""
     NEO4J_PASSWORD: str = ""
@@ -38,6 +43,18 @@ class Settings(BaseSettings):
     @property
     def neo4j_configured(self) -> bool:
         return bool(self.NEO4J_URI and self.NEO4J_USERNAME and self.NEO4J_PASSWORD)
+
+    @property
+    def supabase_configured(self) -> bool:
+        return bool(
+            self.SUPABASE_URL
+            and (
+                self.SUPABASE_PUBLISHABLE_KEY
+                or self.SUPABASE_SECRET_KEY
+                or self.SUPABASE_SERVICE_ROLE_KEY
+                or self.SUPABASE_ANON_KEY
+            )
+        )
 
 
 @lru_cache

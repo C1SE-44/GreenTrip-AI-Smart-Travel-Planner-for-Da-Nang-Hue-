@@ -8,7 +8,6 @@ import PasswordInput from '@/components/ui/PasswordInput';
 import PasswordStrength from '@/components/ui/PasswordStrength';
 import Button from '@/components/ui/Button';
 import Checkbox from '@/components/ui/Checkbox';
-import GoogleButton from '@/components/ui/GoogleButton';
 import { VerifyOtpModal } from '@/components/auth/VerifyOtpModal';
 import { signup, resendVerification, googleLogin, ApiError } from '@/services/auth';
 
@@ -29,7 +28,6 @@ export default function RegisterPage() {
   const [terms, setTerms] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
@@ -57,7 +55,6 @@ export default function RegisterPage() {
         client_id: clientId,
         callback: async (response: { credential?: string }) => {
           if (!response.credential) return;
-          setGoogleLoading(true);
           try {
             const res = await googleLogin(response.credential);
             if (res.require_otp) {
@@ -73,8 +70,6 @@ export default function RegisterPage() {
             } else {
               setGeneralError('Đăng ký với Google thất bại. Vui lòng thử lại.');
             }
-          } finally {
-            setGoogleLoading(false);
           }
         },
       });
@@ -105,19 +100,6 @@ export default function RegisterPage() {
       return () => clearInterval(interval);
     }
   }, [navigate]);
-
-  const handleGoogleClick = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      setGeneralError('Hệ thống đang chuẩn bị kết nối Google OAuth. Vui lòng cung cấp VITE_GOOGLE_CLIENT_ID trong file .env để kích hoạt tính năng này.');
-      return;
-    }
-
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
-    }
-  };
-
 
   const validate = (): boolean => {
     const e: Errors = {};

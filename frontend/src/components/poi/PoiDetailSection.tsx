@@ -25,7 +25,6 @@ export default function PoiDetailSection({
   // Generate 5 contextual, authentic images for gallery (1 main large + 4 in 2x2 grid)
   const galleryImages = useMemo(() => getGalleryImages(poi), [poi]);
 
-  const reviewCount = `${Math.floor(poi.rating * 2.4 * 10) / 10}k`;
   const categoryName = categoryLabels[poi.category] || 'Địa điểm';
 
   const handleShare = () => {
@@ -207,34 +206,29 @@ export default function PoiDetailSection({
               {poi.description}. Tọa lạc tại vị trí đắc địa thuộc trung tâm thành phố {poi.city}, nơi đây mang đến không gian trải nghiệm ẩm thực và văn hóa đặc sắc, kết hợp phong vị truyền thống Việt Nam cùng phong cách phục vụ chu đáo, thân thiện với môi trường.
             </p>
 
-            {/* Address & Contact Info Block */}
-            <div className="grid grid-cols-2 gap-y-6 gap-x-8 text-sm pt-2">
-              {/* Address */}
+            {poi.address && (
+              <div className="pt-2 text-sm">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-neutral-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
                   <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
                 </svg>
                 <div>
-                  <h4 className="font-bold text-neutral-900">Address</h4>
-                  <p className="text-neutral-600 mt-0.5 leading-relaxed">
-                    Bạch Đằng, Hải Châu<br />
-                    {poi.city} 50000<br />
-                    Vietnam
-                  </p>
+                  <h4 className="font-bold text-neutral-900">Địa chỉ</h4>
+                  <p className="text-neutral-600 mt-0.5 leading-relaxed">{poi.address}</p>
                   <a 
                     href={`https://www.google.com/maps/search/?api=1&query=${poi.lat},${poi.lng}`}
                     target="_blank" 
                     rel="noreferrer"
                     className="inline-block text-xs font-semibold text-neutral-900 underline mt-2 hover:opacity-75"
                   >
-                    Get directions
+                    Chỉ đường
                   </a>
                 </div>
               </div>
 
               {/* Phone */}
-              <div className="flex items-start gap-3">
+              <div className="hidden">
                 <svg className="w-5 h-5 text-neutral-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
                 </svg>
@@ -245,7 +239,7 @@ export default function PoiDetailSection({
               </div>
 
               {/* Hours */}
-              <div className="flex items-start gap-3">
+              <div className="hidden">
                 <svg className="w-5 h-5 text-neutral-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle cx="12" cy="12" r="10" strokeWidth="2" />
                   <polyline points="12 6 12 12 16 14" strokeWidth="2" />
@@ -259,6 +253,7 @@ export default function PoiDetailSection({
                 </div>
               </div>
             </div>
+            )}
           </div>
         )}
 

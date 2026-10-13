@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Leaf, X, MapPin, ChevronLeft, Mic, Minus, Plus, Calendar } from 'lucide-react';
+import { Leaf, X, MapPin, ChevronLeft, Minus, Plus, Calendar } from 'lucide-react';
 
 interface OnboardingModalProps {
   isOpen: boolean;

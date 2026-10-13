@@ -19,6 +19,10 @@ const MOCK_USERS: Record<string, string> = {
 
 type Step = 'email' | 'login' | 'register' | 'otp';
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 export default function LoginModal({
   isOpen,
   onClose,
@@ -52,11 +56,13 @@ export default function LoginModal({
 
   // Đếm ngược 60s cho mã OTP
   useEffect(() => {
-    let timer: any;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     if (countdown > 0) {
       timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     }
-    return () => clearTimeout(timer);
+    return () => {
+      if (timer !== undefined) clearTimeout(timer);
+    };
   }, [countdown]);
 
   // Khóa cuộn trang khi modal mở
@@ -156,8 +162,8 @@ export default function LoginModal({
       setCountdown(60);
       setOtpDigits(['', '', '', '', '', '']);
       otpInputsRef.current[0]?.focus();
-    } catch (err: any) {
-      setError(err?.message || 'Không thể gửi lại mã OTP. Vui lòng thử lại.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Không thể gửi lại mã OTP. Vui lòng thử lại.'));
     }
   };
 
@@ -187,8 +193,8 @@ export default function LoginModal({
               if (onLoginSuccess) onLoginSuccess();
               else navigate('/explore');
             }
-          } catch (err: any) {
-            setError(err?.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
+          } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Đăng nhập Google thất bại. Vui lòng thử lại.'));
           } finally {
             setLoading(false);
           }
@@ -196,8 +202,8 @@ export default function LoginModal({
       });
 
       window.google.accounts.id.prompt();
-    } catch (err: any) {
-      setError(err?.message || 'Không thể mở xác thực Google.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Không thể mở xác thực Google.'));
     }
   };
 
@@ -221,7 +227,7 @@ export default function LoginModal({
         } else {
           setStep('register');
         }
-      } catch (err: any) {
+      } catch {
         // Fallback kiểm tra mock nếu offline hoặc kiểm tra ban đầu
         if (MOCK_USERS[cleanEmail] || initialMode === 'login') {
           setStep('login');
@@ -245,7 +251,7 @@ export default function LoginModal({
         } else {
           navigate('/explore');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Fallback kiểm tra mock nếu offline hoặc tài khoản mẫu
         const correctPass = MOCK_USERS[email.toLowerCase()];
         if (correctPass && password === correctPass) {
@@ -256,7 +262,7 @@ export default function LoginModal({
           else navigate('/explore');
           return;
         }
-        setError(err?.message || 'Mật khẩu không đúng, vui lòng thử lại.');
+        setError(getErrorMessage(err, 'Mật khẩu không đúng, vui lòng thử lại.'));
       } finally {
         setLoading(false);
       }
@@ -291,13 +297,13 @@ export default function LoginModal({
         setCountdown(60);
         setOtpDigits(['', '', '', '', '', '']);
         setStep('otp');
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (err instanceof ApiError && err.status === 409) {
           setStep('login');
           setError('Email đã được đăng ký. Vui lòng nhập mật khẩu để đăng nhập.');
           return;
         }
-        setError(err?.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+        setError(getErrorMessage(err, 'Đăng ký thất bại. Vui lòng thử lại.'));
       } finally {
         setLoading(false);
       }
@@ -332,8 +338,8 @@ export default function LoginModal({
         } else {
           navigate('/explore');
         }
-      } catch (err: any) {
-        setError(err?.message || 'Mã OTP không chính xác hoặc đã hết hạn.');
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Mã OTP không chính xác hoặc đã hết hạn.'));
       } finally {
         setLoading(false);
       }

@@ -6,7 +6,6 @@ import Input from '@/components/ui/Input';
 import PasswordInput from '@/components/ui/PasswordInput';
 import Button from '@/components/ui/Button';
 import Checkbox from '@/components/ui/Checkbox';
-import GoogleButton from '@/components/ui/GoogleButton';
 import { VerifyOtpModal } from '@/components/auth/VerifyOtpModal';
 import { login, googleLogin, resendVerification, ApiError } from '@/services/auth';
 
@@ -54,7 +53,6 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const [otpModal, setOtpModal] = useState<{
     isOpen: boolean;
@@ -66,11 +64,9 @@ export default function LoginPage() {
     token: '',
   });
 
-  const [noticeMessage, setNoticeMessage] = useState<string | null>(
-    state?.verifiedEmail
-      ? '🎉 Tài khoản của bạn đã được kích hoạt thành công! Hãy đăng nhập để bắt đầu.'
-      : null
-  );
+  const noticeMessage = state?.verifiedEmail
+    ? '🎉 Tài khoản của bạn đã được kích hoạt thành công! Hãy đăng nhập để bắt đầu.'
+    : null;
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isInactive, setIsInactive] = useState(false);
   const [resending, setResending] = useState(false);
@@ -88,7 +84,6 @@ export default function LoginPage() {
         client_id: clientId,
         callback: async (response: { credential?: string }) => {
           if (!response.credential) return;
-          setGoogleLoading(true);
           try {
             const res = await googleLogin(response.credential);
             if (res.require_otp) {
@@ -104,8 +99,6 @@ export default function LoginPage() {
             } else {
               setGeneralError('Đăng nhập với Google thất bại. Vui lòng thử lại.');
             }
-          } finally {
-            setGoogleLoading(false);
           }
         },
       });
@@ -193,18 +186,6 @@ export default function LoginPage() {
       }
     } finally {
       setResending(false);
-    }
-  };
-
-  const handleGoogleClick = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      setGeneralError('Hệ thống đang chuẩn bị kết nối Google OAuth. Vui lòng cung cấp VITE_GOOGLE_CLIENT_ID trong file .env để kích hoạt tính năng này.');
-      return;
-    }
-
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
     }
   };
 

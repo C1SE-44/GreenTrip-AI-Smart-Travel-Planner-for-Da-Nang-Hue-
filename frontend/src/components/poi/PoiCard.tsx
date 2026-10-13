@@ -1,7 +1,6 @@
 import { Star, Clock, Heart, Plus } from 'lucide-react';
 import type { Poi } from '@/data/pois';
 import { categoryLabels } from '@/data/pois';
-import { CityTag } from '@/components/ui/Badge';
 
 interface PoiCardProps {
   poi: Poi;

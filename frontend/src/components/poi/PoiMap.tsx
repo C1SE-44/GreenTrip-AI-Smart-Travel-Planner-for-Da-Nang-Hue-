@@ -80,12 +80,10 @@ function createMarkerIcon(
 
 function FloatingDetailCard({ 
   poi, 
-  onClose, 
   onClick,
   onHoverPoi,
 }: { 
   poi: Poi; 
-  onClose: () => void; 
   onClick?: () => void;
   onHoverPoi?: (id: string | null) => void;
 }) {
@@ -541,7 +539,6 @@ export default function PoiMap({
           <FloatingDetailCard 
             poi={pinToPreview} 
             onClick={() => onSelectPoi(pinToPreview.id)}
-            onClose={() => setHoveredMapPinId(null)}
             onHoverPoi={setHoveredMapPinId}
           />
         )}

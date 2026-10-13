@@ -8,6 +8,7 @@ export interface Poi {
   city: PoiCity;
   lat: number;
   lng: number;
+  address?: string | null;
   image: string;
   description: string;
   rating: number;
@@ -342,6 +343,7 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
     city,
     lat: latitude,
     lng: longitude,
+    address: item.address?.trim() || null,
     image,
     description: (item.description ?? '').trim() || 'Địa điểm đáng ghé thăm trong hành trình của bạn.',
     rating: 4.5,

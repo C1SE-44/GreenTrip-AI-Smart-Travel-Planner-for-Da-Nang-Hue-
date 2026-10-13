@@ -1,0 +1,96 @@
+﻿      {
+        id: 'toi-uu',
+        label: 'Tối ưu',
+        bgColor: 'bg-[#9e472a]',
+        gradient: 'from-[#9e472a]',
+        title: <span className="text-[#FDE68A] text-[1.25em] leading-[0.95] block mt-8">Tối ưu<br />hóa mọi<br />quyết<br />định.</span>,
+        desc: 'Trợ lý du lịch có thể giúp bạn sắp xếp thứ tự điểm đến, phương tiện và nhà hàng — tự động tính toán bằng thuật toán vận trù học để tối ưu chi phí và thời gian. Khi bạn đã sẵn sàng, hãy tự tin khởi hành với một lịch trình không có góc chết.',
+        img: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80',
+        widgets: (
+          <>
+            <div className="absolute top-12 left-4 lg:-left-12 rounded-2xl border border-white/30 bg-white/30 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black"><Check size={10} className="text-white" /></div>
+                  <div className="h-1.5 w-12 rounded-full bg-white/40"></div>
+                </div>
+                <p className="text-[13px] font-medium text-white whitespace-nowrap">Lộ trình ngắn nhất: Tiết kiệm 15km.</p>
+              </div>
+            </div>
+            <div className="absolute top-[40%] right-4 lg:right-0 -translate-y-1/2 rounded-2xl border border-white/30 bg-white/30 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10" style={{ animationDelay: '150ms' }}>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black"><Check size={10} className="text-white" /></div>
+                  <div className="h-1.5 w-12 rounded-full bg-white/40"></div>
+                </div>
+                <p className="text-[13px] font-medium text-white whitespace-nowrap">Đã né tuyến đường đang thi công.</p>
+              </div>
+            </div>
+            <div className="absolute bottom-32 left-4 lg:left-4 rounded-2xl border border-white/30 bg-white/30 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10" style={{ animationDelay: '300ms' }}>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black"><Check size={10} className="text-white" /></div>
+                  <div className="h-1.5 w-12 rounded-full bg-white/40"></div>
+                </div>
+                <p className="text-[13px] font-medium text-white whitespace-nowrap">Thời gian tham quan đã được tối ưu.</p>
+              </div>
+            </div>
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-2xl border border-white/20 shadow-2xl hover:scale-105 transition-transform cursor-pointer z-10">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-4 bg-white rounded-full animate-pulseRing"></div>
+                <div className="w-1 h-8 bg-white rounded-full animate-pulseRing" style={{ animationDelay: '100ms' }}></div>
+                <div className="w-1 h-5 bg-white rounded-full animate-pulseRing" style={{ animationDelay: '200ms' }}></div>
+                <div className="w-1 h-3 bg-white rounded-full animate-pulseRing" style={{ animationDelay: '150ms' }}></div>
+              </div>
+            </div>
+          </>
+        )
+      },
+      {
+        id: 'thich-nghi',
+        label: 'Thích nghi',
+        bgColor: 'bg-[#22362b]',
+        gradient: 'from-[#22362b]',
+        title: <span className="text-[#D1FAE5] text-[1.25em] leading-[0.95] block mt-8">Thích nghi<br />với nhịp<br />đập<br />xanh.</span>,
+        desc: 'Trợ lý du lịch luôn để mắt đến các chi tiết để bạn không cần bận tâm. Từ việc đánh giá Eco Score của từng địa điểm đến các cảnh báo thay đổi lịch trình linh hoạt, giúp chuyến đi miền Trung của bạn luôn trọn vẹn và bền vững.',
+        img: 'https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&q=80',
+        widgets: (
+          <>
+            <div className="absolute top-12 left-4 lg:-left-12 rounded-2xl border border-white/30 bg-white/30 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black"><Leaf size={10} className="text-white" /></div>
+                  <div className="h-1.5 w-12 rounded-full bg-white/40"></div>
+                </div>
+                <p className="text-[13px] font-medium text-white whitespace-nowrap">Eco Score 90: Quán sử dụng 100% hữu cơ.</p>
+              </div>
+            </div>
+            <div className="absolute top-[40%] right-4 lg:right-0 -translate-y-1/2 rounded-2xl border border-white/30 bg-white/30 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10" style={{ animationDelay: '150ms' }}>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black"><Bell size={10} className="text-white" /></div>
+                  <div className="h-1.5 w-12 rounded-full bg-white/40"></div>
+                </div>
+                <p className="text-[13px] font-medium text-white whitespace-nowrap">Có mưa rào ở Lăng Cô chiều nay.</p>
+              </div>
+            </div>
+            <div className="absolute bottom-32 left-4 lg:left-4 rounded-2xl border border-white/30 bg-white/30 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10" style={{ animationDelay: '300ms' }}>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black"><Check size={10} className="text-white" /></div>
+                  <div className="h-1.5 w-12 rounded-full bg-white/40"></div>
+                </div>
+                <p className="text-[13px] font-medium text-white whitespace-nowrap">Đã tự động gợi ý điểm đến trong nhà.</p>
+              </div>
+            </div>
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-2xl border border-white/20 shadow-2xl hover:scale-105 transition-transform cursor-pointer z-10">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-4 bg-white rounded-full animate-pulseRing"></div>
+                <div className="w-1 h-8 bg-white rounded-full animate-pulseRing" style={{ animationDelay: '100ms' }}></div>
+                <div className="w-1 h-5 bg-white rounded-full animate-pulseRing" style={{ animationDelay: '200ms' }}></div>
+                <div className="w-1 h-3 bg-white rounded-full animate-pulseRing" style={{ animationDelay: '150ms' }}></div>
+              </div>
+            </div>
+          </>
+        )
+      }

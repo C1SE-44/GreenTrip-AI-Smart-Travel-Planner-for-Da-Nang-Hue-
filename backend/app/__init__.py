@@ -1,0 +1,1 @@
+"""GreenTrip AI backend package."""

@@ -1,0 +1,6 @@
+BEGIN;
+
+ALTER TABLE public.email_otps ENABLE ROW LEVEL SECURITY;
+REVOKE ALL PRIVILEGES ON TABLE public.email_otps FROM PUBLIC, anon, authenticated;
+
+COMMIT;

@@ -1,0 +1,166 @@
+﻿      <div className="bg-[#f4f5f7] rounded-b-[60px] relative z-20 pb-32">
+        {/* 2. THREE SEPARATE SECTIONS WITH IN-PAGE SCROLL NAV */}
+        <div className="flex flex-col gap-8 pt-24 pb-12">
+          {features.map((feature) => (
+            <section key={feature.id} id={feature.id} className="px-4 md:px-8">
+              <div className={\elative mx-auto max-w-[1400px] overflow-hidden rounded-[40px] text-cream min-h-[500px] \\}>
+                <div className="flex flex-col lg:flex-row min-h-[500px]">
+                  {/* Left Content */}
+                  <div className="flex flex-col justify-center p-8 lg:p-12 lg:w-1/2 z-20">
+                    {/* Sticky-like Nav Buttons inside the section */}
+                    <div className="mb-8 flex flex-wrap gap-3">
+                      {features.map((f) => (
+                        <button
+                          key={f.id}
+                          onClick={() => scrollTo(f.id)}
+                          className={\ounded-full px-5 py-2 text-sm font-medium transition-colors cursor-pointer \\}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <h2 className="font-heading text-5xl font-extrabold leading-tight tracking-tight lg:text-7xl">
+                      {feature.title}
+                    </h2>
+                    <p className="mt-8 max-w-sm text-[15px] font-light text-white leading-[1.7]">
+                      {feature.desc}
+                    </p>
+                  </div>
+                  
+                  {/* Right Image */}
+                  <div className="relative lg:w-1/2 min-h-[400px]">
+                    <img
+                      src={feature.img}
+                      alt={feature.label}
+                      className="absolute inset-0 h-full w-full object-cover opacity-80 mix-blend-luminosity"
+                    />
+                    <div className={\bsolute inset-0 bg-gradient-to-r \ to-transparent lg:w-32\} />
+                    {/* Floating Widgets */}
+                    {feature.widgets}
+                  </div>
+                </div>
+              </div>
+            </section>
+          ))}
+        </div>
+
+        {/* 3. GRID FEATURES */}
+        <section className="px-4 pt-16 md:px-8">
+          <div className="mx-auto max-w-[1400px]">
+            <div className="mb-20 text-center flex flex-col items-center">
+              <h2 className="font-heading text-4xl font-extrabold tracking-tight text-black sm:text-5xl lg:text-[4.5rem] leading-[1.05] max-w-4xl">
+                Tận dụng tối đa trợ lý du lịch của bạn.
+              </h2>
+              <p className="mt-6 text-xl text-gray-500 max-w-3xl">
+                Luôn chủ động, lên kế hoạch, đặt chỗ và khám phá Đà Nẵng - Huế với sự hỗ trợ từ một trợ lý hiểu rõ cách bạn đi du lịch.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              
+              {/* Card 1: Tiết kiệm */}
+              <div className="relative flex flex-col overflow-hidden rounded-[40px] bg-white p-8 shadow-sm hover:shadow-lg transition-shadow h-[460px]">
+                <div className="mb-4 text-black"><Bell size={28} strokeWidth={2.5} /></div>
+                <h3 className="mb-3 text-2xl font-bold text-black">Cảnh báo</h3>
+                <p className="text-[15px] font-medium text-gray-500 leading-relaxed">Luôn cập nhật thông tin với các cảnh báo ùn tắc, tính toán lại lịch trình theo thời gian thực.</p>
+                
+                {/* Graphics */}
+                <div className="absolute -bottom-6 left-0 right-0 flex flex-col items-center justify-end pb-4 space-y-3 pointer-events-none">
+                  <div className="w-[85%] bg-white rounded-2xl shadow-xl border border-gray-100 p-3 flex items-center gap-3 rotate-[-2deg]">
+                    <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center"><Bell size={20} className="text-orange-600"/></div>
+                    <div>
+                      <div className="text-xs font-bold text-gray-900">Mưa rào lúc 15:00</div>
+                      <div className="text-[10px] text-green-600 font-semibold">Đã điều chỉnh lịch</div>
+                    </div>
+                  </div>
+                  <div className="w-[85%] bg-black rounded-[20px] shadow-2xl p-3 flex items-center gap-3 translate-y-4 rotate-[1deg]">
+                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><Navigation size={18} className="text-white"/></div>
+                    <div>
+                      <div className="text-xs font-bold text-white">Tránh kẹt xe</div>
+                      <div className="text-[10px] text-gray-400 font-medium">Tiết kiệm 20 phút</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Xây dựng */}
+              <div className="relative flex flex-col overflow-hidden rounded-[40px] bg-white p-8 shadow-sm hover:shadow-lg transition-shadow h-[460px]">
+                <div className="mb-4 text-black"><CalendarCheck size={28} strokeWidth={2.5} /></div>
+                <h3 className="mb-3 text-2xl font-bold text-black">Xây dựng</h3>
+                <p className="text-[15px] font-medium text-gray-500 leading-relaxed">Lập kế hoạch chuyên sâu dựa trên thói quen và lưu trữ toàn bộ lịch trình ở cùng một nơi.</p>
+                
+                {/* Graphics */}
+                <div className="absolute -bottom-8 left-0 right-0 flex flex-col items-center gap-2 pointer-events-none">
+                  <div className="w-[90%] bg-white rounded-3xl shadow-xl border border-gray-100 p-4 relative">
+                     <div className="flex justify-between items-center mb-4">
+                        <div className="text-xs font-bold text-black">Lịch trình Huế 3 ngày</div>
+                        <div className="w-6 h-6 rounded-full bg-blue-100 text-[10px] flex items-center justify-center font-bold">+</div>
+                     </div>
+                     <div className="space-y-3">
+                        <div className="flex gap-3 items-center">
+                           <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+                           <div className="flex-1 space-y-1.5"><div className="h-2 w-[70%] bg-gray-200 rounded-full"></div><div className="h-1.5 w-[40%] bg-gray-100 rounded-full"></div></div>
+                        </div>
+                        <div className="flex gap-3 items-center">
+                           <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+                           <div className="flex-1 space-y-1.5"><div className="h-2 w-[50%] bg-gray-200 rounded-full"></div><div className="h-1.5 w-[80%] bg-gray-100 rounded-full"></div></div>
+                        </div>
+                        <div className="flex gap-3 items-center">
+                           <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+                           <div className="flex-1 space-y-1.5"><div className="h-2 w-[90%] bg-gray-200 rounded-full"></div><div className="h-1.5 w-[30%] bg-gray-100 rounded-full"></div></div>
+                        </div>
+                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Sinh thái */}
+              <div className="relative flex flex-col overflow-hidden rounded-[40px] bg-white p-8 shadow-sm hover:shadow-lg transition-shadow h-[460px]">
+                <div className="mb-4 text-black"><Leaf size={28} strokeWidth={2.5} /></div>
+                <h3 className="mb-3 text-2xl font-bold text-black">Sinh thái</h3>
+                <p className="text-[15px] font-medium text-gray-500 leading-relaxed">Theo dõi lượng phát thải và quy đổi thành Eco Score, giúp bạn chọn các hoạt động bảo vệ môi trường.</p>
+                
+                {/* Graphics */}
+                <div className="absolute -bottom-2 left-0 right-0 flex flex-col items-center gap-3 pointer-events-none">
+                  <div className="flex gap-2">
+                    <div className="bg-[#e6f4ea] text-green-700 text-[11px] font-bold px-4 py-2 rounded-full border border-green-200 shadow-sm rotate-[-3deg]">Di chuyển xanh</div>
+                    <div className="bg-[#e6f4ea] text-green-700 text-[11px] font-bold px-4 py-2 rounded-full border border-green-200 shadow-sm rotate-[4deg]">Quán chay</div>
+                  </div>
+                  <div className="w-[85%] bg-white rounded-[20px] shadow-2xl border border-gray-100 p-4 flex justify-between items-center translate-y-4">
+                     <div className="flex items-center gap-3">
+                        <div className="bg-green-500 w-8 h-8 rounded-full flex items-center justify-center"><Leaf size={14} className="text-white"/></div>
+                        <div>
+                          <div className="text-xs font-bold text-black">Eco Score</div>
+                          <div className="text-[10px] text-gray-500 font-medium">+150 điểm</div>
+                        </div>
+                     </div>
+                     <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-sm">✨</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Khám phá */}
+              <div className="relative flex flex-col overflow-hidden rounded-[40px] bg-white p-8 shadow-sm hover:shadow-lg transition-shadow h-[460px]">
+                <div className="mb-4 text-black"><Compass size={28} strokeWidth={2.5} /></div>
+                <h3 className="mb-3 text-2xl font-bold text-black">Khám phá</h3>
+                <p className="text-[15px] font-medium text-gray-500 leading-relaxed">Bản đồ đa lớp (Multi-layer map) giúp tìm những địa điểm, sự kiện thú vị xung quanh bạn.</p>
+                
+                {/* Graphics */}
+                <div className="absolute -bottom-8 left-0 right-0 flex justify-center pointer-events-none">
+                  <div className="relative w-[90%] rotate-[2deg]">
+                     <img src="https://images.unsplash.com/photo-1559592413-7cecaedfb3ff?auto=format&fit=crop&q=80" className="w-full h-36 object-cover rounded-3xl shadow-xl" />
+                     <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-xl shadow-sm">
+                        <div className="text-[11px] font-bold text-black">Cầu Rồng</div>
+                        <div className="text-[9px] text-gray-500 font-medium">Đà Nẵng</div>
+                     </div>
+                     <div className="absolute -top-4 -right-2 w-12 h-12 bg-black rounded-full shadow-2xl flex items-center justify-center border-4 border-white">
+                        <MapPin size={18} className="text-white" />
+                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>

@@ -1,0 +1,488 @@
+﻿<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mindtrip - KhĂ¡m phĂ¡ ÄĂ  Náºµng, Háº£i ChĂ¢u</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Phosphor Icons for matching clean UI icons -->
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brandDark: '#121212',
+            surfaceGray: '#f7f7f8',
+            subtleGray: '#f1f2f4',
+            borderLight: '#e5e7eb',
+          }
+        }
+      }
+    }
+  </script>
+<!-- BEGIN: Custom CSS -->
+<style data-purpose="custom-scrollbars">
+    /* TĂ¹y chá»‰nh thanh cuá»™n thanh máº£nh hiá»‡n Ä‘áº¡i */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #e2e8f0;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #cbd5e1;
+    }
+  </style>
+<style data-purpose="map-styling">
+    /* Giáº£ láº­p báº£n Ä‘á»“ Google Maps phong cĂ¡ch vector sáº¯c nĂ©t */
+    .map-background {
+      background-color: #aad3df;
+      background-image: 
+        radial-gradient(ellipse at 40% 70%, #d8ecd5 0%, #e5f2e3 50%, transparent 75%),
+        radial-gradient(circle at 75% 20%, #c4e4c2 0%, #e0f0dd 40%, transparent 65%),
+        linear-gradient(115deg, #e8ede4 38%, #dcf0d9 48%, #aad3df 55%);
+      position: relative;
+    }
+    
+    /* ÄÆ°á»ng nĂ©t Ä‘á»‹a hĂ¬nh báº£n Ä‘á»“ */
+    .map-road-1 {
+      position: absolute;
+      width: 3px;
+      height: 100%;
+      background: #ffffff;
+      transform: rotate(-18deg);
+      left: 35%;
+      box-shadow: 0 0 1px rgba(0,0,0,0.15);
+    }
+
+    .map-road-coastal {
+      position: absolute;
+      width: 4px;
+      height: 120%;
+      background: #ffffff;
+      transform: rotate(28deg);
+      right: 26%;
+      top: -10%;
+      box-shadow: 0 0 1px rgba(0,0,0,0.15);
+    }
+  </style>
+<!-- END: Custom CSS -->
+</head>
+<body class="bg-white text-gray-900 font-sans h-screen w-screen overflow-hidden flex select-none">
+<!-- BEGIN: LeftSidebar -->
+<!-- Thanh Ä‘iá»u hÆ°á»›ng trĂ¡i chĂ­nh -->
+<aside class="w-[240px] shrink-0 h-full border-r border-gray-100 flex flex-col justify-between p-4 bg-white z-20" data-purpose="sidebar">
+<div class="flex flex-col gap-6">
+<!-- Brand Logo -->
+<div class="flex items-center gap-2 px-2 pt-1">
+<svg class="w-5 h-5 fill-current text-black" viewbox="0 0 24 24">
+<path d="M12 0L14.2 9.8L24 12L14.2 14.2L12 24L9.8 14.2L0 12L9.8 9.8L12 0Z"></path>
+</svg>
+<span class="text-xl font-bold tracking-tight text-black">mindtrip.</span>
+</div>
+<!-- Navigation Links -->
+<nav class="flex flex-col space-y-0.5 text-sm font-medium">
+<a class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors" href="#">
+<i class="ph ph-house text-xl text-gray-800"></i>
+<span>Trang chá»§</span>
+</a>
+<a class="flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors" href="#">
+<div class="flex items-center gap-3.5">
+<i class="ph ph-chat-circle-dots text-xl text-gray-800"></i>
+<span>TrĂ² chuyá»‡n</span>
+</div>
+<span class="text-xs bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">5</span>
+</a>
+<a class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors" href="#">
+<i class="ph ph-suitcase-simple text-xl text-gray-800"></i>
+<span>CĂ¡c chuyáº¿n Ä‘i</span>
+</a>
+<a class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors" href="#">
+<i class="ph ph-note-pencil text-xl text-gray-800"></i>
+<span>Äáº¡i lĂ½</span>
+</a>
+<a class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl font-semibold text-black bg-gray-50 transition-colors" href="#">
+<i class="ph-fill ph-chat-centered-text text-xl text-black"></i>
+<span>KhĂ¡m phĂ¡</span>
+</a>
+<a class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors" href="#">
+<i class="ph ph-heart text-xl text-gray-800"></i>
+<span>ÄĂ£ lÆ°u</span>
+</a>
+<a class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors" href="#">
+<i class="ph ph-bell text-xl text-gray-800"></i>
+<span>Cáº­p nháº­t</span>
+</a>
+<a class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors" href="#">
+<i class="ph ph-compass text-xl text-gray-800"></i>
+<span>Cáº£m há»©ng</span>
+</a>
+<a class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors" href="#">
+<i class="ph ph-plus-square text-xl text-gray-800"></i>
+<span>Táº¡o nĂªn</span>
+</a>
+</nav>
+<!-- Button TrĂ² chuyá»‡n má»›i -->
+<div class="px-1 pt-1">
+<button class="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium text-sm rounded-full transition-all text-center">
+          TrĂ² chuyá»‡n má»›i
+        </button>
+</div>
+</div>
+<!-- Sidebar Bottom / User & Footer -->
+<div class="flex flex-col gap-4 pt-4 border-t border-gray-100">
+<!-- Profile Button -->
+<div class="flex items-center justify-between px-2 cursor-pointer hover:bg-gray-50 py-1.5 rounded-xl transition">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded-full overflow-hidden bg-gray-200 border border-gray-100">
+<img alt="Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnCpXjtVULSsGMex7Td4ioMst7-zXSq1wS2oX1AsdWu5AcSHIF4EqPU2ZUmC9rLUFZqoMnv00Dh9ORX7O9kBpu916sKacyERVPEJo79ONCDNXklMs6E_SsaeM3BhUDWJQGicS7U107O3vBXI7rjNTCnSvL9f39Vid9HyJJgZP_bDdd0khPjQxsaRcxgfyiNrVWNj_8f6bSwIUo87gGWXnvozDcXg48sFk2Q-T2F84A"/>
+</div>
+<div class="flex flex-col text-left">
+<span class="text-xs font-semibold text-gray-900 leading-tight">Anh Hoangg</span>
+<span class="text-[11px] text-gray-400 font-normal leading-tight">@anh-hoangg</span>
+</div>
+</div>
+<i class="ph ph-dots-three text-lg text-gray-600"></i>
+</div>
+<!-- Legal footer small text -->
+<div class="px-2 text-[11px] text-gray-400 leading-relaxed font-normal">
+<p class="space-x-1">
+<span>CĂ´ng ty</span><span>â€¢</span><span>LiĂªn há»‡</span><span>â€¢</span><span>GiĂºp Ä‘á»¡</span>
+</p>
+<p class="space-x-1">
+<span>Äiá»u khoáº£n</span><span>â€¢</span><span>Sá»± riĂªng tÆ°</span>
+</p>
+<p class="mt-1 text-gray-400">Â© 2026 Mindtrip, Inc.</p>
+</div>
+</div>
+</aside>
+<!-- END: LeftSidebar -->
+<!-- BEGIN: MiddleContentList -->
+<!-- Khu vá»±c hiá»ƒn thá»‹ káº¿t quáº£ du lá»‹ch dáº¡ng lÆ°á»›i danh sĂ¡ch -->
+<main class="w-[620px] shrink-0 h-full flex flex-col bg-white overflow-hidden border-r border-gray-100" data-purpose="content-list-stream">
+<!-- Top Bar: Title & Search -->
+<header class="p-6 pb-2 space-y-4">
+<!-- Location Title Dropdown -->
+<div class="flex items-center gap-1.5 cursor-pointer select-none">
+<h1 class="text-2xl font-bold tracking-tight text-gray-950">Háº£i ChĂ¢u</h1>
+<i class="ph ph-caret-down font-bold text-gray-950 text-base"></i>
+</div>
+<!-- Search Box & Filter -->
+<div class="flex items-center gap-3">
+<div class="flex-1 relative flex items-center">
+<i class="ph ph-magnifying-glass text-gray-500 absolute left-4 text-base"></i>
+<input class="w-full pl-11 pr-4 py-2.5 bg-gray-100/90 text-sm placeholder-gray-500 text-gray-900 rounded-full border-none focus:outline-none focus:ring-1 focus:ring-gray-300 transition" placeholder="TĂ¬m kiáº¿m" type="text"/>
+</div>
+<button class="flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-gray-200 hover:bg-gray-50 text-sm font-medium text-gray-700 transition">
+<i class="ph ph-faders text-base"></i>
+<span>Bá»™ lá»c</span>
+</button>
+</div>
+<!-- Scrollable Category Tabs -->
+<div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-medium no-scrollbar">
+<button class="px-3.5 py-1.5 text-gray-600 hover:text-black whitespace-nowrap">DĂ nh cho báº¡n</button>
+<button class="px-3.5 py-1.5 text-gray-600 hover:text-black whitespace-nowrap">Tráº£i nghiá»‡m</button>
+<button class="px-3.5 py-1.5 text-gray-600 hover:text-black whitespace-nowrap">NhĂ  hĂ ng</button>
+<button class="px-3.5 py-1.5 text-gray-600 hover:text-black whitespace-nowrap">LÆ°u trĂº</button>
+<button class="px-4 py-1.5 bg-black text-white rounded-full font-semibold whitespace-nowrap">Äá»‹a Ä‘iá»ƒm</button>
+<button class="px-3.5 py-1.5 text-gray-600 hover:text-black whitespace-nowrap">HÆ°á»›ng dáº«n</button>
+</div>
+</header>
+<!-- Cards Scrollable Area -->
+<div class="flex-1 overflow-y-auto px-6 py-3">
+<div class="grid grid-cols-2 gap-4 pb-12">
+<!-- Card 1: Háº£i ChĂ¢u (Cáº§u Rá»“ng Ä‘Ăªm) -->
+<article class="flex flex-col group cursor-pointer">
+<div class="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 shadow-sm">
+<img alt="Háº£i ChĂ¢u SĂ´ng HĂ n Cáº§u Rá»“ng ban Ä‘Ăªm" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqZzMKL8JS0hJHAi0MDv8-xMxbZq7V9C_QDEZHMS69G_QyGF2ZbFtb8BdH-Jyphln97rcFeIMmRzs_9ADZrvWka7yt4QI8mgpumuZNeowHWrhLT55pEmP9UxzuaMHde02cTe3aNLA7juuKbamCKL3vIk2M5QuRrFh4h1bCiSJqFfHhKSjo4TkFnZYuEVkprDSyeerS2JjqvgOp2bHBiNgIel7cSirWUWm5awFvwkSe"/>
+<!-- Top Action Buttons -->
+<div class="absolute top-3 right-3 flex items-center gap-2">
+<button class="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition">
+<i class="ph ph-heart text-base"></i>
+</button>
+<button class="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition">
+<i class="ph ph-plus text-base font-bold"></i>
+</button>
+</div>
+<!-- Dots Indicator & Info Icon -->
+<div class="absolute bottom-2.5 inset-x-0 px-3 flex items-center justify-between">
+<div class="flex-1 flex justify-center items-center gap-1 pl-4">
+<span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+<span class="w-1 h-1 rounded-full bg-white/60"></span>
+<span class="w-1 h-1 rounded-full bg-white/60"></span>
+<span class="w-1 h-1 rounded-full bg-white/60"></span>
+<span class="w-1 h-1 rounded-full bg-white/60"></span>
+</div>
+<button class="text-white/80 hover:text-white">
+<i class="ph ph-info text-sm"></i>
+</button>
+</div>
+</div>
+<!-- Card Details -->
+<div class="mt-2.5 space-y-0.5">
+<h2 class="font-bold text-sm text-gray-900 tracking-tight">Háº£i ChĂ¢u</h2>
+<div class="flex items-center gap-1 text-xs text-gray-500 font-normal">
+<i class="ph ph-map-pin text-[13px]"></i>
+<span>Viá»‡t Nam</span>
+</div>
+<div class="pt-0.5 flex items-center gap-1 text-xs text-gray-600">
+<span class="text-red-500 text-xs">â¤ï¸</span>
+<span class="text-gray-500">ÄÆ°á»£c lÆ°u bá»Ÿi 1 ngÆ°á»i</span>
+</div>
+</div>
+</article>
+<!-- Card 2: ÄĂ  Náºµng (BĂ  NĂ  Hills) -->
+<article class="flex flex-col group cursor-pointer">
+<div class="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 shadow-sm">
+<img alt="BĂ  NĂ  Hills LĂ ng PhĂ¡p" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSxWVc0XSycQ2iMsV7uCU5JRb-OfOzIu34V1IKIpMIa0h2WPGvR2ECfWX-0BiCaBAQZfiE6EUjoG6gTr78gCSBM8DHK3W4l1z5_jgSrROwx7II68weScO1JW9cZ5EmBZwxiL4Nmj-_MCny_aJrZ6d8cbEAFH4kB0t5qGCyq3oIgdSroreMUGmOt-7iXHg4Kz-Fsop_GdTSGBEBwTRZx_mChz0f-5dNhhVPOTVmcMRm"/>
+<!-- Top Action Buttons -->
+<div class="absolute top-3 right-3 flex items-center gap-2">
+<button class="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition">
+<i class="ph ph-heart text-base"></i>
+</button>
+<button class="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition">
+<i class="ph ph-plus text-base font-bold"></i>
+</button>
+</div>
+<!-- Dots Indicator & Info Icon -->
+<div class="absolute bottom-2.5 inset-x-0 px-3 flex items-center justify-between">
+<div class="flex-1 flex justify-center items-center gap-1 pl-4">
+<span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+<span class="w-1 h-1 rounded-full bg-white/60"></span>
+<span class="w-1 h-1 rounded-full bg-white/60"></span>
+<span class="w-1 h-1 rounded-full bg-white/60"></span>
+<span class="w-1 h-1 rounded-full bg-white/60"></span>
+</div>
+<button class="text-white/80 hover:text-white">
+<i class="ph ph-info text-sm"></i>
+</button>
+</div>
+</div>
+<!-- Card Details -->
+<div class="mt-2.5 space-y-0.5">
+<h2 class="font-bold text-sm text-gray-900 tracking-tight">ÄĂ  Náºµng</h2>
+<div class="flex items-center gap-1 text-xs text-gray-500 font-normal">
+<i class="ph ph-map-pin text-[13px]"></i>
+<span>Viá»‡t Nam</span>
+</div>
+<div class="pt-0.5 flex items-center gap-1.5 text-xs text-gray-600">
+<div class="flex items-center -space-x-1">
+<span class="w-4 h-4 rounded-full bg-orange-100 text-orange-600 text-[10px] font-bold flex items-center justify-center border border-white">x</span>
+<img class="w-4 h-4 rounded-full object-cover border border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDK0vACOn3tDGLnUe1DgMjxwMyQbA76MXjhiKkYYXxiTB1YrNsVJZNMZjkNrp9uvXaAcK2oqdmQdssPQX5TgXG39Kzc6JQl3pYX1LFOt33KlaQo7O35Mnrh-k6f1ILgEE5Bs0n4oV7TkF6Csgkry130O3nnNmrSdQlo_qRtc365ZRx2p9jd9XIhAGTecKJyREdr20bEF8jPJ1ecoIMYMpfupplielSmBPCv_3z3puW9"/>
+</div>
+<span class="text-gray-500">ÄÆ°á»£c 14 ngÆ°á»i nháº¯c Ä‘áº¿n</span>
+</div>
+</div>
+</article>
+<!-- Card 3: Phá»‘ Cá»• Há»™i An ven sĂ´ng -->
+<article class="flex flex-col group cursor-pointer pt-3">
+<div class="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 shadow-sm">
+<img alt="Phá»‘ cá»• Há»™i An Ä‘Ă¨n lá»“ng ven sĂ´ng" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4a3n11dNv--fA8hPbDnHVI2XybIaHiae61cSNLZs7OmSl_20oqPcZ0zmUScw_uFQSxYJAHzEL7xyxISGW0LZVS77SfHsg60vAwFS8vradgHCZYVFT9N3mWyh2XVPngRSMy6-EU2AFpd-p1V1jUjCvdSk-_kQF5wBkUzIJUalkrl7kzcPdICVybkRMYTh4GOLWrcfQoB6B7jke_fb_kDbDjJz60Hucbr-TqwC2GhyS"/>
+<div class="absolute top-3 right-3 flex items-center gap-2">
+<button class="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center">
+<i class="ph ph-heart text-base"></i>
+</button>
+<button class="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center">
+<i class="ph ph-plus text-base font-bold"></i>
+</button>
+</div>
+</div>
+<div class="mt-2.5 space-y-0.5">
+<h2 class="font-bold text-sm text-gray-900 tracking-tight">Há»™i An</h2>
+<div class="flex items-center gap-1 text-xs text-gray-500">
+<i class="ph ph-map-pin text-[13px]"></i>
+<span>Quáº£ng Nam</span>
+</div>
+</div>
+</article>
+<!-- Card 4: BĂ¡n Ä‘áº£o SÆ¡n TrĂ  Biá»ƒn xanh -->
+<article class="flex flex-col group cursor-pointer pt-3">
+<div class="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 shadow-sm">
+<img alt="BĂ¡n Ä‘áº£o SÆ¡n TrĂ  Bá» biá»ƒn" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxV4oEMeA6cL5yd1tqJEMhmevMe3927mYtr06VJwPh30dk8OaG-boMWqRCePv9UNR6lOswtYQ5ihoANkDnkTliXoBpwBJ3t6uFeYLq0PgL_6oEssWOBu3vOdhETsRNavIQ37q4GIa1TRQoyq-8nz2YT14rW-YewV26e30JKbBN1nylPBiv39FhVoA2w4Az3w5TH4isV8R20KhR7R3AWRHuV4zcIngugJnxrcSCIX7-"/>
+<div class="absolute top-3 right-3 flex items-center gap-2">
+<button class="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center">
+<i class="ph ph-heart text-base"></i>
+</button>
+<button class="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center">
+<i class="ph ph-plus text-base font-bold"></i>
+</button>
+</div>
+</div>
+<div class="mt-2.5 space-y-0.5">
+<h2 class="font-bold text-sm text-gray-900 tracking-tight">SÆ¡n TrĂ </h2>
+<div class="flex items-center gap-1 text-xs text-gray-500">
+<i class="ph ph-map-pin text-[13px]"></i>
+<span>Viá»‡t Nam</span>
+</div>
+</div>
+</article>
+</div>
+</div>
+</main>
+<!-- END: MiddleContentList -->
+<!-- BEGIN: RightMapView -->
+<!-- Khu vá»±c Báº£n Ä‘á»“ TÆ°Æ¡ng tĂ¡c -->
+<section class="flex-1 h-full relative overflow-hidden map-background" data-purpose="map-view-container">
+<!-- Render map graphical paths -->
+<div class="map-road-1"></div>
+<div class="map-road-coastal"></div>
+<!-- Water Text Labels -->
+<div class="absolute top-16 left-28 text-[11px] font-semibold text-sky-700/60 uppercase tracking-widest -rotate-45 pointer-events-none">
+      ÄĂ  Náºµng Bay
+    </div>
+<div class="absolute top-72 right-44 text-[12px] font-medium text-sky-800/60 italic tracking-wider rotate-[32deg] pointer-events-none">
+      Biá»ƒn ÄĂ´ng Viá»‡t Nam
+    </div>
+<!-- Map Top Floating Actions -->
+<div class="absolute top-4 left-4 z-20">
+<!-- Collapse Map Button -->
+<button class="w-9 h-9 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition">
+<i class="ph ph-arrow-line-left text-base font-bold"></i>
+</button>
+</div>
+<!-- Explore This Area Pill Button -->
+<div class="absolute top-4 left-1/2 -translate-x-1/2 z-20">
+<button class="bg-black hover:bg-neutral-800 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg flex items-center gap-2 transition duration-200">
+<i class="ph ph-magnifying-glass text-sm"></i>
+<span>Explore this area</span>
+</button>
+</div>
+<!-- Toggle Eye View Button -->
+<div class="absolute top-4 right-4 z-20">
+<button class="w-9 h-9 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition">
+<i class="ph ph-eye text-base"></i>
+</button>
+</div>
+<!-- Map Pins and Labels -->
+<!-- Pin 1: BĂ¡n Ä‘áº£o SÆ¡n TrĂ  -->
+<div class="absolute top-36 right-[26%] flex items-center gap-1.5 cursor-pointer z-10 group">
+<div class="w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center border border-gray-200 group-hover:scale-110 transition">
+<i class="ph ph-tree-evergreen text-emerald-600 text-sm"></i>
+</div>
+<span class="bg-white/95 px-2 py-0.5 text-[11px] font-semibold text-gray-800 rounded shadow-sm border border-gray-100">
+        BĂ¡n Ä‘áº£o SÆ¡n TrĂ 
+      </span>
+</div>
+<!-- Pin 2: Thá» Quang -->
+<div class="absolute top-48 right-[32%] text-center cursor-pointer z-10">
+<div class="w-5 h-5 mx-auto rounded-full bg-white shadow-md flex items-center justify-center border border-gray-200">
+<div class="w-2 h-2 rounded-full bg-gray-800"></div>
+</div>
+<span class="text-[11px] font-semibold text-gray-800 drop-shadow-sm mt-0.5 inline-block">Thá» Quang</span>
+</div>
+<!-- Pin 3: ÄĂ  Náºµng / Háº£i ChĂ¢u (Active Highlighted Pin) -->
+<div class="absolute top-[34%] left-[45%] z-20 flex flex-col items-center cursor-pointer">
+<div class="text-sm font-bold text-gray-800 drop-shadow-sm mb-1 tracking-tight">ÄĂ  Náºµng</div>
+<!-- Combined Location Marker Bubble -->
+<div class="bg-white px-2.5 py-1 rounded-full shadow-lg border border-gray-200 flex items-center gap-1.5 hover:scale-105 transition">
+<i class="ph-fill ph-map-pin text-gray-900 text-sm"></i>
+<div class="flex items-center -space-x-1">
+<span class="w-3.5 h-3.5 rounded-full bg-orange-100 text-[9px] font-bold text-orange-600 flex items-center justify-center border border-white">x</span>
+<img class="w-3.5 h-3.5 rounded-full object-cover border border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6P50JbQwV9FELpYHUeaKIA1udt_oMWvuFeHT6V0t9pdWAcWMJXa8Dw7L6zM6icS3pXjNCddkgWYDm2VqO2fGaxOnShBJVL9gfd0vt_DaGrwX8_iAqv6AKLNCgKmzoMHEzW-Pj7laim_kTelSrlNN4N-9QbgeWIURAsPaKFwzFbIPRBtfl4u5DBuxHR3M1_35zUxUzPmCT6Ywi1fz6ouGepEYrNkiKySmas6l5vsqN"/>
+</div>
+</div>
+<div class="mt-1 text-[11px] font-semibold text-gray-700 bg-white/80 px-1.5 py-0.5 rounded shadow-xs">
+        Háº£i ChĂ¢u
+      </div>
+</div>
+<!-- Pin 4: Hoa Háº£i -->
+<div class="absolute top-[60%] right-[32%] flex items-center gap-1.5 cursor-pointer z-10 group">
+<div class="w-5 h-5 rounded-full bg-white shadow-md flex items-center justify-center border border-gray-200">
+<i class="ph ph-map-pin text-gray-700 text-xs"></i>
+</div>
+<span class="bg-white/95 px-1.5 py-0.5 text-[11px] font-semibold text-gray-800 rounded shadow-sm">Hoa Háº£i</span>
+</div>
+<!-- Pin 5: Cáº©m An (BĂ£i biá»ƒn An BĂ ng) -->
+<div class="absolute bottom-[20%] right-[10%] flex items-center gap-1.5 cursor-pointer z-10">
+<div class="w-5 h-5 rounded-full bg-white shadow-md flex items-center justify-center border border-gray-200">
+<i class="ph ph-map-pin text-gray-700 text-xs"></i>
+</div>
+<span class="bg-white/95 px-1.5 py-0.5 text-[11px] font-semibold text-gray-800 rounded shadow-sm">Cáº©m An</span>
+</div>
+<!-- Pin 6: Há»™i An (Bottom Cluster) -->
+<div class="absolute bottom-10 right-[15%] flex flex-col items-center cursor-pointer z-10">
+<div class="text-[12px] font-bold text-gray-800 mb-0.5">Há»™i An</div>
+<div class="bg-white px-2 py-0.5 rounded-full shadow-md border border-gray-200 flex items-center gap-1">
+<i class="ph-fill ph-map-pin text-gray-900 text-xs"></i>
+<div class="flex items-center -space-x-1">
+<span class="w-3 h-3 rounded-full bg-orange-100 text-[8px] font-bold text-orange-600 flex items-center justify-center border border-white">x</span>
+<img class="w-3 h-3 rounded-full object-cover border border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDreQh7QRcOGq5_bSDkfLpVfzlFhvvKcg8FCoMdhQJ3tvJm5ME2QhV-RjuC-UiTDzuytQSFLYhNJcQuXaaj4o_nKC-h7hZ3Jeshj9uz1y7qmmweE8UlatumH0XPg6YTj4llXiORReUi1lvjceUJNh0va9O4lkcTwS_tPbbrwBU1ptGkd-Fx0oUwEAX2BxmPiTNEkjN2FEBGJKJiRB2JbXJc4zVoeZ1GPCilVNLIAQia"/>
+</div>
+</div>
+<span class="text-[10px] text-gray-600 font-medium">An Há»™i</span>
+</div>
+<!-- Secondary Pin near Hoi An -->
+<div class="absolute bottom-7 right-[4%] flex items-center gap-1 cursor-pointer z-10">
+<div class="w-5 h-5 rounded-full bg-white shadow-md flex items-center justify-center border border-gray-200">
+<i class="ph ph-map-pin text-gray-700 text-xs"></i>
+</div>
+<span class="bg-white/95 px-1.5 py-0.5 text-[11px] font-semibold text-gray-800 rounded shadow-sm">Cáº©m Thanh</span>
+</div>
+<!-- District / Ward faint map names -->
+<div class="absolute top-[30%] left-[22%] text-[10px] text-gray-500 font-medium tracking-tight uppercase opacity-75">
+      Khu ÄĂ´ Thá»‹ Äa PhÆ°á»›c
+    </div>
+<div class="absolute top-[44%] left-[26%] text-[10px] text-gray-500 font-medium tracking-tight uppercase opacity-75">
+      HĂ²a CÆ°á»ng
+    </div>
+<div class="absolute top-[52%] left-[17%] text-[10px] text-gray-500 font-medium tracking-tight uppercase opacity-75">
+      HĂ²a Thá» ÄĂ´ng
+    </div>
+<div class="absolute bottom-[24%] left-[24%] text-[10px] text-gray-500 font-medium tracking-tight uppercase opacity-75">
+      Äiá»‡n BĂ n
+    </div>
+<!-- Floating Map Control Buttons (Bottom Right) -->
+<div class="absolute bottom-16 right-4 z-20 flex flex-col gap-2.5">
+<!-- Target / Location Button -->
+<button class="w-10 h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition">
+<i class="ph ph-crosshair text-lg"></i>
+</button>
+<!-- Layers Button -->
+<button class="w-10 h-10 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition">
+<i class="ph ph-stack text-lg"></i>
+</button>
+<!-- Zoom In / Zoom Out Controls Group -->
+<div class="bg-white rounded-2xl shadow-md border border-gray-200 flex flex-col overflow-hidden">
+<button class="w-10 h-9 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition border-b border-gray-100">
+<i class="ph ph-plus text-base font-bold"></i>
+</button>
+<button class="w-10 h-9 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition">
+<i class="ph ph-minus text-base font-bold"></i>
+</button>
+</div>
+</div>
+<!-- Weather Widget (Bottom Left on Map) -->
+<div class="absolute bottom-3 left-4 z-20 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm border border-gray-200 flex items-center gap-1.5 text-xs text-gray-700 font-medium">
+<i class="ph ph-cloud-rain text-amber-500 text-sm"></i>
+<span>79Â°F MÆ°a nháº¹</span>
+</div>
+<!-- Google Maps Bottom Attribution Bar -->
+<footer class="absolute bottom-0 inset-x-0 bg-white/70 backdrop-blur-xs px-3 py-0.5 flex items-center justify-between text-[10px] text-gray-600 border-t border-gray-200/50 z-10">
+<div class="font-bold tracking-tight text-gray-600 pl-1">
+        Google
+      </div>
+<div class="flex items-center space-x-3 text-[10px]">
+<button class="hover:underline">Keyboard shortcuts</button>
+<span>Dá»¯ liá»‡u báº£n Ä‘á»“ Â©2026 Google</span>
+<span>2 km</span>
+<button class="hover:underline">Äiá»u khoáº£n</button>
+<button class="hover:underline">Report a map error</button>
+</div>
+</footer>
+</section>
+<!-- END: RightMapView -->
+</body></html>

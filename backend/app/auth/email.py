@@ -1,4 +1,5 @@
 import logging
+import socket
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -110,7 +111,10 @@ def send_verification_email(email: str, full_name: str, token: str) -> bool:
         msg.attach(MIMEText(plain_text, "plain", "utf-8"))
         msg.attach(MIMEText(html_text, "html", "utf-8"))
 
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+        # Ép phân giải sang IPv4 tránh lỗi Errno 101 trên Render
+        smtp_ip = socket.gethostbyname(settings.SMTP_HOST)
+
+        with smtplib.SMTP(smtp_ip, settings.SMTP_PORT, timeout=15) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
@@ -216,7 +220,10 @@ def send_otp_email(email: str, full_name: str, otp_code: str) -> bool:
         msg.attach(MIMEText(plain_text, "plain", "utf-8"))
         msg.attach(MIMEText(html_text, "html", "utf-8"))
 
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+        # Ép phân giải sang IPv4 tránh lỗi Errno 101 trên Render
+        smtp_ip = socket.gethostbyname(settings.SMTP_HOST)
+
+        with smtplib.SMTP(smtp_ip, settings.SMTP_PORT, timeout=15) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
@@ -228,4 +235,3 @@ def send_otp_email(email: str, full_name: str, otp_code: str) -> bool:
     except Exception as exc:
         logger.error("Failed to send 2FA OTP email to %s: %s", email, exc)
         return False
-

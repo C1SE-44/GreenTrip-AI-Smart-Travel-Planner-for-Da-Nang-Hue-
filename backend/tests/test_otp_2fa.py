@@ -16,7 +16,7 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_google_login_dispatches_otp() -> None:
+def test_google_login_instant_success() -> None:
     settings = get_settings()
     settings.JWT_SECRET_KEY = "test-secret-key-123"
 
@@ -29,12 +29,11 @@ def test_google_login_dispatches_otp() -> None:
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.return_value = ("user-uuid-123", "ACTIVE")
+    mock_cursor.fetchone.return_value = ("user-uuid-123", "Minh Nguyen", "hasagi1706@gmail.com", None, "USER", "ACTIVE", datetime.now(timezone.utc), datetime.now(timezone.utc))
 
     with (
         patch("app.auth.router.verify_google_token", return_value=mock_google_user),
         patch("app.auth.router.get_connection") as mock_get_conn,
-        patch("app.auth.router.send_otp_email") as mock_send_otp,
         patch("app.config.get_settings", return_value=settings),
     ):
         mock_get_conn.return_value.__enter__.return_value = mock_conn
@@ -46,13 +45,10 @@ def test_google_login_dispatches_otp() -> None:
 
     assert response.status_code == 200
     data = response.json()
-    assert data["require_otp"] is True
+    assert data["require_otp"] is False
     assert data["email"] == "hasagi1706@gmail.com"
-    assert "otp_session_token" in data
-    mock_send_otp.assert_called_once()
-    args = mock_send_otp.call_args[0]
-    assert args[0] == "hasagi1706@gmail.com"
-    assert len(args[2]) == 6  # 6-digit OTP
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
 
 
 def test_verify_otp_success() -> None:

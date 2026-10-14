@@ -38,6 +38,8 @@ export interface SignupResponse {
   };
   require_otp?: boolean;
   otp_session_token?: string;
+  access_token?: string;
+  token_type?: string;
 }
 
 export async function checkEmail(email: string): Promise<CheckEmailResponse> {
@@ -98,7 +100,12 @@ export async function signup(payload: SignupPayload): Promise<SignupResponse> {
     throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
   }
 
-  return response.json();
+  const data: SignupResponse = await response.json();
+  if (data.access_token) {
+    localStorage.setItem('access_token', data.access_token);
+    sessionStorage.setItem('access_token', data.access_token);
+  }
+  return data;
 }
 
 export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
@@ -171,9 +178,12 @@ export async function login(payload: LoginPayload): Promise<TokenResponse> {
 }
 
 export interface GoogleLoginResponse {
-  require_otp: boolean;
+  require_otp?: boolean;
   email: string;
-  otp_session_token: string;
+  otp_session_token?: string;
+  access_token?: string;
+  token_type?: string;
+  user?: UserProfile;
   message: string;
 }
 
@@ -213,7 +223,12 @@ export async function googleLogin(credential: string): Promise<GoogleLoginRespon
     throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
   }
 
-  return response.json();
+  const data: GoogleLoginResponse = await response.json();
+  if (data.access_token) {
+    localStorage.setItem('access_token', data.access_token);
+    sessionStorage.setItem('access_token', data.access_token);
+  }
+  return data;
 }
 
 export async function verifyOtp(payload: VerifyOtpPayload): Promise<TokenResponse> {

@@ -177,6 +177,7 @@ def signup(request: SignupRequest) -> dict:
                             SET full_name = %s,
                                 phone = %s,
                                 password_hash = %s,
+                                status = 'ACTIVE',
                                 updated_at = CURRENT_TIMESTAMP
                             WHERE user_id = %s
                             RETURNING
@@ -197,38 +198,9 @@ def signup(request: SignupRequest) -> dict:
                             ),
                         )
                         user = cursor.fetchone()
-                        
-                        # Generate 6-digit OTP and store in public.email_otps
-                        otp_code = generate_otp_code()
-                        cursor.execute(
-                            """
-                            INSERT INTO public.email_otps (
-                                email,
-                                otp_code,
-                                purpose,
-                                expires_at
-                            )
-                            VALUES (%s, %s, 'SIGNUP_OTP', CURRENT_TIMESTAMP + INTERVAL '10 minutes')
-                            """,
-                            (request.email, otp_code),
-                        )
                         connection.commit()
 
-                        # Dispatch OTP via Gmail SMTP
-                        try:
-                            send_otp_email(request.email, request.full_name, otp_code)
-                        except Exception:
-                            pass
-
-                        # Re-generate and dispatch verification email (for backward compatibility)
-                        try:
-                            token = create_verification_token(request.email)
-                            send_verification_email(request.email, request.full_name, token)
-                        except AuthServiceUnavailable:
-                            pass
-
-                        otp_session_token = create_otp_session_token(request.email, str(user[0]))
-
+                        access_token = create_access_token(str(user[0]))
                         return {
                             "message": "User registered successfully.",
                             "user": {
@@ -241,8 +213,9 @@ def signup(request: SignupRequest) -> dict:
                                 "created_at": user[6],
                                 "updated_at": user[7],
                             },
-                            "require_otp": True,
-                            "otp_session_token": otp_session_token,
+                            "require_otp": False,
+                            "access_token": access_token,
+                            "token_type": "bearer",
                         }
 
                     raise HTTPException(
@@ -260,7 +233,7 @@ def signup(request: SignupRequest) -> dict:
                             password_hash,
                             status
                         )
-                        VALUES (%s, %s, %s, %s, 'INACTIVE')
+                        VALUES (%s, %s, %s, %s, 'ACTIVE')
                         RETURNING
                             user_id,
                             full_name,
@@ -280,37 +253,15 @@ def signup(request: SignupRequest) -> dict:
                     )
 
                     user = cursor.fetchone()
-
-                    # Generate 6-digit OTP and store in public.email_otps
-                    otp_code = generate_otp_code()
-                    cursor.execute(
-                        """
-                        INSERT INTO public.email_otps (
-                            email,
-                            otp_code,
-                            purpose,
-                            expires_at
-                        )
-                        VALUES (%s, %s, 'SIGNUP_OTP', CURRENT_TIMESTAMP + INTERVAL '10 minutes')
-                        """,
-                        (request.email, otp_code),
-                    )
                     connection.commit()
 
-                    # Dispatch OTP via Gmail SMTP
-                    try:
-                        send_otp_email(request.email, request.full_name, otp_code)
-                    except Exception:
-                        pass
-
-                    # Generate and dispatch verification email (for backward compatibility)
+                    access_token = create_access_token(str(user[0]))
+                    # Dispatch verification email (for notification & verification)
                     try:
                         token = create_verification_token(request.email)
                         send_verification_email(request.email, request.full_name, token)
-                    except AuthServiceUnavailable:
+                    except Exception:
                         pass
-
-                    otp_session_token = create_otp_session_token(request.email, str(user[0]))
 
                     return {
                         "message": "User registered successfully.",
@@ -324,8 +275,9 @@ def signup(request: SignupRequest) -> dict:
                             "created_at": user[6],
                             "updated_at": user[7],
                         },
-                        "require_otp": True,
-                        "otp_session_token": otp_session_token,
+                        "require_otp": False,
+                        "access_token": access_token,
+                        "token_type": "bearer",
                     }
                 except UniqueViolation:
                     connection.rollback()
@@ -471,7 +423,7 @@ def google_login(request: GoogleLoginRequest) -> GoogleLoginResponse:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT user_id, status
+                    SELECT user_id, full_name, email, phone, role, status, created_at, updated_at
                     FROM public.users
                     WHERE email = %s
                     """,
@@ -480,17 +432,19 @@ def google_login(request: GoogleLoginRequest) -> GoogleLoginResponse:
                 user = cursor.fetchone()
 
                 if user:
-                    user_id, current_status = user[0], user[1]
-                    if current_status != "ACTIVE":
+                    user_id = user[0]
+                    if user[5] != "ACTIVE":
                         cursor.execute(
                             """
                             UPDATE public.users
                             SET status = 'ACTIVE',
                                 updated_at = CURRENT_TIMESTAMP
                             WHERE user_id = %s
+                            RETURNING user_id, full_name, email, phone, role, status, created_at, updated_at
                             """,
                             (user_id,),
                         )
+                        user = cursor.fetchone()
                         connection.commit()
                 else:
                     cursor.execute(
@@ -502,42 +456,43 @@ def google_login(request: GoogleLoginRequest) -> GoogleLoginResponse:
                             status
                         )
                         VALUES (%s, %s, 'USER', 'ACTIVE')
-                        RETURNING user_id
+                        RETURNING user_id, full_name, email, phone, role, status, created_at, updated_at
                         """,
                         (full_name, email),
                     )
-                    created_user = cursor.fetchone()
+                    user = cursor.fetchone()
                     connection.commit()
-                    user_id = created_user[0]
+                    user_id = user[0]
 
-                # Generate 6-digit OTP and store in public.email_otps
-                otp_code = generate_otp_code()
-                cursor.execute(
-                    """
-                    INSERT INTO public.email_otps (
-                        email,
-                        otp_code,
-                        purpose,
-                        expires_at
-                    )
-                    VALUES (%s, %s, 'GOOGLE_2FA', CURRENT_TIMESTAMP + INTERVAL '5 minutes')
-                    """,
-                    (email, otp_code),
-                )
-                connection.commit()
+        user_id = str(user[0])
+        now = datetime.now(timezone.utc)
+        full_name_val = user[1] if len(user) > 1 else full_name
+        email_val = user[2] if len(user) > 2 else email
+        phone_val = user[3] if len(user) > 3 else None
+        role_val = user[4] if len(user) > 4 else "USER"
+        status_val = user[5] if len(user) > 5 else "ACTIVE"
+        created_at_val = user[6] if len(user) > 6 else now
+        updated_at_val = user[7] if len(user) > 7 else now
 
-        # Dispatch OTP via Gmail SMTP
-        try:
-            send_otp_email(email, full_name, otp_code)
-        except Exception:
-            pass
+        access_token = create_access_token(user_id)
+        user_resp = UserResponse(
+            user_id=user_id,
+            full_name=full_name_val,
+            email=email_val,
+            phone=phone_val,
+            role=role_val,
+            status=status_val,
+            created_at=created_at_val,
+            updated_at=updated_at_val,
+        )
 
-        otp_session_token = create_otp_session_token(email, str(user_id))
         return GoogleLoginResponse(
-            require_otp=True,
+            require_otp=False,
             email=email,
-            otp_session_token=otp_session_token,
-            message="Mã xác thực OTP gồm 6 chữ số đã được gửi tới email của bạn.",
+            access_token=access_token,
+            token_type="bearer",
+            user=user_resp,
+            message="Đăng nhập Google thành công.",
         )
 
     except HTTPException:

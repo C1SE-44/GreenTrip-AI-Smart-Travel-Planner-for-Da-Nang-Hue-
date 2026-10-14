@@ -56,14 +56,9 @@ export default function RegisterPage() {
         callback: async (response: { credential?: string }) => {
           if (!response.credential) return;
           try {
-            const res = await googleLogin(response.credential);
-            if (res.require_otp) {
-              setOtpModal({
-                isOpen: true,
-                email: res.email,
-                token: res.otp_session_token,
-              });
-            }
+            await googleLogin(response.credential);
+            window.dispatchEvent(new Event('auth-change'));
+            navigate('/explore');
           } catch (err) {
             if (err instanceof ApiError) {
               setGeneralError(err.message);
@@ -127,8 +122,8 @@ export default function RegisterPage() {
         email: email.trim(),
         password,
       });
-
-      setRegisteredEmail(email.trim());
+      window.dispatchEvent(new Event('auth-change'));
+      navigate('/explore');
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {

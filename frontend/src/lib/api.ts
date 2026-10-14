@@ -1,4 +1,8 @@
-export const API_BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || 
+  import.meta.env.VITE_API_BASE_URL || 
+  'https://greentrip-ai-smart-travel-planner-for-da-r43z.onrender.com'
+).replace(/\/$/, '');
 export interface ApiError extends Error {
   status?: number;
 }
@@ -6,6 +10,7 @@ export interface ApiError extends Error {
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const url = `${API_BASE_URL}${normalizedPath}`;
+  
 
   const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
   const headers = new Headers(init?.headers);

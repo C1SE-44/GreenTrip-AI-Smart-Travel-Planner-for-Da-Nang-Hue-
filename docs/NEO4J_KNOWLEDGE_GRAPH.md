@@ -151,26 +151,37 @@ into user-facing text. It can support evidence such as:
 
 No full explanation sentence is stored in Neo4j.
 
-## Read-only Structural Query
+## Explanation Fact Query
 
-This query retrieves facts for future explanation work; it does not implement
-the explanation algorithm:
+`backend/neo4j/queries/get_poi_explanation_facts.cypher` retrieves structured
+graph facts that can support a future "Why this place?" feature. It accepts the
+stable PostgreSQL UUID text as `$poi_id` and starts from the unique `POI.id`
+property.
+
+The relationship whitelist is `IN_CATEGORY`, `OFFERS_ACTIVITY`, and
+`LOCATED_IN`. Each returned fact contains the relationship type plus the target
+node type, stable key, and display name. The `poi` map also includes
+`is_local_business`, `local_business_type`, and optional `source` properties.
+This follows the approved local-business property model and does not invent a
+business relationship or provenance value.
+
+The query uses one controlled optional traversal and `collect(DISTINCT ...)`,
+so multiple categories, activities, and locations do not multiply one another.
+Facts are ordered by relationship type, target key, and target name. A POI with
+no approved semantic relationships returns its `poi` map and an empty `facts`
+list. An unknown `$poi_id` returns no rows, allowing a future backend layer to
+map that result to its own not-found contract.
+
+Run the query in Neo4j Browser with a placeholder application ID:
 
 ```cypher
-MATCH (p:POI {id: $poi_id})
-OPTIONAL MATCH (p)-[:IN_CATEGORY]->(c:Category)
-OPTIONAL MATCH (p)-[:OFFERS_ACTIVITY]->(a:Activity)
-OPTIONAL MATCH (p)-[:LOCATED_IN]->(l:Location)
-RETURN p.id AS poi_id,
-       p.name AS poi_name,
-       p.is_local_business AS is_local_business,
-       [node IN collect(DISTINCT c) WHERE node IS NOT NULL |
-           {key: node.key, name: node.name}] AS categories,
-       [node IN collect(DISTINCT a) WHERE node IS NOT NULL |
-           {key: node.key, name: node.name}] AS activities,
-       [node IN collect(DISTINCT l) WHERE node IS NOT NULL |
-           {key: node.key, name: node.name}] AS locations;
+:param poi_id => '00000000-0000-0000-0000-000000000000';
 ```
+
+Then execute the contents of
+`backend/neo4j/queries/get_poi_explanation_facts.cypher`. The query is
+read-only, uses standard Cypher without APOC, and returns facts rather than
+generating explanation prose.
 
 ## Naming Conventions
 

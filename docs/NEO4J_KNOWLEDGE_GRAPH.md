@@ -187,3 +187,75 @@ RETURN p.id AS poi_id,
   implemented.
 - The schema contains no credentials and no destructive commands.
 - Sample data is isolated in a manual file and is never run automatically.
+
+## POI to Neo4j Import
+
+### Purpose
+
+`backend/scripts/import_pois_to_neo4j.py` reads the semantic POI projection
+from PostgreSQL and idempotently merges it into the approved graph model. It
+uses PostgreSQL `poi_id` UUID values as Neo4j `POI.id` values and does not copy
+geometry, descriptions, scores, authentication data, or itinerary data.
+
+The current PostgreSQL schema has no normalized activity field. The importer
+therefore creates no `Activity` nodes or `OFFERS_ACTIVITY` relationships unless
+an approved activity value is explicitly supplied by the source in the future.
+It does not infer activities from category or free text.
+
+### Prerequisites
+
+1. Install `backend/requirements.txt`.
+2. Configure `DATABASE_URL` and the existing `NEO4J_URI`, `NEO4J_USERNAME`,
+   `NEO4J_PASSWORD`, and `NEO4J_DATABASE` environment variables.
+3. Ensure Aura is reachable. Real credentials belong only in `.env`, Render
+   secrets, or the local environment.
+
+### Dry run
+
+The dry run reads and validates PostgreSQL data without connecting to Neo4j:
+
+```bash
+python backend/scripts/import_pois_to_neo4j.py --dry-run
+```
+
+### Import a small sample
+
+This safely applies the existing idempotent schema and merges three real POIs:
+
+```bash
+python backend/scripts/import_pois_to_neo4j.py --limit 3 --apply-schema
+```
+
+### Full import
+
+```bash
+python backend/scripts/import_pois_to_neo4j.py --apply-schema
+```
+
+The default write batch size is 250 and can be changed with `--batch-size`.
+Without `--apply-schema`, the importer verifies that all four uniqueness
+constraints already exist and stops before writing if any are missing.
+
+### Validation
+
+Use read-only Cypher after an import:
+
+```cypher
+MATCH (p:POI)
+RETURN count(p) AS poi_count;
+```
+
+```cypher
+MATCH (:POI)-[r]->()
+RETURN type(r) AS relationship_type, count(r) AS relationship_count
+ORDER BY relationship_type;
+```
+
+### Safety
+
+- POI and semantic nodes use stable keys with `MERGE`.
+- Relationships use `MERGE`, so repeated imports do not duplicate them.
+- Cypher data is passed as parameters through `UNWIND $rows`.
+- The importer never resets the graph or deletes stale data.
+- `--dry-run` performs no Neo4j writes.
+- No credentials are stored in the script or documentation.

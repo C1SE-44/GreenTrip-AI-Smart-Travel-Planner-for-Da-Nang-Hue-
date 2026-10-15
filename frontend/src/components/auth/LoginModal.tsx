@@ -182,16 +182,16 @@ export default function LoginModal({
           try {
             setLoading(true);
             const res = await googleLogin(response.credential);
-            if (res.require_otp) {
-              setEmail(res.email);
-              setOtpSessionToken(res.otp_session_token);
-              setStep('otp');
-              setCountdown(60);
-            } else {
+            if (res.access_token || !res.require_otp) {
               window.dispatchEvent(new Event('auth-change'));
               onClose();
               if (onLoginSuccess) onLoginSuccess();
               else navigate('/explore');
+            } else if (res.require_otp && res.otp_session_token) {
+              setEmail(res.email);
+              setOtpSessionToken(res.otp_session_token);
+              setStep('otp');
+              setCountdown(60);
             }
           } catch (err: unknown) {
             setError(getErrorMessage(err, 'Đăng nhập Google thất bại. Vui lòng thử lại.'));
@@ -288,6 +288,17 @@ export default function LoginModal({
           email: email.trim().toLowerCase(),
           password,
         });
+
+        if (res.access_token || !res.require_otp) {
+          window.dispatchEvent(new Event('auth-change'));
+          onClose();
+          if (onLoginSuccess) {
+            onLoginSuccess();
+          } else {
+            navigate('/explore');
+          }
+          return;
+        }
 
         if (res.otp_session_token) {
           setOtpSessionToken(res.otp_session_token);

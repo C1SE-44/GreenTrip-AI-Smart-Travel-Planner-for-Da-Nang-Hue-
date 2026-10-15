@@ -76,8 +76,10 @@ class CheckEmailResponse(BaseModel):
 class SignupResponse(BaseModel):
     message: str
     user: UserResponse
-    require_otp: bool = True
+    require_otp: bool = False
     otp_session_token: str | None = None
+    access_token: str | None = None
+    token_type: Literal["bearer"] = "bearer"
 
 
 class LoginRequest(BaseModel):
@@ -124,10 +126,13 @@ class GoogleLoginRequest(BaseModel):
 
 
 class GoogleLoginResponse(BaseModel):
-    require_otp: bool = True
+    require_otp: bool = False
     email: str
-    otp_session_token: str
-    message: str = "Mã xác thực OTP đã được gửi tới email của bạn."
+    otp_session_token: str | None = None
+    access_token: str | None = None
+    token_type: Literal["bearer"] = "bearer"
+    user: UserResponse | None = None
+    message: str = "Đăng nhập Google thành công."
 
 
 class VerifyOtpRequest(BaseModel):

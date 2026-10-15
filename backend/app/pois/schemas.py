@@ -26,3 +26,23 @@ class PaginationMetadata(BaseModel):
 class PaginatedPOIResponse(BaseModel):
     items: list[POIResponse]
     pagination: PaginationMetadata
+
+
+class ExplanationPOI(BaseModel):
+    id: str
+    name: str | None = None
+    is_local_business: bool | None = None
+    local_business_type: str | None = None
+    source: str | None = None
+
+
+class ExplanationFact(BaseModel):
+    relationship: str
+    target_type: str
+    target_key: str
+    target_name: str | None = None
+
+
+class POIExplanationFactsResponse(BaseModel):
+    poi: ExplanationPOI
+    facts: list[ExplanationFact]

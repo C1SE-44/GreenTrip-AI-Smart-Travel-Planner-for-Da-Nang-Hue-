@@ -188,7 +188,7 @@ export default function LandingPage() {
           
           <div className="mt-8 mb-2">
             <Link
-              to="/explore"
+              to="/onboarding"
               className="inline-flex items-center gap-2 rounded-full bg-black px-10 py-4 text-base font-bold text-white transition-transform hover:scale-105 hover:bg-gray-900 shadow-xl"
             >
               Thiết lập lịch trình của bạn
@@ -490,7 +490,7 @@ export default function LandingPage() {
               </p>
               <div className="mt-8">
                 <Link
-                  to="/explore"
+                  to="/onboarding"
                   className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-[17px] font-normal text-black transition-transform hover:scale-105 shadow-xl"
                 >
                   Thiết lập lịch trình ngay

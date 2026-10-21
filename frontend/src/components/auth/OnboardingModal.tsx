@@ -77,10 +77,49 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
     }
   }, [step]);
 
+  const handleSkip = () => {
+    localStorage.setItem('greentrip_onboarding_completed', 'true');
+    onClose();
+  };
+
+  const handleFinish = () => {
+    try {
+      const profile = {
+        firstName,
+        lastName,
+        city,
+        personality,
+        hasPlan,
+        tripDetails,
+        companions,
+        budget,
+        splurges,
+        restaurants,
+        diets,
+        activities,
+        finalNotes,
+        completedAt: new Date().toISOString(),
+      };
+      localStorage.setItem('greentrip_onboarding_profile', JSON.stringify(profile));
+      localStorage.setItem('greentrip_onboarding_completed', 'true');
+    } catch {}
+    onClose();
+  };
+
   useEffect(() => {
     if (isOpen) {
       setMounted(true);
       document.body.style.overflow = 'hidden';
+      // Pre-fill profile if already exists
+      try {
+        const saved = localStorage.getItem('greentrip_onboarding_profile');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.firstName && !firstName) setFirstName(parsed.firstName);
+          if (parsed.lastName && !lastName) setLastName(parsed.lastName);
+          if (parsed.city && !city) setCity(parsed.city);
+        }
+      } catch {}
     } else {
       setTimeout(() => setMounted(false), 300);
       document.body.style.overflow = 'auto';
@@ -125,13 +164,23 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
     <div className="fixed inset-0 z-[100] flex bg-white animate-fadeIn h-screen w-screen overflow-hidden">
       {/* Left Column (Content) */}
       <div className="relative flex w-full lg:w-1/2 flex-col h-full bg-white">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-6 left-6 z-10 flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-black"
-        >
-          <X size={20} strokeWidth={2} />
-        </button>
+        {/* Top Header: Close & Skip Button */}
+        <div className="absolute top-6 left-6 right-6 z-10 flex items-center justify-between">
+          <button
+            onClick={handleSkip}
+            className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-black cursor-pointer"
+            title="Đóng"
+          >
+            <X size={20} strokeWidth={2} />
+          </button>
+
+          <button
+            onClick={handleSkip}
+            className="text-[13px] font-semibold text-gray-500 hover:text-black px-4 py-1.5 rounded-full hover:bg-gray-100 transition-all cursor-pointer"
+          >
+            Bỏ qua bước này
+          </button>
+        </div>
 
         {/* Content Area - Natural Scroll */}
         <div ref={scrollRef} className="flex-1 flex flex-col px-10 lg:px-24 w-full max-w-2xl mx-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] overflow-y-auto">
@@ -230,6 +279,21 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                       </button>
                     )}
                   </div>
+                  {/* Quick City Suggestions */}
+                  <div className="flex gap-2 mt-2.5 flex-wrap">
+                    {['Đà Nẵng', 'Huế', 'Hội An', 'Hà Nội', 'TP. Hồ Chí Minh'].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => { setCity(c); setShowSuggestions(false); }}
+                        className={`text-[12px] px-3 py-1 rounded-full border transition-all cursor-pointer ${
+                          city === c ? 'border-black bg-black text-white font-semibold' : 'border-gray-200 text-gray-600 hover:border-gray-400 bg-white'
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Progress and Actions - Step 1 */}
@@ -326,9 +390,9 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                   </button>
                   <button
                     onClick={() => setHasPlan(false)}
-                    className={`px-6 py-2 rounded-full text-[13px] font-bold transition-all ${hasPlan === false ? 'bg-black text-white' : 'border border-gray-200 text-black hover:border-gray-300'}`}
+                    className={`px-5 py-2 rounded-full text-[13px] font-bold transition-all cursor-pointer ${hasPlan === false ? 'bg-black text-white' : 'border border-gray-200 text-black hover:border-gray-300'}`}
                   >
-                    KHÔNG
+                    Tôi đang tìm cảm hứng (chưa có ngày)
                   </button>
                 </div>
 
@@ -376,9 +440,11 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                       <ChevronLeft size={16} /> Chuyến đi tiếp theo của bạn
                     </button>
                     <button
-                      onClick={() => setStep(4)}
-                      disabled={hasPlan === null}
-                      className={`rounded-full px-8 py-2.5 text-[14px] font-bold text-white transition-all ${hasPlan !== null ? 'bg-black hover:bg-gray-900' : 'bg-[#B0B0B0] cursor-not-allowed'}`}
+                      onClick={() => {
+                        if (hasPlan === null) setHasPlan(false);
+                        setStep(4);
+                      }}
+                      className="rounded-full px-8 py-2.5 text-[14px] font-bold text-white transition-all bg-black hover:bg-gray-900 cursor-pointer shadow-xs active:scale-[0.98]"
                     >
                       Kế tiếp
                     </button>
@@ -676,8 +742,8 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                     </div>
                   ) : (
                     <button
-                      onClick={onClose}
-                      className="rounded-full px-8 py-3 text-[14px] font-bold text-white transition-all bg-black hover:bg-gray-900 animate-fadeIn"
+                      onClick={handleFinish}
+                      className="rounded-full px-8 py-3 text-[14px] font-bold text-white transition-all bg-black hover:bg-gray-900 animate-fadeIn cursor-pointer shadow-sm active:scale-[0.98]"
                     >
                       Let's go
                     </button>

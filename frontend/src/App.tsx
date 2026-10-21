@@ -36,6 +36,15 @@ function App() {
             </>
           }
         />
+        <Route
+          path="/onboarding"
+          element={
+            <>
+              <Navbar />
+              <LandingPage />
+            </>
+          }
+        />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
 
 

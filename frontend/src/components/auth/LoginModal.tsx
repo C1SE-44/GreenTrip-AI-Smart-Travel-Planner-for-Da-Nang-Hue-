@@ -292,7 +292,9 @@ export default function LoginModal({
         if (res.access_token || !res.require_otp) {
           window.dispatchEvent(new Event('auth-change'));
           onClose();
-          if (onLoginSuccess) {
+          if (onRegisterSuccess) {
+            onRegisterSuccess();
+          } else if (onLoginSuccess) {
             onLoginSuccess();
           } else {
             navigate('/explore');

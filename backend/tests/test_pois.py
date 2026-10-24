@@ -303,3 +303,39 @@ def test_database_failure_does_not_expose_connection_details(
     assert response.json() == {"detail": "Unable to fetch POIs."}
     assert "secret" not in response.text
     assert "database" not in response.text
+
+
+def test_list_pois_resolves_city_and_category_aliases(
+    client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    test_client, queries = client
+
+    response = test_client.get("/pois?city=Đà Nẵng&category=di-tich")
+
+    assert response.status_code == 200
+    page_query, page_parameters = queries[0]
+    count_query, count_parameters = queries[1]
+
+    assert "c.name = ANY(%s)" in page_query
+    assert "ci.code = %s" in page_query
+    assert ["Di tích lịch sử và văn hóa"] in page_parameters
+    assert "DANANG" in page_parameters
+
+    assert "c.name = ANY(%s)" in count_query
+    assert "ci.code = %s" in count_query
+    assert ["Di tích lịch sử và văn hóa"] in count_parameters
+    assert "DANANG" in count_parameters
+
+
+def test_list_pois_ignores_all_filter_values(
+    client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    test_client, queries = client
+
+    response = test_client.get("/pois?city=all&category=all")
+
+    assert response.status_code == 200
+    page_query, page_parameters = queries[0]
+
+    assert "WHERE" not in page_query
+    assert page_parameters == (10, 0)

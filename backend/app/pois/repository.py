@@ -4,6 +4,34 @@ from app.db.postgres import get_connection
 from app.pois.model import POI
 
 
+CITY_ALIAS_MAP: dict[str, str] = {
+    "da nang": "DANANG",
+    "danang": "DANANG",
+    "đà nẵng": "DANANG",
+    "hue": "HUE",
+    "huế": "HUE",
+}
+
+CATEGORY_ALIAS_MAP: dict[str, list[str]] = {
+    "di-tich": ["Di tích lịch sử và văn hóa"],
+    "di tích": ["Di tích lịch sử và văn hóa"],
+    "canh-quan": ["Cảnh quan và thiên nhiên"],
+    "cảnh quan": ["Cảnh quan và thiên nhiên"],
+    "chua": ["Tâm linh và chùa thiền"],
+    "chùa": ["Tâm linh và chùa thiền"],
+    "tam-linh": ["Tâm linh và chùa thiền"],
+    "tâm linh": ["Tâm linh và chùa thiền"],
+    "quan-an": ["Ẩm thực và quán ăn", "Quán cafe giải khát"],
+    "quán ăn": ["Ẩm thực và quán ăn", "Quán cafe giải khát"],
+    "am-thuc": ["Ẩm thực và quán ăn"],
+    "ẩm thực": ["Ẩm thực và quán ăn"],
+    "cafe": ["Quán cafe giải khát"],
+    "cà phê": ["Quán cafe giải khát"],
+    "giai-tri": ["Cảnh quan và thiên nhiên"],
+    "bao-tang": ["Di tích lịch sử và văn hóa"],
+}
+
+
 def list_pois(
     limit: int,
     offset: int,
@@ -14,13 +42,23 @@ def list_pois(
         where_clauses: list[str] = []
         params: list[Any] = []
 
-        if category:
-            where_clauses.append("c.name = %s")
-            params.append(category)
+        if category and category.strip().casefold() not in {"all", ""}:
+            cat_norm = category.strip().casefold()
+            if cat_norm in CATEGORY_ALIAS_MAP:
+                where_clauses.append("c.name = ANY(%s)")
+                params.append(CATEGORY_ALIAS_MAP[cat_norm])
+            else:
+                where_clauses.append("c.name ILIKE %s")
+                params.append(f"%{category.strip()}%")
 
-        if city:
-            where_clauses.append("ci.name ILIKE %s")
-            params.append(f"%{city}%")
+        if city and city.strip().casefold() not in {"all", ""}:
+            city_norm = city.strip().casefold()
+            if city_norm in CITY_ALIAS_MAP:
+                where_clauses.append("ci.code = %s")
+                params.append(CITY_ALIAS_MAP[city_norm])
+            else:
+                where_clauses.append("ci.name ILIKE %s")
+                params.append(f"%{city.strip()}%")
 
         where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 

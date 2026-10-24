@@ -2,6 +2,7 @@ from math import ceil
 
 from app.pois.repository import list_pois
 from app.pois.schemas import PaginatedPOIResponse, PaginationMetadata
+from app.pois.weights import ParsedSliderWeights
 
 
 class POIServiceUnavailable(Exception):
@@ -13,6 +14,7 @@ def get_poi_page(
     limit: int,
     category: str | None = None,
     city: str | None = None,
+    weights: ParsedSliderWeights | None = None,
 ) -> PaginatedPOIResponse:
     offset = (page - 1) * limit
     try:

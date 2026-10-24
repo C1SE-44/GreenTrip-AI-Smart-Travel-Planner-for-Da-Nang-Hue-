@@ -1,13 +1,36 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  SlidersHorizontal,
+  Search as SearchIcon,
+  X as XIcon,
+  RotateCcw,
+  Sprout,
+  Scale,
+  Leaf,
+  Sparkles,
+  Award,
+  Bus,
+  Clock,
+  MapPin,
+} from 'lucide-react';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
-import { pois, categoryLabels, normalizePois, type PaginatedPoisResponse } from '@/data/pois';
+import { pois, categoryLabels, normalizePois } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
-import { fetchJson } from '@/lib/api';
+import { getPois } from '@/services/poi';
 import { getMe, type UserProfile } from '@/services/auth';
+import ExploreFilterPopover, { type ExploreFilterValues, type EcoPriority, type PoiCategoryFilter } from '@/components/poi/ExploreFilterPopover';
+
+const ECO_LABEL_MAP: Record<EcoPriority, { label: string; icon: React.ComponentType<{ className?: string }> | null }> = {
+  all: { label: 'Tất cả', icon: null },
+  basic: { label: 'Cơ bản (≥30%)', icon: Sprout },
+  balanced: { label: 'Cân bằng (≥55%)', icon: Scale },
+  eco: { label: 'Thân thiện (≥75%)', icon: Leaf },
+  pure: { label: 'Thuần sinh thái (≥90%)', icon: Sparkles },
+};
 
 type CityFilter = 'all' | PoiCity;
 type CategoryFilter = 'all' | PoiCategory;
@@ -34,6 +57,16 @@ export default function ExplorePage() {
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
+  const [filterValues, setFilterValues] = useState<ExploreFilterValues>({
+    budget: 'all',
+    ecoPriority: 'all',
+    ecoCertifiedOnly: false,
+    greenTransitOnly: false,
+    categories: [],
+    timeOfDay: [],
+    radiusKm: null,
+  });
 
   useEffect(() => {
     let active = true;
@@ -75,7 +108,18 @@ export default function ExplorePage() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetchJson<PaginatedPoisResponse>('/pois?limit=100&page=1');
+
+        const response = await getPois({
+          limit: 100,
+          page: 1,
+          city: cityFilter !== 'all' ? cityFilter : undefined,
+          category: categoryFilter !== 'all' ? categoryFilter : undefined,
+          eco_priority: filterValues.ecoPriority,
+          budget_tier: filterValues.budget,
+          eco_certified_only: filterValues.ecoCertifiedOnly,
+          green_transit_only: filterValues.greenTransitOnly,
+        });
+
         const normalized = normalizePois(response.items);
         if (!active) return;
         setAllPois(normalized.length > 0 ? normalized : pois);
@@ -96,7 +140,7 @@ export default function ExplorePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [cityFilter, categoryFilter, filterValues]);
 
   const handleTabChange = (tabId: 'all' | PoiCategory) => {
     setActiveTab(tabId);
@@ -104,6 +148,10 @@ export default function ExplorePage() {
   };
 
   const filteredPois = useMemo(() => {
+    // ECO_SCORE_MAP mirrors what ExploreFilterPopover uses
+    const ecoScoreMap: Record<EcoPriority, number> = { all: 0, basic: 30, balanced: 55, eco: 75, pure: 90 };
+    const minEco = ecoScoreMap[filterValues.ecoPriority];
+
     return allPois.filter((poi) => {
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
       const matchCat = categoryFilter === 'all' || poi.category === categoryFilter;
@@ -111,9 +159,46 @@ export default function ExplorePage() {
         !search ||
         poi.name.toLowerCase().includes(search.toLowerCase()) ||
         poi.description.toLowerCase().includes(search.toLowerCase());
-      return matchCity && matchCat && matchSearch;
+
+      // Eco Score filter
+      const ecoScore = poi.ecoScore ?? 80;
+      let matchEco = ecoScore >= minEco;
+      if (filterValues.ecoCertifiedOnly && ecoScore < 85) matchEco = false;
+
+      // Budget filter (category-based proxy)
+      let matchBudget = true;
+      if (filterValues.budget !== 'all') {
+        if (filterValues.budget === '$') {
+          matchBudget = poi.category === 'chua' || poi.category === 'canh-quan';
+        } else if (filterValues.budget === '$$') {
+          matchBudget = poi.category === 'quan-an' || poi.category === 'chua';
+        } else if (filterValues.budget === '$$$') {
+          matchBudget = poi.category === 'di-tich' || poi.category === 'canh-quan';
+        } else if (filterValues.budget === '$$$$') {
+          matchBudget = poi.category === 'quan-an';
+        }
+      }
+
+      // Category multi-select filter
+      const matchCatFilter = filterValues.categories.length === 0 ||
+        filterValues.categories.includes(poi.category as PoiCategoryFilter);
+
+      return matchCity && matchCat && matchSearch && matchEco && matchBudget && matchCatFilter;
     });
-  }, [allPois, search, cityFilter, categoryFilter]);
+  }, [allPois, search, cityFilter, categoryFilter, filterValues]);
+
+  // Đếm số lượng filter đang active chuẩn Mindtrip
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterValues.budget !== 'all') count++;
+    if (filterValues.ecoPriority !== 'all') count++;
+    if (filterValues.ecoCertifiedOnly) count++;
+    if (filterValues.greenTransitOnly) count++;
+    if (filterValues.categories.length > 0) count++;
+    if (filterValues.timeOfDay.length > 0) count++;
+    if (filterValues.radiusKm !== null) count++;
+    return count;
+  }, [filterValues]);
 
   const handleSelectPoi = (id: string | null) => {
     setSelectedPoiId((prev) => (prev === id ? null : id));
@@ -287,36 +372,45 @@ export default function ExplorePage() {
             )}
           </div>
 
-          {/* Search Box & Filter */}
+          {/* Search Box & Filter — GreenTrip Design System */}
           <div className="flex items-center gap-3">
             <div className="flex-1 relative flex items-center">
-              <i className="ph ph-magnifying-glass text-gray-500 absolute left-4 text-base"></i>
+              <SearchIcon className="w-4 h-4 text-muted absolute left-4 pointer-events-none" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 bg-gray-100/90 text-sm placeholder-gray-500 text-gray-900 rounded-full border-none focus:outline-none focus:ring-1 focus:ring-gray-300 transition"
+                className="w-full pl-11 pr-9 py-2.5 bg-[#F4EFEA]/80 hover:bg-[#F0EAE3] text-sm placeholder-muted text-charcoal rounded-full border border-[#E8E1D5] focus:outline-none focus:bg-white focus:border-forest-500 focus:ring-2 focus:ring-forest-500/15 transition-all"
                 placeholder="Tìm kiếm địa điểm, di tích..."
                 type="text"
               />
               {search && (
                 <button 
                   onClick={() => setSearch('')}
-                  className="absolute right-3.5 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 text-muted hover:text-charcoal p-1 rounded-full transition"
+                  aria-label="Xóa từ khóa"
                 >
-                  <i className="ph ph-x-circle text-base"></i>
+                  <XIcon className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
+            {/* Nút Bộ lọc (Design System: Lucide SlidersHorizontal + Forest Badge) */}
             <button 
-              onClick={() => {
-                setCategoryFilter((prev) => (prev === 'all' ? 'di-tich' : 'all'));
-                setActiveTab((prev) => (prev === 'all' ? 'di-tich' : 'all'));
-              }}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full border transition text-sm font-medium ${categoryFilter !== 'all' ? 'bg-black text-white border-black' : 'border-gray-200 hover:bg-gray-50 text-gray-700'}`}
+              onClick={() => setIsFilterPopoverOpen(true)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full border transition-all text-sm font-medium ${
+                activeFilterCount > 0 
+                  ? 'border-forest-600 text-forest-900 bg-forest-50/70 font-bold shadow-xs' 
+                  : 'border-[#E8E2D9] hover:border-forest-400 bg-white text-charcoal hover:bg-[#FAF8F5]'
+              }`}
+              title="Tùy chỉnh bộ lọc"
             >
-              <i className="ph ph-faders text-base"></i>
-              <span>Bộ lọc</span>
+              <SlidersHorizontal className="w-4 h-4 text-forest-700" />
+              <span className="font-heading">Bộ lọc</span>
+              {activeFilterCount > 0 && (
+                <span className="w-5 h-5 rounded-full bg-forest-700 text-white text-[11px] font-bold flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
           </div>
 
@@ -328,10 +422,10 @@ export default function ExplorePage() {
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`whitespace-nowrap transition-all ${
+                  className={`whitespace-nowrap transition-all px-4 py-1.5 rounded-full font-heading text-xs ${
                     isActive
-                      ? 'px-4 py-1.5 bg-black text-white rounded-full font-semibold'
-                      : 'px-3.5 py-1.5 text-gray-600 hover:text-black'
+                      ? 'bg-forest-800 text-white font-semibold shadow-xs'
+                      : 'text-charcoal/70 hover:text-charcoal hover:bg-[#F4EFEA]'
                   }`}
                 >
                   {tab.label}
@@ -339,6 +433,109 @@ export default function ExplorePage() {
               );
             })}
           </div>
+
+          {/* Active Filter Chips Bar (Design System: Semantic badges with Lucide icons) */}
+          {activeFilterCount > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-1 text-xs no-scrollbar animate-fadeIn">
+              {filterValues.budget !== 'all' && (
+                <button
+                  onClick={() => setFilterValues((prev) => ({ ...prev, budget: 'all' }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-wood-50 hover:bg-wood-100 text-wood-800 border border-wood-200 text-[11px] font-semibold transition"
+                  title="Bỏ lọc giá"
+                >
+                  <XIcon className="w-3 h-3 text-wood-600" />
+                  <span>Giá: {filterValues.budget}</span>
+                </button>
+              )}
+
+              {filterValues.ecoPriority !== 'all' && (
+                <button
+                  onClick={() => setFilterValues((prev) => ({ ...prev, ecoPriority: 'all' }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-forest-50 hover:bg-forest-100 text-forest-800 border border-forest-200 text-[11px] font-semibold transition"
+                  title="Bỏ lọc Eco"
+                >
+                  <XIcon className="w-3 h-3 text-forest-600" />
+                  {ECO_LABEL_MAP[filterValues.ecoPriority]?.icon &&
+                    React.createElement(ECO_LABEL_MAP[filterValues.ecoPriority].icon!, {
+                      className: 'w-3 h-3 text-forest-600',
+                    })}
+                  <span>{ECO_LABEL_MAP[filterValues.ecoPriority]?.label || filterValues.ecoPriority}</span>
+                </button>
+              )}
+
+              {filterValues.ecoCertifiedOnly && (
+                <button
+                  onClick={() => setFilterValues((prev) => ({ ...prev, ecoCertifiedOnly: false }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-forest-50 hover:bg-forest-100 text-forest-800 border border-forest-200 text-[11px] font-semibold transition"
+                  title="Bỏ lọc chứng nhận"
+                >
+                  <XIcon className="w-3 h-3 text-forest-600" />
+                  <Award className="w-3 h-3 text-forest-600" />
+                  <span>Eco-Certified</span>
+                </button>
+              )}
+
+              {filterValues.greenTransitOnly && (
+                <button
+                  onClick={() => setFilterValues((prev) => ({ ...prev, greenTransitOnly: false }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-forest-50 hover:bg-forest-100 text-forest-800 border border-forest-200 text-[11px] font-semibold transition"
+                  title="Bỏ lọc di chuyển xanh"
+                >
+                  <XIcon className="w-3 h-3 text-forest-600" />
+                  <Bus className="w-3 h-3 text-forest-600" />
+                  <span>Di chuyển xanh</span>
+                </button>
+              )}
+
+              {filterValues.categories.length > 0 && (
+                <button
+                  onClick={() => setFilterValues((prev) => ({ ...prev, categories: [] }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F4EFEA] hover:bg-[#EAE2D6] text-charcoal border border-[#E8E1D5] text-[11px] font-semibold transition"
+                  title="Bỏ lọc loại hình"
+                >
+                  <XIcon className="w-3 h-3 text-muted" />
+                  <span>{filterValues.categories.length} loại hình</span>
+                </button>
+              )}
+
+              {filterValues.timeOfDay.length > 0 && (
+                <button
+                  onClick={() => setFilterValues((prev) => ({ ...prev, timeOfDay: [] }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F4EFEA] hover:bg-[#EAE2D6] text-charcoal border border-[#E8E1D5] text-[11px] font-semibold transition"
+                  title="Bỏ lọc khung giờ"
+                >
+                  <XIcon className="w-3 h-3 text-muted" />
+                  <Clock className="w-3 h-3 text-muted" />
+                  <span>{filterValues.timeOfDay.length} khung giờ</span>
+                </button>
+              )}
+
+              {filterValues.radiusKm !== null && (
+                <button
+                  onClick={() => setFilterValues((prev) => ({ ...prev, radiusKm: null }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F4EFEA] hover:bg-[#EAE2D6] text-charcoal border border-[#E8E1D5] text-[11px] font-semibold transition"
+                  title="Bỏ lọc bán kính"
+                >
+                  <XIcon className="w-3 h-3 text-muted" />
+                  <MapPin className="w-3 h-3 text-muted" />
+                  <span>&lt; {filterValues.radiusKm} km</span>
+                </button>
+              )}
+
+              <button
+                onClick={() =>
+                  setFilterValues({
+                    budget: 'all', ecoPriority: 'all', ecoCertifiedOnly: false,
+                    greenTransitOnly: false, categories: [], timeOfDay: [], radiusKm: null,
+                  })
+                }
+                className="text-[11px] text-muted hover:text-charcoal font-semibold underline pl-1 whitespace-nowrap flex items-center gap-1 transition"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Xóa hết</span>
+              </button>
+            </div>
+          )}
         </header>
 
         {/* Cards Scrollable Area */}
@@ -397,6 +594,21 @@ export default function ExplorePage() {
           </div>
         )}
       </section>
+
+      {/* 4. Explore Filter Popover Modal (Mindtrip-Style Floating Modal) */}
+      <ExploreFilterPopover
+        isOpen={isFilterPopoverOpen}
+        onClose={() => setIsFilterPopoverOpen(false)}
+        values={filterValues}
+        onApply={(newValues) => setFilterValues(newValues)}
+        onClearAll={() =>
+          setFilterValues({
+            budget: 'all', ecoPriority: 'all', ecoCertifiedOnly: false,
+            greenTransitOnly: false, categories: [], timeOfDay: [], radiusKm: null,
+          })
+        }
+        matchingCount={filteredPois.length}
+      />
     </div>
   );
 }

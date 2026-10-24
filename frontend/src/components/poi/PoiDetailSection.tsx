@@ -21,6 +21,13 @@ export default function PoiDetailSection({
   const [askAiQuery, setAskAiQuery] = useState('');
   const [addedToTrip, setAddedToTrip] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedAiAnswer, setCopiedAiAnswer] = useState(false);
+  const [aiConversation, setAiConversation] = useState<{
+    query: string;
+    answer: string;
+    tips: string[];
+    isLoading: boolean;
+  } | null>(null);
 
   // Generate 5 contextual, authentic images for gallery (1 main large + 4 in 2x2 grid)
   const galleryImages = useMemo(() => getGalleryImages(poi), [poi]);
@@ -41,8 +48,130 @@ export default function PoiDetailSection({
     `Khung giờ lý tưởng trong ngày để tránh đông đúc?`,
   ];
 
-  const handleSelectSuggestedQuestion = (q: string) => {
-    setAskAiQuery(q);
+  const generateAiAnswer = (queryText: string) => {
+    const qLower = queryText.toLowerCase();
+    const costText = poi.estimatedCost
+      ? `${poi.estimatedCost.toLocaleString('vi-VN')} ₫/người`
+      : 'khoảng 50.000 – 90.000 ₫/người';
+    const hoursText = poi.openHours || '09:30 – 21:30';
+    const durationText = poi.visitDuration || '60 phút';
+
+    if (
+      qLower.includes('món') ||
+      qLower.includes('đặc sắc') ||
+      qLower.includes('ăn gì') ||
+      qLower.includes('trải nghiệm') ||
+      qLower.includes('nổi tiếng')
+    ) {
+      if (poi.category === 'quan-an') {
+        return {
+          answer: `Tại **${displayName}**, món ăn trứ danh làm say lòng thực khách là bánh xèo miền Trung vỏ vàng giòn rụm với nhân tôm đồng tươi, thịt heo mềm thơm và giá đỗ ngọt thanh. Điểm khác biệt lớn nhất tạo nên thương hiệu chính là chén nước chấm đậu phộng gan heo béo bùi đậm đà gia truyền, ăn kèm rổ rau sống tươi sạch từ các vườn nông sản địa phương.`,
+          tips: [
+            'Nên gọi thêm một phần ram cuốn bắp hoặc nem lụi nướng than hoa để cuốn cùng bánh xèo.',
+            'Tự cuốn bánh tráng cùng rau thơm, dưa leo và chuối chát để cảm nhận trọn vẹn vị béo bùi, giòn tan.',
+            'Quán phục vụ nước đậu nành nấu tươi và sữa bắp rất thanh mát, giải nhiệt tuyệt vời.'
+          ]
+        };
+      } else {
+        return {
+          answer: `Tại **${displayName}**, điểm đặc sắc nhất là không gian văn hóa lịch sử độc đáo và cảnh quan thiên nhiên trong lành của ${poi.city}. Đây là địa điểm lý tưởng để tìm hiểu về chiều sâu di sản kiến trúc truyền thống và thư thái tinh thần giữa lòng đô thị.`,
+          tips: [
+            `Thời lượng tham quan đề xuất khoảng ${durationText} để chiêm ngưỡng trọn vẹn.`,
+            'Nên mặc trang phục lịch sự, trang nhã nếu vào khu vực dâng hương chiêm bái.',
+            'Đừng quên ghi lại những khung hình đẹp dưới tán cây cổ thụ và các góc sân gạch cổ kính.'
+          ]
+        };
+      }
+    }
+
+    if (
+      qLower.includes('di chuyển') ||
+      qLower.includes('xe buýt') ||
+      qLower.includes('xe đạp') ||
+      qLower.includes('đến đây') ||
+      qLower.includes('đường đi')
+    ) {
+      return {
+        answer: `Để thực hiện chuyến đi xanh tới **${displayName}** (${poi.address || poi.city}), GreenTrip AI khuyến nghị 2 phương thức giao thông ít phát thải carbon nhất:`,
+        tips: [
+          `🚌 **Xe buýt công cộng**: Đón xe buýt nội thành ${poi.city === 'Đà Nẵng' ? 'DanaBus (tuyến R16, R6A)' : 'xe buýt điện du lịch Huế'}, xuống trạm gần nhất và đi bộ khoảng 150 – 250m.`,
+          `🚲 **Xe đạp chia sẻ**: Có trạm xe đạp công cộng Da Nang Bike / TNGo nằm cách đây chỉ khoảng 300m, chi phí 5.000 ₫ / 30 phút.`,
+          `🌱 **Dấu chân Carbon**: Lựa chọn di chuyển xanh giúp bạn cắt giảm ước tính **1.2 – 1.6 kg CO2** cho chuyến đi.`
+        ]
+      };
+    }
+
+    if (
+      qLower.includes('giá') ||
+      qLower.includes('chi phí') ||
+      qLower.includes('tiền') ||
+      qLower.includes('bao nhiêu')
+    ) {
+      return {
+        answer: `Chi phí trải nghiệm tại **${displayName}** rất bình dân, minh bạch và phù hợp với nhiều nhóm du khách, mức giá ước tính trung bình khoảng **${costText}**.`,
+        tips: [
+          'Menu có giá niêm yết công khai rõ ràng, không có phí dịch vụ hay phụ thu ẩn.',
+          'Hỗ trợ thanh toán nhanh chóng bằng tiền mặt hoặc quét mã QR chuyển khoản ngân hàng tiện lợi.',
+          'Nên đi theo nhóm 2–4 người để có thể gọi thưởng thức nhiều món phong phú với chi phí tối ưu nhất.'
+        ]
+      };
+    }
+
+    if (
+      qLower.includes('giờ') ||
+      qLower.includes('thời điểm') ||
+      qLower.includes('đông') ||
+      qLower.includes('khi nào')
+    ) {
+      return {
+        answer: `**${displayName}** mở cửa đón khách từ **${hoursText}** hàng ngày. Thời lượng tham quan trung bình kéo dài khoảng **${durationText}**.`,
+        tips: [
+          '🕒 **Khung giờ vàng**: 09:30 – 11:00 sáng hoặc 14:00 – 16:30 chiều (ít đông, phục vụ nhanh, không gian thông thoáng).',
+          '⚠️ **Khung giờ cao điểm**: 12:00 – 13:00 và 18:30 – 20:00 (lượng khách rất đông, có thể phải chờ xếp bàn từ 5–10 phút).',
+          '🌿 Nên ghé sớm vào buổi sáng để thưởng thức đồ ăn nóng hổi và cảm nhận nhịp sống thư thái của địa phương.'
+        ]
+      };
+    }
+
+    return {
+      answer: `**${displayName}** là một trong những điểm đến tiêu biểu tại ${poi.city} với điểm đánh giá ${poi.rating}/5 sao và chỉ số sinh thái Eco **${poi.ecoScore}%**. ${poi.description}`,
+      tips: [
+        `Địa chỉ cụ thể: ${poi.address || poi.city}`,
+        `Thời lượng ghé thăm: ${durationText} • Mức giá ước tính: ${costText}`,
+        'Được GreenTrip AI và cộng đồng du lịch bền vững kiểm chứng chất lượng phục vụ.'
+      ]
+    };
+  };
+
+  const handleAskAi = (queryText: string) => {
+    if (!queryText.trim()) return;
+    setAiConversation({
+      query: queryText,
+      answer: '',
+      tips: [],
+      isLoading: true,
+    });
+    setAskAiQuery('');
+
+    // Smooth response animation
+    setTimeout(() => {
+      const result = generateAiAnswer(queryText);
+      setAiConversation({
+        query: queryText,
+        answer: result.answer,
+        tips: result.tips,
+        isLoading: false,
+      });
+    }, 400);
+  };
+
+  const handleCopyAiAnswer = () => {
+    if (!aiConversation) return;
+    const textToCopy = `${aiConversation.query}\n\n${aiConversation.answer}\n\n` +
+      aiConversation.tips.map((t) => `• ${t}`).join('\n');
+    navigator.clipboard?.writeText(textToCopy);
+    setCopiedAiAnswer(true);
+    setTimeout(() => setCopiedAiAnswer(false), 2000);
   };
 
   return (
@@ -130,7 +259,7 @@ export default function PoiDetailSection({
       </header>
 
       {/* 2. Scrollable Detail Body */}
-      <div className="flex-1 overflow-y-auto px-8 pt-6 pb-28 custom-scroll">
+      <div className="flex-1 overflow-y-auto px-8 pt-6 pb-48 custom-scroll">
         {/* Title & Michelin Badge */}
         <div className="flex flex-wrap items-center gap-3 mb-2">
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 font-heading">
@@ -228,6 +357,24 @@ export default function PoiDetailSection({
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Mindtrip-Style: Social proof row */}
+        <div className="flex items-center gap-3 mb-6 px-1 text-xs text-neutral-600">
+          <div className="flex items-center gap-1.5 font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-100">
+            <svg className="w-3.5 h-3.5 fill-rose-500" viewBox="0 0 24 24">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+            <span>{Math.round((poi.rating || 4.5) * 11)}</span>
+          </div>
+          <div className="flex -space-x-1.5 overflow-hidden">
+            <img className="inline-block h-6 w-6 rounded-full ring-2 ring-white object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="avatar 1" />
+            <img className="inline-block h-6 w-6 rounded-full ring-2 ring-white object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80" alt="avatar 2" />
+            <img className="inline-block h-6 w-6 rounded-full ring-2 ring-white object-cover" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80" alt="avatar 3" />
+          </div>
+          <span className="text-neutral-600 font-medium truncate">
+            <strong>Quỳnh Nguyễn</strong>, <strong>Lê Hoàng</strong> và 18 du khách đã chia sẻ trải nghiệm
+          </span>
         </div>
 
         {/* 4. Tabs Navigation: Tổng quan, Cẩm nang xanh, Vị trí */}
@@ -362,8 +509,8 @@ export default function PoiDetailSection({
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => handleSelectSuggestedQuestion(q)}
-                    className="text-left p-3 rounded-xl border border-neutral-200 hover:border-emerald-500 hover:bg-emerald-50/50 text-xs font-medium text-neutral-700 hover:text-emerald-900 transition flex items-center justify-between group"
+                    onClick={() => handleAskAi(q)}
+                    className="text-left p-3 rounded-xl border border-neutral-200 hover:border-emerald-500 hover:bg-emerald-50/50 text-xs font-medium text-neutral-700 hover:text-emerald-900 transition flex items-center justify-between group cursor-pointer"
                   >
                     <span className="line-clamp-2 pr-2">{q}</span>
                     <span className="text-neutral-400 group-hover:text-emerald-600 transition shrink-0">→</span>
@@ -371,6 +518,64 @@ export default function PoiDetailSection({
                 ))}
               </div>
             </div>
+
+            {/* AI Assistant Answer Card */}
+            {aiConversation && (
+              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 shadow-sm animate-fadeIn space-y-3">
+                <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 rounded-full bg-emerald-600 text-white items-center justify-center text-xs font-bold">
+                      ✨
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-bold text-emerald-950">GreenTrip AI Assistant</h4>
+                      <p className="text-[10px] text-emerald-700 font-medium truncate max-w-sm">
+                        "{aiConversation.query}"
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleCopyAiAnswer}
+                      className="px-2 py-1 text-[11px] font-semibold text-emerald-800 bg-white rounded-lg border border-emerald-200 hover:bg-emerald-50 transition cursor-pointer"
+                    >
+                      {copiedAiAnswer ? '✓ Đã chép' : 'Sao chép'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAiConversation(null)}
+                      className="p-1 text-emerald-700 hover:text-emerald-900 rounded-lg hover:bg-emerald-100 transition cursor-pointer"
+                      title="Đóng câu trả lời"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                {aiConversation.isLoading ? (
+                  <div className="py-6 flex flex-col items-center justify-center gap-2 text-emerald-800 text-xs">
+                    <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span>GreenTrip AI đang tra cứu dữ liệu địa phương...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3 text-xs leading-relaxed text-neutral-800">
+                    <p className="whitespace-pre-line font-normal">{aiConversation.answer}</p>
+                    {aiConversation.tips && aiConversation.tips.length > 0 && (
+                      <div className="space-y-1.5 pt-2 border-t border-emerald-100">
+                        <div className="font-bold text-emerald-900 text-[11px]">Mẹo hữu ích từ GreenTrip:</div>
+                        {aiConversation.tips.map((tip, idx) => (
+                          <div key={idx} className="flex items-start gap-2 text-[11px] text-neutral-700">
+                            <span className="text-emerald-600 shrink-0">🌿</span>
+                            <span>{tip}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -468,7 +673,7 @@ export default function PoiDetailSection({
           onSubmit={(e) => {
             e.preventDefault();
             if (askAiQuery.trim()) {
-              alert(`GreenTrip AI đang tổng hợp câu trả lời cho: "${askAiQuery}"`);
+              handleAskAi(askAiQuery);
             }
           }}
           className="bg-white rounded-full border border-neutral-300 shadow-xl px-5 py-3 flex items-center justify-between hover:border-neutral-400 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition"

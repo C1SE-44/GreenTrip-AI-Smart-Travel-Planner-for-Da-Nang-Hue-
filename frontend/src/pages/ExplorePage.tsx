@@ -49,6 +49,7 @@ export default function ExplorePage() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [activeTab, setActiveTab] = useState<'all' | PoiCategory>('all');
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
+  const [rightViewMode, setRightViewMode] = useState<'detail' | 'map'>('detail');
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -201,7 +202,12 @@ export default function ExplorePage() {
   }, [filterValues]);
 
   const handleSelectPoi = (id: string | null) => {
-    setSelectedPoiId((prev) => (prev === id ? null : id));
+    if (!id) {
+      setSelectedPoiId(null);
+      return;
+    }
+    setSelectedPoiId(id);
+    setRightViewMode('detail');
   };
 
   const selectedPoi = useMemo(() => {
@@ -571,7 +577,7 @@ export default function ExplorePage() {
       {/* 3. RIGHT SECTION: DETAIL VIEW WHEN SELECTED, OR INTERACTIVE MAP */}
       <section className="flex-1 h-full relative overflow-hidden p-3 pl-1 bg-white" data-purpose="right-panel-container">
         {/* Interactive Map (remains mounted for fast performance) */}
-        <div className={`w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)] ${selectedPoi ? 'invisible pointer-events-none' : 'visible'}`}>
+        <div className={`w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)] ${selectedPoi && rightViewMode === 'detail' ? 'invisible pointer-events-none' : 'visible'}`}>
           <PoiMap
             pois={filteredPois}
             selectedPoiId={selectedPoiId}
@@ -579,17 +585,82 @@ export default function ExplorePage() {
             onSelectPoi={handleSelectPoi}
             onHoverPoi={setHoveredPoiId}
           />
+
+          {/* Floating Pill on Map: Return to Detail */}
+          {selectedPoi && rightViewMode === 'map' && (
+            <div className="absolute top-4 right-4 z-[500] flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setRightViewMode('detail')}
+                className="flex items-center gap-2 px-4 py-2 bg-white/95 backdrop-blur-md text-charcoal border border-neutral-200 shadow-lg rounded-full text-xs font-bold hover:bg-white hover:border-emerald-500 hover:text-emerald-700 transition cursor-pointer"
+              >
+                <span>📄 Xem chi tiết {selectedPoi.cleanName || selectedPoi.name}</span>
+                <span className="text-emerald-600 font-extrabold">↗</span>
+              </button>
+            </div>
+          )}
+
+          {/* Floating POI Preview Card on Map */}
+          {selectedPoi && rightViewMode === 'map' && (
+            <div className="absolute bottom-6 left-6 right-6 z-[500] max-w-md mx-auto bg-white/95 backdrop-blur-md rounded-2xl p-3.5 border border-neutral-200 shadow-2xl flex items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <img 
+                  src={selectedPoi.image} 
+                  alt={selectedPoi.name} 
+                  className="w-12 h-12 rounded-xl object-cover shrink-0 border border-neutral-100" 
+                />
+                <div className="overflow-hidden">
+                  <div className="flex items-center gap-1.5">
+                    {selectedPoi.isMichelin && (
+                      <span className="px-1.5 py-0.5 rounded bg-rose-900 text-rose-100 text-[9px] font-bold">
+                        MICHELIN
+                      </span>
+                    )}
+                    <span className="text-[11px] text-muted font-medium truncate">{selectedPoi.city}</span>
+                  </div>
+                  <h4 className="font-bold text-xs text-neutral-900 truncate">
+                    {selectedPoi.cleanName || selectedPoi.name}
+                  </h4>
+                  <div className="flex items-center gap-2 text-[11px] text-neutral-500 mt-0.5">
+                    <span>★ {selectedPoi.rating}</span>
+                    <span>•</span>
+                    <span className="text-emerald-700 font-semibold">🌿 Eco {selectedPoi.ecoScore}%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setRightViewMode('detail')}
+                  className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer"
+                >
+                  Chi tiết
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPoiId(null)}
+                  className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition cursor-pointer"
+                  title="Đóng ghim"
+                >
+                  <XIcon className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Detail Section */}
-        {selectedPoi && (
+        {selectedPoi && rightViewMode === 'detail' && (
           <div className="absolute inset-0 z-30 bg-white">
             <PoiDetailSection
               poi={selectedPoi}
               isFavorite={favorites.has(selectedPoi.id)}
-              onClose={() => setSelectedPoiId(null)}
+              onClose={() => {
+                setSelectedPoiId(null);
+                setRightViewMode('map');
+              }}
               onToggleFavorite={toggleFavorite}
-              onViewOnMap={() => setSelectedPoiId(null)}
+              onViewOnMap={() => setRightViewMode('map')}
             />
           </div>
         )}

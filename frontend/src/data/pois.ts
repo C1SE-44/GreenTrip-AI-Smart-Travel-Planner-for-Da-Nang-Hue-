@@ -16,6 +16,7 @@ export interface Poi {
   rating: number;
   visitDuration: string;
   ecoScore: number;
+  openHours?: string | null;
   estimatedCost?: number | null;
   isLocalBusiness?: boolean;
 }
@@ -29,6 +30,7 @@ export interface BackendPoiItem {
   longitude?: number | null;
   address?: string | null;
   city?: string | null;
+  open_hours?: string | null;
   estimated_cost?: number | null;
   average_visit_minutes?: number | null;
   satisfaction_score?: number | null;
@@ -377,6 +379,7 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
     rating,
     visitDuration,
     ecoScore,
+    openHours: item.open_hours?.trim() || (category === 'quan-an' ? '09:30 – 21:30' : '07:30 – 17:30'),
     estimatedCost,
     isLocalBusiness: item.is_local_business ?? undefined,
   };

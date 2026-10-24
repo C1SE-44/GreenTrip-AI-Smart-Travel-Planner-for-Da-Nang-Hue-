@@ -102,7 +102,9 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
       };
       localStorage.setItem('greentrip_onboarding_profile', JSON.stringify(profile));
       localStorage.setItem('greentrip_onboarding_completed', 'true');
-    } catch {}
+    } catch {
+      // Ignore local storage write errors
+    }
     onClose();
   };
 
@@ -119,7 +121,9 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
           if (parsed.lastName && !lastName) setLastName(parsed.lastName);
           if (parsed.city && !city) setCity(parsed.city);
         }
-      } catch {}
+      } catch {
+        // Ignore local storage read errors
+      }
     } else {
       setTimeout(() => setMounted(false), 300);
       document.body.style.overflow = 'auto';

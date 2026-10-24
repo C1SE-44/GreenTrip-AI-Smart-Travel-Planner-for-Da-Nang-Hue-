@@ -15,7 +15,7 @@ import {
   MapPin,
 } from 'lucide-react';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
-import { pois, categoryLabels, normalizePois, type PaginatedPoisResponse } from '@/data/pois';
+import { pois, categoryLabels, normalizePois } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';

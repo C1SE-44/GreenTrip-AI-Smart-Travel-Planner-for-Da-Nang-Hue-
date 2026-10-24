@@ -1,0 +1,1476 @@
+{
+  "generated_at": "2026-10-24T09:01:22.443032+00:00",
+  "total_update_candidates": 62,
+  "successfully_enriched_count": 62,
+  "output_csv": "pois_enriched.csv",
+  "enrichment_diffs": [
+    {
+      "record_id": "FOOD-DN-002",
+      "place_name": "Mì Quảng Bà Mua",
+      "osm_type": "node",
+      "osm_id": "10600872413",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Thương hiệu lâu đời với nước dùng sánh chan sâm sấp đậm đà chuẩn vị miền Trung. Ngoài mì Quảng truyền thống, quán còn phục vụ mì lươn, mì gà và đặc sản bánh tráng cuốn thịt heo trong không gian sang trọng, ấm cúng.",
+          "new": "Hệ thống mì Quảng lâu đời và đông khách nhất Đà Nẵng. Không gian rộng rãi, phục vụ nhanh, giữ chuẩn hương vị truyền thống xứ Quảng với sợi mì dẻo, nước nhân sánh béo, ăn kèm bánh tráng mè nướng giòn và rau sống 9 vị.\n\n[Menu / Dịch vụ & Giá vé]: Mì Quảng gà / tôm thịt / bò / cá lóc: 40.000 – 55.000 VNĐ/tô | Mì Quảng ếch / Mì Quảng lươn: 55.000 – 65.000 VNĐ/tô | Mì Quảng đặc biệt thập cẩm: 65.000 VNĐ/tô | Bánh tráng cuốn thịt heo Đại Lộc / Ram cuốn cải: 45.000 – 95.000 VNĐ/phần\n\n[Mức giá tham khảo]: $ – $$ (Cấp độ 1 – 2: Bình dân đến Phổ thông) — Khoảng 45.000 – 70.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:30 – 21:30"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "60000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-DN-003",
+      "place_name": "Bún Chả Cá Hờn (Đạt giải MICHELIN Bib Gourmand)",
+      "osm_type": "node",
+      "osm_id": "12350543701",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Ẩm thực: vietnamese, noodle.",
+          "new": "Quán gia truyền hơn 30 năm qua 2 thế hệ, được vinh danh MICHELIN Bib Gourmand. Tô bún rất đầy đặn với cả chả cá chiên, chả cá hấp và riêu cua; nước dùng ninh từ xương cá, cà chua, bí đỏ và măng tươi có vị ngọt thanh tự nhiên.\n\n[Menu / Dịch vụ & Giá vé]: Bún chả cá (tô nhỏ / tô lớn): 25.000 – 35.000 VNĐ/tô | Bún riêu chả cá: 30.000 – 35.000 VNĐ/tô | Bún cá thu / cá ngừ / Tô đặc biệt: 40.000 – 50.000 VNĐ/tô\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 25.000 – 45.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:00 – 21:00"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "35000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-DN-005",
+      "place_name": "Bún Mắm Vân (Xóm Bún Mắm Trần Kế Xương)",
+      "osm_type": "node",
+      "osm_id": "6152685685",
+      "city": "Da Nang",
+      "changed_fields_count": 2,
+      "field_changes": {
+        "description": {
+          "old": "Giờ mở cửa: Mo-Su 06:00-23:00.",
+          "new": "Quán bún mắm nêm nổi tiếng nhất trong khu \"xóm bún mắm\" Trần Kế Xương (sát cạnh quán Ngọc). Tô bún đầy ắp mít non luộc, rau sống, đậu phộng, thịt heo quay da giòn rụm và nước mắm nêm cá cơm pha thơm lừng.\n\n[Menu / Dịch vụ & Giá vé]: Bún mắm thịt heo luộc / nem chả: 25.000 – 30.000 VNĐ/tô | Bún mắm thịt heo quay giòn bì: 30.000 – 40.000 VNĐ/tô | Bún mắm thập cẩm đặc biệt: 45.000 VNĐ/tô\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 25.000 – 45.000 VNĐ/người."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "35000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-DN-007",
+      "place_name": "Bánh Xèo Bà Dưỡng (Đạt chuẩn MICHELIN Selected)",
+      "osm_type": "node",
+      "osm_id": "4541527689",
+      "city": "Da Nang",
+      "changed_fields_count": 2,
+      "field_changes": {
+        "description": {
+          "old": "Quán ăn nổi tiếng với món bánh xèo giòn tan được chế biến từ nguyên liệu tươi ngon. Đây là địa điểm luôn nhận được đánh giá rất cao từ khách du lịch trên các trang ẩm thực.",
+          "new": "Quán bánh xèo hơn 30 năm tuổi nằm cuối con hẻm 280 Hoàng Diệu, góp mặt trong danh sách MICHELIN Selected. Bánh xèo đổ khuôn gang giòn tan, nhân tôm đất và thịt bò tươi, chấm cùng nước lèo gan đậu phộng đặc trưng không nơi nào sánh kịp.\n\n[Menu / Dịch vụ & Giá vé]: Bánh xèo tôm thịt đặc biệt (đĩa 4 cái, kèm rau & bánh tráng): 80.000 – 90.000 VNĐ/đĩa | Nem lụi nướng: 8.000 VNĐ/cây (Set 5 cây: 40.000 VNĐ, Set 10 cây: 80.000 VNĐ) | Bò nướng lá lốt: 90.000 VNĐ/đĩa | Bún thịt nướng: 40.000 VNĐ/tô\n\n[Mức giá tham khảo]: $$ (Cấp độ 2: Phổ thông / Tầm trung) — Khoảng 60.000 – 110.000 VNĐ/người."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "85000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-DN-015",
+      "place_name": "Quán Mậu – Đặc Sản Thịt Heo Hai Đầu Da",
+      "osm_type": "node",
+      "osm_id": "6152679485",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Thương hiệu gia truyền hơn 30 năm làm nên tên tuổi món Thịt heo hai đầu da tại Đà Nẵng. Quán có sân vườn rộng, lát thịt heo mông được cắt khéo léo giữ lớp mỡ và da trong veo ở cả hai đầu, chấm mắm nêm đậm đà.\n\n[Menu / Dịch vụ & Giá vé]: Thịt heo hai đầu da cuốn bánh tráng (nhỏ / vừa / lớn): 85.000 – 130.000 – 170.000 VNĐ/phần | Bánh đập chấm mắm nêm: 15.000 – 20.000 VNĐ/cái | Mì Quảng: 35.000 – 45.000 VNĐ/tô\n\n[Mức giá tham khảo]: $$ (Cấp độ 2: Phổ thông / Tầm trung) — Khoảng 80.000 – 130.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "08:00 – 22:00"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "105000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-DN-017",
+      "place_name": "Hải Sản Năm Đảnh",
+      "osm_type": "node",
+      "osm_id": "6151186386",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Quán hải sản bình dân nổi tiếng nhất Đà Nẵng. Nằm trong hẻm nhỏ gần cảng cá Thọ Quang nên nguồn hải sản tươi rói, nổi danh với mức giá bình dân đồng giá đại đa số các món từ 60.000 – 80.000 VNĐ/đĩa.\n\n[Menu / Dịch vụ & Giá vé]: Các món ốc, sò điệp nướng, chíp chíp hấp, bạch tuộc nướng, tôm tít cháy tỏi, gỏi ốc giấy: 60.000 – 100.000 VNĐ/đĩa | Lẩu hải sản / Cháo hải sản: 100.000 – 150.000 VNĐ/nồi | Ghẹ / Cua / Tôm hùm tươi sống: 200.000 – 350.000+ VNĐ (theo thời giá)\n\n[Mức giá tham khảo]: $$ (Cấp độ 2: Phổ thông / Tầm trung) — Khoảng 100.000 – 160.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "10:00 – 20:30"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "130000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-DN-034",
+      "place_name": "Golden Meat House (Nhà Hàng Thịt Nướng Hàn Quốc Cao Cấp)",
+      "osm_type": "way",
+      "osm_id": "1314684507",
+      "city": "Da Nang",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "Ẩm thực: steak_house.",
+          "new": "Nhà hàng BBQ Hàn Quốc sang trọng bậc nhất khu phố biển Mỹ Khê – An Thượng. Nổi tiếng với thịt heo Iberico và bò Wagyu lên tuổi (Dry-aged), nhân viên nướng tại bàn chuyên nghiệp cùng quầy panchan chuẩn Hàn.\n\n[Menu / Dịch vụ & Giá vé]: Ba rọi / Nọng heo Iberico / Lưỡi bò BBQ: 220.000 – 390.000 VNĐ/phần | Sườn bò hầm Galbijjim / Bò Wagyu thượng hạng: 550.000 – 1.200.000 VNĐ/phần | Combo BBQ trưa & tối (7 – 8 món cho 2 – 3 người): 590.000 – 990.000 VNĐ/combo | Súp chả cá Busan / Bánh hành Hải sản / Kimbap: 95.000 – 230.000 VNĐ\n\n[Mức giá tham khảo]: $$$ (Cấp độ 3: Cao cấp / Sang trọng) — Khoảng 300.000 – 600.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "10:00 – 23:00"
+        },
+        "address": {
+          "old": "",
+          "new": "100 Trần Bạch Đằng, Bắc Mỹ An, Ngũ Hành Sơn, Đà Nẵng."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "450000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-DN-039",
+      "place_name": "La Maison 1888 – InterContinental Danang Sun Peninsula Resort (Đạt 1 Sao MICHELIN)",
+      "osm_type": "way",
+      "osm_id": "1330858333",
+      "city": "Da Nang",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Nhà hàng duy nhất tại Đà Nẵng đạt 1 Sao MICHELIN (1 MICHELIN Star) danh giá. Thiết kế như một dinh thự Pháp cổ xa hoa bên sườn đồi bán đảo Sơn Trà, dẫn dắt bởi Bếp trưởng 3 sao Michelin Christian Le Squer / Pierre Gagnaire, có phòng Private Dining và hầm rượu quý hiếm.\n\n[Menu / Dịch vụ & Giá vé]: Thực đơn Tasting Menu (5 – 8 món Pháp đương đại thượng hạng): 4.500.000 – 6.000.000++ VNĐ/người | Gói thưởng thức rượu vang (Wine Pairing): 2.900.000 – 4.500.000++ VNĐ/người\n\n[Mức giá tham khảo]: $$$$ (Cấp độ 4: Xa xỉ / Thượng lưu) — Khoảng 5.000.000 – 10.000.000+ VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "18:00 – 21:30 (Chỉ phục vụ bữa tối – Cần đặt bàn trước)"
+        },
+        "address": {
+          "old": "",
+          "new": "Bãi Bắc, Bán đảo Sơn Trà, Đà Nẵng."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "7500000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-DN-041",
+      "place_name": "Roots Plant-based Cafe",
+      "osm_type": "node",
+      "osm_id": "10749874405",
+      "city": "Da Nang",
+      "changed_fields_count": 2,
+      "field_changes": {
+        "description": {
+          "old": "Healthy Vegan Restaurant | Ẩm thực: breakfast, burger, cake, vietnamese, salad. Giờ mở cửa: Mo-Su 08:30-22:45. Có Wifi. Chỗ ngồi ngoài trời.",
+          "new": "Nhà hàng & Cafe 100% thuần thực vật (Plant-based) hiện đại theo phong cách phương Tây. Điểm cộng lớn là sử dụng rau củ hữu cơ địa phương, sữa hạt tự nấu, không đường tinh luyện, có máy lạnh mát mẻ.\n\n[Menu / Dịch vụ & Giá vé]: Smoothie Bowls & Buddha Bowls (Bowl rau củ nướng sốt hạt): 95.000 – 145.000 VNĐ/tô | Bánh mì kẹp thuần chay / Vegan Burger / Hummus Toast: 95.000 – 140.000 VNĐ/phần | Nước ép lạnh Cold-pressed / Kombucha / Cà phê sữa thực vật: 55.000 – 85.000 VNĐ/ly\n\n[Mức giá tham khảo]: $$ (Cấp độ 2: Phổ thông / Tầm trung) — Khoảng 100.000 – 180.000 VNĐ/người."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "140000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-DN-043",
+      "place_name": "Kurumi – Healthy Vegan Food & Desserts",
+      "osm_type": "node",
+      "osm_id": "10310109109",
+      "city": "Da Nang",
+      "changed_fields_count": 2,
+      "field_changes": {
+        "description": {
+          "old": "Ẩm thực: breakfast, coffee_shop, salad, pancake, russian, european. Giờ mở cửa: Mo-Su 08:00-21:30. Có Wifi. Chỗ ngồi ngoài trời.",
+          "new": "Quán Brunch & Cafe thuần chay có khoảng sân nhỏ xanh mát, yên tĩnh. Rất được khách quốc tế và giới trẻ yêu thích nhờ các món ăn sáng kiểu Âu thuần chay và tủ bánh ngọt Raw Vegan (không nướng, không đường tinh luyện).\n\n[Menu / Dịch vụ & Giá vé]: Buddha Bowl / Eggs Benedict thuần chay / Avocado Toast: 95.000 – 135.000 VNĐ/phần | Bánh kếp yến mạch / Súp bí đỏ: 75.000 – 110.000 VNĐ/phần | Raw Tiramisu / Bánh cuộn quế / Coconut Matcha: 55.000 – 85.000 VNĐ\n\n[Mức giá tham khảo]: $$ (Cấp độ 2: Phổ thông / Tầm trung) — Khoảng 90.000 – 160.000 VNĐ/người."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "125000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-HUE-004",
+      "place_name": "Cơm Hến Hoa Đông (Cồn Hến)",
+      "osm_type": "node",
+      "osm_id": "7223176485",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Giờ mở cửa: Mo-Su 07:00-21:30.",
+          "new": "Tọa lạc ngay tại \"cái nôi\" Cồn Hến hơn 30 năm qua, giữ nguyên nếp nhà cổ truyền thống. Hến cồn tươi ngọt xào măng khô, miến, trộn cùng cơm nguội, tóp mỡ giòn tan, mắm ruốc, đậu phộng, dọc mùng, khế chua và chan nước luộc hến nóng hổi.\n\n[Menu / Dịch vụ & Giá vé]: Cơm hến / Bún hến / Mì hến: 15.000 – 20.000 VNĐ/tô | Hến xúc bánh tráng mè: 30.000 – 40.000 VNĐ/đĩa | Chè bắp Cồn Hến: 10.000 – 15.000 VNĐ/ly\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 20.000 – 40.000 VNĐ/người."
+        },
+        "address": {
+          "old": "",
+          "new": "64 Kiệt 7 Ứng Bình, Phường Vỹ Dạ, TP. Huế."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "30000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-HUE-033",
+      "place_name": "Le Parfum – Azerai La Residence Hue (Fine Dining Pháp Bên Sông Hương)",
+      "osm_type": "node",
+      "osm_id": "12238730139",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Ẩm thực: french, vietnamese.",
+          "new": "Nhà hàng Fine Dining đẳng cấp bậc nhất Cố đô nằm trong dinh thự Thống đốc Pháp cổ (kiến trúc Art Deco năm 1930) trải dài bên bờ sông Hương, nhìn thẳng sang Kỳ Đài và Đại Nội. Phục vụ ẩm thực Pháp thượng hạng và Fusion Pháp – Việt với dịch vụ 5 sao quốc tế.\n\n[Menu / Dịch vụ & Giá vé]: Thăn bò Wagyu / Thăn nội bò Black Angus nướng: 850.000 – 1.850.000 VNĐ/phần | Gan ngỗng Pháp áp chảo / Cá tuyết đút lò / Sườn cừu Úc: 550.000 – 1.250.000 VNĐ/phần | Thực đơn Tasting Set Menu & Wine Pairing: 1.500.000 – 3.200.000++ VNĐ/người\n\n[Mức giá tham khảo]: $$$$ (Cấp độ 4: Xa xỉ / Thượng lưu) — Khoảng 1.200.000 – 3.000.000+ VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:30 – 22:30 (Bữa tối Fine Dining: 18:00 – 22:00)"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "2100000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-HUE-034",
+      "place_name": "Les Jardins de La Carambole (Nhà Hàng Biệt Thự Pháp Cổ)",
+      "osm_type": "node",
+      "osm_id": "2264793617",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Ẩm thực: french, asian, pizza.",
+          "new": "Tọa lạc trong một căn biệt thự Pháp cổ màu vàng kem lãng mạn có sân thượng nhìn ra khu vườn nhiệt đới ngay cạnh Hoàng thành Huế. Chuyên các món Pháp cổ điển, bánh mì Baguette nướng củi, bít tết và ẩm thực cung đình cách tân.\n\n[Menu / Dịch vụ & Giá vé]: Bò bít tết sốt tiêu xanh Pháp / Ức vịt sốt cam: 250.000 – 480.000 VNĐ/phần | Pizza nướng củi / Mì Ý hải sản / Súp hành Pháp: 140.000 – 260.000 VNĐ/phần | Bánh Crepe Suzette / Tiramisu / Rượu vang Pháp: 90.000 – 220.000 VNĐ/phần\n\n[Mức giá tham khảo]: $$$ (Cấp độ 3: Cao cấp / Sang trọng) — Khoảng 250.000 – 550.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:00 – 22:30"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "400000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-HUE-036",
+      "place_name": "Shino Sushi – Japanese Restaurant",
+      "osm_type": "node",
+      "osm_id": "5809806153",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Giờ mở cửa: Mo-Su 10:00-16:00, 21:30-21:30. Có Wifi.",
+          "new": "Nhà hàng Nhật Bản được yêu thích bậc nhất trung tâm TP. Huế với thiết kế gỗ ấm cúng và phòng riêng kiểu Nhật. Nổi bật với nguồn cá hồi, cá ngừ, sò điệp tươi ngọt và các cuộn Maki sáng tạo.\n\n[Menu / Dịch vụ & Giá vé]: Set Sashimi cá hồi / bạch tuộc / cá trích ép trứng: 125.000 – 380.000 VNĐ/set | Sushi cuộn lươn Nhật / Cá hồi nướng phô mai: 95.000 – 165.000 VNĐ/phần | Mì Ramen / Udon / Cơm lươn Unagi: 85.000 – 160.000 VNĐ/phần\n\n[Mức giá tham khảo]: $$ (Cấp độ 2: Phổ thông / Tầm trung) — Khoảng 150.000 – 280.000 VNĐ/người."
+        },
+        "address": {
+          "old": "",
+          "new": "64 Chu Văn An, Phường Phú Hội, TP. Huế."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "215000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-HUE-042",
+      "place_name": "Quán Chay Thanh Liễu (Chay Bình Dân Lâu Đời)",
+      "osm_type": "node",
+      "osm_id": "4260153090",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Ẩm thực: vietnamese. Có Wifi.",
+          "new": "Quán chay gia đình bình dân nổi tiếng với khách du lịch bụi (backpacker) và người dân địa phương ngay phố Tây Nguyễn Công Trứ. Đồ ăn làm mới mỗi ngày, hương vị mộc mạc chuẩn cơm nhà xứ Huế với mức giá siêu tiết kiệm.\n\n[Menu / Dịch vụ & Giá vé]: Cơm phần chay thập cẩm / Bún nghệ xào chay / Bún mắm nêm chay: 20.000 – 30.000 VNĐ/phần | Bánh lọc chay / Bánh nậm chay / Nem rán chay: 20.000 – 30.000 VNĐ/đĩa | Bún Huế chay / Phở chay: 25.000 – 30.000 VNĐ/tô\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 20.000 – 45.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:00 – 20:30"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "30000"
+        }
+      }
+    },
+    {
+      "record_id": "FOOD-HUE-043",
+      "place_name": "Nook Eatery – Healthy & Vegan Friendly",
+      "osm_type": "node",
+      "osm_id": "13041315501",
+      "city": "Hue",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "Có Wifi.",
+          "new": "Quán Brunch & Healthy Food xinh xắn nằm trong con hẻm yên tĩnh đường Nguyễn Công Trứ. Chuyên phục vụ các tô Smoothie Bowl trái cây tươi hạt dinh dưỡng, bánh mì nguyên cám bơ tươi (Avocado Toast), Falafel Bowl và các món thuần chay hiện đại.\n\n[Menu / Dịch vụ & Giá vé]: Smoothie Bowls (Xoài chanh dây, Dâu chuối hạt chia, Cacao bơ đậu phộng): 75.000 – 95.000 VNĐ/tô | Falafel Salad Bowl / Vegan Burger / Avocado Toast: 80.000 – 120.000 VNĐ/phần | Nước ép nguyên chất Detox / Sinh tố rau xanh: 45.000 – 65.000 VNĐ/ly\n\n[Mức giá tham khảo]: $$ (Cấp độ 2: Phổ thông / Tầm trung) — Khoảng 80.000 – 140.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:30 – 21:00"
+        },
+        "address": {
+          "old": "",
+          "new": "Kiệt 42 Nguyễn Công Trứ, Phường Phú Hội, TP. Huế."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "110000"
+        }
+      }
+    },
+    {
+      "record_id": "CAFE-DN-004",
+      "place_name": "Memory Lounge – Cafe Kiến Trúc Chiếc Lá Trên Sông Hàn",
+      "osm_type": "node",
+      "osm_id": "5429221882",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Công trình kiến trúc hình chiếc lá duy nhất vươn hẳn ra trên mặt nước sông Hàn (do kiến trúc sư nổi tiếng Nguyễn Cao Nguyên thiết kế). Ngồi tại đây có thể ngắm trọn Cầu Quay Sông Hàn ở cự ly gần nhất trong không gian sang trọng, mát mẻ.\n\n[Menu / Dịch vụ & Giá vé]: Cà phê truyền thống / Espresso / Cappuccino: 45.000 – 75.000 VNĐ/ly | Sinh tố / Nước ép tươi / Trà thảo mộc: 65.000 – 95.000 VNĐ/ly | Điểm tâm sáng (Mì Quảng, Bún bò, Điểm tâm Âu): 75.000 – 135.000 VNĐ/phần\n\n[Mức giá tham khảo]: $$ (Cấp độ 2: Phổ thông / Tầm trung) — Khoảng 70.000 – 150.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:30 – 23:00"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "110000"
+        }
+      }
+    },
+    {
+      "record_id": "CAFE-DN-005",
+      "place_name": "Nia Coffee – Cafe Sân Vườn Sinh Thái & Hồ Cá Koi",
+      "osm_type": "node",
+      "osm_id": "13744719202",
+      "city": "Da Nang",
+      "changed_fields_count": 2,
+      "field_changes": {
+        "description": {
+          "old": "Ẩm thực: coffee_shop. Giờ mở cửa: Mo-Su 07:00-22:00. Có Wifi. Chỗ ngồi ngoài trời.",
+          "new": "Ốc đảo xanh giữa lòng trung tâm quận Hải Châu. Thiết kế kiến trúc gỗ mộc mở hoàn toàn quanh hồ cá Koi lớn ở trung tâm, lối đi lát đá trên mặt nước và giàn cây leo rợp bóng mát.\n\n[Menu / Dịch vụ & Giá vé]: Cà phê đen / Cà phê sữa / Bạc xỉu: 25.000 – 35.000 VNĐ/ly | Trà đào cam sả / Trà vải / Yaourt trái cây: 38.000 – 49.000 VNĐ/ly | Nước ép nguyên chất / Sinh tố bơ, dâu: 40.000 – 50.000 VNĐ/ly\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 30.000 – 50.000 VNĐ/người."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "40000"
+        }
+      }
+    },
+    {
+      "record_id": "CAFE-DN-006",
+      "place_name": "Trình Cà Phê – Không Gian Sân Vườn Nhiệt Đới",
+      "osm_type": "node",
+      "osm_id": "11665246470",
+      "city": "Da Nang",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "Giờ mở cửa: Mo-Su 06:30-01:30. Có Wifi.",
+          "new": "Khu vườn nhiệt đới rộng hàng ngàn mét vuông ẩn sau cổng gỗ nhỏ, ngập tràn cây xanh đại thụ, lồng đèn Hội An và bàn ghế gỗ thấp gần gũi. Lúc nào cũng đông nghịt giới trẻ và du khách.\n\n[Menu / Dịch vụ & Giá vé]: Cà phê bơ Trình (Best-seller) / Cà phê muối / Cà phê dừa: 35.000 – 45.000 VNĐ/ly | Cà phê phin truyền thống: 25.000 – 29.000 VNĐ/ly | Trà mãng cầu / Trà ổi hồng / Trà sen vàng: 35.000 – 45.000 VNĐ/ly\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 30.000 – 45.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "Mo-Su 06:30-01:30",
+          "new": "06:30 – 01:30 sáng hôm sau"
+        },
+        "address": {
+          "old": "",
+          "new": "25 Phạm Hồng Thái, Hải Châu"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "40000"
+        }
+      }
+    },
+    {
+      "record_id": "CAFE-DN-013",
+      "place_name": "Nối Cafe – Phong Cách Cổ Điển / Bao Cấp (Vintage / Retro)",
+      "osm_type": "node",
+      "osm_id": "6146988786",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Ẩm thực: coffee_shop. Có Wifi.",
+          "new": "Bảo tàng ký ức thu nhỏ của Đà Nẵng xưa. Quán trưng bày hàng trăm kỷ vật thập niên 1970 – 1990 như xe Honda 67, Vespa cổ, tivi đen trắng, máy cassette, radio cũ dưới tán cây rợp mát, buổi tối thường có giao lưu đàn hát xưa.\n\n[Menu / Dịch vụ & Giá vé]: Cà phê đen / Cà phê sữa phin truyền thống: 20.000 – 28.000 VNĐ/ly | Cà phê bơ / Cà phê cốt dừa / Bạc xỉu: 32.000 – 38.000 VNĐ/ly | Nước sấu / Nước mơ / Trà gừng mật ong: 28.000 – 35.000 VNĐ/ly\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 25.000 – 40.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:30 – 22:00"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "30000"
+        }
+      }
+    },
+    {
+      "record_id": "CAFE-DN-021",
+      "place_name": "2AM Coffee – Không Gian Học Tập & Làm Việc Tối Giản",
+      "osm_type": "node",
+      "osm_id": "12615300356",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Ẩm thực: coffee_shop. Có Wifi. Chỗ ngồi ngoài trời.",
+          "new": "Không gian 3 tầng rộng lớn, thiết kế hiện đại, yên tĩnh tuyệt đối ở tầng 2 và tầng 3 chuyên phục vụ người đi làm và sinh viên ôn thi. Wifi chia từng tầng cực mạnh, ghế ngồi công thái học thoải mái suốt nhiều giờ.\n\n[Menu / Dịch vụ & Giá vé]: Cà phê muối / Bạc xỉu / Espresso / Cold Brew: 29.000 – 49.000 VNĐ/ly | Trà sữa Olong / Trà ổi hồng / Trà nhiệt đới: 39.000 – 49.000 VNĐ/ly\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 35.000 – 50.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:00 – 23:00"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "40000"
+        }
+      }
+    },
+    {
+      "record_id": "CAFE-DN-029",
+      "place_name": "Gé Cafe – Chuyên Cà Phê Máy & Cà Phê Sáng Tạo",
+      "osm_type": "node",
+      "osm_id": "12345255101",
+      "city": "Da Nang",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "Có Wifi.",
+          "new": "Quán cafe sân vườn pha lẫn kiến trúc gạch thô nằm ngay trung tâm Lê Hồng Phong. Nổi tiếng với chất lượng hạt cà phê pha máy (Espresso, Cappuccino, Latte) đậm hương, lớp crema dày mịn cùng các món cà phê kem béo sáng tạo.\n\n[Menu / Dịch vụ & Giá vé]: Espresso / Americano / Latte / Cappuccino: 35.000 – 49.000 VNĐ/ly | Cà phê muối / Cà phê kem bơ / Cà phê hạnh nhân: 32.000 – 42.000 VNĐ/ly | Cà phê phin truyền thống: 25.000 – 29.000 VNĐ/ly\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 30.000 – 50.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:30 – 23:00"
+        },
+        "address": {
+          "old": "",
+          "new": "24 – 26 Lê Hồng Phong, Phường Phước Ninh, Quận Hải Châu, Đà Nẵng."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "40000"
+        }
+      }
+    },
+    {
+      "record_id": "CAFE-DN-031",
+      "place_name": "Cà Phê Long – Huyền Thoại Cà Phê Phin Truyền Thống Đà Nẵng",
+      "osm_type": "node",
+      "osm_id": "729406430",
+      "city": "Da Nang",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Quán cà phê cóc hơn 40 năm tuổi, là nét văn hóa đặc trưng của người dân Đà Nẵng mỗi buổi sáng. Những chiếc bàn ghế đẩu thấp xếp kín góc ngã tư, ly cà phê phin nhỏ đậm đặc sóng sánh dùng kèm ấm trà nóng miễn phí.\n\n[Menu / Dịch vụ & Giá vé]: Cà phê đen đá / Cà phê sữa đá phin truyền thống: 16.000 – 22.000 VNĐ/ly | Bạc xỉu nóng/đá / Chanh muối / Sữa đậu nành: 18.000 – 22.000 VNĐ/ly\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 16.000 – 25.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "05:30 – 18:00 (Đông nhất từ 06:00 – 10:00 sáng)"
+        },
+        "address": {
+          "old": "",
+          "new": "123 Lê Lợi (Ngã tư Lê Lợi – Phan Đình Phùng), Quận Hải Châu, Đà Nẵng."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "20000"
+        }
+      }
+    },
+    {
+      "record_id": "CAFE-HUE-011",
+      "place_name": "Tân. Cafe (Hệ Thống Tân. Original & Industrial) – Phong Cách Công Nghiệp & Di Sản",
+      "osm_type": "curated",
+      "osm_id": "900000031",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Tân Cafe là một trong những quán cà phê mang phong cách bao cấp đẹp nhất nhì Cố đô, kết hợp phong cách Industrial mộc mạc với mảng tường thô hoài cổ và không gian xanh trầm mặc. Đồ uống và bánh ngọt tại quán được chăm chút tỉ mỉ, nổi tiếng với hương vị cafe muối đặc trưng đậm đà mang lại cảm giác thân quen như trở về tuổi thơ.",
+          "new": "Chuỗi cafe bản địa nổi tiếng và thành công nhất tại Huế hiện nay. Kiến trúc gây ấn tượng mạnh khi kết hợp chất liệu Công nghiệp (thép đen, bê tông thô, gạch nung trần) với các họa tiết văn hóa Cố đô (tranh pháp lam, ngói liệt, gỗ mộc).\n\n[Menu / Dịch vụ & Giá vé]: Cà phê muối xứ Huế (Signature) / Cà phê trứng Cố đô: 32.000 – 45.000 VNĐ/ly | Cà phê ủ lạnh (Cold Brew) / Espresso / Latte: 38.000 – 55.000 VNĐ/ly | Trà Ô Long kem phô mai / Bánh sừng bò nướng: 35.000 – 55.000 VNĐ\n\n[Mức giá tham khảo]: $ – $$ (Cấp độ 1 – 2: Bình dân đến Phổ thông) — Khoảng 35.000 – 65.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:30 – 22:30"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "50000"
+        }
+      }
+    },
+    {
+      "record_id": "CAFE-HUE-015",
+      "place_name": "Hanok Cafe (hoặc Kodo Cafe) – Phong Cách Hàn Quốc / Nhật Bản",
+      "osm_type": "node",
+      "osm_id": "12632081307",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Hanok lấy cảm hứng từ kiến trúc nhà truyền thống Hàn Quốc với khung cửa kính lớn nhìn ra sân vườn xanh mát. Thực đơn của quán đậm chất Xứ sở Kim Chi với các loại trà thanh yên, táo đỏ, ngũ cốc bổ dưỡng.",
+          "new": "Quán cafe mang phong cách nhà gỗ Hanok Hàn Quốc và sân vườn tối giản kiểu Nhật Bản với tông màu gỗ thông ấm áp, cửa trượt Shoji và rất nhiều góc chụp ảnh check-in trong trẻo.\n\n[Menu / Dịch vụ & Giá vé]: Matcha Latte / Einspanner Coffee (Cà phê kem béo Hàn Quốc): 38.000 – 52.000 VNĐ/ly | Trà đào Hàn Quốc / Trà Yuzu (Yuzu mật ong): 39.000 – 49.000 VNĐ/ly | Bánh Croffle nướng kem tươi: 35.000 – 50.000 VNĐ/phần\n\n[Mức giá tham khảo]: $$ (Cấp độ 2: Phổ thông / Tầm trung) — Khoảng 45.000 – 75.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:00 – 22:00"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "60000"
+        }
+      }
+    },
+    {
+      "record_id": "CAFE-HUE-017",
+      "place_name": "Tân. Cafe (Cơ Sở Workspace 14 Phạm Hồng Thái)",
+      "osm_type": "curated",
+      "osm_id": "900000031",
+      "city": "Hue",
+      "changed_fields_count": 1,
+      "field_changes": {
+        "description": {
+          "old": "Chuỗi cafe bản địa nổi tiếng và thành công nhất tại Huế hiện nay. Kiến trúc gây ấn tượng mạnh khi kết hợp chất liệu Công nghiệp (thép đen, bê tông thô, gạch nung trần) với các họa tiết văn hóa Cố đô (tranh pháp lam, ngói liệt, gỗ mộc).\n\n[Menu / Dịch vụ & Giá vé]: Cà phê muối xứ Huế (Signature) / Cà phê trứng Cố đô: 32.000 – 45.000 VNĐ/ly | Cà phê ủ lạnh (Cold Brew) / Espresso / Latte: 38.000 – 55.000 VNĐ/ly | Trà Ô Long kem phô mai / Bánh sừng bò nướng: 35.000 – 55.000 VNĐ\n\n[Mức giá tham khảo]: $ – $$ (Cấp độ 1 – 2: Bình dân đến Phổ thông) — Khoảng 35.000 – 65.000 VNĐ/người.",
+          "new": "Tầng 2 của cơ sở Phạm Hồng Thái được thiết kế như một Co-working Space mở với dãy bàn dài cho nhóm làm dự án, khu vực ghế đơn cho freelancer làm việc trên laptop, điều hòa mát lạnh cả ngày.\n\n[Menu / Dịch vụ & Giá vé]: Cold Brew / Americano / Cà phê muối: 32.000 – 49.000 VNĐ/ly | Trà sữa Olong / Trà hoa quả: 35.000 – 49.000 VNĐ/ly\n\n[Mức giá tham khảo]: $ – $$ (Cấp độ 1 – 2: Bình dân đến Phổ thông) — Khoảng 35.000 – 55.000 VNĐ/người."
+        }
+      }
+    },
+    {
+      "record_id": "CAFE-HUE-027",
+      "place_name": "PhinHolic – Specialty Coffee Roastery Huế",
+      "osm_type": "node",
+      "osm_id": "10677707584",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Ẩm thực: coffee_shop. Giờ mở cửa: Mo-Su 08:00-17:30. Chỗ ngồi ngoài trời.",
+          "new": "Quán tiên phong và uy tín nhất về làn sóng Specialty Coffee tại Cố đô Huế. Không gian hiện đại với quầy Bar mở, chuyên phục vụ hạt Arabica đặc sản rang sáng/vừa qua các phương pháp Pour-over V60, Cold Brew, Syphon và Espresso chuẩn Ý.\n\n[Menu / Dịch vụ & Giá vé]: Hand Brew / Pour-over (Hạt ngoại nhập & Cầu Đất): 55.000 – 85.000 VNĐ/bình | Cold Brew truyền thống / Cold Brew trái cây: 45.000 – 55.000 VNĐ/ly | Espresso / Flat White / Cappuccino / Cà phê muối Specialty: 35.000 – 52.000 VNĐ/ly\n\n[Mức giá tham khảo]: $$ (Cấp độ 2: Phổ thông / Tầm trung) — Khoảng 45.000 – 80.000 VNĐ/người."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "60000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "NATURE-HUE-022",
+      "place_name": "Hồ Thủy Tiên (Hồ Nước Giữa Rừng Thông Thiên An)",
+      "osm_type": "way",
+      "osm_id": "1453749845",
+      "city": "Hue",
+      "changed_fields_count": 5,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Hồ nước tự nhiên nằm lọt thỏm giữa rừng thông xanh của đồi Thiên An. Nổi tiếng khắp truyền thông quốc tế (tờ Huffington Post, CNN) nhờ công trình kiến trúc Con Rồng khổng lồ nằm giữa mặt hồ và con đường dạo bộ lát đá ven hồ được thành phố Huế chỉnh trang xanh sạch, thơ mộng.\n\n[Menu / Dịch vụ & Giá vé]: Vé vào dạo bộ công viên quanh Hồ Thủy Tiên: Miễn phí 100% | Gửi xe máy: 5.000 – 10.000 VNĐ/xe\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 0 – 10.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:00 – 18:00"
+        },
+        "address": {
+          "old": "",
+          "new": "Đồi Thiên An, Xã Thủy Bằng, TP. Huế."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "10000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-002",
+      "place_name": "Bảo Tàng Mỹ Thuật Đà Nẵng",
+      "osm_type": "way",
+      "osm_id": "759913076",
+      "city": "Da Nang",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "Nơi lưu giữ và trưng bày hàng trăm tác phẩm nghệ thuật từ truyền thống đến đương đại của các nghệ sĩ miền Trung - Tây Nguyên. Không gian 3 tầng mang lại cảm hứng sáng tạo và góc nhìn sâu sắc về mỹ thuật Việt Nam.",
+          "new": "Không gian 3 tầng hiện đại trưng bày hơn 1.000 tác phẩm mỹ thuật hiện đại (tranh sơn dầu, sơn mài, lụa, điêu khắc) và nghệ thuật dân gian, nghề thủ công truyền thống vùng Duyên hải Nam Trung Bộ – Tây Nguyên (mặt nạ tuồng xứ Quảng, trang sức bạc và tượng gỗ dân tộc Cơ Tu, Ba Na).\n\n[Menu / Dịch vụ & Giá vé]: Vé vào cổng tham quan: 20.000 VNĐ/người lớn (Sinh viên: 10.000 VNĐ, Trẻ em: Miễn phí)\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 20.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "08:00 – 17:00 hằng ngày"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "20000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-006",
+      "place_name": "Bảo Tàng Đà Nẵng (Trụ Sở Mới Tại Tòa Thị Chính Pháp Cổ Bạch Đằng)",
+      "osm_type": "way",
+      "osm_id": "1368599361",
+      "city": "Da Nang",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "Nằm trong khuôn viên Thành Điện Hải, bảo tàng trưng bày hơn 2.500 hiện vật gắn liền với quá trình phát triển của thành phố. Đây là điểm đến ý nghĩa phản ánh tinh thần quật cường và lịch sử lâu đời của Đà Nẵng.",
+          "new": "Tọa lạc trong công trình kiến trúc Pháp cổ hơn 120 năm tuổi (nguyên là Tòa Đốc lý Pháp năm 1900) nhìn thẳng ra sông Hàn. Bảo tàng ứng dụng công nghệ trình chiếu 3D Mapping, màn hình tương tác hiện đại tái hiện toàn diện lịch sử hình thành, tự nhiên, văn hóa biển và cuộc kháng chiến giữ nước của người Đà Nẵng cùng Súng thần công Thành Điện Hải (Bảo vật Quốc gia).\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan: 20.000 – 50.000 VNĐ/người lớn (Miễn phí cho công dân thường trú tại Đà Nẵng – Quảng Nam, học sinh, người cao tuổi và các ngày lễ lớn).\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 0 – 50.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "08:00-17:00",
+          "new": "08:00 – 17:00 hằng ngày"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "50000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-007",
+      "place_name": "Bảo Tàng Đồng Đình (\"Khu Vườn Ký Ức\" Trên Bán Đảo Sơn Trà)",
+      "osm_type": "curated",
+      "osm_id": "900000003",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Được ví như khu vườn ký ức nằm giữa rừng nguyên sinh bán đảo Sơn Trà. Bảo tàng kết hợp kiến trúc nhà cổ truyền thống và trưng bày nhiều hiện vật gốm sứ, đồ cổ của các nền văn hóa Sa Huỳnh, Đại Việt, Chăm Pa.",
+          "new": "Bảo tàng tư nhân đầu tiên tại miền Trung nằm ẩn mình giữa hệ sinh thái rừng nguyên sinh Sơn Trà. Kết hợp hài hòa giữa hai ngôi nhà rường cổ xứ Quảng với nhà trưng bày gốm cổ Sa Huỳnh – Chămpa – Đại Việt, nhà trưng bày dân tộc học Tây Nguyên và ngư cụ làng chài xưa.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan bảo tàng & khu vườn sinh thái: 30.000 – 40.000 VNĐ/người | Đồ uống giải khát tại quán cafe vườn trong bảo tàng: 25.000 – 45.000 VNĐ/ly\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 30.000 – 50.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:30 – 17:30 hằng ngày"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "40000"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-008",
+      "place_name": "Nhà Trưng Bày Hoàng Sa",
+      "osm_type": "way",
+      "osm_id": "1474583779",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Công trình kiến trúc mang hình dáng \"Con dấu chủ quyền của nhà nước phong kiến Việt Nam\" đứng sừng sững trước biển Đông. Nơi đây lưu giữ hơn 300 tư liệu, bản đồ cổ của Việt Nam, phương Tây và chính Trung Quốc cùng các hiện vật lịch sử khẳng định chủ quyền không thể chối cãi của Việt Nam đối với quần đảo Hoàng Sa.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan & thuyết minh: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "08:00 – 11:30 & 13:30 – 17:00 (Thứ 2 đến Thứ 7, nghỉ Chủ Nhật)"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-009",
+      "place_name": "Bảo Tàng Hồ Chí Minh – Chi Nhánh Quân Khu 5 & Bảo Tàng Khu 5",
+      "osm_type": "way",
+      "osm_id": "303341669",
+      "city": "Da Nang",
+      "changed_fields_count": 5,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Khuôn viên rộng gần 9ha tái hiện nguyên mẫu Nhà sàn và Ao cá Bác Hồ tại Hà Nội theo đúng tỉ lệ 1:1 giữa lòng Đà Nẵng, kết hợp khu trưng bày ngoài trời quy mô lớn với máy bay quân sự, xe tăng, pháo cao xạ và vũ khí tự tạo của quân dân Liên khu 5 trong 2 cuộc kháng chiến.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan (Khách Việt Nam): Miễn phí (Khách quốc tế: 40.000 VNĐ/người)\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 0 – 40.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:30 – 11:00 & 13:30 – 16:30 (Thứ 2 đến Thứ 7)"
+        },
+        "address": {
+          "old": "",
+          "new": "03 Duy Tân, Phường Hòa Thuận Đông, Quận Hải Châu, Đà Nẵng."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "40000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-011",
+      "place_name": "Cầu Rồng (Cây Cầu Phun Lửa & Phun Nước Độc Nhất Vô Nhị)",
+      "osm_type": "way",
+      "osm_id": "694831926",
+      "city": "Da Nang",
+      "changed_fields_count": 5,
+      "field_changes": {
+        "description": {
+          "old": "Saturday and Sunday, 9pm | Giờ mở cửa: 24/7.",
+          "new": "Biểu tượng kiến trúc hiện đại nổi tiếng nhất của Đà Nẵng, mô phỏng hình dáng con rồng thời Lý dài 666m vươn mình bay ra biển Đông. Mỗi tối cuối tuần, đầu Rồng trình diễn 2 lượt phun lửa (9 lần/lượt) và 3 lượt phun nước tạo nên lễ hội đường phố vô cùng sôi động.\n\n[Menu / Dịch vụ & Giá vé]: Đứng xem phun lửa trên cầu hoặc hai bờ đường Bạch Đằng – Trần Hưng Đạo: Miễn phí 100% | Gửi xe máy quanh đầu cầu: 5.000 – 10.000 VNĐ/xe\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 0 – 10.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "24/7",
+          "new": "Tham quan tự do 24/24 (Lịch phun lửa – phun nước cố định: 21:00 tối Thứ 6, Thứ 7, Chủ Nhật hằng tuần và các ngày lễ lớn)"
+        },
+        "address": {
+          "old": "",
+          "new": "Bắc qua sông Hàn nối đường Nguyễn Văn Linh (Hải Châu) và Võ Văn Kiệt (Sơn Trà), Đà Nẵng."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "10000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-012",
+      "place_name": "Cầu Sông Hàn (Cây Cầu Quay Duy Nhất Việt Nam)",
+      "osm_type": "node",
+      "osm_id": "7276380289",
+      "city": "Da Nang",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Khánh thành năm 2000, đây là cây cầu quay đầu tiên do chính kỹ sư Việt Nam thiết kế, xây dựng bằng sự đóng góp của toàn thể người dân Đà Nẵng. Đúng 23h đêm cuối tuần, phần nhịp giữa của cầu sẽ xoay ngang một góc 90 độ dọc theo dòng chảy sông Hàn trong ánh đèn đổi màu rực rỡ.\n\n[Menu / Dịch vụ & Giá vé]: Tham quan & xem cầu quay: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "Lưu thông 24/24 (Lịch quay cầu phục vụ du lịch: 23:00 – 24:00 tối Thứ 7 và Chủ Nhật hằng tuần)"
+        },
+        "address": {
+          "old": "",
+          "new": "Bắc qua sông Hàn nối đường Lê Duẩn (Hải Châu) và đường Phạm Văn Đồng (Sơn Trà), Đà Nẵng."
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-015",
+      "place_name": "Cầu Thuận Phước (Cầu Treo Dây Võng Dài Nhất Việt Nam)",
+      "osm_type": "node",
+      "osm_id": "5273999121",
+      "city": "Da Nang",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Cây cầu treo dây võng bắc qua cửa biển dài 1.856m với 2 trụ tháp cao 92m lấy cảm hứng từ cổng cầu Golden Gate (Mỹ). Chân cầu phía Sơn Trà (Công viên Thuận Phước) là tọa độ ngắm hoàng hôn buông xuống vịnh biển và ngắm hệ thống đèn LED nghệ thuật của cầu về đêm cực đẹp.\n\n[Menu / Dịch vụ & Giá vé]: Tham quan & chụp ảnh dưới chân cầu / trên cầu: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "Mở cửa tự do 24/24"
+        },
+        "address": {
+          "old": "",
+          "new": "Cửa biển sông Hàn đổ ra vịnh Đà Nẵng, nối đường Nguyễn Tất Thành (Hải Châu) và bán đảo Sơn Trà, Đà Nẵng."
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-016",
+      "place_name": "Công Viên APEC (Vòm Kiến Trúc \"Cánh Diều Bay Cao\")",
+      "osm_type": "way",
+      "osm_id": "675604354",
+      "city": "Da Nang",
+      "changed_fields_count": 5,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Công trình kiến trúc đương đại biểu tượng mới của Đà Nẵng với mái vòm thép uốn lượn trắng muốt nặng 200 tấn tạo hình \"Cánh diều bay cao\" trên nền hồ nước và thảm cỏ xanh, kết hợp vườn tượng nghệ thuật của 21 nền kinh tế thành viên APEC.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan, chụp ảnh & xem triển lãm dưới tầng hầm: Miễn phí 100% | Phí gửi xe tại bãi ngầm công viên: 5.000 VNĐ/xe máy\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 0 – 5.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "Mở cửa tự do 24/24"
+        },
+        "address": {
+          "old": "",
+          "new": "Đường 2 Tháng 9 – Bạch Đằng nối dài (Sát đuôi Cầu Rồng), Phường Bình Hiên, Quận Hải Châu, Đà Nẵng."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "5000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-026",
+      "place_name": "Làng Đá Mỹ Nghệ Non Nước (Di Sản Văn Hóa Phi Vật Thể Quốc Gia)",
+      "osm_type": "node",
+      "osm_id": "10709724107",
+      "city": "Da Nang",
+      "changed_fields_count": 5,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Làng nghề điêu khắc đá cổ truyền gần 400 năm tuổi do nghệ nhân Huỳnh Bá Quát khai sáng từ thế kỷ XVII. Hàng trăm xưởng chế tác nằm san sát nhau, nơi các nghệ nhân đục đẽo thủ công đá cẩm thạch thành tượng Phật, linh vật phong thủy, đồ trang sức đá quý tinh xảo.\n\n[Menu / Dịch vụ & Giá vé]: Tham quan các xưởng điêu khắc đá: Miễn phí 100% | Vòng tay đá cẩm thạch / Linh vật nhỏ làm quà lưu niệm: 50.000 – 300.000 VNĐ/sản phẩm | Tượng đá nghệ thuật cao cấp: Từ 1.000.000 VNĐ đến hàng trăm triệu VNĐ\n\n[Mức giá tham khảo]: $ – $$$ (Cấp độ 1 – 3: Tham quan miễn phí; Mua sắm lưu niệm tùy chọn) — Khoảng 0 – 300.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:00 – 19:00 hằng ngày"
+        },
+        "address": {
+          "old": "",
+          "new": "Quanh chân núi Ngũ Hành Sơn (Đường Huyền Trân Công Chúa – Trường Sa – Non Nước), Phường Hòa Hải, Quận Ngũ Hành Sơn, Đà Nẵng."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "0"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-027",
+      "place_name": "Làng Chiếu Cẩm Nê",
+      "osm_type": "node",
+      "osm_id": "10709738005",
+      "city": "Da Nang",
+      "changed_fields_count": 5,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Làng nghề dệt chiếu hoa truyền thống nổi tiếng từng được tiến cung vua nhà Nguyễn. Du khách đến làng sẽ thấy những bó sợi cói nhuộm đủ màu đỏ, xanh, vàng phơi rực rỡ dọc đường làng và tận mắt xem các nghệ nhân lớn tuổi dệt chiếu hoa trên khung cửi gỗ.\n\n[Menu / Dịch vụ & Giá vé]: Tham quan & trải nghiệm dệt chiếu cùng nghệ nhân: Miễn phí | Mua chiếu cói thủ công Cẩm Nê chính gốc: 200.000 – 500.000 VNĐ/chiếc (tùy khổ)\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 0 – 50.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:30 – 17:00 hằng ngày"
+        },
+        "address": {
+          "old": "",
+          "new": "Thôn Cẩm Nê, Xã Hòa Tiến, Huyện Hòa Vang, Đà Nẵng (Cách trung tâm thành phố ~14km)."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "50000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-031",
+      "place_name": "Chợ Cồn (\"Thiên Đường Ẩm Thực\" Số 1 Đà Nẵng)",
+      "osm_type": "way",
+      "osm_id": "204790989",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Là trái tim ẩm thực đường phố của Đà Nẵng, phục vụ đa dạng món ăn đặc sản như mì Quảng, bánh nậm, nem lụi với giá bình dân. Không khí chợ luôn nhộn nhịp, đặc biệt vào buổi tối, rất lý tưởng để cảm nhận nhịp sống địa phương.",
+          "new": "Khu chợ truyền thống sầm uất nhất Đà Nẵng, được mệnh danh là \"Thiên đường ẩm thực\" với 2 khu Food Court (trong nhà và ngoài trời) quy tụ mọi món ngon Đà Thành từ bánh bèo, nậm, lọc, ốc hút, ram cuốn cải, bánh canh, bún mắm, bánh tráng cuốn thịt heo đến kem bơ, chè chuối nướng và các quầy đặc sản khô (chả bò, mực rim, bò khô).\n\n[Menu / Dịch vụ & Giá vé]: Vé vào chợ: Miễn phí (Gửi xe máy: 5.000 VNĐ) | Các món ăn vặt, bún, mì, bánh, chè, sinh tố trong chợ: 15.000 – 35.000 VNĐ/món | Đặc sản khô mua về làm quà (Mực rim me, cá bò, tré, chả bò): 50.000 – 320.000 VNĐ\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 30.000 – 70.000 VNĐ/người (ăn no nê)."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:00 – 19:30 hằng ngày (Khu ẩm thực trong nhà đông nhất 08:00 – 18:00; Khu ăn vặt vỉa hè ngoài trời mở từ 15:00 – 19:30)"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "50000"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-032",
+      "place_name": "Chợ Hàn (Trung Tâm Đặc Sản & Quà Lưu Niệm Du Lịch)",
+      "osm_type": "way",
+      "osm_id": "204885903",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Khu chợ nổi tiếng được nhiều du khách quốc tế yêu thích nhờ không gian sạch sẽ và hàng quán đa dạng. Nơi đây đặc biệt được ưa chuộng bởi các món đặc sản địa phương như bún chả cá và bánh xèo.",
+          "new": "Ngôi chợ biểu tượng nằm ngay sát bờ sông Hàn và cầu Sông Hàn, thu hút rất đông khách du lịch trong nước và quốc tế (đặc biệt là khách Hàn Quốc). Tầng 1 chuyên các quầy mắm dưa, mắm nêm Dì Cẩn, hải sản khô, bánh kẹo đặc sản và ẩm thực; tầng 2 nổi tiếng với dịch vụ may áo dài lấy ngay trong 1 – 2 giờ, túi cói đan thủ công và đồ lưu niệm.\n\n[Menu / Dịch vụ & Giá vé]: Mắm nêm / Mắm ruốc / Mắm dưa đèo Dì Cẩn đóng hũ: 40.000 – 75.000 VNĐ/hũ | Túi cói đi biển / Nón cói / Dép cói lưu niệm: 60.000 – 180.000 VNĐ/món | May áo dài lấy liền tại tầng 2 (cả vải + công may): 350.000 – 650.000 VNĐ/bộ\n\n[Mức giá tham khảo]: $ – $$ (Cấp độ 1 – 2: Bình dân đến Phổ thông) — Khoảng 50.000 – 200.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "Mo-Su 06:00-19:00",
+          "new": "06:00 – 19:00 hằng ngày"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "125000"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-033",
+      "place_name": "Chợ Bắc Mỹ An (Thiên Đường Ăn Vặt Giá Sinh Viên)",
+      "osm_type": "way",
+      "osm_id": "118614280",
+      "city": "Da Nang",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Khu chợ truyền thống nằm gần Đại học Kinh tế Đà Nẵng và biển Mỹ Khê, nổi danh khắp mạng xã hội vì mức giá ăn vặt siêu rẻ (chỉ từ 10.000 – 25.000 VNĐ) với các món \"huyền thoại\": Kem bơ Cô Vân, Ốc hút chua cay, Bánh căn, Bánh đập, Bún mắm và Nem lụi.\n\n[Menu / Dịch vụ & Giá vé]: Kem bơ / Chè / Sinh tố: 15.000 – 25.000 VNĐ/ly | Ốc hút / Bánh căn / Bánh bèo / Bánh tráng trộn: 15.000 – 30.000 VNĐ/đĩa\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 25.000 – 50.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:00 – 19:00 hằng ngày"
+        },
+        "address": {
+          "old": "",
+          "new": "25 Nguyễn Bá Lân, Phường Bắc Mỹ An, Quận Ngũ Hành Sơn, Đà Nẵng."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "40000"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-034",
+      "place_name": "Chợ Đêm Sơn Trà",
+      "osm_type": "way",
+      "osm_id": "1556362196",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Giờ mở cửa: Mo-Su 18:00-23:00.",
+          "new": "Tuyến phố đi bộ và chợ đêm nhộn nhịp nhất Đà Nẵng với hơn 150 gian hàng chia làm 2 khu vực: khu mua sắm quà lưu niệm, đèn lồng, quần áo, gốm sứ và khu phố ẩm thực đêm nghi ngút khói với hải sản nướng xiên que, tôm hùm, ốc biển, kem cuộn và bia mát lạnh.\n\n[Menu / Dịch vụ & Giá vé]: Vé vào dạo chợ đêm: Miễn phí | Xiên nướng / Bánh tráng nướng / Nước mía / Kem: 15.000 – 45.000 VNĐ/món | Combo hải sản nướng tại chỗ: 100.000 – 250.000 VNĐ/khay\n\n[Mức giá tham khảo]: $ – $$ (Cấp độ 1 – 2: Bình dân đến Phổ thông) — Khoảng 50.000 – 150.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "Mo-Su 18:00-23:00",
+          "new": "17:30 – 24:00 hằng đêm"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "100000"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-DN-035",
+      "place_name": "Chợ Đêm Helio",
+      "osm_type": "node",
+      "osm_id": "7301996085",
+      "city": "Da Nang",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Tổ hợp chợ đêm văn hóa – giải trí quy hoạch hiện đại với sân khấu nhạc sống Acoustic/EDM ngoài trời miễn phí mỗi tối, khu check-in theo mùa lễ hội và hàng trăm gian hàng ẩm thực đường phố Hàn – Nhật – Thái – Việt Nam.\n\n[Menu / Dịch vụ & Giá vé]: Vé vào cổng & xem ca nhạc ngoài trời: Miễn phí 100% | Món ăn đường phố & Bia thủ công: 20.000 – 75.000 VNĐ/món\n\n[Mức giá tham khảo]: $ – $$ (Cấp độ 1 – 2: Bình dân đến Phổ thông) — Khoảng 50.000 – 120.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "17:30 – 22:30 hằng đêm"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "85000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-HUE-001",
+      "place_name": "Bảo Tàng Cổ Vật Cung Đình Huế (Điện Long An)",
+      "osm_type": "way",
+      "osm_id": "695810710",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Lưu giữ và trưng bày các sưu tập cổ vật xưa có xuất xứ từ cung đình nhà Nguyễn như đồ sứ, pháp lam, trang phục hoàng thất, ấn triện, súng thần công. Công trình được xây dựng bằng gỗ theo kiểu 'trùng thiềm điệp ốc' với 128 cột mang kiến trúc đặc trưng.",
+          "new": "Được thành lập từ năm 1923 (nguyên là Musée Khải Định), đặt tại Điện Long An – tòa cung điện bằng gỗ chạm trổ thơ văn và tứ linh theo lối \"trùng thiềm điệp ốc\" đẹp nhất Việt Nam được xây năm 1845. Bảo tàng lưu giữ hơn 10.000 cổ vật hoàng gia triều Nguyễn bằng vàng, ngọc, ngà, pháp lam, long bào và ngai vàng cùng khu cổ vật Chămpa.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan lẻ: 50.000 VNĐ/người lớn (Đặc biệt: Nếu khách đã mua vé vào Đại Nội Huế thì được Miễn phí 100% vé vào Bảo tàng Cổ vật Cung đình Huế).\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 0 – 50.000 VNĐ/người."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "50000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-HUE-003",
+      "place_name": "Bảo Tàng Đồ Sứ Ký Kiểu Thời Nguyễn (Bảo Tàng Tư Nhân Trần Đình Sơn)",
+      "osm_type": "curated",
+      "osm_id": "900000076",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Bảo tàng tư nhân đầu tiên ở Huế trưng bày hơn 200 hiện vật độc đáo thuộc bộ sưu tập đồ sứ ký kiểu tinh xảo thời Nguyễn. Các cổ vật thể hiện nhiều đề tài kinh điển như tứ linh, phong cảnh, điển tích và mang hiệu đề riêng của các hoàng đế triều Nguyễn.",
+          "new": "Bảo tàng tư nhân đầu tiên ở Huế đặt trong ngôi nhà rường gia tộc cổ kính của nhà nghiên cứu Trần Đình Sơn (cháu nội cụ Thượng thư Trần Đình Bá). Trưng bày bộ sưu tập quý hiếm gồm đồ sứ ký kiểu (đồ sứ do các chúa Nguyễn và vua Nguyễn đặt lò Cảnh Đức Trấn – Trung Hoa chế tác riêng), tẩu thuốc ngọc, đồ vàng bạc cung đình.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan: Miễn phí hoặc 30.000 VNĐ/khách đoàn có thuyết minh\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 0 – 30.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "08:00 – 17:00 hằng ngày"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "30000"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-HUE-013",
+      "place_name": "Cầu Ngói Thanh Toàn (Di Tích Kiến Trúc Cổ \"Thượng Gia Hạ Kiều\")",
+      "osm_type": "way",
+      "osm_id": "683524977",
+      "city": "Hue",
+      "changed_fields_count": 5,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Cây cầu gỗ lợp ngói lưu ly cổ kính được xây dựng từ năm 1776 (thời vua Lê Hiển Tông) do bà Trần Thị Đạo cúng tiến cho làng. Cầu thiết kế theo lối \"Thượng gia hạ kiều\" (trên là nhà, dưới là cầu) hiếm hoi và có giá trị nghệ thuật cao nhất Việt Nam; ngay bên cạnh là Nhà trưng bày nông cụ Thanh Toàn.\n\n[Menu / Dịch vụ & Giá vé]: Tham quan Cầu Ngói Thanh Toàn: Miễn phí 100% | Vé vào Nhà trưng bày nông cụ kế bên (tùy chọn): 10.000 – 20.000 VNĐ/người\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 0 – 20.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "Mở cửa tự do 24/24 (Có chợ phiên đêm quê vào dịp cuối tuần / lễ hội)"
+        },
+        "address": {
+          "old": "",
+          "new": "Làng Thanh Thủy Chánh, Xã Thủy Thanh, Thị xã Hương Thủy, TP. Huế (Cách trung tâm 7km)."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "20000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-HUE-020",
+      "place_name": "Nhà Hát Sông Hương (Biểu Tượng Nghệ Thuật Đương Đại Bên Sông Hương)",
+      "osm_type": "way",
+      "osm_id": "1033684220",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Công trình kiến trúc nghệ thuật đương đại nổi bật bên bờ sông Hương với mái vòm lượn sóng và hàng cột thanh mảnh vươn ra mặt nước. Không gian bậc thềm đá ngoài trời của nhà hát là tọa độ dạo mát, chụp ảnh hoàng hôn cực kỳ ấn tượng.\n\n[Menu / Dịch vụ & Giá vé]: Dạo bộ & chụp ảnh khuôn viên bên ngoài: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "Khuôn viên ngoài trời mở cửa 24/24 (Bên trong mở khi có chương trình hòa nhạc/biểu diễn)"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-HUE-027",
+      "place_name": "Làng Hương Thủy Xuân (Làng Nghề Làm Hương 700 Năm Tuổi)",
+      "osm_type": "way",
+      "osm_id": "1473275556",
+      "city": "Hue",
+      "changed_fields_count": 5,
+      "field_changes": {
+        "description": {
+          "old": "Incense & Conical Hat Making Tourist Stalls",
+          "new": "Làng nghề làm hương trầm truyền thống cung cấp cho triều đình nhà Nguyễn xưa. Dọc con đường Huyền Trân Công Chúa là hàng chục gian nhà gỗ trưng bày hàng ngàn bó chân hương xòe tròn rực rỡ đủ sắc màu (đỏ, vàng, tím, xanh lá, hồng) tạo nên tọa độ chụp ảnh văn hóa đẹp bậc nhất Việt Nam, nơi du khách được tự tay se hương trầm quế thảo mộc.\n\n[Menu / Dịch vụ & Giá vé]: Tham quan, chụp ảnh cùng các bó hương & thử se hương: Miễn phí 100% | Thuê cổ phục / Áo dài Huế chụp ảnh tại chỗ: 50.000 – 100.000 VNĐ/bộ | Mua Nụ trầm hương, Hương quế, Hương bài thảo mộc làm quà: 40.000 – 150.000 VNĐ/hộp\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 0 – 100.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:00 – 19:00 hằng ngày"
+        },
+        "address": {
+          "old": "",
+          "new": "84 Huyền Trân Công Chúa, Phường Thủy Xuân, TP. Huế (Ngay cạnh Lăng Tự Đức và đường lên Đồi Vọng Cảnh)."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "100000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-HUE-031",
+      "place_name": "Chợ Đông Ba (Ngôi Chợ Lịch Sử Hơn 125 Năm Tuổi Của Xứ Huế)",
+      "osm_type": "way",
+      "osm_id": "161714451",
+      "city": "Hue",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Được vua Thành Thái cho dời về vị trí hiện tại bên bờ sông Hương vào năm 1899 với tháp Lầu Chuông 3 tầng biểu tượng ở trung tâm. Đây là khu chợ lớn nhất Cố đô, nơi hội tụ trọn vẹn văn hóa ẩm thực đường phố Huế (Bún bò, bún thịt nướng, bún nghệ xào lòng, bánh bèo nậm lọc, chè Huế) và thiên đường đặc sản mang về (Mè xửng, tôm chua, mắm ruốc, trà cung đình, hạt sen Tịnh Tâm, nón bài thơ).\n\n[Menu / Dịch vụ & Giá vé]: Các món bún, bánh, chè tại khu ẩm thực chợ Đông Ba: 15.000 – 35.000 VNĐ/món | Tôm chua Huế (Tôm chua Trọng Tín, Cô Ri...): 55.000 – 95.000 VNĐ/hũ | Mè xửng Thiên Hương / Trà Cung đình / Hạt sen khô: 30.000 – 150.000 VNĐ/gói\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 30.000 – 100.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "05:30 – 19:00 hằng ngày (Khu ăn uống trước cổng chợ mở tới 22:00 tối)"
+        },
+        "address": {
+          "old": "",
+          "new": "02 Trần Hưng Đạo, Phường Đông Ba (Sát bờ Bắc sông Hương & Cầu Trường Tiền), TP. Huế."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "65000"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-HUE-032",
+      "place_name": "Chợ Tây Lộc (Thiên Đường Ẩm Thực Bình Dân Trong Kinh Thành)",
+      "osm_type": "way",
+      "osm_id": "372292672",
+      "city": "Hue",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Ngôi chợ lớn nhất nằm ngay trong lòng Thành Nội Huế, là điểm đến yêu thích của người dân bản địa (không bị \"giá du lịch\"). Nổi tiếng với khu ẩm thực chiều cực kỳ rẻ và ngon (bánh canh Nam Phổ, bún mắm nêm, bánh ướt, ốc hút, chè thập cẩm) và khu chợ đồ cũ (đồ si) lớn nhất Huế.\n\n[Menu / Dịch vụ & Giá vé]: Các món ăn vặt & bún bánh trong chợ Tây Lộc: 10.000 – 25.000 VNĐ/phần\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 20.000 – 45.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:00 – 18:30 hằng ngày"
+        },
+        "address": {
+          "old": "",
+          "new": "209 Nguyễn Trãi, Phường Tây Lộc (Bên trong Kinh thành Huế), TP. Huế."
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "30000"
+        }
+      }
+    },
+    {
+      "record_id": "CULTURE-HUE-033",
+      "place_name": "Chợ An Cựu",
+      "osm_type": "way",
+      "osm_id": "118541113",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Giờ mở cửa: Mo-Su 08:00-18:00.",
+          "new": "Khu chợ truyền thống lớn nhất phía Nam thành phố Huế. Nổi bật với các gánh hàng quà sáng và quà chiều chuẩn vị Huế xung quanh chợ: bánh lọc trần chấm nước mắm ngọt, bánh khoái, nem lụi, bánh mì bột lọc và các loại trái cây địa phương (thanh trà, nhãn lồng, măng cụt Huế).\n\n[Menu / Dịch vụ & Giá vé]: Các món bánh Huế & ăn vặt quanh chợ: 15.000 – 35.000 VNĐ/phần\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 20.000 – 50.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "Mo-Su 08:00-18:00",
+          "new": "06:00 – 20:00 hằng ngày"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "35000"
+        }
+      }
+    },
+    {
+      "record_id": "SPIRITUAL-DN-005",
+      "place_name": "Chùa Phổ Đà",
+      "osm_type": "curated",
+      "osm_id": "900000064",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Ẩn mình giữa phố xá nhộn nhịp, chùa mang vẻ đẹp khiêm nhường nhưng sâu lắng cùng nét kiến trúc Phật giáo truyền thống. Nơi đây rất thích hợp cho những ai tìm kiếm một không gian tĩnh lặng để thiền định hoặc tìm hiểu Phật pháp.",
+          "new": "Ngôi đại tự thanh tịnh và trang nghiêm nằm ngay trục đường trung tâm Phan Châu Trinh (được xây dựng từ năm 1915 và trùng tu lớn năm 1962), là nơi đào tạo Tăng Ni Phật học của thành phố. Khuôn viên rợp bóng cây đại thụ với đài Quán Thế Âm lộ thiên và chánh điện kiến trúc cổ truyền Bắc tông.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan & lễ Phật: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:00 – 21:00 hằng ngày"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "SPIRITUAL-DN-006",
+      "place_name": "Chùa Nam Sơn (Tuyệt Tác Kiến Trúc Cung Đình Á Đông)",
+      "osm_type": "node",
+      "osm_id": "11359603957",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Chùa gây ấn tượng mạnh bởi kiến trúc cầu kỳ như cung điện triều Nguyễn, với cột gỗ, mái cong và sắc màu rực rỡ. Không gian rộng rãi, yên bình, là điểm check-in hot với giới trẻ và là nơi lý tưởng để tĩnh tâm, lễ Phật.",
+          "new": "Ngôi chùa có kiến trúc đẹp và bề thế bậc nhất Đà Nẵng với diện tích hơn 10.000m². Chùa được thiết kế theo phong cách cung đình Á Đông cổ kính với tông màu vàng – đỏ son, lồng đèn đỏ treo dọc các hành lang gỗ, Đình Vọng Nguyệt, Cầu Tam Cố bắc qua hồ phóng sinh và khu Chính điện 3 gian nguy nga.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan, lễ Phật & gửi xe: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "05:00 – 21:00 hằng ngày"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "SPIRITUAL-DN-007",
+      "place_name": "Chùa Quán Thế Âm (Chùa Quan Âm – Chân Núi Kim Sơn)",
+      "osm_type": "curated",
+      "osm_id": "900000060",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Nổi bật với tượng Quan Âm bằng đá trắng và khuôn viên rộng lớn. Hằng năm, chùa tổ chức lễ hội Quan Thế Âm thu hút hàng nghìn lượt khách thập phương đến dự lễ, tham quan và trải nghiệm văn hóa Phật giáo đặc sắc.",
+          "new": "Nằm dưới chân ngọn Kim Sơn bên dòng sông Cổ Cò hiền hòa, đây là nơi diễn ra Lễ hội Quán Thế Âm 19/2 âm lịch hằng năm (Di sản văn hóa phi vật thể Quốc gia). Trong lòng núi đá Kim Sơn của chùa có Động Quan Âm huyền bí với khối thạch nhũ tự nhiên mang hình dáng Phật Bà Quán Thế Âm và thạch chuông gõ ngân vang như tiếng chuông đồng.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan chùa, động Quan Âm & Bảo tàng Phật giáo: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:30 – 19:00 hằng ngày"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "SPIRITUAL-DN-009",
+      "place_name": "Chùa Bát Nhã",
+      "osm_type": "curated",
+      "osm_id": "900000063",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Ngôi chùa rất được lòng Phật tử bởi sự yên bình, gần gũi. Các hoạt động tôn giáo và thiện nguyện ở đây diễn ra thường xuyên, góp phần lan tỏa tinh thần từ bi, hướng thiện giữa lòng thành phố sôi động.",
+          "new": "Ngôi chùa nổi tiếng linh thiêng nằm ngay giữa trung tâm quận Hải Châu (khởi lập năm 1949). Chùa thu hút rất đông người dân địa phương và du khách đến cầu bình an, tài lộc đầu năm; nổi bật với cổng Tam quan chạm rồng uy nghiêm và tượng Bồ Tát Quán Thế Âm đứng trên lưng rồng giữa hồ sen.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan & lễ Phật: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:00 – 21:00 hằng ngày"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "SPIRITUAL-DN-010",
+      "place_name": "Chùa Pháp Lâm",
+      "osm_type": "curated",
+      "osm_id": "900000062",
+      "city": "Da Nang",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Là trung tâm sinh hoạt Phật giáo lớn của thành phố, chùa mang vẻ ngoài hiện đại nhưng vẫn giữ được không khí trang nghiêm đặc trưng. Nơi đây sở hữu tượng Phật Thích Ca lớn bằng đồng và khuôn viên rộng thoáng cho Phật tử tụng kinh, cầu an.",
+          "new": "Xây dựng từ năm 1934 ngay khu phố sầm uất nhất trung tâm thành phố. Dù nằm giữa phố thị nhộn nhịp nhưng vừa bước qua cổng chùa là khoảng sân rộng tĩnh mịch với tượng Phật Di Lặc mỉm cười hiền hậu, hai pho tượng Bồ tát Đại Thế Chí – Quán Thế Âm bằng đồng và giảng đường lớn tầng 2.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan & lễ Phật: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "05:30 – 21:00 hằng ngày"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "SPIRITUAL-HUE-001",
+      "place_name": "Chùa Thiên Mụ (Linh Mụ Tự – \"Đệ Nhất Cổ Tự\" Biểu Tượng Của Cố Đô Huế)",
+      "osm_type": "curated",
+      "osm_id": "900000039",
+      "city": "Hue",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "Ngôi chùa nổi tiếng với tháp Phước Duyên in trên nền trời xanh, có tuổi đời hơn 400 năm. Chùa sở hữu kiến trúc cổ kính, đồ sộ, thu hút đông đảo du khách thập phương.",
+          "new": "Được chúa Tiên Nguyễn Hoàng cho dựng từ năm 1601, Chùa Thiên Mụ là ngôi chùa cổ nhất và nổi tiếng nhất xứ Huế, nằm trên ngọn đồi Hà Khê nhìn thẳng xuống dòng sông Hương thơ mộng. Biểu tượng của chùa là Tháp Phước Duyên 7 tầng cao 21m (xây năm 1844 dưới thời vua Thiệu Trị), Đại Hồng Chung nặng hơn 2 tấn, Bia đá đặt trên lưng rùa cẩm thạch (Bảo vật Quốc gia) và chiếc xe ô tô Austin cổ của Bồ tát Thích Quảng Đức.\n\n[Menu / Dịch vụ & Giá vé]: Vé vào cổng tham quan & chiêm bái: Miễn phí 100% | Phí gửi xe máy / Đậu hũ nóng nước đường gừng trước cổng chùa: 5.000 – 15.000 VNĐ\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — Khoảng 0 – 15.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:00 – 18:00 hằng ngày"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "15000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "SPIRITUAL-HUE-004",
+      "place_name": "Chùa Báo Quốc (Đại Quốc Tự Trên Đồi Hàm Long)",
+      "osm_type": "way",
+      "osm_id": "1170979640",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "Không chỉ là địa điểm thờ tự đẹp, chùa còn là trung tâm tu học lớn của cố đô. Chùa mang nhiều ý nghĩa quan trọng trong phong trào chấn hưng Phật giáo Việt Nam.",
+          "new": "Khởi lập từ cuối thế kỷ XVII và được Hiếu Minh Vương Nguyễn Phúc Chu ban sắc biển \"Báo Quốc Tự\" năm 1747. Tọa lạc trên đỉnh đồi Hàm Long rợp bóng đại thụ cổ kính, ngay dưới chân đồi là Giếng Hàm Long huyền thoại có mạch nước ngọt tinh khiết từng được dùng để pha trà tiến cung vua.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan & chiêm bái: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:00 – 20:00 hằng ngày"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "SPIRITUAL-HUE-005",
+      "place_name": "Thiền Viện Trúc Lâm Bạch Mã (Cõi Phật Giữa Lòng Hồ Truồi)",
+      "osm_type": "curated",
+      "osm_id": "900000041",
+      "city": "Hue",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "Đây là ngôi thiền viện đầu tiên của miền Trung với không khí mát mẻ quanh năm. Cảnh quan xung quanh phủ mây trắng xóa tạo nên không gian đẹp tựa chốn bồng lai.",
+          "new": "Ngôi thiền viện thuộc thiền phái Trúc Lâm Yên Tử đầu tiên tại miền Trung (do Hòa thượng Thích Thanh Từ sáng lập năm 2006). Muốn vào thiền viện, du khách phải ngồi thuyền lướt qua mặt nước xanh ngọc của Hồ Truồi, sau đó bước lên 172 bậc thang đá cao vút qua cổng Tam quan để chiêm ngưỡng quần thể điện thờ gỗ lim và tượng Phật Thích Ca ngồi thiền cao 24m nặng 1.500 tấn trên đồi giữa hồ.\n\n[Menu / Dịch vụ & Giá vé]: Vé vào Thiền viện: Miễn phí | Vé đò máy khứ hồi qua lòng Hồ Truồi lên đảo Thiền viện: 50.000 VNĐ/người\n\n[Mức giá tham khảo]: $ – $$ (Cấp độ 1 – 2: Bình dân đến Phổ thông) — 50.000 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "07:00 – 17:00 hằng ngày"
+        },
+        "estimated_cost": {
+          "old": "",
+          "new": "50000"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "SPIRITUAL-HUE-007",
+      "place_name": "Chùa Thiền Lâm (Chùa Phật Đứng – Phật Nằm Kiến Trúc Thái Lan & Myanmar)",
+      "osm_type": "curated",
+      "osm_id": "900000045",
+      "city": "Hue",
+      "changed_fields_count": 4,
+      "field_changes": {
+        "description": {
+          "old": "Ngôi chùa gây ấn tượng với kiến trúc diễm lệ mang đậm phong cách Thái Lan. Điểm nhấn là bảo tháp trắng đỉnh vàng hình chuông úp cao 15m thu hút đông đảo giới trẻ.",
+          "new": "Ngôi chùa Phật giáo Nam tông có kiến trúc độc lạ nhất xứ Huế (thành lập năm 1960 bởi Hòa thượng Hộ Nhẫn). Chùa nổi bật với Bảo tháp Phật Ngọc hình chuông úp sơn hai màu trắng – vàng rực rỡ như các ngôi chùa ở Thái Lan – Myanmar, cổng chùa có tượng Thất Đầu Xà Naga cùng hai pho tượng khổng lồ: Tượng Phật Đứng khất thực cao 8m và Tượng Phật Nằm nhập Niết bàn dài 12m.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan & chụp ảnh: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:00 – 18:30 hằng ngày"
+        },
+        "address": {
+          "old": "Huế",
+          "new": "Đồi Quảng Tế, 150 Điện Biên Phủ, Phường Thủy Xuân, TP. Huế."
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    },
+    {
+      "record_id": "SPIRITUAL-HUE-008",
+      "place_name": "Quốc Tự Diệu Đế (Nơi Có Bức Bích Họa Rồng Lớn Nhất Việt Nam)",
+      "osm_type": "way",
+      "osm_id": "771244228",
+      "city": "Hue",
+      "changed_fields_count": 3,
+      "field_changes": {
+        "description": {
+          "old": "",
+          "new": "Được vua Thiệu Trị cho xây dựng năm 1844 ngay trên nền Tiềm邸 (nơi nhà vua sinh ra năm 1807) và sắc phong làm một trong 3 Quốc tự của kinh đô Huế. Bên trong điện Đại Giác của chùa lưu giữ bức tranh trần \"Long Vân Khế Hội\" (5 con rồng vàng ẩn hiện trong mây) rộng hơn 110m² do nghệ nhân cung đình Phan Văn Tánh vẽ, được xác lập kỷ lục bức tranh trần chùa lớn và cổ xưa nhất Việt Nam.\n\n[Menu / Dịch vụ & Giá vé]: Vé tham quan & lễ Phật: Miễn phí 100%\n\n[Mức giá tham khảo]: $ (Cấp độ 1: Bình dân / Tiết kiệm) — 0 VNĐ/người."
+        },
+        "opening_hours": {
+          "old": "",
+          "new": "06:00 – 20:00 hằng ngày"
+        },
+        "is_local_business": {
+          "old": "False",
+          "new": "True"
+        }
+      }
+    }
+  ]
+}

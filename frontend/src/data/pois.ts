@@ -4,6 +4,8 @@ export type PoiCity = 'Đà Nẵng' | 'Huế';
 export interface Poi {
   id: string;
   name: string;
+  cleanName?: string;
+  isMichelin?: boolean;
   category: PoiCategory;
   city: PoiCity;
   lat: number;
@@ -14,10 +16,12 @@ export interface Poi {
   rating: number;
   visitDuration: string;
   ecoScore: number;
+  estimatedCost?: number | null;
+  isLocalBusiness?: boolean;
 }
 
 export interface BackendPoiItem {
-  id: number;
+  id: number | string;
   name?: string | null;
   category?: string | null;
   description?: string | null;
@@ -25,6 +29,12 @@ export interface BackendPoiItem {
   longitude?: number | null;
   address?: string | null;
   city?: string | null;
+  estimated_cost?: number | null;
+  average_visit_minutes?: number | null;
+  satisfaction_score?: number | null;
+  green_score?: number | null;
+  is_local_business?: boolean | null;
+  local_business_type?: string | null;
 }
 
 export interface PaginationMetadata {
@@ -333,12 +343,30 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
 
   const category = normalizeCategory(item.category);
   const city = normalizeCity(item.city);
-  const name = (item.name ?? 'POI').trim() || 'POI';
-  const image = getDeterministicImage(name, item.id, category, city);
+  const rawName = (item.name ?? 'POI').trim() || 'POI';
+
+  // Check if Michelin guide selected (name or description)
+  const isMichelin = /michelin/i.test(rawName) || /michelin/i.test(item.description ?? '');
+  // Clean up parenthesized notes like (Đạt chuẩn MICHELIN Selected) for a polished title
+  const cleanName = rawName.replace(/\s*\([^)]*michelin[^)]*\)/gi, '').trim() || rawName;
+
+  const image = getDeterministicImage(cleanName, item.id, category, city);
+
+  const rating = item.satisfaction_score ? Number(item.satisfaction_score) : 4.6;
+  const visitMinutes = item.average_visit_minutes ? Number(item.average_visit_minutes) : 60;
+  const visitDuration = visitMinutes >= 60 
+    ? `${Math.round(visitMinutes / 60)} giờ` 
+    : `${visitMinutes} phút`;
+
+  const rawGreen = item.green_score ? Number(item.green_score) : 0.85;
+  const ecoScore = Math.round(rawGreen <= 1 ? rawGreen * 100 : rawGreen);
+  const estimatedCost = item.estimated_cost ? Number(item.estimated_cost) : null;
 
   return {
     id: String(item.id),
-    name,
+    name: rawName,
+    cleanName,
+    isMichelin,
     category,
     city,
     lat: latitude,
@@ -346,9 +374,11 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
     address: item.address?.trim() || null,
     image,
     description: (item.description ?? '').trim() || 'Địa điểm đáng ghé thăm trong hành trình của bạn.',
-    rating: 4.5,
-    visitDuration: '1–2 giờ',
-    ecoScore: 80,
+    rating,
+    visitDuration,
+    ecoScore,
+    estimatedCost,
+    isLocalBusiness: item.is_local_business ?? undefined,
   };
 }
 

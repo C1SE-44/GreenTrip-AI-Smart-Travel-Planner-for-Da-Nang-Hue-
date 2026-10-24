@@ -72,7 +72,13 @@ def list_pois(
                     ST_Y(p.geom::geometry) AS latitude,
                     ST_X(p.geom::geometry) AS longitude,
                     p.address,
-                    ci.name AS city
+                    ci.name AS city,
+                    p.estimated_cost::float AS estimated_cost,
+                    p.average_visit_minutes AS average_visit_minutes,
+                    p.satisfaction_score::float AS satisfaction_score,
+                    p.green_score AS green_score,
+                    p.is_local_business AS is_local_business,
+                    p.local_business_type AS local_business_type
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id
                 JOIN public.cities ci ON p.city_id = ci.city_id

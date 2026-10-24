@@ -12,6 +12,12 @@ class POIResponse(BaseModel):
     longitude: float | None = None
     address: str | None = None
     city: str | None = None
+    estimated_cost: float | None = None
+    average_visit_minutes: int | None = None
+    satisfaction_score: float | None = None
+    green_score: float | None = None
+    is_local_business: bool | None = None
+    local_business_type: str | None = None
 
 
 class PaginationMetadata(BaseModel):

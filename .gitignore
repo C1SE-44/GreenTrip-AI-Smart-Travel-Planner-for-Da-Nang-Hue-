@@ -46,3 +46,7 @@ Thumbs.db
 # =========================
 *.log
 data/backup/
+data/b2b/
+data/test_scraper/
+data/*.txt
+

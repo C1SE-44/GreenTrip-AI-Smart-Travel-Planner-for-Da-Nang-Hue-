@@ -37,6 +37,9 @@ def list_pois(
     offset: int,
     category: str | None = None,
     city: str | None = None,
+    sub_category: str | None = None,
+    cuisine: str | None = None,
+    budget_tier: str | None = None,
 ) -> tuple[list[POI], int]:
     with get_connection() as connection:
         where_clauses: list[str] = []
@@ -60,6 +63,18 @@ def list_pois(
                 where_clauses.append("ci.name ILIKE %s")
                 params.append(f"%{city.strip()}%")
 
+        if sub_category and sub_category.strip().casefold() not in {"all", ""}:
+            where_clauses.append("p.sub_category = %s")
+            params.append(sub_category.strip())
+
+        if cuisine and cuisine.strip().casefold() not in {"all", ""}:
+            where_clauses.append("p.cuisine = %s")
+            params.append(cuisine.strip())
+
+        if budget_tier and budget_tier.strip().casefold() not in {"all", ""}:
+            where_clauses.append("p.budget_tier = %s")
+            params.append(budget_tier.strip())
+
         where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
         with connection.cursor() as cursor:
@@ -80,7 +95,19 @@ def list_pois(
                     p.is_local_business AS is_local_business,
                     p.local_business_type AS local_business_type,
                     p.image_url AS image_url,
-                    p.gallery_urls AS gallery_urls
+                    p.gallery_urls AS gallery_urls,
+                    p.sub_category AS sub_category,
+                    p.cuisine AS cuisine,
+                    p.budget_tier AS budget_tier,
+                    p.vibes AS vibes,
+                    p.best_time AS best_time,
+                    p.eco_features AS eco_features,
+                    p.ai_metadata AS ai_metadata,
+                    p.phone_number AS phone_number,
+                    p.website_url AS website_url,
+                    p.social_links AS social_links,
+                    p.opening_hours AS opening_hours,
+                    p.email AS email
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id
                 JOIN public.cities ci ON p.city_id = ci.city_id

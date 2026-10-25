@@ -15,14 +15,19 @@ import {
   MapPin,
 } from 'lucide-react';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
-import { pois, categoryLabels, normalizePois } from '@/data/pois';
+import { pois, categoryLabels, normalizePois, SUB_CATEGORY_LABELS, CUISINE_LABELS } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
 import { getPois } from '@/services/poi';
 import { getMe, type UserProfile } from '@/services/auth';
-import ExploreFilterPopover, { type ExploreFilterValues, type EcoPriority, type PoiCategoryFilter } from '@/components/poi/ExploreFilterPopover';
+import ExploreFilterModal, {
+  type ExploreFilterValues,
+  type EcoPriority,
+  type PoiCategoryFilter,
+  DEFAULT_FILTER_VALUES,
+} from '@/components/poi/ExploreFilterModal';
 
 const ECO_LABEL_MAP: Record<EcoPriority, { label: string; icon: React.ComponentType<{ className?: string }> | null }> = {
   all: { label: 'Tất cả', icon: null },
@@ -59,15 +64,7 @@ export default function ExplorePage() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
-  const [filterValues, setFilterValues] = useState<ExploreFilterValues>({
-    budget: 'all',
-    ecoPriority: 'all',
-    ecoCertifiedOnly: false,
-    greenTransitOnly: false,
-    categories: [],
-    timeOfDay: [],
-    radiusKm: null,
-  });
+  const [filterValues, setFilterValues] = useState<ExploreFilterValues>(DEFAULT_FILTER_VALUES);
 
   useEffect(() => {
     let active = true;
@@ -166,18 +163,77 @@ export default function ExplorePage() {
       let matchEco = ecoScore >= minEco;
       if (filterValues.ecoCertifiedOnly && ecoScore < 85) matchEco = false;
 
-      // Budget filter (category-based proxy)
+      // Budget filter
       let matchBudget = true;
       if (filterValues.budget !== 'all') {
-        if (filterValues.budget === '$') {
-          matchBudget = poi.category === 'chua' || poi.category === 'canh-quan';
-        } else if (filterValues.budget === '$$') {
-          matchBudget = poi.category === 'quan-an' || poi.category === 'chua';
-        } else if (filterValues.budget === '$$$') {
-          matchBudget = poi.category === 'di-tich' || poi.category === 'canh-quan';
-        } else if (filterValues.budget === '$$$$') {
-          matchBudget = poi.category === 'quan-an';
+        if (poi.budget_tier) {
+          matchBudget = poi.budget_tier === filterValues.budget;
+        } else {
+          if (filterValues.budget === '$') {
+            matchBudget = poi.category === 'chua' || poi.category === 'canh-quan';
+          } else if (filterValues.budget === '$$') {
+            matchBudget = poi.category === 'quan-an' || poi.category === 'chua';
+          } else if (filterValues.budget === '$$$') {
+            matchBudget = poi.category === 'di-tich' || poi.category === 'canh-quan';
+          } else if (filterValues.budget === '$$$$') {
+            matchBudget = poi.category === 'quan-an';
+          }
         }
+      }
+
+      // Min Rating
+      if (filterValues.minRating !== null && (poi.rating ?? 0) < filterValues.minRating) {
+        return false;
+      }
+
+      // Open Now
+      if (filterValues.openNowOnly) {
+        const isOpen = poi.opening_hours?.open_now;
+        if (isOpen === false) return false;
+      }
+
+      // Rainy Day Friendly
+      if (filterValues.rainyDayFriendly) {
+        const isRainy = poi.ai_metadata?.rainy_day_friendly;
+        if (!isRainy) return false;
+      }
+
+      // Free Ticket Only
+      if (filterValues.freeTicketOnly) {
+        const isFree = poi.budget_tier === 'free' || (poi.estimatedCost ?? 0) === 0;
+        if (!isFree) return false;
+      }
+
+      // Cuisines filter
+      if (filterValues.cuisines.length > 0) {
+        const matchCuisine = filterValues.cuisines.some((c) => {
+          const cLower = c.toLowerCase();
+          const pCuisine = (poi.cuisine || '').toLowerCase();
+          const pSub = (poi.sub_category || '').toLowerCase();
+          const pName = poi.name.toLowerCase();
+          return pCuisine === cLower || pSub === cLower || pName.includes(cLower);
+        });
+        if (!matchCuisine) return false;
+      }
+
+      // Sub-categories filter
+      if (filterValues.subCategories.length > 0) {
+        const matchSub = filterValues.subCategories.some((sc) => {
+          const scLower = sc.toLowerCase();
+          const pSub = (poi.sub_category || '').toLowerCase();
+          const pName = poi.name.toLowerCase();
+          return pSub === scLower || pName.includes(scLower);
+        });
+        if (!matchSub) return false;
+      }
+
+      // Vibes filter
+      if (filterValues.vibes.length > 0) {
+        const pVibes = (poi.vibes || []).map((v) => v.toLowerCase());
+        const matchVibe = filterValues.vibes.some((v) =>
+          pVibes.some((pv) => pv.includes(v.toLowerCase()))
+        );
+        if (!matchVibe) return false;
       }
 
       // Category multi-select filter
@@ -198,6 +254,13 @@ export default function ExplorePage() {
     if (filterValues.categories.length > 0) count++;
     if (filterValues.timeOfDay.length > 0) count++;
     if (filterValues.radiusKm !== null) count++;
+    if (filterValues.cuisines.length > 0) count += filterValues.cuisines.length;
+    if (filterValues.minRating !== null) count++;
+    if (filterValues.openNowOnly) count++;
+    if (filterValues.vibes.length > 0) count += filterValues.vibes.length;
+    if (filterValues.subCategories.length > 0) count += filterValues.subCategories.length;
+    if (filterValues.rainyDayFriendly) count++;
+    if (filterValues.freeTicketOnly) count++;
     return count;
   }, [filterValues]);
 
@@ -504,6 +567,99 @@ export default function ExplorePage() {
                 </button>
               )}
 
+              {filterValues.minRating !== null && (
+                <button
+                  onClick={() => setFilterValues((prev) => ({ ...prev, minRating: null }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[11px] font-semibold transition"
+                  title="Bỏ lọc đánh giá"
+                >
+                  <XIcon className="w-3 h-3 text-amber-700" />
+                  <span>★ {filterValues.minRating}+</span>
+                </button>
+              )}
+
+              {filterValues.openNowOnly && (
+                <button
+                  onClick={() => setFilterValues((prev) => ({ ...prev, openNowOnly: false }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-[11px] font-semibold transition"
+                  title="Bỏ lọc đang mở cửa"
+                >
+                  <XIcon className="w-3 h-3 text-emerald-700" />
+                  <Clock className="w-3 h-3 text-emerald-700" />
+                  <span>Đang mở cửa</span>
+                </button>
+              )}
+
+              {filterValues.rainyDayFriendly && (
+                <button
+                  onClick={() => setFilterValues((prev) => ({ ...prev, rainyDayFriendly: false }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-[11px] font-semibold transition"
+                  title="Bỏ lọc ngày mưa"
+                >
+                  <XIcon className="w-3 h-3 text-blue-700" />
+                  <span>Ngày mưa</span>
+                </button>
+              )}
+
+              {filterValues.freeTicketOnly && (
+                <button
+                  onClick={() => setFilterValues((prev) => ({ ...prev, freeTicketOnly: false }))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-[11px] font-semibold transition"
+                  title="Bỏ lọc miễn phí"
+                >
+                  <XIcon className="w-3 h-3 text-purple-700" />
+                  <span>Miễn phí vé</span>
+                </button>
+              )}
+
+              {filterValues.cuisines.map((c) => (
+                <button
+                  key={c}
+                  onClick={() =>
+                    setFilterValues((prev) => ({
+                      ...prev,
+                      cuisines: prev.cuisines.filter((x) => x !== c),
+                    }))
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 text-[11px] font-semibold transition"
+                >
+                  <XIcon className="w-3 h-3 text-neutral-500" />
+                  <span>{CUISINE_LABELS[c] || SUB_CATEGORY_LABELS[c] || c}</span>
+                </button>
+              ))}
+
+              {filterValues.subCategories.map((sc) => (
+                <button
+                  key={sc}
+                  onClick={() =>
+                    setFilterValues((prev) => ({
+                      ...prev,
+                      subCategories: prev.subCategories.filter((x) => x !== sc),
+                    }))
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 text-[11px] font-semibold transition"
+                >
+                  <XIcon className="w-3 h-3 text-neutral-500" />
+                  <span>{SUB_CATEGORY_LABELS[sc] || sc}</span>
+                </button>
+              ))}
+
+              {filterValues.vibes.map((v) => (
+                <button
+                  key={v}
+                  onClick={() =>
+                    setFilterValues((prev) => ({
+                      ...prev,
+                      vibes: prev.vibes.filter((x) => x !== v),
+                    }))
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 text-[11px] font-semibold transition"
+                >
+                  <XIcon className="w-3 h-3 text-neutral-500" />
+                  <span>{v}</span>
+                </button>
+              ))}
+
               {filterValues.timeOfDay.length > 0 && (
                 <button
                   onClick={() => setFilterValues((prev) => ({ ...prev, timeOfDay: [] }))}
@@ -529,13 +685,8 @@ export default function ExplorePage() {
               )}
 
               <button
-                onClick={() =>
-                  setFilterValues({
-                    budget: 'all', ecoPriority: 'all', ecoCertifiedOnly: false,
-                    greenTransitOnly: false, categories: [], timeOfDay: [], radiusKm: null,
-                  })
-                }
-                className="text-[11px] text-muted hover:text-charcoal font-semibold underline pl-1 whitespace-nowrap flex items-center gap-1 transition"
+                onClick={() => setFilterValues(DEFAULT_FILTER_VALUES)}
+                className="text-[11px] text-muted hover:text-charcoal font-semibold underline pl-1 whitespace-nowrap flex items-center gap-1 transition cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>Xóa hết</span>
@@ -666,18 +817,14 @@ export default function ExplorePage() {
         )}
       </section>
 
-      {/* 4. Explore Filter Popover Modal (Mindtrip-Style Floating Modal) */}
-      <ExploreFilterPopover
+      {/* 4. Explore Filter Modal (Mindtrip-Style Floating Modal) */}
+      <ExploreFilterModal
         isOpen={isFilterPopoverOpen}
         onClose={() => setIsFilterPopoverOpen(false)}
+        activeTab={activeTab}
         values={filterValues}
         onApply={(newValues) => setFilterValues(newValues)}
-        onClearAll={() =>
-          setFilterValues({
-            budget: 'all', ecoPriority: 'all', ecoCertifiedOnly: false,
-            greenTransitOnly: false, categories: [], timeOfDay: [], radiusKm: null,
-          })
-        }
+        onClearAll={() => setFilterValues(DEFAULT_FILTER_VALUES)}
         matchingCount={filteredPois.length}
       />
     </div>
@@ -724,6 +871,10 @@ function PoiCard({
   onHover: (id: string | null) => void;
   onToggleFavorite: (id: string) => void;
 }) {
+  const subCatText = poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category]
+    ? SUB_CATEGORY_LABELS[poi.sub_category]
+    : (categoryLabels[poi.category as keyof typeof categoryLabels] || 'Địa điểm');
+
   return (
     <article
       onClick={onClick}
@@ -731,52 +882,53 @@ function PoiCard({
       onMouseLeave={() => onHover(null)}
       className="flex flex-col group cursor-pointer"
     >
-      <div className={`relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 shadow-sm transition-all ${active ? 'ring-2 ring-black' : ''}`}>
+      {/* Pristine Media Container */}
+      <div className={`relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-neutral-100 shadow-xs transition-all duration-300 ${active ? 'ring-2 ring-neutral-900' : 'group-hover:shadow-md'}`}>
         <img
           src={poi.image}
           alt={poi.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+          loading="lazy"
         />
 
-        {/* Top Action Buttons (Heart + Plus) */}
-        <div className="absolute top-3 right-3 flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFavorite(poi.id);
-            }}
-            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition"
-            title="Lưu yêu thích"
-          >
-            <i className={`ph ${favorite ? 'ph-fill ph-heart text-red-500' : 'ph-heart'} text-base`}></i>
-          </button>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition"
-            title="Thêm vào chuyến đi"
-          >
-            <i className="ph ph-plus text-base font-bold"></i>
-          </button>
-        </div>
-
-        {/* Category tag badge bottom left */}
-        <div className="absolute bottom-2.5 left-2.5">
-          <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-black/55 backdrop-blur-md text-white shadow-sm">
-            {categoryLabels[poi.category as keyof typeof categoryLabels] || 'Địa điểm'}
-          </span>
-        </div>
+        {/* Minimalist Top-Right Favorite Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(poi.id);
+          }}
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 hover:bg-white backdrop-blur-md text-neutral-700 flex items-center justify-center transition-transform hover:scale-110 shadow-xs"
+          title={favorite ? 'Bỏ lưu' : 'Lưu yêu thích'}
+          aria-label="Lưu yêu thích"
+        >
+          <i className={`ph ${favorite ? 'ph-fill ph-heart text-rose-500' : 'ph-heart'} text-base`}></i>
+        </button>
       </div>
 
-      {/* Card Details */}
-      <div className="mt-2.5 space-y-1">
-        <h2 className="font-bold text-sm text-gray-900 tracking-tight truncate">{poi.name}</h2>
-        <div className="flex items-center text-xs text-gray-500">
-          <div className="flex items-center gap-1 font-normal">
-            <i className="ph ph-map-pin text-[13px] text-gray-400"></i>
-            <span>{poi.city}, Việt Nam</span>
-          </div>
+      {/* Editorial Card Typography (Mindtrip Standard: Clean, No Tag Bloat) */}
+      <div className="mt-2.5 space-y-0.5">
+        <h2 className="font-semibold text-sm text-neutral-900 tracking-tight truncate">
+          {poi.cleanName || poi.name}
+        </h2>
+
+        {/* Subtitle / Category & Region (Mindtrip Style) */}
+        <p className="text-xs text-neutral-500 truncate flex items-center gap-1.5">
+          <span>{subCatText}</span>
+          <span className="text-neutral-300">·</span>
+          <span>{poi.city}</span>
+          {poi.budget_tier && (
+            <>
+              <span className="text-neutral-300">·</span>
+              <span className="font-medium text-neutral-600">{poi.budget_tier === 'free' ? 'Miễn phí' : poi.budget_tier}</span>
+            </>
+          )}
+        </p>
+
+        {/* Rating Line */}
+        <div className="flex items-center gap-1 text-xs pt-0.5">
+          <span className="text-amber-500 font-bold text-xs">★</span>
+          <span className="font-semibold text-neutral-800">{poi.rating.toFixed(1)}</span>
+          <span className="text-neutral-400 font-normal">({Math.floor(poi.rating * 160)}+)</span>
         </div>
       </div>
     </article>

@@ -1,6 +1,6 @@
 import { Star, Clock, Heart, Plus } from 'lucide-react';
 import type { Poi } from '@/data/pois';
-import { categoryLabels } from '@/data/pois';
+import { categoryLabels, SUB_CATEGORY_LABELS, CUISINE_LABELS } from '@/data/pois';
 
 interface PoiCardProps {
   poi: Poi;
@@ -20,6 +20,10 @@ export default function PoiCard({
   onHover,
   onToggleFavorite,
 }: PoiCardProps) {
+  const subCatText = poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category]
+    ? SUB_CATEGORY_LABELS[poi.sub_category]
+    : categoryLabels[poi.category];
+
   return (
     <article
       onClick={onClick}
@@ -64,45 +68,42 @@ export default function PoiCard({
         {/* Content */}
         <div className="flex flex-1 flex-col justify-between py-0.5 min-w-0">
           <div>
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="truncate text-base font-semibold text-charcoal">
-                {poi.name}
-              </h3>
-              {poi.ecoScore >= 75 && (
-                <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${poi.ecoScore >= 85 ? 'bg-forest-500 text-ivory' : 'bg-forest-100 text-forest-700'}`}>
-                  Eco {poi.ecoScore}
+            <h3 className="truncate text-base font-semibold text-charcoal">
+              {poi.name}
+            </h3>
+            
+            <p className="mt-0.5 truncate text-[12px] text-muted flex items-center gap-1.5 flex-wrap">
+              <span className="font-medium text-forest-700">{subCatText}</span>
+              <span>·</span>
+              <span>{poi.city}</span>
+              {poi.budget_tier && (
+                <span className="text-[11px] text-charcoal/70">
+                  · {poi.budget_tier === 'free' ? 'Miễn phí' : poi.budget_tier}
                 </span>
               )}
-            </div>
-            
-            <p className="mt-0.5 truncate text-[13px] text-muted">
-              {categoryLabels[poi.category]} · {poi.city}
             </p>
-            <p className="mt-1.5 truncate text-[13px] text-charcoal/80">
+            <p className="mt-1 line-clamp-2 text-[12px] text-charcoal/75 leading-relaxed">
               {poi.description}
             </p>
           </div>
 
-          <div className="mt-2 flex items-center gap-3 text-xs text-muted">
-            <span className="flex items-center gap-1">
-              <Star size={13} className="fill-sun-500 text-sun-500" />
-              <span className="font-medium text-charcoal">{poi.rating.toFixed(1)}</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock size={13} />
-              {poi.visitDuration}
-            </span>
-          </div>
+          <div className="mt-2.5 flex items-center justify-between text-xs text-muted">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1">
+                <Star size={13} className="fill-sun-500 text-sun-500" />
+                <span className="font-semibold text-charcoal">{poi.rating.toFixed(1)}</span>
+              </span>
+              <span className="flex items-center gap-1 text-[11px]">
+                <Clock size={12} />
+                {poi.visitDuration}
+              </span>
+            </div>
 
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-[11px] font-medium text-muted bg-beige/50 px-2 py-1 rounded-md">
-              Cách điểm trước 12 km
-            </span>
             <button
               onClick={(e) => { e.stopPropagation(); }}
-              className="flex items-center gap-1 rounded-lg bg-forest-50 px-2.5 py-1.5 text-xs font-semibold text-forest-600 transition-colors hover:bg-forest-500 hover:text-ivory"
+              className="flex items-center gap-1 rounded-lg bg-forest-50 px-2.5 py-1 text-xs font-semibold text-forest-700 transition-colors hover:bg-forest-600 hover:text-ivory"
             >
-              <Plus size={14} />
+              <Plus size={13} />
               Thêm
             </button>
           </div>

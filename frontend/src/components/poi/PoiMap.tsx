@@ -45,19 +45,14 @@ function createMarkerIcon(
   // Thẻ chữ nằm ngang: Có thể ở BÊN TRÁI (right-[17px]) hoặc BÊN PHẢI (left-[17px])
   const labelPosition = offset.isLeft ? 'right-[17px]' : 'left-[17px]';
 
-  const labelHtml = `
-    <div class="map-marker-label absolute ${labelPosition} -top-[12px] ${
-      isHighlighted 
-        ? 'bg-black text-white border-black shadow-xl font-bold z-50' 
-        : 'bg-white/95 text-zinc-900 border-zinc-200/80 font-semibold'
-    } backdrop-blur-[2px] px-2 py-0.5 rounded-[4px] shadow-[0_1px_3px_rgba(0,0,0,0.15)] border transition-all duration-150 max-w-[155px] pointer-events-auto">
-      <span class="text-[11px] leading-none whitespace-nowrap truncate block ${
-        isHighlighted ? 'text-white font-bold' : 'text-zinc-900 font-semibold'
-      }">
-        ${poi.name}
+  // Thẻ chữ CHỈ xuất hiện khi Hover hoặc Chọn (chuẩn Mindtrip/Google Maps, xóa hoàn toàn tag rối mắt)
+  const labelHtml = isHighlighted ? `
+    <div class="map-marker-label absolute ${labelPosition} -top-[12px] bg-neutral-900 text-white border-neutral-900 shadow-xl font-bold z-50 backdrop-blur-[2px] px-2.5 py-1 rounded-md border transition-all duration-150 max-w-[175px] pointer-events-auto">
+      <span class="text-[11px] leading-none whitespace-nowrap truncate block text-white font-bold">
+        ${poi.cleanName || poi.name}
       </span>
     </div>
-  `;
+  ` : '';
 
   const transformStyle = offset.yOffset !== 0 ? `transform: translateY(${offset.yOffset}px);` : '';
 

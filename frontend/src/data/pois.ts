@@ -1,5 +1,25 @@
 export type PoiCategory = 'chua' | 'quan-an' | 'canh-quan' | 'di-tich';
+export type CoreCategory = 'food' | 'cafe' | 'nature' | 'culture' | 'spiritual';
 export type PoiCity = 'Đà Nẵng' | 'Huế';
+
+export type CuisineType =
+  | 'vietnamese_local'
+  | 'italian_pizza'
+  | 'japanese_sushi'
+  | 'korean_bbq'
+  | 'western_steak_burger'
+  | 'chinese_dimsum'
+  | 'thai_spicy'
+  | 'plant_based_vegan';
+
+export interface AiMetadata {
+  dna_tags: string[];
+  target_crowd: ('solo' | 'couples' | 'family' | 'friends' | 'nomad')[];
+  noise_pace: 'peaceful_zen' | 'chill_slow' | 'bustling_vibrant';
+  rainy_day_friendly: boolean;
+  carbon_footprint_score: number;
+  heritage_impact_score: number;
+}
 
 export interface Poi {
   id: string;
@@ -20,6 +40,24 @@ export interface Poi {
   openHours?: string | null;
   estimatedCost?: number | null;
   isLocalBusiness?: boolean;
+  // Taxonomy V2 fields
+  sub_category?: string | null;
+  cuisine?: CuisineType | string | null;
+  budget_tier?: '$' | '$$' | '$$$' | 'free' | string | null;
+  vibes?: string[];
+  best_time?: string[];
+  eco_features?: string[];
+  ai_metadata?: AiMetadata | Record<string, any> | null;
+  // Commercial B2B Contact & Operating Hours
+  phone_number?: string | null;
+  website_url?: string | null;
+  social_links?: Record<string, string> | null;
+  opening_hours?: {
+    open_now?: boolean;
+    status_text?: string;
+    weekday_text?: string[];
+  } | Record<string, any> | null;
+  email?: string | null;
 }
 
 export interface BackendPoiItem {
@@ -40,6 +78,19 @@ export interface BackendPoiItem {
   local_business_type?: string | null;
   image_url?: string | null;
   gallery_urls?: string[] | null;
+  // Taxonomy V2 fields
+  sub_category?: string | null;
+  cuisine?: CuisineType | string | null;
+  budget_tier?: '$' | '$$' | '$$$' | 'free' | string | null;
+  vibes?: string[] | null;
+  best_time?: string[] | null;
+  eco_features?: string[] | null;
+  ai_metadata?: AiMetadata | Record<string, any> | null;
+  phone_number?: string | null;
+  website_url?: string | null;
+  social_links?: Record<string, string> | null;
+  opening_hours?: Record<string, any> | null;
+  email?: string | null;
 }
 
 export interface PaginationMetadata {
@@ -265,7 +316,6 @@ export function getDeterministicImage(name: string, id: string | number, categor
 }
 
 export function getGalleryImages(poi: Poi): string[] {
-  const pool = DEFAULT_IMAGES_BY_CATEGORY[poi.category] || DEFAULT_IMAGES_BY_CATEGORY['di-tich'];
   const base = (poi.gallery && poi.gallery.length > 0) ? poi.gallery : [poi.image];
   const result: string[] = [poi.image, ...base.filter((img) => img !== poi.image)];
 
@@ -273,17 +323,10 @@ export function getGalleryImages(poi: Poi): string[] {
     return result.slice(0, 5);
   }
 
-  const remaining = pool.filter((img) => !result.includes(img));
-  let hash = 2166136261;
-  const key = `${poi.id}_${poi.name}`;
-  for (let i = 0; i < key.length; i++) {
-    hash ^= key.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-
+  // Pad remaining slots only using the place's own authentic photos to avoid irrelevant stock photos
   while (result.length < 5) {
-    const idx = (Math.abs(hash) + result.length * 3 + 1) % (remaining.length || 1);
-    result.push(remaining[idx] || pool[result.length % pool.length]);
+    const cyclePhoto = base[result.length % base.length] || poi.image;
+    result.push(cyclePhoto);
   }
   return result;
 }
@@ -392,8 +435,70 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
     openHours: item.open_hours?.trim() || (category === 'quan-an' ? '09:30 – 21:30' : '07:30 – 17:30'),
     estimatedCost,
     isLocalBusiness: item.is_local_business ?? undefined,
+    sub_category: item.sub_category ?? null,
+    cuisine: item.cuisine ?? null,
+    budget_tier: item.budget_tier ?? '$$',
+    vibes: Array.isArray(item.vibes) ? item.vibes : [],
+    best_time: Array.isArray(item.best_time) ? item.best_time : [],
+    eco_features: Array.isArray(item.eco_features) ? item.eco_features : [],
+    ai_metadata: item.ai_metadata ?? null,
+    phone_number: item.phone_number?.trim() || null,
+    website_url: item.website_url?.trim() || null,
+    social_links: item.social_links && typeof item.social_links === 'object' ? item.social_links : null,
+    opening_hours: item.opening_hours && typeof item.opening_hours === 'object' ? item.opening_hours : null,
+    email: item.email?.trim() || null,
   };
 }
+
+export const SUB_CATEGORY_LABELS: Record<string, string> = {
+  // Food
+  traditional_noodles: 'Đặc sản món nước & sợi',
+  street_bites_rolls: 'Món cuốn & bánh dân gian',
+  coastal_seafood: 'Hải sản tươi sống',
+  heritage_fine_dining: 'Cung đình & Cơm niêu',
+  green_vegetarian: 'Chay & Thực dưỡng xanh',
+  western_international: 'Món Âu - Mỹ & Pizza/Steak',
+  asian_specialties: 'Món Á: Nhật, Hàn, Thái',
+  // Cafe
+  retro_street_cafe: 'Cafe Cóc & Vintage',
+  scenic_view_cafe: 'Cafe View đẹp & Sống ảo',
+  workspace_study_cafe: 'Cafe Làm việc 24/7',
+  specialty_roastery: 'Cafe Specialty & Roastery',
+  royal_herbal_tea: 'Trà Thảo mộc & Cung đình',
+  nightlife_bars_pubs: 'Bar, Pub & Acoustic',
+  desserts_bakery: 'Chè Huế, Kem & Bakery',
+  // Nature
+  beach_coastline: 'Bãi biển & Bờ vịnh',
+  mountain_pass_peninsula: 'Đèo dốc & Bán đảo Sơn Trà',
+  wetland_lagoon_rivers: 'Đầm phá & Sông nước',
+  pine_hills_parks: 'Đồi thông & Công viên xanh',
+  waterfalls_hotsprings: 'Suối khoáng nóng & Thác nước',
+  // Culture
+  imperial_citadel: 'Đại Nội & Hoàng thành',
+  royal_mausoleums: 'Lăng tẩm Hoàng gia',
+  museums_galleries: 'Bảo tàng & Mỹ thuật',
+  iconic_urban_landmarks: 'Cầu Biểu tượng & Đô thị',
+  craft_villages: 'Làng nghề truyền thống',
+  performing_arts_heritage: 'Biểu diễn Nghệ thuật Di sản',
+  historic_markets: 'Chợ truyền thống lâu đời',
+  // Spiritual
+  historic_zen_temples: 'Cổ tự & Chốn tổ thiền',
+  grand_mountain_ocean_temples: 'Tượng Phật & Vách núi',
+  forest_hermitage_monasteries: 'Thiền viện rừng sâu',
+  cathedrals_heritage_churches: 'Thánh đường Gothic cổ',
+  zen_retreats_healing: 'Retreat Chữa lành',
+};
+
+export const CUISINE_LABELS: Record<string, string> = {
+  vietnamese_local: 'Bản địa Việt Nam',
+  italian_pizza: 'Pizza & Pasta Ý',
+  japanese_sushi: 'Sushi & Nhật Bản',
+  korean_bbq: 'Nướng & BBQ Hàn Quốc',
+  western_steak_burger: 'Steakhouse & Burger Âu-Mỹ',
+  chinese_dimsum: 'Dimsum & Trung Hoa',
+  thai_spicy: 'Món Thái chua cay',
+  plant_based_vegan: 'Thuần chay thực dưỡng',
+};
 
 export function normalizePois(items: BackendPoiItem[] = []): Poi[] {
   return items

@@ -179,51 +179,67 @@ export default function PoiDetailSection({
       className="flex-1 bg-white flex flex-col h-full relative overflow-hidden select-none animate-fadeIn" 
       data-purpose="RightDetailSection"
     >
-      {/* 1. Top Bar Navigation Controls */}
+      <style>{`
+        .poi-detail-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .poi-detail-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .poi-detail-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(0, 0, 0, 0.18);
+          border-radius: 9999px;
+        }
+        .poi-detail-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(0, 0, 0, 0.35);
+        }
+      `}</style>
+
+      {/* 1. Header chuẩn Mindtrip: icons X và <- thanh mảnh, không vòng tròn viền xám */}
       <header className="px-6 py-4 flex items-center justify-between border-b border-neutral-100 shrink-0 bg-white z-10">
-        {/* Left side icons: Close & Back/Collapse */}
-        <div className="flex items-center gap-4 text-neutral-700">
+        {/* Left side icons: X và <- thanh mảnh */}
+        <div className="flex items-center gap-4 text-neutral-800">
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-neutral-100 hover:text-black transition"
+            className="text-neutral-800 hover:text-black hover:opacity-60 transition cursor-pointer p-0.5 flex items-center justify-center"
             title="Đóng chi tiết"
           >
-            <svg className="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+            <svg className="w-[18px] h-[18px] stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-neutral-100 hover:text-black transition"
+            className="text-neutral-800 hover:text-black hover:opacity-60 transition cursor-pointer p-0.5 flex items-center justify-center"
             title="Trở về bản đồ"
           >
-            <svg className="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M10 19l-7-7m0 0l7-7m-7 7h18" strokeLinecap="round" strokeLinejoin="round" />
+            <svg className="w-[20px] h-[20px] stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M19 12H5m0 0l6 6m-6-6l6-6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>
 
         {/* Right side actions: Save, Add to Trip, Location, Share */}
         <div className="flex items-center gap-2">
-          {/* Save button */}
+          {/* Nút Lưu */}
           <button 
             onClick={() => onToggleFavorite(poi.id)}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 border rounded-full text-xs font-semibold transition ${
+            className={`flex items-center gap-1.5 px-3.5 h-[34px] border rounded-full text-[12.5px] font-medium transition cursor-pointer ${
               isFavorite 
-                ? 'bg-rose-50 border-rose-200 text-rose-600' 
+                ? 'bg-[#fef3c7] border-[#b45309]/30 text-[#b45309]' 
                 : 'border-neutral-200 text-neutral-800 hover:bg-neutral-50'
             }`}
           >
-            <svg className={`w-3.5 h-3.5 ${isFavorite ? 'fill-rose-500 stroke-rose-500' : 'stroke-[2]'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-3.5 h-3.5 ${isFavorite ? 'fill-[#b45309] stroke-[#b45309]' : 'stroke-[1.8]'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
               <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span>{isFavorite ? 'Đã lưu' : 'Lưu'}</span>
           </button>
 
-          {/* Add to trip button */}
+          {/* Nút Thêm vào chuyến đi */}
           <button 
             onClick={() => setAddedToTrip(!addedToTrip)}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 border rounded-full text-xs font-semibold transition ${
+            className={`flex items-center gap-1.5 px-3.5 h-[34px] border rounded-full text-[12.5px] font-medium transition cursor-pointer ${
               addedToTrip
                 ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
                 : 'border-neutral-200 text-neutral-800 hover:bg-neutral-50'
@@ -236,22 +252,22 @@ export default function PoiDetailSection({
           {/* Pin icon (View on map) */}
           <button 
             onClick={onViewOnMap || onClose}
-            className="w-8 h-8 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-600 hover:bg-neutral-50 hover:text-black transition"
+            className="w-[34px] h-[34px] rounded-full border border-neutral-200 flex items-center justify-center text-neutral-600 hover:bg-neutral-50 hover:text-black transition cursor-pointer"
             title="Xem vị trí trên bản đồ"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-              <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+            <svg className="w-3.5 h-3.5 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
 
           {/* Share icon */}
           <button 
             onClick={handleShare}
-            className="w-8 h-8 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-600 hover:bg-neutral-50 hover:text-black transition"
+            className="w-[34px] h-[34px] rounded-full border border-neutral-200 flex items-center justify-center text-neutral-600 hover:bg-neutral-50 hover:text-black transition cursor-pointer"
             title={copiedLink ? 'Đã sao chép liên kết!' : 'Chia sẻ'}
           >
-            <svg className="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
@@ -642,7 +658,7 @@ export default function PoiDetailSection({
       </div>
 
       {/* 5. Floating AI Prompt Bar "GreenTrip AI" */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-xl z-30">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[85%] max-w-lg z-30 pointer-events-auto">
         <form 
           onSubmit={(e) => {
             e.preventDefault();
@@ -650,25 +666,35 @@ export default function PoiDetailSection({
               handleAskAi(askAiQuery);
             }
           }}
-          className="bg-white rounded-full border border-neutral-300 shadow-xl px-5 py-3 flex items-center justify-between hover:border-neutral-400 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition"
+          className="h-[50px] bg-white rounded-full border border-neutral-300 shadow-[0_6px_24px_rgba(0,0,0,0.1)] px-5 flex items-center justify-between hover:border-neutral-400 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition"
         >
           <input 
-            className="w-full bg-transparent text-sm font-medium text-neutral-800 placeholder-neutral-400 outline-none border-none focus:ring-0 p-0" 
+            className="w-full bg-transparent text-[14px] font-medium text-neutral-800 placeholder-neutral-400 outline-none border-none focus:ring-0 p-0" 
             placeholder={`Hỏi GreenTrip AI về ${displayName}...`} 
             type="text"
             value={askAiQuery}
             onChange={(e) => setAskAiQuery(e.target.value)}
           />
-          <button 
-            type="submit"
-            className="text-emerald-600 hover:text-emerald-700 transition ml-3 shrink-0 flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full"
-            title="Gửi câu hỏi cho GreenTrip AI"
-          >
-            <span>GreenTrip AI</span>
-            <svg className="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            <button
+              type="button"
+              onClick={() => alert('Tính năng nhập bằng giọng nói đang được hoàn thiện!')}
+              className="text-neutral-400 hover:text-neutral-700 transition flex items-center justify-center p-1 cursor-pointer"
+              title="Nhập bằng giọng nói"
+            >
+              <i className="ph ph-microphone text-[19px]"></i>
+            </button>
+            <button 
+              type="submit"
+              className="text-emerald-700 hover:text-emerald-800 transition flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full cursor-pointer"
+              title="Gửi câu hỏi cho GreenTrip AI"
+            >
+              <span>Hỏi AI</span>
+              <svg className="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
         </form>
       </div>
     </section>

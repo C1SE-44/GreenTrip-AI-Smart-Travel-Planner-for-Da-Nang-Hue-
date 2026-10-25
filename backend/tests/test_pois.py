@@ -45,6 +45,14 @@ class FakeCursor:
                 poi.longitude,
                 poi.address,
                 poi.city,
+                poi.estimated_cost,
+                poi.average_visit_minutes,
+                poi.satisfaction_score,
+                poi.green_score,
+                poi.is_local_business,
+                poi.local_business_type,
+                poi.image_url,
+                poi.gallery_urls,
             )
             for poi in page
         ]
@@ -339,3 +347,32 @@ def test_list_pois_ignores_all_filter_values(
 
     assert "WHERE" not in page_query
     assert page_parameters == (10, 0)
+
+
+def test_list_pois_returns_image_and_gallery_urls(
+    client: tuple[TestClient, list[tuple[str, Any]]], poi_records: list[POI]
+) -> None:
+    test_client, _ = client
+    # Set custom image_url and gallery_urls on the first record
+    poi_records[0] = POI(
+        id=1,
+        name="My Khe Beach 1",
+        category="beach",
+        description="Famous beach",
+        latitude=16.001,
+        longitude=108.001,
+        address="Vo Nguyen Giap",
+        city="Da Nang",
+        image_url="https://example.com/mykhe.jpg",
+        gallery_urls=["https://example.com/img1.jpg", "https://example.com/img2.jpg"],
+    )
+
+    response = test_client.get("/pois?limit=1")
+
+    assert response.status_code == 200
+    first_item = response.json()["items"][0]
+    assert first_item["image_url"] == "https://example.com/mykhe.jpg"
+    assert first_item["gallery_urls"] == [
+        "https://example.com/img1.jpg",
+        "https://example.com/img2.jpg",
+    ]

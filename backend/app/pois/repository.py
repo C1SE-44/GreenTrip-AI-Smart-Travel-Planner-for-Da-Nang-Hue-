@@ -78,7 +78,9 @@ def list_pois(
                     p.satisfaction_score::float AS satisfaction_score,
                     p.green_score AS green_score,
                     p.is_local_business AS is_local_business,
-                    p.local_business_type AS local_business_type
+                    p.local_business_type AS local_business_type,
+                    p.image_url AS image_url,
+                    p.gallery_urls AS gallery_urls
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id
                 JOIN public.cities ci ON p.city_id = ci.city_id

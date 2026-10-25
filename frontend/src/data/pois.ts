@@ -12,6 +12,7 @@ export interface Poi {
   lng: number;
   address?: string | null;
   image: string;
+  gallery?: string[];
   description: string;
   rating: number;
   visitDuration: string;
@@ -37,6 +38,8 @@ export interface BackendPoiItem {
   green_score?: number | null;
   is_local_business?: boolean | null;
   local_business_type?: string | null;
+  image_url?: string | null;
+  gallery_urls?: string[] | null;
 }
 
 export interface PaginationMetadata {
@@ -262,6 +265,9 @@ export function getDeterministicImage(name: string, id: string | number, categor
 }
 
 export function getGalleryImages(poi: Poi): string[] {
+  if (poi.gallery && poi.gallery.length > 0) {
+    return poi.gallery;
+  }
   const pool = DEFAULT_IMAGES_BY_CATEGORY[poi.category] || DEFAULT_IMAGES_BY_CATEGORY['di-tich'];
   const result: string[] = [poi.image];
   const remaining = pool.filter((img) => img !== poi.image);
@@ -352,7 +358,8 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
   // Clean up parenthesized notes like (Đạt chuẩn MICHELIN Selected) for a polished title
   const cleanName = rawName.replace(/\s*\([^)]*michelin[^)]*\)/gi, '').trim() || rawName;
 
-  const image = getDeterministicImage(cleanName, item.id, category, city);
+  const image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id, category, city);
+  const gallery = Array.isArray(item.gallery_urls) && item.gallery_urls.length > 0 ? item.gallery_urls : undefined;
 
   const rating = item.satisfaction_score ? Number(item.satisfaction_score) : 4.6;
   const visitMinutes = item.average_visit_minutes ? Number(item.average_visit_minutes) : 60;
@@ -375,6 +382,7 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
     lng: longitude,
     address: item.address?.trim() || null,
     image,
+    gallery,
     description: (item.description ?? '').trim() || 'Địa điểm đáng ghé thăm trong hành trình của bạn.',
     rating,
     visitDuration,

@@ -18,6 +18,8 @@ class POIResponse(BaseModel):
     green_score: float | None = None
     is_local_business: bool | None = None
     local_business_type: str | None = None
+    image_url: str | None = None
+    gallery_urls: list[str] | None = None
 
 
 class PaginationMetadata(BaseModel):

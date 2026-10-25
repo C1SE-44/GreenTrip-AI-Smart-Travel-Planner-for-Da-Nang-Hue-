@@ -265,13 +265,15 @@ export function getDeterministicImage(name: string, id: string | number, categor
 }
 
 export function getGalleryImages(poi: Poi): string[] {
-  if (poi.gallery && poi.gallery.length > 0) {
-    return poi.gallery;
-  }
   const pool = DEFAULT_IMAGES_BY_CATEGORY[poi.category] || DEFAULT_IMAGES_BY_CATEGORY['di-tich'];
-  const result: string[] = [poi.image];
-  const remaining = pool.filter((img) => img !== poi.image);
+  const base = (poi.gallery && poi.gallery.length > 0) ? poi.gallery : [poi.image];
+  const result: string[] = [poi.image, ...base.filter((img) => img !== poi.image)];
 
+  if (result.length >= 5) {
+    return result.slice(0, 5);
+  }
+
+  const remaining = pool.filter((img) => !result.includes(img));
   let hash = 2166136261;
   const key = `${poi.id}_${poi.name}`;
   for (let i = 0; i < key.length; i++) {
@@ -279,9 +281,9 @@ export function getGalleryImages(poi: Poi): string[] {
     hash = Math.imul(hash, 16777619);
   }
 
-  for (let i = 0; i < 4; i++) {
-    const idx = (Math.abs(hash) + i * 3 + 1) % (remaining.length || 1);
-    result.push(remaining[idx] || pool[(i + 1) % pool.length]);
+  while (result.length < 5) {
+    const idx = (Math.abs(hash) + result.length * 3 + 1) % (remaining.length || 1);
+    result.push(remaining[idx] || pool[result.length % pool.length]);
   }
   return result;
 }
@@ -420,7 +422,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.0756,
     lng: 108.2236,
-    image: 'https://picsum.photos/seed/danang_1/800/600',
+    image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&q=80&w=1280',
     description: 'Biểu tượng của Đà Nẵng, cầu quay phun lửa nước vào cuối tuần.',
     rating: 4.7,
     visitDuration: '30–45 phút',
@@ -433,7 +435,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.0544,
     lng: 108.2422,
-    image: 'https://picsum.photos/seed/danang_2/800/600',
+    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=1280',
     description: 'Top 6 bãi biển quyến rũ nhất hành tinh, cát mịn nước trong.',
     rating: 4.8,
     visitDuration: '2–3 giờ',
@@ -446,7 +448,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.0012,
     lng: 108.2598,
-    image: 'https://picsum.photos/seed/danang_3/800/600',
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=1280',
     description: 'Ngọn núi đá vôi với hang động và chùa cổ, năm ngọn linh thiêng.',
     rating: 4.6,
     visitDuration: '2–3 giờ',
@@ -459,7 +461,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.1058,
     lng: 108.2933,
-    image: 'https://picsum.photos/seed/danang_4/800/600',
+    image: 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&q=80&w=1280',
     description: 'Chùa có tượng Phật bà cao nhất Việt Nam, nhìn ra biển Đà Nẵng.',
     rating: 4.7,
     visitDuration: '1–2 giờ',
@@ -472,7 +474,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 15.9989,
     lng: 107.9889,
-    image: 'https://picsum.photos/seed/danang_5/800/600',
+    image: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&q=80&w=1280',
     description: 'Khu nghỉ dưỡng trên cao nguyên, cầu vàng icon nổi tiếng.',
     rating: 4.5,
     visitDuration: 'Cả ngày',
@@ -485,7 +487,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.0684,
     lng: 108.2218,
-    image: 'https://picsum.photos/seed/danang_6/800/600',
+    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=1280',
     description: 'Chợ truyền thống sầm uất, đặc sản hải sản và đồ lưu niệm.',
     rating: 4.3,
     visitDuration: '45–60 phút',
@@ -498,7 +500,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.0658,
     lng: 108.2186,
-    image: 'https://picsum.photos/seed/danang_7/800/600',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/e/ec/Mi_Quang_Da_Nang.jpg',
     description: 'Mì Quảng chuẩn vị Đà Nẵng, tôm thịt trứng gà, nước lèo đậm đà.',
     rating: 4.6,
     visitDuration: '30–45 phút',
@@ -511,7 +513,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4637,
     lng: 107.5809,
-    image: 'https://picsum.photos/seed/hue_1/800/600',
+    image: 'https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&q=80&w=1280',
     description: 'Di sản thế giới UNESCO, trung tâm quyền lực triều Nguyễn.',
     rating: 4.8,
     visitDuration: '2–3 giờ',
@@ -524,7 +526,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4697,
     lng: 107.5489,
-    image: 'https://picsum.photos/seed/hue_2/800/600',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/8/88/ThienMuPagoda.jpg',
     description: 'Ngôi chùa cổ nhất Huế, tháp Phước Duyên biểu tượng bên sông Hương.',
     rating: 4.7,
     visitDuration: '1 giờ',
@@ -537,7 +539,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.3942,
     lng: 107.5989,
-    image: 'https://picsum.photos/seed/hue_3/800/600',
+    image: 'https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?auto=format&fit=crop&q=80&w=1280',
     description: 'Lăng tombs kiến trúc Đông – Tây giao thoa, sứ khảm trang trí.',
     rating: 4.6,
     visitDuration: '1–2 giờ',
@@ -550,7 +552,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4356,
     lng: 107.5733,
-    image: 'https://picsum.photos/seed/hue_4/800/600',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/d/dd/Annam_-_Hu%C3%A9_-_Pavillons_sur_le_bassin_fleuri_au_Tombeau_de_Tu-Duc.jpg',
     description: 'Lăng tẩm rộng nhất Huế, hồ Lưu Khiêm và vườn thơ mộng.',
     rating: 4.5,
     visitDuration: '1–2 giờ',
@@ -563,7 +565,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4658,
     lng: 107.5818,
-    image: 'https://picsum.photos/seed/hue_5/800/600',
+    image: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?auto=format&fit=crop&q=80&w=1280',
     description: 'Chợ lớn nhất Huế, đặc sản mè xửng, bánh ép, nón bài thơ.',
     rating: 4.2,
     visitDuration: '45–60 phút',
@@ -576,7 +578,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4672,
     lng: 107.5795,
-    image: 'https://picsum.photos/seed/hue_6/800/600',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Bun-Bo-Hue.jpg',
     description: 'Bún bò Huế cay nồng chuẩn vị, nước lèo xương bò đậm đà.',
     rating: 4.7,
     visitDuration: '30–45 phút',
@@ -589,7 +591,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4647,
     lng: 107.5866,
-    image: 'https://picsum.photos/seed/hue_7/800/600',
+    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&q=80&w=1280',
     description: 'Cầu sắt sáu nhịp lịch sử bắc ngang sông Hương, biểu tượng Huế.',
     rating: 4.4,
     visitDuration: '20–30 phút',

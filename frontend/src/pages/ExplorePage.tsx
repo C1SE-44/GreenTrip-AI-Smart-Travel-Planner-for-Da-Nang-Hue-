@@ -623,14 +623,20 @@ export default function ExplorePage() {
             </div>
 
             <button 
-              onClick={() => {
-                setCategoryFilter((prev) => (prev === 'all' ? 'di-tich' : 'all'));
-                setActiveTab((prev) => (prev === 'all' ? 'di-tich' : 'all'));
-              }}
-              className={`flex items-center gap-2 px-5 h-[50px] rounded-full border transition text-[15px] font-medium cursor-pointer ${categoryFilter !== 'all' ? 'bg-black text-white border-black' : 'border-gray-200 hover:bg-gray-50 text-gray-800'}`}
+              onClick={() => setIsFilterPopoverOpen(true)}
+              className={`flex items-center gap-2 px-5 h-[50px] rounded-full border transition text-[15px] font-medium cursor-pointer ${
+                activeFilterCount > 0 || isFilterPopoverOpen
+                  ? 'bg-black text-white border-black shadow-sm'
+                  : 'border-gray-200 hover:bg-gray-50 text-gray-800'
+              }`}
             >
               <i className="ph ph-faders text-lg"></i>
               <span>Bộ lọc</span>
+              {activeFilterCount > 0 && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[11px] font-bold text-white ml-1">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
           </div>
 

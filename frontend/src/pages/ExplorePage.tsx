@@ -9,6 +9,9 @@ import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
 import { getMe, type UserProfile } from '@/services/auth';
+import { getPois } from '@/services/poi';
+import ExploreFilterPopover, { type ExploreFilterValues, type EcoPriority, type PoiCategoryFilter } from '@/components/poi/ExploreFilterPopover';
+
 
 type CityFilter = 'all' | PoiCity;
 type CategoryFilter = 'all' | PoiCategory;
@@ -62,6 +65,29 @@ export default function ExplorePage() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
+  const [filterValues, setFilterValues] = useState<ExploreFilterValues>({
+    budget: 'all',
+    ecoPriority: 'all',
+    ecoCertifiedOnly: false,
+    greenTransitOnly: false,
+    categories: [],
+    timeOfDay: [],
+    radiusKm: null,
+  });
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterValues.budget !== 'all') count++;
+    if (filterValues.ecoPriority !== 'all') count++;
+    if (filterValues.ecoCertifiedOnly) count++;
+    if (filterValues.greenTransitOnly) count++;
+    if (filterValues.categories.length > 0) count += filterValues.categories.length;
+    if (filterValues.timeOfDay.length > 0) count += filterValues.timeOfDay.length;
+    if (filterValues.radiusKm !== null) count++;
+    return count;
+  }, [filterValues]);
+
   const [isHovered, setIsHovered] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -191,7 +217,18 @@ export default function ExplorePage() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetchJson<PaginatedPoisResponse>('/pois?limit=100&page=1');
+
+        const response = await getPois({
+          limit: 100,
+          page: 1,
+          city: cityFilter !== 'all' ? cityFilter : undefined,
+          category: categoryFilter !== 'all' ? categoryFilter : undefined,
+          eco_priority: filterValues.ecoPriority,
+          budget_tier: filterValues.budget,
+          eco_certified_only: filterValues.ecoCertifiedOnly,
+          green_transit_only: filterValues.greenTransitOnly,
+        });
+
         const normalized = normalizePois(response.items);
         if (!active) return;
         setAllPois(normalized.length > 0 ? normalized : pois);
@@ -212,7 +249,7 @@ export default function ExplorePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [cityFilter, categoryFilter, filterValues]);
 
   const handleTabChange = (tabId: 'all' | PoiCategory) => {
     setActiveTab(tabId);
@@ -220,6 +257,9 @@ export default function ExplorePage() {
   };
 
   const filteredPois = useMemo(() => {
+    const ecoScoreMap: Record<EcoPriority, number> = { all: 0, basic: 30, balanced: 55, eco: 75, pure: 90 };
+    const minEco = ecoScoreMap[filterValues.ecoPriority];
+
     return allPois.filter((poi) => {
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
       const matchCat = categoryFilter === 'all' || poi.category === categoryFilter;
@@ -227,9 +267,34 @@ export default function ExplorePage() {
         !search ||
         poi.name.toLowerCase().includes(search.toLowerCase()) ||
         poi.description.toLowerCase().includes(search.toLowerCase());
-      return matchCity && matchCat && matchSearch;
+
+      // Eco Score filter
+      const ecoScore = poi.ecoScore ?? 80;
+      let matchEco = ecoScore >= minEco;
+      if (filterValues.ecoCertifiedOnly && ecoScore < 85) matchEco = false;
+
+      // Budget filter (category-based proxy)
+      let matchBudget = true;
+      if (filterValues.budget !== 'all') {
+        if (filterValues.budget === '$') {
+          matchBudget = poi.category === 'chua' || poi.category === 'canh-quan';
+        } else if (filterValues.budget === '$$') {
+          matchBudget = poi.category === 'quan-an' || poi.category === 'chua';
+        } else if (filterValues.budget === '$$$') {
+          matchBudget = poi.category === 'di-tich' || poi.category === 'canh-quan';
+        } else if (filterValues.budget === '$$$$') {
+          matchBudget = poi.category === 'quan-an';
+        }
+      }
+
+      // Category multi-select filter
+      const matchCatFilter =
+        filterValues.categories.length === 0 ||
+        filterValues.categories.includes(poi.category as PoiCategoryFilter);
+
+      return matchCity && matchCat && matchSearch && matchEco && matchBudget && matchCatFilter;
     });
-  }, [allPois, search, cityFilter, categoryFilter]);
+  }, [allPois, search, cityFilter, categoryFilter, filterValues]);
 
   const handleSelectPoi = (id: string | null) => {
     setSelectedPoiId((prev) => (prev === id ? null : id));
@@ -714,150 +779,25 @@ function ErrorState({ message }: { message: string }) {
       </div>
       <p className="text-sm font-medium text-red-700">Không thể tải địa điểm</p>
       <p className="mt-1 text-xs text-red-600">{message}</p>
+    
+      {/* 4. Explore Filter Popover Modal (Mindtrip-Style Floating Modal) */}
+      <ExploreFilterPopover
+        isOpen={isFilterPopoverOpen}
+        onClose={() => setIsFilterPopoverOpen(false)}
+        values={filterValues}
+        onApply={(newValues) => setFilterValues(newValues)}
+        onClearAll={() =>
+          setFilterValues({
+            budget: 'all',
+            ecoPriority: 'all',
+            ecoCertifiedOnly: false,
+            greenTransitOnly: false,
+            categories: [],
+            timeOfDay: [],
+            radiusKm: null,
+          })
+        }
+      />
     </div>
-  );
-}
-
-function PoiCard({
-  poi,
-  active = false,
-  favorite = false,
-  isAdded = false,
-  onClick,
-  onHover,
-  onToggleFavorite,
-  onToggleAddTrip,
-}: {
-  poi: Poi;
-  index?: number;
-  active?: boolean;
-  favorite?: boolean;
-  isAdded?: boolean;
-  onClick: () => void;
-  onHover: (id: string | null) => void;
-  onToggleFavorite: (id: string) => void;
-  onToggleAddTrip?: (id: string) => void;
-}) {
-  const [imgIdx, setImgIdx] = useState(0);
-  const [isCardHovered, setIsCardHovered] = useState(false);
-
-  const gallery = useMemo(() => getGalleryImages(poi), [poi]);
-
-  return (
-    <article
-      onClick={onClick}
-      onMouseEnter={() => {
-        setIsCardHovered(true);
-        onHover(poi.id);
-      }}
-      onMouseLeave={() => {
-        setIsCardHovered(false);
-        onHover(null);
-      }}
-      className="flex flex-col group cursor-pointer"
-    >
-      {/* 1. Card Image Box: aspect-[1.05/1], rounded-[20px], isolate để các nút con không bao giờ thoát ra ngoài đè lên header */}
-      <div className={`relative w-full aspect-[1.05/1] rounded-[20px] overflow-hidden bg-gray-100 shadow-sm transition-all duration-200 isolate ${active ? 'ring-2 ring-black' : ''}`}>
-        <img
-          src={gallery[imgIdx] || poi.image}
-          alt={poi.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
-
-        {/* Nút tròn chuyển ảnh ‹ (chỉ hiện khi hover và từ ảnh thứ 2 trở đi) */}
-        {isCardHovered && imgIdx > 0 && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setImgIdx((prev) => Math.max(0, prev - 1));
-            }}
-            className="absolute left-3.5 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white text-zinc-900 shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-10 cursor-pointer"
-            title="Ảnh trước"
-          >
-            <i className="ph ph-caret-left text-lg font-bold"></i>
-          </button>
-        )}
-
-        {/* Nút tròn chuyển ảnh › (chỉ hiện khi hover và chưa đến ảnh cuối) */}
-        {isCardHovered && imgIdx < gallery.length - 1 && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setImgIdx((prev) => Math.min(gallery.length - 1, prev + 1));
-            }}
-            className="absolute right-3.5 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white text-zinc-900 shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-10 cursor-pointer"
-            title="Ảnh kế tiếp"
-          >
-            <i className="ph ph-caret-right text-lg font-bold"></i>
-          </button>
-        )}
-
-        {/* Nút tim và "+" ở góc trên (giữ nguyên khi hover, chuyển trạng thái khi đã lưu / thêm) */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFavorite(poi.id);
-            }}
-            className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
-              favorite ? 'bg-white text-[#b45309]' : 'bg-black/35 hover:bg-black/55 text-white'
-            }`}
-            title="Lưu yêu thích"
-          >
-            <i className={`ph ${favorite ? 'ph-fill ph-heart text-[18px] text-[#b45309]' : 'ph-heart text-[18px]'}`}></i>
-          </button>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleAddTrip?.(poi.id);
-            }}
-            className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
-              isAdded ? 'bg-emerald-600 text-white' : 'bg-black/35 hover:bg-black/55 text-white'
-            }`}
-            title="Thêm vào chuyến đi"
-          >
-            <i className={`ph ${isAdded ? 'ph-check text-[18px] font-bold' : 'ph-plus text-[18px]'}`}></i>
-          </button>
-        </div>
-
-        {/* Chấm phân trang bên dưới đổi theo ảnh đang xem (chấm đang chọn trắng đậm, các chấm còn lại mờ) */}
-        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 pointer-events-none z-10">
-          {gallery.slice(0, 5).map((_: string, i: number) => (
-            <span
-              key={i}
-              className={`w-1.5 h-1.5 rounded-full transition-all ${
-                i === imgIdx ? 'bg-white scale-125 shadow-xs' : 'bg-white/40'
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* Icon ⓘ ở góc phải đáy */}
-        <div className="absolute bottom-2.5 right-2.5 pointer-events-none z-10">
-          <i className="ph ph-info text-white/80 hover:text-white text-[15px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"></i>
-        </div>
-      </div>
-
-      {/* 2. Card Details: Tên, loại hình, địa chỉ (bỏ ★ và người đánh giá) */}
-      <div className="mt-2.5 space-y-1">
-        {/* Dòng 1: Tên địa điểm */}
-        <div className="flex items-center justify-between gap-1.5 min-w-0">
-          <h3 className="font-bold text-[15px] text-gray-950 tracking-tight truncate leading-tight group-hover:text-black">
-            {poi.name}
-          </h3>
-        </div>
-
-        {/* Dòng 2: Icon loại hình + Tên loại hình */}
-        <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-normal">
-          <i className={`ph ${CATEGORY_META[poi.category]?.icon || 'ph-map-pin'} text-gray-400 text-[14px] shrink-0`}></i>
-          <span className="truncate">{CATEGORY_META[poi.category]?.label || 'Điểm tham quan'}</span>
-        </div>
-
-        {/* Dòng 3: Dòng địa điểm */}
-        <div className="text-[12.5px] text-gray-400 font-normal truncate">
-          <span>{poi.address || `${poi.city === 'Đà Nẵng' ? 'Hải Châu, Đà Nẵng' : `${poi.city}, Việt Nam`}`}</span>
-        </div>
-      </div>
-    </article>
   );
 }

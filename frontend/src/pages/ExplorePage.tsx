@@ -60,7 +60,7 @@ export default function ExplorePage() {
   };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [allPois, setAllPois] = useState<Poi[]>([]);
+  const [allPois, setAllPois] = useState<Poi[]>(pois);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
@@ -235,7 +235,7 @@ export default function ExplorePage() {
       } catch (loadError) {
         if (!active) return;
         console.warn('Backend POIs fetch failed, using fallback data:', loadError);
-        setError(loadError instanceof Error ? loadError.message : 'Failed to load POIs');
+        setError(pois && pois.length > 0 ? null : (loadError instanceof Error ? loadError.message : 'Failed to load POIs'));
         setAllPois(pois);
       } finally {
         if (active) {
@@ -755,6 +755,25 @@ export default function ExplorePage() {
           </div>
         )}
       </section>
+
+      {/* 4. Explore Filter Popover Modal (Mindtrip-Style Floating Modal) */}
+      <ExploreFilterPopover
+        isOpen={isFilterPopoverOpen}
+        onClose={() => setIsFilterPopoverOpen(false)}
+        values={filterValues}
+        onApply={(newValues) => setFilterValues(newValues)}
+        onClearAll={() =>
+          setFilterValues({
+            budget: 'all',
+            ecoPriority: 'all',
+            ecoCertifiedOnly: false,
+            greenTransitOnly: false,
+            categories: [],
+            timeOfDay: [],
+            radiusKm: null,
+          })
+        }
+      />
     </div>
   );
 }
@@ -779,25 +798,6 @@ function ErrorState({ message }: { message: string }) {
       </div>
       <p className="text-sm font-medium text-red-700">Không thể tải địa điểm</p>
       <p className="mt-1 text-xs text-red-600">{message}</p>
-    
-      {/* 4. Explore Filter Popover Modal (Mindtrip-Style Floating Modal) */}
-      <ExploreFilterPopover
-        isOpen={isFilterPopoverOpen}
-        onClose={() => setIsFilterPopoverOpen(false)}
-        values={filterValues}
-        onApply={(newValues) => setFilterValues(newValues)}
-        onClearAll={() =>
-          setFilterValues({
-            budget: 'all',
-            ecoPriority: 'all',
-            ecoCertifiedOnly: false,
-            greenTransitOnly: false,
-            categories: [],
-            timeOfDay: [],
-            radiusKm: null,
-          })
-        }
-      />
     </div>
   );
 }

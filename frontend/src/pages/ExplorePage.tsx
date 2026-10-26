@@ -103,56 +103,30 @@ export default function ExplorePage() {
         setLoading(true);
         setError(null);
 
-        const currentCategory = categoryFilter !== 'all' ? categoryFilter : undefined;
-        const currentCity = cityFilter !== 'all' ? cityFilter : undefined;
-
-        // 1. Tải trang 1 với limit tối đa 100 theo OpenAPI contract
-        const firstPage = await getPois({
-          page: 1,
-          limit: 100,
-          category: currentCategory,
-          city: currentCity,
-          eco_priority: filterValues.ecoPriority,
-          budget_tier: filterValues.budget,
-          eco_certified_only: filterValues.ecoCertifiedOnly,
-          green_transit_only: filterValues.greenTransitOnly,
-        });
-
+        // 1. Tải nhanh trang 1 để hiển thị ngay cho người dùng trong 1-2s
+        const p1 = await getPois({ page: 1, limit: 100 });
         if (!active) return;
 
-        const initialNormalized = normalizePois(firstPage.items);
+        const firstItems = p1.items || [];
+        const initialNormalized = normalizePois(firstItems);
         if (initialNormalized.length > 0) {
           setAllPois(initialNormalized);
-        } else {
-          setAllPois(pois);
         }
-        // Tắt skeleton ngay khi trang 1 về để phản hồi tức thì cho người dùng
         setLoading(false);
 
-        // 2. Nếu còn trang tiếp theo (>100 địa điểm, ví dụ Tất cả 339 POIs hoặc Quán ăn 159 POIs), tải ngầm và merge
-        const totalPages = firstPage.pagination?.total_pages || 1;
+        // 2. Tải ngầm các trang còn lại và ghép trọn vẹn 339 POIs
+        const totalPages = p1.pagination?.total_pages || 1;
         if (totalPages > 1) {
-          const pagePromises = [];
+          const remainingPromises = [];
           for (let p = 2; p <= totalPages; p++) {
-            pagePromises.push(
-              getPois({
-                page: p,
-                limit: 100,
-                category: currentCategory,
-                city: currentCity,
-                eco_priority: filterValues.ecoPriority,
-                budget_tier: filterValues.budget,
-                eco_certified_only: filterValues.ecoCertifiedOnly,
-                green_transit_only: filterValues.greenTransitOnly,
-              })
-            );
+            remainingPromises.push(getPois({ page: p, limit: 100 }));
           }
-          const otherPages = await Promise.all(pagePromises);
+          const remainingPages = await Promise.all(remainingPromises);
           if (!active) return;
 
-          let allItems = [...firstPage.items];
-          for (const pageRes of otherPages) {
-            allItems.push(...pageRes.items);
+          let allItems = [...firstItems];
+          for (const res of remainingPages) {
+            allItems.push(...(res.items || []));
           }
           const fullNormalized = normalizePois(allItems);
           if (fullNormalized.length > 0) {
@@ -163,7 +137,10 @@ export default function ExplorePage() {
         if (!active) return;
         console.warn('Backend POIs fetch failed, using fallback curated POIs:', loadError);
         setAllPois(pois);
-        setLoading(false);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
@@ -171,7 +148,7 @@ export default function ExplorePage() {
     return () => {
       active = false;
     };
-  }, [cityFilter, categoryFilter, filterValues]);
+  }, []);
 
   const handleTabChange = (tabId: 'all' | PoiCategory) => {
     setActiveTab(tabId);

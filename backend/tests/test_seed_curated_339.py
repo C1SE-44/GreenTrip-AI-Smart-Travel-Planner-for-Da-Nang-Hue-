@@ -13,7 +13,10 @@ if str(BACKEND_ROOT) not in sys.path:
 from scripts.seed_curated_339_pois import seed_curated_339, check_backup_exists
 
 
-def test_backup_exists_guard_passes():
+def test_backup_exists_guard_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("scripts.seed_curated_339_pois.BACKUP_DIR", tmp_path)
+    assert check_backup_exists() is False
+    (tmp_path / "full_pois_backup_2426_dummy.json").write_text("{}", encoding="utf-8")
     assert check_backup_exists() is True
 
 

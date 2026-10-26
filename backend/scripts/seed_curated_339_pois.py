@@ -26,10 +26,16 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.db.postgres import get_connection
+from scripts.enrich_poi_scores import (
+    calculate_green_score,
+    calculate_popularity_score,
+    calculate_satisfaction_score,
+)
 
 PROJECT_ROOT = BACKEND_ROOT.parent
 CSV_PATH = PROJECT_ROOT / "data" / "raw" / "curated_pois_339.csv"
 CATALOG_PATH = PROJECT_ROOT / "data" / "raw" / "curated_339_coordinates_catalog.json"
+LEADS_PATH = PROJECT_ROOT / "data" / "processed" / "poi_partner_leads.csv"
 BACKUP_DIR = PROJECT_ROOT / "data" / "backup"
 
 CATEGORY_MAP: dict[str, str] = {
@@ -131,6 +137,12 @@ def seed_curated_339(live_commit: bool = False) -> dict:
 
     catalog_map = {item["record_id"]: item for item in catalog_data["catalog"]}
 
+    leads_map: dict[str, dict[str, str]] = {}
+    if LEADS_PATH.exists():
+        with LEADS_PATH.open("r", encoding="utf-8-sig") as f:
+            for l_row in csv.DictReader(f):
+                leads_map[l_row["name"].strip().lower()] = l_row
+
     if len(csv_rows) != 339:
         raise ValueError(f"Expected 339 rows in {CSV_PATH}, got {len(csv_rows)}")
 
@@ -181,6 +193,13 @@ def seed_curated_339(live_commit: bool = False) -> dict:
                 name = row["place_name"].strip()
                 address = row["address"].strip().rstrip(".")
 
+                lead = leads_map.get(name.lower(), {})
+                raw_rating = float(lead["rating"]) if lead.get("rating") else 4.5
+                raw_reviews = int(lead["review_count"]) if lead.get("review_count") and str(lead["review_count"]).isdigit() else 50
+                sat_score = calculate_satisfaction_score(raw_rating, raw_reviews)
+                pop_score = calculate_popularity_score(raw_reviews, name=name, description=desc, category=db_cat_name)
+                grn_score = calculate_green_score(category=db_cat_name, city=db_city_name, address=address, name=name, description=desc)
+
                 records_to_insert.append({
                     "poi_id": poi_id,
                     "city_id": city_id,
@@ -192,12 +211,12 @@ def seed_curated_339(live_commit: bool = False) -> dict:
                     "lon": lon,
                     "estimated_cost": cost,
                     "average_visit_minutes": visit_mins,
-                    "satisfaction_score": Decimal("4.8"),
-                    "popularity_score": Decimal("4.5"),
+                    "satisfaction_score": Decimal(str(sat_score)),
+                    "popularity_score": Decimal(str(pop_score)),
                     "is_local_business": True,
                     "local_business_type": biz_type,
                     "status": "ACTIVE",
-                    "green_score": 0.85,
+                    "green_score": grn_score,
                     "is_active": True,
                 })
 

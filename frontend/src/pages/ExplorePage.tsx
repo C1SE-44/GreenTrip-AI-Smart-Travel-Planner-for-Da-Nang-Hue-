@@ -102,23 +102,68 @@ export default function ExplorePage() {
       try {
         setLoading(true);
         setError(null);
-        const data = await getPois({ page_size: 350 });
+
+        const currentCategory = categoryFilter !== 'all' ? categoryFilter : undefined;
+        const currentCity = cityFilter !== 'all' ? cityFilter : undefined;
+
+        // 1. Tải trang 1 với limit tối đa 100 theo OpenAPI contract
+        const firstPage = await getPois({
+          page: 1,
+          limit: 100,
+          category: currentCategory,
+          city: currentCity,
+          eco_priority: filterValues.ecoPriority,
+          budget_tier: filterValues.budget,
+          eco_certified_only: filterValues.ecoCertifiedOnly,
+          green_transit_only: filterValues.greenTransitOnly,
+        });
+
         if (!active) return;
 
-        const normalized = normalizePois(data.items);
-        if (normalized.length > 0) {
-          setAllPois(normalized);
+        const initialNormalized = normalizePois(firstPage.items);
+        if (initialNormalized.length > 0) {
+          setAllPois(initialNormalized);
         } else {
           setAllPois(pois);
+        }
+        // Tắt skeleton ngay khi trang 1 về để phản hồi tức thì cho người dùng
+        setLoading(false);
+
+        // 2. Nếu còn trang tiếp theo (>100 địa điểm, ví dụ Tất cả 339 POIs hoặc Quán ăn 159 POIs), tải ngầm và merge
+        const totalPages = firstPage.pagination?.total_pages || 1;
+        if (totalPages > 1) {
+          const pagePromises = [];
+          for (let p = 2; p <= totalPages; p++) {
+            pagePromises.push(
+              getPois({
+                page: p,
+                limit: 100,
+                category: currentCategory,
+                city: currentCity,
+                eco_priority: filterValues.ecoPriority,
+                budget_tier: filterValues.budget,
+                eco_certified_only: filterValues.ecoCertifiedOnly,
+                green_transit_only: filterValues.greenTransitOnly,
+              })
+            );
+          }
+          const otherPages = await Promise.all(pagePromises);
+          if (!active) return;
+
+          let allItems = [...firstPage.items];
+          for (const pageRes of otherPages) {
+            allItems.push(...pageRes.items);
+          }
+          const fullNormalized = normalizePois(allItems);
+          if (fullNormalized.length > 0) {
+            setAllPois(fullNormalized);
+          }
         }
       } catch (loadError) {
         if (!active) return;
         console.warn('Backend POIs fetch failed, using fallback curated POIs:', loadError);
         setAllPois(pois);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     }
 
@@ -126,7 +171,7 @@ export default function ExplorePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [cityFilter, categoryFilter, filterValues]);
 
   const handleTabChange = (tabId: 'all' | PoiCategory) => {
     setActiveTab(tabId);
@@ -154,12 +199,14 @@ export default function ExplorePage() {
 
       // Budget
       let matchBudget = true;
-      if (filterValues.budget === 'low') {
-        matchBudget = poi.budget_tier === '$' || poi.budget_tier === 'free' || (poi.estimatedCost ?? 0) <= 50000;
-      } else if (filterValues.budget === 'medium') {
-        matchBudget = poi.budget_tier === '$$' || ((poi.estimatedCost ?? 0) > 50000 && (poi.estimatedCost ?? 0) <= 200000);
-      } else if (filterValues.budget === 'high') {
-        matchBudget = poi.budget_tier === '$$$' || (poi.estimatedCost ?? 0) > 200000;
+      if (filterValues.budget === '$') {
+        matchBudget = poi.budget_tier === '$' || poi.budget_tier === 'free' || (poi.estimatedCost ?? 0) <= 100000;
+      } else if (filterValues.budget === '$$') {
+        matchBudget = poi.budget_tier === '$$' || ((poi.estimatedCost ?? 0) > 100000 && (poi.estimatedCost ?? 0) <= 400000);
+      } else if (filterValues.budget === '$$$') {
+        matchBudget = poi.budget_tier === '$$$' || ((poi.estimatedCost ?? 0) > 400000 && (poi.estimatedCost ?? 0) <= 1000000);
+      } else if (filterValues.budget === '$$$$') {
+        matchBudget = poi.budget_tier === '$$$$' || (poi.estimatedCost ?? 0) > 1000000;
       }
 
       // Rating filter

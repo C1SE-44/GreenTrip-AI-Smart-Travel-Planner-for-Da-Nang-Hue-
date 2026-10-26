@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { Poi, PoiCategory } from '@/data/pois';
-import { getGalleryImages, SUB_CATEGORY_LABELS, categoryLabels } from '@/data/pois';
+import { getGalleryImages, getDeterministicImage, SUB_CATEGORY_LABELS, categoryLabels } from '@/data/pois';
 
 const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
   'quan-an': { icon: 'ph-fork-knife', label: 'Quán ăn' },
@@ -61,7 +61,13 @@ export default function PoiCard({
           src={gallery[imgIdx] || poi.image}
           alt={poi.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          loading="lazy"
+          onError={(e) => {
+            const target = e.currentTarget;
+            const fallback = getDeterministicImage(poi.name, poi.id, poi.category, poi.city);
+            if (target.src !== fallback) {
+              target.src = fallback;
+            }
+          }}
         />
 
         {/* Nút tròn chuyển ảnh ‹ (chỉ hiện khi hover và từ ảnh thứ 2 trở đi) */}

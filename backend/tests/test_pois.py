@@ -45,6 +45,26 @@ class FakeCursor:
                 poi.longitude,
                 poi.address,
                 poi.city,
+                poi.estimated_cost,
+                poi.average_visit_minutes,
+                poi.satisfaction_score,
+                poi.green_score,
+                poi.is_local_business,
+                poi.local_business_type,
+                poi.image_url,
+                poi.gallery_urls,
+                poi.sub_category,
+                poi.cuisine,
+                poi.budget_tier,
+                poi.vibes,
+                poi.best_time,
+                poi.eco_features,
+                poi.ai_metadata,
+                poi.phone_number,
+                poi.website_url,
+                poi.social_links,
+                poi.opening_hours,
+                poi.email,
             )
             for poi in page
         ]
@@ -303,3 +323,110 @@ def test_database_failure_does_not_expose_connection_details(
     assert response.json() == {"detail": "Unable to fetch POIs."}
     assert "secret" not in response.text
     assert "database" not in response.text
+
+
+def test_list_pois_resolves_city_and_category_aliases(
+    client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    test_client, queries = client
+
+    response = test_client.get("/pois?city=Đà Nẵng&category=di-tich")
+
+    assert response.status_code == 200
+    page_query, page_parameters = queries[0]
+    count_query, count_parameters = queries[1]
+
+    assert "c.name = ANY(%s)" in page_query
+    assert "ci.code = %s" in page_query
+    assert ["Di tích lịch sử và văn hóa"] in page_parameters
+    assert "DANANG" in page_parameters
+
+    assert "c.name = ANY(%s)" in count_query
+    assert "ci.code = %s" in count_query
+    assert ["Di tích lịch sử và văn hóa"] in count_parameters
+    assert "DANANG" in count_parameters
+
+
+def test_list_pois_ignores_all_filter_values(
+    client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    test_client, queries = client
+
+    response = test_client.get("/pois?city=all&category=all")
+
+    assert response.status_code == 200
+    page_query, page_parameters = queries[0]
+
+    assert "WHERE" not in page_query
+    assert page_parameters == (10, 0)
+
+
+def test_list_pois_returns_image_and_gallery_urls(
+    client: tuple[TestClient, list[tuple[str, Any]]], poi_records: list[POI]
+) -> None:
+    test_client, _ = client
+    # Set custom image_url and gallery_urls on the first record
+    poi_records[0] = POI(
+        id=1,
+        name="My Khe Beach 1",
+        category="beach",
+        description="Famous beach",
+        latitude=16.001,
+        longitude=108.001,
+        address="Vo Nguyen Giap",
+        city="Da Nang",
+        image_url="https://example.com/mykhe.jpg",
+        gallery_urls=["https://example.com/img1.jpg", "https://example.com/img2.jpg"],
+    )
+
+    response = test_client.get("/pois?limit=1")
+
+    assert response.status_code == 200
+    first_item = response.json()["items"][0]
+    assert first_item["image_url"] == "https://example.com/mykhe.jpg"
+    assert first_item["gallery_urls"] == [
+        "https://example.com/img1.jpg",
+        "https://example.com/img2.jpg",
+    ]
+
+
+def test_list_pois_returns_v2_taxonomy_fields(
+    client: tuple[TestClient, list[tuple[str, Any]]], poi_records: list[POI]
+) -> None:
+    test_client, _ = client
+    poi_records[0] = POI(
+        id=1,
+        name="Pizza 4P's Hoang Van Thu",
+        category="food",
+        description="Wood-fired artisanal pizza",
+        latitude=16.066,
+        longitude=108.222,
+        address="8 Hoang Van Thu",
+        city="Da Nang",
+        image_url="https://example.com/pizza4ps.jpg",
+        gallery_urls=["https://example.com/pizza1.jpg"],
+        sub_category="western_international",
+        cuisine="italian_pizza",
+        budget_tier="$$$",
+        vibes=["Hẹn hò", "Hiện đại"],
+        best_time=["evening", "night"],
+        eco_features=["Zero-waste", "Farm-to-table"],
+        ai_metadata={
+            "dna_tags": ["wood_fired_pizza", "artisan_cheese"],
+            "noise_pace": "chill_slow",
+            "rainy_day_friendly": True,
+        },
+    )
+
+    response = test_client.get("/pois?limit=1")
+
+    assert response.status_code == 200
+    first_item = response.json()["items"][0]
+    assert first_item["sub_category"] == "western_international"
+    assert first_item["cuisine"] == "italian_pizza"
+    assert first_item["budget_tier"] == "$$$"
+    assert first_item["vibes"] == ["Hẹn hò", "Hiện đại"]
+    assert first_item["best_time"] == ["evening", "night"]
+    assert first_item["eco_features"] == ["Zero-waste", "Farm-to-table"]
+    assert first_item["ai_metadata"]["dna_tags"] == ["wood_fired_pizza", "artisan_cheese"]
+    assert first_item["ai_metadata"]["rainy_day_friendly"] is True

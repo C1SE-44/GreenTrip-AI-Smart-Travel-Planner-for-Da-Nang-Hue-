@@ -20,6 +20,9 @@ def get_pois(
     limit: int = Query(default=10, ge=1, le=100, description="Items per page (maximum 100)"),
     category: str | None = Query(default=None, description="Filter by category name"),
     city: str | None = Query(default=None, description="Filter by city name"),
+    sub_category: str | None = Query(default=None, description="Filter by sub_category (e.g. western_international, traditional_noodles)"),
+    cuisine: str | None = Query(default=None, description="Filter by cuisine (e.g. italian_pizza, japanese_sushi)"),
+    budget_tier: str | None = Query(default=None, description="Filter by budget tier ($, $$, $$$, free)"),
     weights: ParsedSliderWeights = Depends(parse_slider_weights),
 ) -> PaginatedPOIResponse:
     try:
@@ -28,6 +31,9 @@ def get_pois(
             limit=limit,
             category=category,
             city=city,
+            sub_category=sub_category,
+            cuisine=cuisine,
+            budget_tier=budget_tier,
             weights=weights,
         )
     except POIServiceUnavailable as exc:

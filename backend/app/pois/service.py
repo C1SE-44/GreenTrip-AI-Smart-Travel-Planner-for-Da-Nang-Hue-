@@ -14,6 +14,9 @@ def get_poi_page(
     limit: int,
     category: str | None = None,
     city: str | None = None,
+    sub_category: str | None = None,
+    cuisine: str | None = None,
+    budget_tier: str | None = None,
     weights: ParsedSliderWeights | None = None,
 ) -> PaginatedPOIResponse:
     offset = (page - 1) * limit
@@ -23,6 +26,9 @@ def get_poi_page(
             offset=offset,
             category=category,
             city=city,
+            sub_category=sub_category,
+            cuisine=cuisine,
+            budget_tier=budget_tier,
         )
     except Exception as exc:
         raise POIServiceUnavailable from exc

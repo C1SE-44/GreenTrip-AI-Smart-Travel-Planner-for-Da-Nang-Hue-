@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { Poi } from '@/data/pois';
-import { categoryLabels, getGalleryImages, SUB_CATEGORY_LABELS, CUISINE_LABELS } from '@/data/pois';
+import { categoryLabels, getGalleryImages, SUB_CATEGORY_LABELS } from '@/data/pois';
 
 interface PoiDetailSectionProps {
   poi: Poi;

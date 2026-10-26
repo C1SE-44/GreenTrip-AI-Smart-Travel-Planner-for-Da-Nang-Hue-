@@ -1,5 +1,6 @@
 """Unit tests for seed_curated_339_pois.py."""
 
+import os
 from pathlib import Path
 import sys
 
@@ -16,6 +17,10 @@ def test_backup_exists_guard_passes():
     assert check_backup_exists() is True
 
 
+@pytest.mark.skipif(
+    not os.getenv("DATABASE_URL"),
+    reason="Requires live PostgreSQL connection (DATABASE_URL)",
+)
 def test_seed_curated_339_dry_run_executes_and_rolls_back():
     res = seed_curated_339(live_commit=False)
     assert res["status"] == "DRY-RUN (ROLLED BACK — NO LIVE DB CHANGES)"

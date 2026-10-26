@@ -13,12 +13,20 @@ export type CuisineType =
   | 'plant_based_vegan';
 
 export interface AiMetadata {
-  dna_tags: string[];
-  target_crowd: ('solo' | 'couples' | 'family' | 'friends' | 'nomad')[];
-  noise_pace: 'peaceful_zen' | 'chill_slow' | 'bustling_vibrant';
-  rainy_day_friendly: boolean;
-  carbon_footprint_score: number;
-  heritage_impact_score: number;
+  dna_tags?: string[];
+  target_crowd?: ('solo' | 'couples' | 'family' | 'friends' | 'nomad')[];
+  noise_pace?: 'peaceful_zen' | 'chill_slow' | 'bustling_vibrant' | string;
+  rainy_day_friendly?: boolean;
+  carbon_footprint_score?: number;
+  heritage_impact_score?: number;
+  [key: string]: unknown;
+}
+
+export interface OpeningHoursInfo {
+  open_now?: boolean;
+  status_text?: string;
+  weekday_text?: string[];
+  [key: string]: unknown;
 }
 
 export interface Poi {
@@ -47,16 +55,12 @@ export interface Poi {
   vibes?: string[];
   best_time?: string[];
   eco_features?: string[];
-  ai_metadata?: AiMetadata | Record<string, any> | null;
+  ai_metadata?: AiMetadata | null;
   // Commercial B2B Contact & Operating Hours
   phone_number?: string | null;
   website_url?: string | null;
   social_links?: Record<string, string> | null;
-  opening_hours?: {
-    open_now?: boolean;
-    status_text?: string;
-    weekday_text?: string[];
-  } | Record<string, any> | null;
+  opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
 }
 
@@ -85,11 +89,11 @@ export interface BackendPoiItem {
   vibes?: string[] | null;
   best_time?: string[] | null;
   eco_features?: string[] | null;
-  ai_metadata?: AiMetadata | Record<string, any> | null;
+  ai_metadata?: AiMetadata | null;
   phone_number?: string | null;
   website_url?: string | null;
   social_links?: Record<string, string> | null;
-  opening_hours?: Record<string, any> | null;
+  opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
 }
 

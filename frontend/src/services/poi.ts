@@ -1,6 +1,6 @@
 import { fetchJson } from '@/lib/api';
 import type { PaginatedPoisResponse } from '@/data/pois';
-import type { BudgetTier, EcoPriority } from '@/components/poi/ExploreFilterPopover';
+import type { BudgetTier, EcoPriority } from '@/components/poi/ExploreFilterModal';
 
 export interface GetPoisParams {
   page?: number;

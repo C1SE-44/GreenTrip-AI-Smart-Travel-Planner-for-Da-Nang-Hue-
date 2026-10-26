@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import sys
 
@@ -10,6 +11,10 @@ if str(BACKEND_ROOT) not in sys.path:
 from scripts.safe_import_pois import run_safe_import
 
 
+@pytest.mark.skipif(
+    not os.getenv("DATABASE_URL"),
+    reason="Requires live PostgreSQL connection (DATABASE_URL)",
+)
 def test_safe_import_dry_run_executes_and_rolls_back():
     result = run_safe_import(live_commit=False)
 

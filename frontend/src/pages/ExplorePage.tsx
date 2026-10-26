@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Leaf } from 'lucide-react';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
@@ -124,7 +124,7 @@ export default function ExplorePage() {
           const remainingPages = await Promise.all(remainingPromises);
           if (!active) return;
 
-          let allItems = [...firstItems];
+          const allItems = [...firstItems];
           for (const res of remainingPages) {
             allItems.push(...(res.items || []));
           }

@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  RotateCcw,
-  Sparkles,
   Award,
   Bus,
-  Check,
-  Star,
   Clock,
   CloudRain,
   Ticket,

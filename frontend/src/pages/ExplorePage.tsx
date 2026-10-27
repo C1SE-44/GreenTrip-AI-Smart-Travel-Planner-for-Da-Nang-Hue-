@@ -33,8 +33,23 @@ export default function ExplorePage() {
   const [activeTab, setActiveTab] = useState<'all' | PoiCategory>('all');
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [addedTrips, setAddedTrips] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'explore' | 'saved'>('explore');
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('greentrip_favorites');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  const [addedTrips, setAddedTrips] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('greentrip_added_trips');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -45,6 +60,22 @@ export default function ExplorePage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [filterValues, setFilterValues] = useState<ExploreFilterValues>(DEFAULT_FILTER_VALUES);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('greentrip_favorites', JSON.stringify(Array.from(favorites)));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [favorites]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('greentrip_added_trips', JSON.stringify(Array.from(addedTrips)));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [addedTrips]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => !prev);
@@ -157,6 +188,9 @@ export default function ExplorePage() {
 
   const filteredPois = useMemo(() => {
     return allPois.filter((poi) => {
+      if (viewMode === 'saved' && !favorites.has(poi.id)) {
+        return false;
+      }
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
       const matchCat = categoryFilter === 'all' || poi.category === categoryFilter;
       const s = search.trim().toLowerCase();
@@ -241,7 +275,7 @@ export default function ExplorePage() {
 
       return matchCity && matchCat && matchSearch && matchEco && matchBudget && matchCatFilter;
     });
-  }, [allPois, search, cityFilter, categoryFilter, filterValues]);
+  }, [allPois, search, cityFilter, categoryFilter, filterValues, viewMode, favorites]);
 
   // Đếm số lượng filter đang active chuẩn Mindtrip
   const activeFilterCount = useMemo(() => {
@@ -350,20 +384,40 @@ export default function ExplorePage() {
           {/* Navigation Links */}
           <nav className="flex flex-col space-y-[21px] text-sm">
             {[
-              { to: '/explore', icon: 'ph-fill ph-compass', label: 'Khám phá', active: true },
-              { to: '/my-trips', icon: 'ph ph-heart', label: 'Đã lưu' },
+              { 
+                key: 'explore', 
+                onClick: () => setViewMode('explore'), 
+                icon: viewMode === 'explore' ? 'ph-fill ph-compass' : 'ph ph-compass', 
+                label: 'Khám phá', 
+                active: viewMode === 'explore' 
+              },
+              { 
+                key: 'saved', 
+                onClick: () => setViewMode('saved'), 
+                icon: viewMode === 'saved' ? 'ph-fill ph-heart text-[#b45309]' : 'ph ph-heart', 
+                label: 'Đã lưu', 
+                active: viewMode === 'saved',
+                badge: favorites.size > 0 ? String(favorites.size) : undefined
+              },
               { to: '#', icon: 'ph ph-bell', label: 'Cập nhật' },
               { to: '/planner', icon: 'ph ph-calendar-plus', label: 'Lịch trình' },
               { to: '#', icon: 'ph ph-plus-square', label: 'Tạo nên' },
             ].map((item) => {
               const itemContent = (
-                <div className="flex items-center py-0.5 text-black transition-colors group/item relative">
-                  <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                <div className={`flex items-center py-0.5 text-black transition-colors group/item relative ${item.active ? 'font-semibold' : ''}`}>
+                  <div className="w-9 h-9 flex items-center justify-center shrink-0 relative">
                     <i className={`${item.icon} text-[23px] text-black ${item.active ? '' : 'group-hover/item:opacity-75'} transition-opacity`}></i>
+                    {item.badge && (
+                      <span className="absolute -top-1 -right-1 bg-[#b45309] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                        {item.badge}
+                      </span>
+                    )}
                   </div>
                   
                   <span
-                    className={`text-[14px] tracking-tight text-black font-medium transition-all duration-300 overflow-hidden whitespace-nowrap ${
+                    className={`text-[14px] tracking-tight text-black transition-all duration-300 overflow-hidden whitespace-nowrap ${
+                      item.active ? 'font-bold' : 'font-medium'
+                    } ${
                       isSidebarCollapsed ? 'max-w-0 opacity-0 ml-0' : 'max-w-[120px] opacity-100 ml-2.5'
                     }`}
                   >
@@ -372,11 +426,23 @@ export default function ExplorePage() {
 
                   {isSidebarCollapsed && (
                     <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 bg-black text-white text-[12px] font-medium px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap pointer-events-none opacity-0 group-hover/item:opacity-100 transition-all duration-200 -translate-x-1 group-hover/item:translate-x-0 z-50">
-                      {item.label}
+                      {item.label} {item.badge ? `(${item.badge})` : ''}
                     </div>
                   )}
                 </div>
               );
+
+              if (item.onClick) {
+                return (
+                  <button 
+                    key={item.key} 
+                    onClick={item.onClick}
+                    className="w-full text-left bg-transparent border-0 cursor-pointer p-0 select-none"
+                  >
+                    {itemContent}
+                  </button>
+                );
+              }
 
               return item.to === '#' ? (
                 <a key={item.label} href="#">{itemContent}</a>
@@ -478,19 +544,36 @@ export default function ExplorePage() {
         <div className="w-full h-full overflow-y-auto auto-hide-scrollbar scroll-smooth">
           {/* Top Bar: Title & Search */}
           <header className="w-full bg-white px-6 pt-8 pb-3 space-y-3.5 sticky top-0 z-10 backdrop-blur-md bg-white/95">
-            {/* Location Title Dropdown */}
+            {/* Location Title Dropdown / Saved View */}
             <div className="relative">
-              <div 
-                onClick={() => setShowCityDropdown(!showCityDropdown)}
-                className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
-              >
-                <h1 className="text-[22px] font-bold tracking-tight text-gray-950 group-hover:text-black">
-                  {currentCityLabel}
-                </h1>
-                <i className="ph ph-caret-down font-bold text-gray-950 text-sm"></i>
-              </div>
+              {viewMode === 'saved' ? (
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex items-center gap-2">
+                    <button
+                      onClick={() => setViewMode('explore')}
+                      className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition cursor-pointer"
+                      title="Quay lại khám phá"
+                    >
+                      <i className="ph ph-arrow-left font-bold text-sm"></i>
+                    </button>
+                    <h1 className="text-[22px] font-bold tracking-tight text-gray-950">
+                      Địa điểm đã lưu ({filteredPois.length})
+                    </h1>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => setShowCityDropdown(!showCityDropdown)}
+                  className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
+                >
+                  <h1 className="text-[22px] font-bold tracking-tight text-gray-950 group-hover:text-black">
+                    {currentCityLabel}
+                  </h1>
+                  <i className="ph ph-caret-down font-bold text-gray-950 text-sm"></i>
+                </div>
+              )}
 
-              {showCityDropdown && (
+              {showCityDropdown && viewMode === 'explore' && (
                 <div className="absolute top-10 left-0 bg-white shadow-xl border border-gray-100 rounded-2xl py-2 w-48 z-50 animate-fadeIn">
                   <button
                     onClick={() => { setCityFilter('all'); setShowCityDropdown(false); }}
@@ -522,10 +605,12 @@ export default function ExplorePage() {
               <div className="flex-1 relative flex items-center">
                 <i className="ph ph-magnifying-glass text-gray-400 absolute left-4 text-xl"></i>
                 <input
+                  id="poi-search-input"
+                  name="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-12 pr-4 h-[50px] bg-[#F3F4F6] text-[15px] placeholder-gray-400 text-gray-900 rounded-full border-none focus:outline-none focus:ring-1 focus:ring-gray-300 transition"
-                  placeholder="Tìm kiếm địa điểm, di tích, ẩm thực..."
+                  placeholder={viewMode === 'saved' ? "Tìm kiếm trong địa điểm đã lưu..." : "Tìm kiếm địa điểm, di tích, ẩm thực..."}
                   type="text"
                 />
                 {search && (
@@ -599,6 +684,22 @@ export default function ExplorePage() {
               ) : filteredPois.length === 0 ? (
                 error ? (
                   <ErrorState message={error} />
+                ) : viewMode === 'saved' ? (
+                  <div className="col-span-2 flex flex-col items-center justify-center py-20 text-center px-4">
+                    <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center text-[#b45309] mb-4 text-3xl">
+                      <i className="ph ph-heart"></i>
+                    </div>
+                    <h3 className="text-base font-bold text-gray-900 mb-1">Chưa có địa điểm nào được lưu</h3>
+                    <p className="text-xs text-gray-500 max-w-xs mb-5 leading-relaxed">
+                      Bấm vào biểu tượng trái tim trên bất kỳ thẻ địa điểm nào để lưu lại danh sách chuyến đi của bạn.
+                    </p>
+                    <button
+                      onClick={() => setViewMode('explore')}
+                      className="px-5 py-2.5 bg-black text-white text-xs font-semibold rounded-full hover:bg-zinc-800 transition cursor-pointer"
+                    >
+                      Khám phá địa điểm ngay
+                    </button>
+                  </div>
                 ) : (
                   <EmptyState />
                 )
@@ -626,7 +727,7 @@ export default function ExplorePage() {
 
       {/* 3. RIGHT SECTION: Map hoặc Detail Section */}
       <section 
-        className={`flex-1 h-full relative bg-white ${selectedPoi ? 'overflow-visible z-30' : 'overflow-hidden'}`} 
+        className="flex-1 h-full relative bg-white overflow-hidden z-30" 
         data-purpose="right-panel-container"
       >
         <div className={`w-full h-full p-6 ${selectedPoi ? "invisible pointer-events-none" : "visible"}`}>

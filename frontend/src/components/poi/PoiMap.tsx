@@ -66,7 +66,7 @@ function createMindtripMarkerIcon(
     pinHtml = `
       <div class="map-marker-pin absolute -left-[16px] -top-[16px] h-[32px] px-2.5 bg-black text-white rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.35)] ring-2 ring-black/20 flex items-center gap-1.5 z-[9999] pointer-events-auto transition-transform scale-105">
         ${iconSvg}
-        <img src="${poi.image}" class="w-5 h-5 rounded-full object-cover ring-1 ring-white/60" alt="" />
+        <img src="${poi.image}" referrerpolicy="no-referrer" class="w-5 h-5 rounded-full object-cover ring-1 ring-white/60" alt="" />
         <span class="text-[12px] font-bold text-white whitespace-nowrap leading-none pl-0.5">${displayName}</span>
       </div>
     `;
@@ -291,6 +291,7 @@ function FloatingDetailCard({
       <div className="relative w-full h-[180px] bg-neutral-900 overflow-hidden group">
         <img 
           alt={poi.name} 
+          referrerPolicy="no-referrer"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
           src={gallery[imgIdx] || poi.image}
         />

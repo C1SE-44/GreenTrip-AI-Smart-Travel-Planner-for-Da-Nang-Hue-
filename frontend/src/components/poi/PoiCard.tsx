@@ -60,6 +60,7 @@ export default function PoiCard({
         <img
           src={gallery[imgIdx] || poi.image}
           alt={poi.name}
+          referrerPolicy="no-referrer"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           onError={(e) => {
             const target = e.currentTarget;
@@ -155,8 +156,8 @@ export default function PoiCard({
       {/* 2. Card Details: Tên, loại hình, địa chỉ & rating */}
       <div className="mt-2.5 space-y-1">
         <div className="flex items-center justify-between gap-1.5 min-w-0">
-          <h3 className="font-bold text-[15px] text-gray-950 tracking-tight truncate leading-tight group-hover:text-black">
-            {poi.cleanName || poi.name}
+          <h3 className="font-bold text-[15px] text-gray-950 tracking-tight truncate leading-tight group-hover:text-black" title={poi.name}>
+            {poi.cleanTitle || poi.cleanName || poi.name}
           </h3>
           {poi.rating > 0 && (
             <span className="text-[12px] font-semibold text-gray-800 shrink-0 flex items-center gap-0.5">

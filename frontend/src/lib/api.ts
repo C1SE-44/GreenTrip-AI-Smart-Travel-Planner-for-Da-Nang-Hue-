@@ -1,7 +1,9 @@
 export const API_BASE_URL = (
   import.meta.env.VITE_API_URL || 
   import.meta.env.VITE_API_BASE_URL || 
-  'https://greentrip-ai-smart-travel-planner-for-da-r43z.onrender.com'
+  (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000'
+    : 'https://greentrip-ai-smart-travel-planner-for-da-r43z.onrender.com')
 ).replace(/\/$/, '');
 export interface ApiError extends Error {
   status?: number;

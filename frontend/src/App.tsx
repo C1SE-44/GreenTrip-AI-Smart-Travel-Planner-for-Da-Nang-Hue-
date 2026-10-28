@@ -3,6 +3,7 @@ import Navbar from '@/components/layout/Navbar';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import ExplorePage from '@/pages/ExplorePage';
 import LandingPage from '@/pages/LandingPage';
+import PlannerPage from '@/pages/PlannerPage';
 
 function App() {
   return (
@@ -51,13 +52,13 @@ function App() {
         {/* Explore page - Now has its own Sidebar layout */}
         <Route path="/explore" element={<ExplorePage />} />
 
-        {/* Placeholder routes for future sprints */}
+        {/* Trip Planner page */}
         <Route
           path="/planner"
           element={
             <>
               <Navbar />
-              <ComingSoon title="Lập Lịch Trình" />
+              <PlannerPage />
             </>
           }
         />

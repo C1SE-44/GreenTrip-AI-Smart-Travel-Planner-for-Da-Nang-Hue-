@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Leaf } from 'lucide-react';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
@@ -34,6 +34,7 @@ export default function ExplorePage() {
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'explore' | 'saved'>('explore');
   const [addedTrips, setAddedTrips] = useState<Set<string>>(new Set());
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
@@ -45,6 +46,8 @@ export default function ExplorePage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [filterValues, setFilterValues] = useState<ExploreFilterValues>(DEFAULT_FILTER_VALUES);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const exploreHeaderRef = useRef<HTMLElement | null>(null);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => !prev);
@@ -157,6 +160,7 @@ export default function ExplorePage() {
 
   const filteredPois = useMemo(() => {
     return allPois.filter((poi) => {
+      if (viewMode === 'saved' && !favorites.has(poi.id)) return false;
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
       const matchCat = categoryFilter === 'all' || poi.category === categoryFilter;
       const s = search.trim().toLowerCase();
@@ -241,7 +245,10 @@ export default function ExplorePage() {
 
       return matchCity && matchCat && matchSearch && matchEco && matchBudget && matchCatFilter;
     });
-  }, [allPois, search, cityFilter, categoryFilter, filterValues]);
+  }, [allPois, search, cityFilter, categoryFilter, filterValues, viewMode, favorites]);
+
+  const displayedPois = filteredPois;
+  const mapPois = filteredPois;
 
   // Đếm số lượng filter đang active chuẩn Mindtrip
   const activeFilterCount = useMemo(() => {
@@ -269,8 +276,10 @@ export default function ExplorePage() {
 
   const selectedPoi = useMemo(() => {
     if (!selectedPoiId) return null;
-    return allPois.find((poi) => poi.id === selectedPoiId) || null;
-  }, [allPois, selectedPoiId]);
+    return displayedPois.find((poi) => poi.id === selectedPoiId)
+      || allPois.find((poi) => poi.id === selectedPoiId)
+      || null;
+  }, [allPois, displayedPois, selectedPoiId]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -350,8 +359,21 @@ export default function ExplorePage() {
           {/* Navigation Links */}
           <nav className="flex flex-col space-y-[21px] text-sm">
             {[
-              { to: '/explore', icon: 'ph-fill ph-compass', label: 'Khám phá', active: true },
-              { to: '/my-trips', icon: 'ph ph-heart', label: 'Đã lưu' },
+              {
+                key: 'explore',
+                onClick: () => { setViewMode('explore'); },
+                icon: viewMode === 'explore' ? 'ph-fill ph-compass' : 'ph ph-compass',
+                label: 'Khám phá',
+                active: viewMode === 'explore'
+              },
+              {
+                key: 'saved',
+                onClick: () => { setViewMode('saved'); },
+                icon: viewMode === 'saved' ? 'ph-fill ph-heart text-[#b45309]' : 'ph ph-heart',
+                label: 'Đã lưu',
+                active: viewMode === 'saved',
+                badge: favorites.size > 0 ? String(favorites.size) : undefined
+              },
               { to: '#', icon: 'ph ph-bell', label: 'Cập nhật' },
               { to: '/planner', icon: 'ph ph-calendar-plus', label: 'Lịch trình' },
               { to: '#', icon: 'ph ph-plus-square', label: 'Tạo nên' },
@@ -377,6 +399,14 @@ export default function ExplorePage() {
                   )}
                 </div>
               );
+
+              if ('onClick' in item) {
+                return (
+                  <button key={item.label} type="button" onClick={item.onClick} className="text-left">
+                    {itemContent}
+                  </button>
+                );
+              }
 
               return item.to === '#' ? (
                 <a key={item.label} href="#">{itemContent}</a>
@@ -475,20 +505,37 @@ export default function ExplorePage() {
         } h-full relative bg-white flex flex-col select-none transition-[width] duration-300 ease-in-out`}
         data-purpose="content-list-stream"
       >
-        <div className="w-full h-full overflow-y-auto auto-hide-scrollbar scroll-smooth">
+        <div ref={scrollContainerRef} className="w-full h-full overflow-y-auto auto-hide-scrollbar scroll-smooth">
           {/* Top Bar: Title & Search */}
-          <header className="w-full bg-white px-6 pt-8 pb-3 space-y-3.5 sticky top-0 z-10 backdrop-blur-md bg-white/95">
-            {/* Location Title Dropdown */}
+          <header ref={exploreHeaderRef} data-explore-header className="w-full bg-white px-6 pt-8 pb-3 space-y-3.5 sticky top-0 z-10 backdrop-blur-md bg-white/95">
+            {/* Location Title Dropdown / Saved View */}
             <div className="relative">
-              <div 
-                onClick={() => setShowCityDropdown(!showCityDropdown)}
-                className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
-              >
-                <h1 className="text-[22px] font-bold tracking-tight text-gray-950 group-hover:text-black">
-                  {currentCityLabel}
-                </h1>
-                <i className="ph ph-caret-down font-bold text-gray-950 text-sm"></i>
-              </div>
+              {viewMode === 'saved' ? (
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex items-center gap-2">
+                    <button
+                      onClick={() => { setViewMode('explore'); }}
+                      className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition cursor-pointer"
+                      title="Quay lại khám phá"
+                    >
+                      <i className="ph ph-arrow-left font-bold text-sm"></i>
+                    </button>
+                    <h1 className="text-[22px] font-bold tracking-tight text-gray-950">
+                      Địa điểm đã lưu ({filteredPois.length})
+                    </h1>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => setShowCityDropdown(!showCityDropdown)}
+                  className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
+                >
+                  <h1 className="text-[22px] font-bold tracking-tight text-gray-950 group-hover:text-black">
+                    {currentCityLabel}
+                  </h1>
+                  <i className="ph ph-caret-down font-bold text-gray-950 text-sm"></i>
+                </div>
+              )}
 
               {showCityDropdown && (
                 <div className="absolute top-10 left-0 bg-white shadow-xl border border-gray-100 rounded-2xl py-2 w-48 z-50 animate-fadeIn">
@@ -538,7 +585,7 @@ export default function ExplorePage() {
                 )}
               </div>
 
-              <button 
+              <button
                 onClick={() => setIsFilterPopoverOpen(true)}
                 className={`flex items-center gap-2 px-5 h-[50px] rounded-full border transition text-[15px] font-medium cursor-pointer ${
                   activeFilterCount > 0 || isFilterPopoverOpen
@@ -578,10 +625,10 @@ export default function ExplorePage() {
           </header>
 
           {/* Cards Grid */}
-          <div className="px-6 py-2">
+          <div className="px-6 py-2 transition-all duration-300 ease-in-out">
             <div className="mb-4 mt-2 flex items-center justify-between">
               <h2 className="text-[17px] font-bold text-gray-950 tracking-tight">
-                Địa điểm ({filteredPois.length})
+                {`Địa điểm (${displayedPois.length})`}
               </h2>
               {activeFilterCount > 0 && (
                 <button
@@ -593,17 +640,14 @@ export default function ExplorePage() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-7 pb-16">
+            <div
+              data-recommendation-results
+              className="grid grid-cols-2 gap-x-4 gap-y-7 pb-16 transition-all duration-300 ease-in-out"
+            >
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => <PoiCardSkeleton key={i} />)
-              ) : filteredPois.length === 0 ? (
-                error ? (
-                  <ErrorState message={error} />
-                ) : (
-                  <EmptyState />
-                )
-              ) : (
-                filteredPois.map((poi, idx) => (
+              ) : displayedPois.length > 0 ? (
+                displayedPois.map((poi, idx) => (
                   <div key={poi.id} data-poi-id={poi.id}>
                     <PoiCard
                       poi={poi}
@@ -618,7 +662,27 @@ export default function ExplorePage() {
                     />
                   </div>
                 ))
-              )}
+              ) : error ? (
+                <ErrorState message={error} />
+              ) : viewMode === 'saved' ? (
+                  <div className="col-span-2 flex flex-col items-center justify-center py-20 text-center px-4">
+                    <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center text-[#b45309] mb-4 text-3xl">
+                      <i className="ph ph-heart"></i>
+                    </div>
+                    <h3 className="text-base font-bold text-gray-900 mb-1">Chưa có địa điểm nào được lưu</h3>
+                    <p className="text-xs text-gray-500 max-w-xs mb-5 leading-relaxed">
+                      Bấm vào biểu tượng trái tim trên bất kỳ thẻ địa điểm nào để lưu lại danh sách chuyến đi của bạn.
+                    </p>
+                    <button
+                      onClick={() => setViewMode('explore')}
+                      className="px-5 py-2.5 bg-black text-white text-xs font-semibold rounded-full hover:bg-zinc-800 transition cursor-pointer"
+                    >
+                      Khám phá địa điểm ngay
+                    </button>
+                  </div>
+                ) : (
+                  <EmptyState />
+                )}
             </div>
           </div>
         </div>
@@ -632,7 +696,7 @@ export default function ExplorePage() {
         <div className={`w-full h-full p-6 ${selectedPoi ? "invisible pointer-events-none" : "visible"}`}>
           <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
             <PoiMap
-              pois={filteredPois}
+              pois={mapPois}
               selectedPoiId={selectedPoiId}
               hoveredPoiId={hoveredPoiId}
               onSelectPoi={handleSelectPoi}

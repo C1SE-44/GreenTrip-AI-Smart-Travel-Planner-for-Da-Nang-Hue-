@@ -8,6 +8,7 @@ from app.db.neo4j import close_driver, get_driver
 from app.auth.router import router as auth_router
 from app.pois.router import router as pois_router
 from app.trips.router import router as trips_router
+from app.recommendations.router import router as recommendations_router
 
 
 @asynccontextmanager
@@ -33,6 +34,11 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(pois_router)
 app.include_router(trips_router)
+app.include_router(
+    recommendations_router,
+    prefix="/api/v1/recommendations",
+    tags=["Recommendations"],
+)
 
 
 @app.get("/health")

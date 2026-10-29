@@ -15,12 +15,21 @@ import {
   Compass,
   Check
 } from 'lucide-react';
+import { RecommendationCardSkeleton } from '@/components/ui/Skeleton';
+import { getPoisByIds } from '@/services/poi';
+import type { BackendPoiItem } from '@/data/pois';
 import { 
   validateTripParameters, 
   TripParametersPayload, 
   TripParametersResponse, 
   ValidationError 
 } from '@/services/tripService';
+import {
+  fetchParsedSliderWeights,
+  fetchPoiRecommendations,
+  type RecommendationResponse,
+  type SliderBudgetTier,
+} from '@/services/recommendations';
 
 const DESTINATIONS = [
   {
@@ -78,12 +87,22 @@ export default function TripParametersForm() {
   const [totalBudget, setTotalBudget] = useState<number>(6000000);
   const [startDate, setStartDate] = useState<string>('');
   const [preferences, setPreferences] = useState<string[]>(['culture', 'food', 'eco']);
+  const [pacingOverride, setPacingOverride] = useState<'auto' | 'Relaxed' | 'Balanced' | 'Fast'>('auto');
+  const [greenWeight, setGreenWeight] = useState(60);
+  const [budgetWeight, setBudgetWeight] = useState(40);
+  const [poiBudgetTier, setPoiBudgetTier] = useState<SliderBudgetTier>('all');
 
   // API Interaction States
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [result, setResult] = useState<TripParametersResponse | null>(null);
+  const [recommendationLoading, setRecommendationLoading] = useState(false);
+  const [recommendationError, setRecommendationError] = useState<string | null>(null);
+  const [recommendationResponse, setRecommendationResponse] = useState<RecommendationResponse | null>(null);
+  const [recommendationInputKey, setRecommendationInputKey] = useState<string | null>(null);
+  const [recommendationPoiMetadata, setRecommendationPoiMetadata] = useState<Record<string, BackendPoiItem>>({});
+  const [addedRecommendationPoiIds, setAddedRecommendationPoiIds] = useState<Set<string>>(new Set());
 
   // Quick preset handlers
   const handleDayPreset = (d: number) => {
@@ -135,6 +154,30 @@ export default function TripParametersForm() {
   const budgetWarning = `💡 Mẹo từ GreenTrip: Ngân sách tối thiểu đề xuất cho ${numPeople} người đi ${days} ngày tại ${destination} là khoảng ${minRecommendedBudget.toLocaleString('en-US')} VNĐ để có trải nghiệm cơ bản nhất.`;
 
   const todayStr = new Date().toISOString().split('T')[0];
+  const currentRecommendationInputKey = JSON.stringify([
+    destination,
+    days,
+    numPeople,
+    totalBudget,
+    startDate,
+    preferences,
+    pacingOverride,
+    greenWeight,
+    budgetWeight,
+    poiBudgetTier,
+  ]);
+  const recommendationsAreCurrent = Boolean(
+    recommendationResponse && recommendationInputKey === currentRecommendationInputKey,
+  );
+
+  const createTripPayload = (): TripParametersPayload => ({
+    destination,
+    days,
+    total_budget: totalBudget,
+    num_people: numPeople,
+    start_date: startDate || null,
+    preferences,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,19 +187,10 @@ export default function TripParametersForm() {
     setErrorMessage(null);
     setFieldErrors({});
 
-    const payload: TripParametersPayload = {
-      destination,
-      days,
-      total_budget: totalBudget,
-      num_people: numPeople,
-      start_date: startDate ? startDate : null,
-      preferences,
-    };
-
     try {
       // Minimum delay (500ms) to ensure loading spinner feedback is visibly smooth
       const [response] = await Promise.all([
-        validateTripParameters(payload),
+        validateTripParameters(createTripPayload()),
         new Promise((resolve) => setTimeout(resolve, 500)),
       ]);
       setResult(response);
@@ -175,6 +209,86 @@ export default function TripParametersForm() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGetRecommendations = async () => {
+    if (recommendationLoading) return;
+    if (preferences.length === 0) {
+      setRecommendationError('Hãy chọn ít nhất một sở thích trước khi tìm gợi ý.');
+      return;
+    }
+
+    setRecommendationLoading(true);
+    setRecommendationError(null);
+    setRecommendationResponse(null);
+    setRecommendationInputKey(null);
+    setRecommendationPoiMetadata({});
+    setErrorMessage(null);
+    setFieldErrors({});
+    const requestInputKey = currentRecommendationInputKey;
+
+    try {
+      // Revalidate the current form so stale PB07 results are never sent to PB09.
+      const tripResponse = await validateTripParameters(createTripPayload());
+      setResult(tripResponse);
+
+      // PB08 owns parsing/normalization; frontend only sends raw slider values.
+      const sliderWeights = await fetchParsedSliderWeights({
+        green_weight: greenWeight,
+        budget_weight: budgetWeight,
+        budget_tier: poiBudgetTier,
+      });
+      const tripData = {
+        ...tripResponse.data,
+        pacing_level: pacingOverride === 'auto'
+          ? tripResponse.data.pacing_level
+          : pacingOverride,
+      };
+
+      const response = await fetchPoiRecommendations({
+        interests: tripData.preferences,
+        green_priority: sliderWeights.normalized_green_weight,
+        top_k: 50,
+        trip_data: tripData,
+        slider_weights: sliderWeights,
+      });
+
+      const uniqueRecords = Array.from(
+        new Map(response.data.map((poi) => [poi.poi_id, poi])).values(),
+      );
+      const uniqueIds = uniqueRecords.map((poi) => poi.poi_id);
+      let metadata: BackendPoiItem[] = [];
+      try {
+        metadata = await getPoisByIds(uniqueIds);
+      } catch (metadataError) {
+        // PB09 results remain usable; optional fields simply stay absent.
+        console.warn('Could not load existing POI card metadata by ID:', metadataError);
+      }
+
+      setRecommendationPoiMetadata(
+        Object.fromEntries(metadata.map((poi) => [String(poi.id), poi])),
+      );
+      setRecommendationResponse({
+        ...response,
+        total: uniqueRecords.length,
+        data: uniqueRecords,
+      });
+      setRecommendationInputKey(requestInputKey);
+      setAddedRecommendationPoiIds(new Set());
+    } catch (err: unknown) {
+      const status = typeof err === 'object' && err !== null && 'status' in err
+        ? ` (HTTP ${(err as { status?: number }).status ?? 'lỗi'})`
+        : '';
+      setRecommendationError(
+        err instanceof ValidationError
+          ? err.message
+          : `Chưa thể tải gợi ý AI${status}. Vui lòng thử lại.`,
+      );
+      setRecommendationResponse(null);
+      setRecommendationInputKey(null);
+    } finally {
+      setRecommendationLoading(false);
     }
   };
 
@@ -556,6 +670,100 @@ export default function TripParametersForm() {
             </div>
           </div>
 
+          {/* PB08 preferences are collected alongside PB07 trip inputs. */}
+          <section className="rounded-2xl border border-forest-100 bg-forest-50/50 p-5 sm:p-6 space-y-5">
+            <div>
+              <h3 className="text-sm font-bold text-forest-900">Ưu tiên gợi ý AI</h3>
+              <p className="mt-1 text-xs leading-relaxed text-stone-600">
+                PB08 sẽ chuẩn hóa hai trọng số và áp dụng ngưỡng xanh, giới hạn chi phí mỗi người cho từng POI.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor={`${formId}-pacing`} className="mb-1.5 block text-xs font-semibold text-stone-700">
+                Nhịp độ tham quan
+              </label>
+              <select
+                id={`${formId}-pacing`}
+                value={pacingOverride}
+                onChange={(event) => setPacingOverride(event.target.value as typeof pacingOverride)}
+                className="w-full rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-800 focus:border-forest-600 focus:outline-none focus:ring-1 focus:ring-forest-600"
+              >
+                <option value="auto">Dùng nhịp độ PB07 tự tính ({pacing.level})</option>
+                <option value="Relaxed">Relaxed — thong thả</option>
+                <option value="Balanced">Balanced — cân bằng</option>
+                <option value="Fast">Fast — nhịp nhanh</option>
+              </select>
+              <p className="mt-1 text-[11px] text-stone-500">
+                Lựa chọn này chỉ áp dụng cho thời lượng chọn POI của PB09; PB07 vẫn giữ kết quả pacing đã tính.
+              </p>
+            </div>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <div className="mb-1.5 flex items-center justify-between text-xs">
+                  <label htmlFor={`${formId}-green-weight`} className="font-semibold text-stone-700">
+                    Ưu tiên xanh / ngưỡng eco
+                  </label>
+                  <span className="font-bold tabular-nums text-forest-700">{greenWeight}/100</span>
+                </div>
+                <input
+                  id={`${formId}-green-weight`}
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={greenWeight}
+                  onChange={(event) => setGreenWeight(Number(event.target.value))}
+                  className="h-2 w-full cursor-pointer accent-forest-600"
+                />
+                <div className="mt-1 flex justify-between text-[10px] text-stone-500">
+                  <span>Ít ưu tiên</span><span>Ưu tiên cao</span>
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between text-xs">
+                  <label htmlFor={`${formId}-budget-weight`} className="font-semibold text-stone-700">
+                    Ưu tiên ngân sách
+                  </label>
+                  <span className="font-bold tabular-nums text-forest-700">{budgetWeight}/100</span>
+                </div>
+                <input
+                  id={`${formId}-budget-weight`}
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={budgetWeight}
+                  onChange={(event) => setBudgetWeight(Number(event.target.value))}
+                  className="h-2 w-full cursor-pointer accent-forest-600"
+                />
+                <div className="mt-1 flex justify-between text-[10px] text-stone-500">
+                  <span>Ít ưu tiên</span><span>Ưu tiên cao</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor={`${formId}-poi-budget-tier`} className="mb-1.5 block text-xs font-semibold text-stone-700">
+                Giới hạn chi phí mỗi người / POI
+              </label>
+              <select
+                id={`${formId}-poi-budget-tier`}
+                value={poiBudgetTier}
+                onChange={(event) => setPoiBudgetTier(event.target.value as SliderBudgetTier)}
+                className="w-full rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-800 focus:border-forest-600 focus:outline-none focus:ring-1 focus:ring-forest-600"
+              >
+                <option value="all">Không giới hạn riêng</option>
+                <option value="$">$ — tối đa 100.000 VNĐ</option>
+                <option value="$$">$$ — tối đa 400.000 VNĐ</option>
+                <option value="$$$">$$$ — tối đa 1.000.000 VNĐ</option>
+                <option value="$$$$">$$$$ — không giới hạn riêng</option>
+              </select>
+            </div>
+          </section>
+
           {/* ERROR ALERT BANNER (If validation fails) */}
           {errorMessage && (
             <div className="rounded-2xl border border-red-200 bg-red-50/80 p-4 text-red-800 flex items-start gap-3">
@@ -742,100 +950,155 @@ export default function TripParametersForm() {
             );
           })()}
 
-          {/* REAL DATABASE POIS SUGGESTIONS */}
-          {result.data.matched_pois && result.data.matched_pois.length > 0 && (
-            <div className="mb-6 rounded-2xl border border-stone-200/90 bg-stone-50/50 p-4 sm:p-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5 pb-2.5 border-b border-stone-200/60">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-forest-900 flex items-center gap-1.5">
-                    <MapPin size={15} className="text-forest-600" />
-                    Gợi ý địa điểm & trải nghiệm nổi bật
-                  </h4>
-                  <p className="text-[11px] text-stone-500 mt-0.5">
-                    Các điểm đến tiêu biểu phù hợp với ngân sách và sở thích tại {result.data.destination}
-                  </p>
-                </div>
-                <span className="text-[11px] font-bold text-forest-700 bg-white border border-forest-200 px-2.5 py-0.5 rounded-full shadow-2xs self-start sm:self-auto">
-                  {result.data.matched_pois.length} địa điểm tiêu biểu
-                </span>
+          {/* PB09 recommendations appear in this existing PB07 suggestion section. */}
+          <section className="mb-6 rounded-2xl border border-stone-200/90 bg-stone-50/50 p-4 sm:p-5" aria-live="polite">
+            <div className="mb-3.5 flex flex-col justify-between gap-2 border-b border-stone-200/60 pb-2.5 sm:flex-row sm:items-center">
+              <div>
+                <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-forest-900">
+                  <MapPin size={15} className="text-forest-600" />
+                  Gợi ý địa điểm & trải nghiệm nổi bật
+                </h4>
+                <p className="mt-0.5 text-[11px] text-stone-500">
+                  Gợi ý PB09 cho {result.data.destination} · {result.data.days} ngày · nhóm {result.data.num_people} người
+                </p>
               </div>
+              {recommendationsAreCurrent && recommendationResponse && (
+                <span className="self-start rounded-full border border-forest-200 bg-white px-2.5 py-0.5 text-[11px] font-bold text-forest-700 shadow-2xs sm:self-auto">
+                  {recommendationResponse.total} địa điểm
+                </span>
+              )}
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                {result.data.matched_pois.map((poi, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-col justify-between rounded-xl border border-stone-200 bg-white p-3.5 hover:border-forest-500 hover:shadow-subtle transition-all duration-200"
-                  >
-                    <div>
-                      {/* Image if available */}
-                      {poi.image_url && (
-                        <div className="mb-2.5 h-32 w-full overflow-hidden rounded-lg bg-stone-100">
-                          <img
-                            src={poi.image_url}
-                            alt={poi.name}
-                            loading="lazy"
-                            className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                            onError={(e) => {
-                              const parent = e.currentTarget.parentElement;
-                              if (parent) parent.style.display = 'none';
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="inline-block rounded-md bg-forest-50 border border-forest-100 px-2 py-0.5 text-[10px] font-bold text-forest-800">
-                            {poi.highlight_tag}
-                          </span>
-                          {poi.green_score !== undefined && poi.green_score !== null && (
-                            <span className="inline-flex items-center gap-0.5 rounded-md bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
-                              🌿 {Math.round(poi.green_score * 100)}/100
-                            </span>
-                          )}
-                        </div>
-                        <span className="rounded-full bg-stone-50 border border-stone-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700 shrink-0">
-                          {poi.estimated_price_range}
-                        </span>
-                      </div>
-
-                      <h5 className="font-bold text-stone-900 text-sm leading-snug mb-1.5">{poi.name}</h5>
-
-                      {poi.description && (
-                        <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed mb-2">
-                          {poi.description}
-                        </p>
-                      )}
-
-                      {/* Eco features list */}
-                      {poi.eco_features && poi.eco_features.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-2.5">
-                          {poi.eco_features.map((feat, fIdx) => (
-                            <span
-                              key={fIdx}
-                              className="text-[10px] bg-stone-100 text-stone-600 rounded px-1.5 py-0.5"
-                            >
-                              ✓ {feat}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-stone-500 pt-2 border-t border-stone-100 mt-1">
-                      <span className="flex items-center gap-1 truncate max-w-[190px]">
-                        <MapPin size={11} className="shrink-0 text-stone-400" />
-                        {poi.address || poi.city}
-                      </span>
-                      <span className="font-medium text-stone-600 bg-stone-100 px-2 py-0.5 rounded text-[10px]">
-                        {poi.category}
-                      </span>
-                    </div>
-                  </div>
+            {recommendationLoading ? (
+              <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2" aria-label="Đang tải gợi ý PB09">
+                {Array.from({ length: 4 }, (_, index) => (
+                  <RecommendationCardSkeleton key={`pb09-skeleton-${index}`} />
                 ))}
               </div>
-            </div>
-          )}
+            ) : recommendationError ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                <p role="alert">{recommendationError}</p>
+                <p className="mt-1 text-xs text-red-700">Kiểm tra kết nối rồi thử lấy gợi ý lại.</p>
+              </div>
+            ) : !recommendationsAreCurrent ? (
+              <p className="rounded-xl border border-dashed border-forest-200 bg-white px-4 py-5 text-center text-xs leading-relaxed text-stone-600">
+                {recommendationResponse
+                  ? 'Thông số chuyến đi đã thay đổi. Hãy xác nhận và lấy lại gợi ý để không dùng kết quả cũ.'
+                  : 'Xác nhận thông số chuyến đi, sau đó lấy gợi ý để xem các POI PB09 phù hợp.'}
+              </p>
+            ) : recommendationResponse?.data.length === 0 ? (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-5 text-center text-xs text-amber-900">
+                Chưa tìm được POI phù hợp với điểm đến, thời gian và ngân sách đã chọn.
+              </p>
+            ) : recommendationResponse && (
+              <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                {recommendationResponse.data.map((poi) => {
+                  const metadata = recommendationPoiMetadata[poi.poi_id];
+                  const imageUrl = metadata?.image_url?.trim() || metadata?.gallery_urls?.find((url) => url?.trim());
+                  const address = metadata?.address?.trim() || metadata?.city?.trim();
+                  const score = poi.green_score == null
+                    ? null
+                    : Math.round(poi.green_score <= 1 ? poi.green_score * 100 : poi.green_score);
+                  const isAdded = addedRecommendationPoiIds.has(poi.poi_id);
+                  const formattedCost = poi.estimated_cost == null
+                    ? 'Chưa cập nhật giá'
+                    : poi.estimated_cost === 0
+                      ? 'Miễn phí'
+                      : `${new Intl.NumberFormat('vi-VN').format(Math.round(poi.estimated_cost))} ₫ / người`;
+
+                  return (
+                    <article
+                      key={poi.poi_id}
+                      className="flex flex-col justify-between rounded-xl border border-stone-200 bg-white p-3.5 transition-all duration-200 hover:border-forest-500 hover:shadow-subtle"
+                    >
+                      <div>
+                        {imageUrl && (
+                          <div className="mb-2.5 h-32 w-full overflow-hidden rounded-lg bg-stone-100">
+                            <img
+                              src={imageUrl}
+                              alt={poi.name}
+                              loading="lazy"
+                              className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                              onError={(event) => {
+                                const parent = event.currentTarget.parentElement;
+                                if (parent) parent.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-md border border-forest-100 bg-forest-50 px-2 py-0.5 text-[10px] font-bold text-forest-800">
+                            {poi.category_name || metadata?.category || 'Địa điểm'}
+                          </span>
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                            🌿 {score == null ? 'Chưa có điểm xanh' : `${score}/100`}
+                          </span>
+                          <span className="ml-auto rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] font-bold text-forest-700">
+                            {Math.round(poi.match_score)}% phù hợp
+                          </span>
+                        </div>
+
+                        <h5 className="mb-1.5 text-sm font-bold leading-snug text-stone-900">{poi.name}</h5>
+                        <p className="mb-2 text-xs font-semibold text-stone-800">{formattedCost}</p>
+                        {poi.satisfaction_score != null && (
+                          <p className="mb-2 text-[11px] text-stone-600">
+                            ★ Điểm hài lòng {poi.satisfaction_score.toFixed(1)}/5
+                          </p>
+                        )}
+                        {poi.explanation_snippet && (
+                          <p className="mb-2 line-clamp-2 text-xs leading-relaxed text-stone-600">
+                            {poi.explanation_snippet}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mt-1 border-t border-stone-100 pt-2">
+                        {address && (
+                          <p className="mb-2 flex items-center gap-1 truncate text-[11px] text-stone-500">
+                            <MapPin size={11} className="shrink-0 text-stone-400" />
+                            {address}
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          aria-pressed={isAdded}
+                          onClick={() => setAddedRecommendationPoiIds((current) => {
+                            const next = new Set(current);
+                            if (next.has(poi.poi_id)) next.delete(poi.poi_id);
+                            else next.add(poi.poi_id);
+                            return next;
+                          })}
+                          className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
+                            isAdded
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                              : 'bg-[#102b21] text-white hover:bg-[#194332]'
+                          }`}
+                        >
+                          <i className={`ph ${isAdded ? 'ph-check' : 'ph-plus'} text-sm`} aria-hidden="true"></i>
+                          {isAdded ? 'Đã thêm vào chuyến đi' : '+ Thêm vào chuyến đi'}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleGetRecommendations}
+              disabled={recommendationLoading || loading}
+              aria-busy={recommendationLoading}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-forest-700 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-forest-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            >
+              {recommendationLoading ? (
+                <><Loader2 size={17} className="animate-spin" /> Đang lấy dữ liệu PB07, PB08 và tìm POI...</>
+              ) : (
+                <><Sparkles size={17} /> {recommendationsAreCurrent ? 'Cập nhật gợi ý AI' : 'Lấy gợi ý POI từ AI'} <ArrowRight size={16} /></>
+              )}
+            </button>
+          </section>
 
           {/* DYNAMIC DAY-BY-DAY OUTLINE */}
           {result.data.itinerary_outline && result.data.itinerary_outline.length > 0 && (
@@ -896,6 +1159,7 @@ export default function TripParametersForm() {
               ))}
             </ul>
           </div>
+
         </div>
       )}
     </div>

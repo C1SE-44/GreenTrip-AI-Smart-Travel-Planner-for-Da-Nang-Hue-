@@ -19,6 +19,12 @@ export interface PoiCardProps {
   onHover: (id: string | null) => void;
   onToggleFavorite: (id: string) => void;
   onToggleAddTrip?: (id: string) => void;
+  recommendation?: {
+    matchScore: number;
+    greenScore: number | null;
+    isLocalBusiness: boolean;
+    explanation: string;
+  };
 }
 
 export default function PoiCard({
@@ -30,15 +36,30 @@ export default function PoiCard({
   onHover,
   onToggleFavorite,
   onToggleAddTrip,
+  recommendation,
 }: PoiCardProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [isCardHovered, setIsCardHovered] = useState(false);
+  const [isExplanationOpen, setIsExplanationOpen] = useState(false);
 
   const gallery = useMemo(() => getGalleryImages(poi), [poi]);
 
   const categoryLabel = poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category]
     ? SUB_CATEGORY_LABELS[poi.sub_category]
     : CATEGORY_META[poi.category]?.label || categoryLabels[poi.category] || 'Điểm tham quan';
+  const isEcoLocal = Boolean(
+    recommendation &&
+      (recommendation.isLocalBusiness || (recommendation.greenScore ?? 0) >= 0.7),
+  );
+  const formattedCost = poi.estimatedCost == null
+    ? 'Chưa cập nhật giá'
+    : poi.estimatedCost === 0
+      ? 'Miễn phí'
+      : new Intl.NumberFormat('vi-VN', {
+          style: 'currency',
+          currency: 'VND',
+          maximumFractionDigits: 0,
+        }).format(poi.estimatedCost);
 
   return (
     <article
@@ -134,6 +155,19 @@ export default function PoiCard({
           </div>
         )}
 
+        {recommendation && (
+          <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-5rem)] flex-col items-start gap-1.5">
+            <span className="rounded-full bg-gradient-to-r from-emerald-700 to-teal-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-md">
+              {Math.round(recommendation.matchScore)}% Phù hợp
+            </span>
+            {isEcoLocal && (
+              <span className="rounded-full border border-emerald-100/70 bg-emerald-950/85 px-2 py-1 text-[10px] font-semibold text-emerald-50 shadow-md backdrop-blur-sm">
+                🌿 Eco / Local
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Chấm phân trang bên dưới */}
         <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 pointer-events-none z-10">
           {gallery.slice(0, 5).map((_, i) => (
@@ -175,6 +209,55 @@ export default function PoiCard({
         <div className="text-[12.5px] text-gray-400 font-normal truncate">
           <span>{poi.address || `${poi.city === 'Đà Nẵng' ? 'Hải Châu, Đà Nẵng' : `${poi.city}, Việt Nam`}`}</span>
         </div>
+
+        {recommendation && (
+          <div className="pt-1.5" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between gap-2 text-[12px]">
+              <span className="truncate font-semibold text-gray-800">{formattedCost}</span>
+              <span className="shrink-0 text-gray-600">
+                <span className="text-amber-500" aria-hidden="true">★</span>{' '}
+                {poi.rating > 0 ? poi.rating.toFixed(1) : '—'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onToggleAddTrip?.(poi.id)}
+              aria-pressed={isAdded}
+              className={`mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-full text-[12px] font-semibold transition-all duration-200 ${
+                isAdded
+                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                  : 'bg-[#102b21] text-white hover:bg-[#194332]'
+              }`}
+            >
+              <i className={`ph ${isAdded ? 'ph-check' : 'ph-plus'} text-sm`} aria-hidden="true"></i>
+              {isAdded ? 'Đã thêm vào chuyến đi' : '+ Thêm vào chuyến đi'}
+            </button>
+            <button
+              type="button"
+              aria-expanded={isExplanationOpen}
+              aria-controls={`poi-explanation-${poi.id}`}
+              onClick={() => setIsExplanationOpen((open) => !open)}
+              className="mt-1.5 flex min-h-8 w-full items-center justify-center gap-1 text-[11px] font-medium text-emerald-800 transition-colors hover:text-emerald-950"
+            >
+              <i className="ph ph-sparkle" aria-hidden="true"></i>
+              {isExplanationOpen ? 'Ẩn lý do gợi ý' : 'Tại sao chọn điểm này?'}
+            </button>
+            <div
+              id={`poi-explanation-${poi.id}`}
+              role="region"
+              aria-label={`Lý do gợi ý ${poi.name}`}
+              className={`grid transition-all duration-300 ease-in-out ${
+                isExplanationOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+              }`}
+            >
+              <div className="overflow-hidden">
+                <p className="rounded-xl bg-emerald-50 px-3 py-2 text-[11px] leading-relaxed text-emerald-950">
+                  {recommendation.explanation || 'Địa điểm này phù hợp với sở thích và tiêu chí chuyến đi của bạn.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </article>
   );

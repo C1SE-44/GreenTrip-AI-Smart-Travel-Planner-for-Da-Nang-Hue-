@@ -14,6 +14,14 @@ from app.pois.weights import ParsedSliderWeights, parse_slider_weights
 router = APIRouter(prefix="/pois", tags=["POIs"])
 
 
+@router.get("/weights", response_model=ParsedSliderWeights)
+def get_parsed_weights(
+    weights: ParsedSliderWeights = Depends(parse_slider_weights),
+) -> ParsedSliderWeights:
+    """Expose PB08's existing slider parsing for PB09 request assembly."""
+    return weights
+
+
 @router.get("", response_model=PaginatedPOIResponse)
 def get_pois(
     page: int = Query(default=1, ge=1, description="1-based page number"),

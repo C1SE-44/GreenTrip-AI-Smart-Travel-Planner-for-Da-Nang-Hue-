@@ -151,6 +151,28 @@ def test_list_pois_defaults_to_first_page_of_ten(
     }
 
 
+def test_pb08_weights_endpoint_returns_parsed_slider_values(
+    client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    test_client, _ = client
+
+    response = test_client.get(
+        "/pois/weights?green_weight=60&budget_weight=40&budget_tier=%24%24"
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "green_weight_raw": 60.0,
+        "budget_weight_raw": 40.0,
+        "normalized_green_weight": 0.6,
+        "normalized_budget_weight": 0.4,
+        "min_eco_score": 60,
+        "max_budget": 400_000.0,
+        "eco_certified_only": False,
+        "green_transit_only": False,
+    }
+
+
 def test_custom_page_and_limit_use_database_limit_offset(
     client: tuple[TestClient, list[tuple[str, Any]]],
 ) -> None:

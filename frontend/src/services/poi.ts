@@ -1,5 +1,5 @@
 import { fetchJson } from '@/lib/api';
-import type { PaginatedPoisResponse } from '@/data/pois';
+import type { BackendPoiItem, PaginatedPoisResponse } from '@/data/pois';
 import type { BudgetTier, EcoPriority } from '@/components/poi/ExploreFilterModal';
 
 export interface GetPoisParams {
@@ -70,4 +70,26 @@ export async function getPois(params: GetPoisParams = {}): Promise<PaginatedPois
   const path = queryString ? `/pois?${queryString}` : '/pois';
 
   return fetchJson<PaginatedPoisResponse>(path);
+}
+
+/** Loads existing POI records by their real database IDs for card enrichment. */
+export async function getPoisByIds(ids: string[]): Promise<BackendPoiItem[]> {
+  const requestedIds = new Set(ids.map(String));
+  if (requestedIds.size === 0) return [];
+
+  const firstPage = await getPois({ page: 1, limit: 100 });
+  const pages = [firstPage];
+  const totalPages = firstPage.pagination?.total_pages ?? 1;
+  if (totalPages > 1) {
+    const remainingPages = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, index) =>
+        getPois({ page: index + 2, limit: 100 }),
+      ),
+    );
+    pages.push(...remainingPages);
+  }
+
+  return pages
+    .flatMap((page) => page.items ?? [])
+    .filter((poi) => requestedIds.has(String(poi.id)));
 }

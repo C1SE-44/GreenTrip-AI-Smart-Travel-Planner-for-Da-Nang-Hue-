@@ -8,6 +8,7 @@ import {
   Ticket,
 } from 'lucide-react';
 import type { PoiCategory } from '@/data/pois';
+import { normalizeSliderWeights } from '@/services/poi';
 
 // ─────────────────────────────────────────────
 // Types (Tab-Aware Contract)
@@ -33,6 +34,8 @@ export interface ExploreFilterValues {
   subCategories: string[];
   rainyDayFriendly: boolean;
   freeTicketOnly: boolean;
+  greenWeight: number;
+  budgetWeight: number;
 }
 
 export const DEFAULT_FILTER_VALUES: ExploreFilterValues = {
@@ -50,6 +53,8 @@ export const DEFAULT_FILTER_VALUES: ExploreFilterValues = {
   subCategories: [],
   rainyDayFriendly: false,
   freeTicketOnly: false,
+  greenWeight: 50,
+  budgetWeight: 50,
 };
 
 interface ExploreFilterModalProps {
@@ -179,6 +184,8 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
   const [subCategories, setSubCategories]       = useState<string[]>(values.subCategories || []);
   const [rainyDayFriendly, setRainyDayFriendly] = useState(values.rainyDayFriendly);
   const [freeTicketOnly, setFreeTicketOnly]     = useState(values.freeTicketOnly);
+  const [greenWeight, setGreenWeight]           = useState<number>(values.greenWeight ?? 50);
+  const [budgetWeight, setBudgetWeight]         = useState<number>(values.budgetWeight ?? 50);
 
   // Sync state on open
   useEffect(() => {
@@ -195,6 +202,8 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
       setSubCategories(values.subCategories || []);
       setRainyDayFriendly(values.rainyDayFriendly);
       setFreeTicketOnly(values.freeTicketOnly);
+      setGreenWeight(values.greenWeight ?? 50);
+      setBudgetWeight(values.budgetWeight ?? 50);
     }
   }, [isOpen, values]);
 
@@ -225,7 +234,9 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
     vibes.length === 0 &&
     subCategories.length === 0 &&
     !rainyDayFriendly &&
-    !freeTicketOnly;
+    !freeTicketOnly &&
+    greenWeight === 50 &&
+    budgetWeight === 50;
 
   const handleApply = () => {
     onApply({
@@ -242,6 +253,8 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
       subCategories,
       rainyDayFriendly,
       freeTicketOnly,
+      greenWeight,
+      budgetWeight,
     });
     onClose();
   };
@@ -259,6 +272,8 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
     setSubCategories([]);
     setRainyDayFriendly(false);
     setFreeTicketOnly(false);
+    setGreenWeight(50);
+    setBudgetWeight(50);
     onClearAll();
   };
 
@@ -330,6 +345,12 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
 
         {/* ── Scrollable Body with Tab-Specific Contextual Facets ── */}
         <div className="px-6 py-5 space-y-6 overflow-y-auto overscroll-contain flex-1 scrollbar-thin">
+          <SustainabilityWeightSliders
+            greenWeight={greenWeight}
+            budgetWeight={budgetWeight}
+            onChangeGreen={setGreenWeight}
+            onChangeBudget={setBudgetWeight}
+          />
 
           {/* ═════════════════════════════════════════════════════════════ */}
           {/* 1. RESTAURANTS SPECIFIC FACETS (When activeTab === 'quan-an')  */}
@@ -1218,6 +1239,127 @@ function ModernSwitch({ checked, onChange, id, ariaLabel }: ModernSwitchProps) {
         }`}
       />
     </button>
+  );
+}
+
+interface SustainabilityWeightSlidersProps {
+  greenWeight: number;
+  budgetWeight: number;
+  onChangeGreen: (val: number) => void;
+  onChangeBudget: (val: number) => void;
+}
+
+function SustainabilityWeightSliders({
+  greenWeight,
+  budgetWeight,
+  onChangeGreen,
+  onChangeBudget,
+}: SustainabilityWeightSlidersProps) {
+  const { normGreen, normBudget, zeroWeightsFallback } = normalizeSliderWeights(
+    greenWeight,
+    budgetWeight
+  );
+  const greenPct = Math.round(normGreen * 100);
+  const budgetPct = Math.round(normBudget * 100);
+
+  return (
+    <section
+      className="p-4 rounded-2xl border border-emerald-900/15 bg-emerald-50/35 space-y-3.5"
+      data-testid="sustainability-sliders-section"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-bold text-neutral-900 tracking-tight">
+            Trọng số Xếp hạng Đa mục tiêu (AI Priority)
+          </h3>
+          <p className="text-[11px] text-neutral-500">
+            Điều chỉnh thứ tự ưu tiên giữa Du lịch Xanh và Phù hợp Ngân sách (không loại bỏ địa điểm)
+          </p>
+        </div>
+        <span className="shrink-0 px-2.5 py-1 rounded-full bg-neutral-900 text-white text-[11px] font-bold">
+          {greenPct}% Xanh • {budgetPct}% Giá
+        </span>
+      </div>
+
+      {/* Quick Presets */}
+      <div className="flex flex-wrap gap-1.5">
+        {[
+          { label: 'Cân bằng (50/50)', g: 50, b: 50 },
+          { label: 'Ưu tiên Xanh (80/20)', g: 80, b: 20 },
+          { label: 'Thuần Xanh (100/0)', g: 100, b: 0 },
+          { label: 'Tiết kiệm (20/80)', g: 20, b: 80 },
+        ].map((preset) => {
+          const active = greenWeight === preset.g && budgetWeight === preset.b;
+          return (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => {
+                onChangeGreen(preset.g);
+                onChangeBudget(preset.b);
+              }}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition cursor-pointer ${
+                active
+                  ? 'bg-emerald-800 text-white font-semibold'
+                  : 'bg-white border border-neutral-200 text-neutral-700 hover:border-neutral-400'
+              }`}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Green Priority Slider */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-xs">
+          <label htmlFor="slider-green-weight" className="font-semibold text-emerald-950">
+            Ưu tiên Bền vững & Điểm Xanh (Green Weight)
+          </label>
+          <span className="font-mono font-bold text-emerald-800">
+            {greenWeight}/100 ({greenPct}%)
+          </span>
+        </div>
+        <input
+          id="slider-green-weight"
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={greenWeight}
+          onChange={(e) => onChangeGreen(Number(e.target.value))}
+          className="w-full h-1.5 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-emerald-700"
+        />
+      </div>
+
+      {/* Budget Priority Slider */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-xs">
+          <label htmlFor="slider-budget-weight" className="font-semibold text-neutral-900">
+            Ưu tiên Tối ưu Chi phí (Budget Weight)
+          </label>
+          <span className="font-mono font-bold text-neutral-800">
+            {budgetWeight}/100 ({budgetPct}%)
+          </span>
+        </div>
+        <input
+          id="slider-budget-weight"
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={budgetWeight}
+          onChange={(e) => onChangeBudget(Number(e.target.value))}
+          className="w-full h-1.5 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-neutral-900"
+        />
+      </div>
+
+      {zeroWeightsFallback && (
+        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200/80 rounded-xl px-3 py-1.5 font-medium">
+          Cả hai trọng số đang bằng 0 — hệ thống áp dụng tỷ lệ cân bằng mặc định 50% Xanh / 50% Ngân sách.
+        </p>
+      )}
+    </section>
   );
 }
 

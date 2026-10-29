@@ -92,7 +92,26 @@ Một task/branch chỉ được coi là **Done** khi thỏa mãn toàn bộ:
 - [ ] Đã tách đúng nhánh `feature/#<issue>_<short-description>` từ `develop` mới nhất.
 - [ ] Code đã build thành công (`npm run build`, `npm run typecheck`) và pass unit/integration test (`pytest`).
 - [ ] Luồng chính đã được chạy kiểm tra thực tế trên máy, không còn lỗi console/runtime do thay đổi mới.
+- [ ] *(Nếu có sửa Frontend)* Đã vượt qua **Checklist 10 bước UI/UX & WCAG 2.2 AA** tại Mục 4 dưới đây.
 - [ ] Đã mở Pull Request vào `develop` điền đầy đủ theo mẫu `.github/pull_request_template.md` (Issue, Mục tiêu, Ảnh chụp/Bằng chứng test, Rủi ro, Việc cần làm sau merge).
 - [ ] Đã được AI/bot review và ít nhất 1 thành viên trong nhóm review & **Approve** (người tạo PR không tự resolve comment của người khác).
 - [ ] CI/CD trên GitHub Actions xanh 100%.
+
+---
+
+## 4. Quy Chuẩn Thiết Kế UI/UX & Checklist 10 Bước Bắt Buộc (Frontend)
+
+Mọi thay đổi giao diện trong `frontend/` phải tuân thủ tài liệu đặc tả [docs/UI_UX_MASTER_SPEC.md](docs/UI_UX_MASTER_SPEC.md) và vượt qua **10 bước kiểm duyệt** trước khi commit:
+
+1. **Style Selection Check**: Đúng phong cách của phân hệ (*Style 3 - Drew Barrymore* ấm áp cho Landing/Onboarding/Auth; *Style 1 - Steve Jobs + Eco Accent* tối giản, sắc nét cho Explore/Filter/Planner).
+2. **No "AI Slop" Check**: Không dùng gradient rập khuôn, icon/badge trang trí vô nghĩa hoặc thanh cuộn hệ điều hành thô kệch.
+3. **Responsive & 320px Reflow Check**: Kiểm tra trên trình duyệt ở cả Desktop (`1280px`) và Mobile (`320px`), không tràn ngang hoặc cắt chữ trên nút CTA.
+4. **60-30-10 Color & Token Check**: 60% nền sáng trung tính, 30% cấu trúc & nhận diện xanh (`neutral-900` / `emerald-800` / `forest-700`), 10% màu nhấn dành riêng cho nút CTA chính.
+5. **Hierarchy & Typography Check**: Phân cấp 3 tầng thị giác rõ ràng; **cấm dùng cỡ chữ nhỏ hơn `12px` (`text-xs`)**.
+6. **Input Context Check**: Chọn đúng loại input theo ngữ cảnh (Preset Pills + Slider thu gọn cho trọng số ưu tiên; Selectable Cards & Number Input rõ ràng cho form thông số chuyến đi).
+7. **4-State Feedback Check**: Mọi thành phần gọi API phải có đủ 4 trạng thái: `Loading` (Skeleton), `Populated` (Có dữ liệu), `Empty State` (Có câu dẫn + nút hành động) và `Error State` (Thông báo thân thiện + nút thử lại).
+8. **Tinted Shadow & WCAG 2.2 AA Contrast Check**: Dùng bóng đổ ấm cùng tông; chữ thông tin trên nền sáng phải đạt tương phản $\ge 4.5:1$ (tối thiểu `text-neutral-600`, không dùng `text-neutral-400` cho nội dung đọc).
+9. **Keyboard & Touch Accessibility Check**: Vùng chạm nút bấm đạt tối thiểu `40px–44px`; hỗ trợ điều hướng phím `Tab` (`focus-visible:ring-2`) và đầy đủ `aria-pressed`, `aria-expanded`, `aria-describedby`.
+10. **Animation Performance Check**: Chỉ dùng `transform` và `opacity` cho hiệu ứng chuyển động; không gây lỗi hoặc cảnh báo trên Chrome DevTools Console.
+
 

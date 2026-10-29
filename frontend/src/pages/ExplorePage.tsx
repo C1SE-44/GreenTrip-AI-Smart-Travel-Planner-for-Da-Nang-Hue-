@@ -7,7 +7,14 @@ import PoiMap from '@/components/poi/PoiMap';
 import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
-import { getPois } from '@/services/poi';
+import {
+  computePoiWeightedScore,
+  ECO_PRIORITY_WEIGHT_MAP,
+  getPois,
+  isPoiEcoCertified,
+  isPoiGreenTransit,
+  normalizeSliderWeights,
+} from '@/services/poi';
 import { getMe, type UserProfile } from '@/services/auth';
 import ExploreFilterModal, {
   type ExploreFilterValues,
@@ -187,7 +194,7 @@ export default function ExplorePage() {
   };
 
   const filteredPois = useMemo(() => {
-    return allPois.filter((poi) => {
+    const matched = allPois.filter((poi) => {
       if (viewMode === 'saved' && !favorites.has(poi.id)) {
         return false;
       }
@@ -226,7 +233,16 @@ export default function ExplorePage() {
       }
 
       // Eco Certified Only
-      if (filterValues.ecoCertifiedOnly && poi.ecoScore < 75) {
+      if (filterValues.ecoCertifiedOnly && !isPoiEcoCertified(poi)) {
+        return false;
+      }
+      if (filterValues.greenTransitOnly && !isPoiGreenTransit(poi)) {
+        return false;
+      }
+      if (filterValues.rainyDayFriendly && poi.ai_metadata?.rainy_day_friendly !== true) {
+        return false;
+      }
+      if (filterValues.openNowOnly && poi.opening_hours?.open_now === false) {
         return false;
       }
 
@@ -275,6 +291,31 @@ export default function ExplorePage() {
 
       return matchCity && matchCat && matchSearch && matchEco && matchBudget && matchCatFilter;
     });
+
+    const isCustomWeights =
+      filterValues.greenWeight !== 50 ||
+      filterValues.budgetWeight !== 50 ||
+      filterValues.ecoPriority !== 'all';
+
+    if (!isCustomWeights) {
+      return matched;
+    }
+
+    const effectiveGreenWeight =
+      filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50
+        ? filterValues.greenWeight
+        : ECO_PRIORITY_WEIGHT_MAP[filterValues.ecoPriority];
+    const effectiveBudgetWeight = filterValues.budgetWeight;
+
+    return [...matched].sort((a, b) => {
+      const scoreDiff =
+        computePoiWeightedScore(b, effectiveGreenWeight, effectiveBudgetWeight) -
+        computePoiWeightedScore(a, effectiveGreenWeight, effectiveBudgetWeight);
+      if (Math.abs(scoreDiff) > 1e-6) {
+        return scoreDiff;
+      }
+      return a.name.localeCompare(b.name, 'vi');
+    });
   }, [allPois, search, cityFilter, categoryFilter, filterValues, viewMode, favorites]);
 
   // Đếm số lượng filter đang active chuẩn Mindtrip
@@ -294,6 +335,7 @@ export default function ExplorePage() {
     if (filterValues.subCategories.length > 0) count += filterValues.subCategories.length;
     if (filterValues.rainyDayFriendly) count++;
     if (filterValues.freeTicketOnly) count++;
+    if (filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50) count++;
     return count;
   }, [filterValues]);
 
@@ -666,7 +708,24 @@ export default function ExplorePage() {
           <div className="px-6 py-2">
             <div className="mb-4 mt-2 flex items-center justify-between">
               <h2 className="text-[17px] font-bold text-gray-950 tracking-tight">
-                Địa điểm ({filteredPois.length})
+                <span>Địa điểm ({filteredPois.length})</span>
+                {(filterValues.greenWeight !== 50 ||
+                  filterValues.budgetWeight !== 50 ||
+                  filterValues.ecoPriority !== 'all') && (() => {
+                  const effG =
+                    filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50
+                      ? filterValues.greenWeight
+                      : ECO_PRIORITY_WEIGHT_MAP[filterValues.ecoPriority];
+                  const { normGreen, normBudget } = normalizeSliderWeights(
+                    effG,
+                    filterValues.budgetWeight
+                  );
+                  return (
+                    <span className="ml-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] font-semibold align-middle">
+                      <span>Xếp hạng AI: {Math.round(normGreen * 100)}% Xanh • {Math.round(normBudget * 100)}% Giá</span>
+                    </span>
+                  );
+                })()}
               </h2>
               {activeFilterCount > 0 && (
                 <button

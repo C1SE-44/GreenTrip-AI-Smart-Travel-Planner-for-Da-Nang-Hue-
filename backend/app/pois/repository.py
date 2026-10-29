@@ -2,6 +2,7 @@ from typing import Any
 
 from app.db.postgres import get_connection
 from app.pois.model import POI
+from app.pois.weights import ParsedSliderWeights
 
 
 CITY_ALIAS_MAP: dict[str, str] = {
@@ -40,6 +41,7 @@ def list_pois(
     sub_category: str | None = None,
     cuisine: str | None = None,
     budget_tier: str | None = None,
+    weights: ParsedSliderWeights | None = None,
 ) -> tuple[list[POI], int]:
     with get_connection() as connection:
         where_clauses: list[str] = []
@@ -75,7 +77,57 @@ def list_pois(
             where_clauses.append("p.budget_tier = %s")
             params.append(budget_tier.strip())
 
+        if weights is not None and weights.is_filtering_active:
+            if weights.min_eco_score > 0:
+                where_clauses.append(
+                    "(CASE WHEN p.green_score IS NULL THEN 0.0 "
+                    "WHEN p.green_score <= 1.0 THEN p.green_score::float * 100.0 "
+                    "ELSE p.green_score::float END) >= %s"
+                )
+                params.append(float(weights.min_eco_score))
+
+            if weights.max_budget is not None and not (
+                budget_tier and budget_tier.strip().casefold() not in {"all", ""}
+            ):
+                where_clauses.append(
+                    "(p.estimated_cost IS NOT NULL AND p.estimated_cost::float <= %s)"
+                )
+                params.append(float(weights.max_budget))
+
+            if weights.eco_certified_only:
+                where_clauses.append(
+                    "((CASE WHEN p.green_score IS NULL THEN 0.0 "
+                    "WHEN p.green_score <= 1.0 THEN p.green_score::float * 100.0 "
+                    "ELSE p.green_score::float END) >= 75.0 "
+                    "OR COALESCE(array_length(p.eco_features, 1), 0) > 0)"
+                )
+
         where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+        if weights is not None and weights.is_ranking_active:
+            green_norm_sql = (
+                "(CASE WHEN p.green_score IS NULL THEN 0.5 "
+                "WHEN p.green_score < 0 THEN 0.0 "
+                "WHEN p.green_score <= 1.0 THEN p.green_score::float "
+                "ELSE LEAST(1.0, p.green_score::float / 100.0) END)"
+            )
+            budget_norm_sql = (
+                "(CASE WHEN p.estimated_cost IS NOT NULL THEN "
+                "GREATEST(0.0, 1.0 - LEAST(GREATEST(0.0, p.estimated_cost::float), 1000000.0) / 1000000.0) "
+                "WHEN LOWER(TRIM(COALESCE(p.budget_tier, ''))) = 'free' THEN 1.0 "
+                "WHEN TRIM(COALESCE(p.budget_tier, '')) = '$' THEN 0.9 "
+                "WHEN TRIM(COALESCE(p.budget_tier, '')) = '$$' THEN 0.65 "
+                "WHEN TRIM(COALESCE(p.budget_tier, '')) = '$$$' THEN 0.3 "
+                "WHEN TRIM(COALESCE(p.budget_tier, '')) = '$$$$' THEN 0.0 "
+                "ELSE 0.5 END)"
+            )
+            w_g = float(weights.normalized_green_weight)
+            w_b = float(weights.normalized_budget_weight)
+            order_by_sql = (
+                f"ORDER BY ({w_g} * {green_norm_sql} + {w_b} * {budget_norm_sql}) DESC, p.name ASC"
+            )
+        else:
+            order_by_sql = "ORDER BY p.name ASC"
 
         with connection.cursor() as cursor:
             query = f"""
@@ -112,7 +164,7 @@ def list_pois(
                 JOIN public.poi_categories c ON p.category_id = c.category_id
                 JOIN public.cities ci ON p.city_id = ci.city_id
                 {where_sql}
-                ORDER BY p.name ASC
+                {order_by_sql}
                 LIMIT %s OFFSET %s
             """
             cursor.execute(query, tuple(params + [limit, offset]))

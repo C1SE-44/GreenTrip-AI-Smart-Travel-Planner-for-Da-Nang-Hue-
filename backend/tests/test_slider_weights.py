@@ -15,6 +15,10 @@ from app.pois.model import POI
 from app.pois.weights import (
     BudgetTierEnum,
     EcoPriorityEnum,
+    compute_budget_score_normalized,
+    compute_green_score_normalized,
+    compute_poi_weighted_score,
+    matches_slider_filters,
     normalize_weights,
     parse_slider_weights,
 )
@@ -54,6 +58,11 @@ def test_normalize_weights_zero_division_safety() -> None:
     assert norm_green == 0.5
     assert norm_budget == 0.5
 
+    parsed = parse_slider_weights(green_weight=0.0, budget_weight=0.0)
+    assert parsed.zero_weights_fallback is True
+    assert parsed.normalized_green_weight == 0.5
+    assert parsed.normalized_budget_weight == 0.5
+
 
 def test_parse_slider_weights_defaults() -> None:
     parsed = parse_slider_weights()
@@ -65,21 +74,28 @@ def test_parse_slider_weights_defaults() -> None:
     assert parsed.max_budget is None
     assert parsed.eco_certified_only is False
     assert parsed.green_transit_only is False
+    assert parsed.is_ranking_active is False
+    assert parsed.is_filtering_active is False
+    assert parsed.zero_weights_fallback is False
 
 
-def test_parse_slider_weights_continuous_values() -> None:
+def test_parse_slider_weights_continuous_values_decoupled_from_min_eco_score() -> None:
+    """green_weight determines ranking priority and must NOT force min_eco_score hard filtering."""
     parsed = parse_slider_weights(green_weight=75.0, budget_weight=25.0)
     assert parsed.green_weight_raw == 75.0
     assert parsed.budget_weight_raw == 25.0
     assert parsed.normalized_green_weight == 0.75
     assert parsed.normalized_budget_weight == 0.25
-    assert parsed.min_eco_score == 75
+    assert parsed.min_eco_score == 0
+    assert parsed.is_ranking_active is True
+    assert parsed.is_filtering_active is False
 
 
 def test_parse_slider_weights_eco_priority_mapping() -> None:
     parsed_eco = parse_slider_weights(eco_priority=EcoPriorityEnum.ECO)
     assert parsed_eco.min_eco_score == 75
     assert parsed_eco.green_weight_raw == 75.0
+    assert parsed_eco.is_filtering_active is True
 
     parsed_basic = parse_slider_weights(eco_priority=EcoPriorityEnum.BASIC)
     assert parsed_basic.min_eco_score == 30
@@ -88,9 +104,13 @@ def test_parse_slider_weights_eco_priority_mapping() -> None:
     parsed_all = parse_slider_weights(eco_priority=EcoPriorityEnum.ALL)
     assert parsed_all.min_eco_score == 0
     assert parsed_all.green_weight_raw == 50.0
+    assert parsed_all.is_filtering_active is False
 
 
 def test_parse_slider_weights_budget_tier_mapping() -> None:
+    parsed_free = parse_slider_weights(budget_tier=BudgetTierEnum.FREE)
+    assert parsed_free.max_budget == 0.0
+
     parsed_tier_1 = parse_slider_weights(budget_tier=BudgetTierEnum.TIER_1)
     assert parsed_tier_1.max_budget == 100_000.0
 
@@ -111,10 +131,30 @@ def test_parse_slider_weights_toggles() -> None:
     )
     assert parsed.eco_certified_only is True
     assert parsed.green_transit_only is True
+    assert parsed.is_filtering_active is True
+
+
+def test_green_and_budget_score_normalization_consistency() -> None:
+    # Green score supports 0..1, 0..100, and None
+    assert compute_green_score_normalized(0.85) == 0.85
+    assert compute_green_score_normalized(85.0) == 0.85
+    assert compute_green_score_normalized(None) == 0.5
+
+    # Budget score uses estimated_cost when available, else budget_tier fallback, else 0.5
+    assert compute_budget_score_normalized(0.0) == 1.0
+    assert compute_budget_score_normalized(200_000.0) == 0.8
+    assert compute_budget_score_normalized(1_000_000.0) == 0.0
+    assert compute_budget_score_normalized(1_500_000.0) == 0.0
+    assert compute_budget_score_normalized(None, "free") == 1.0
+    assert compute_budget_score_normalized(None, "$") == 0.9
+    assert compute_budget_score_normalized(None, "$$") == 0.65
+    assert compute_budget_score_normalized(None, "$$$") == 0.3
+    assert compute_budget_score_normalized(None, "$$$$") == 0.0
+    assert compute_budget_score_normalized(None, None) == 0.5
 
 
 # ─────────────────────────────────────────────
-# API Integration & Boundary Validation Tests
+# API Integration & Multi-Objective Ranking Tests
 # ─────────────────────────────────────────────
 
 class FakeCursor:
@@ -147,6 +187,26 @@ class FakeCursor:
                 poi.longitude,
                 poi.address,
                 poi.city,
+                poi.estimated_cost,
+                poi.average_visit_minutes,
+                poi.satisfaction_score,
+                poi.green_score,
+                poi.is_local_business,
+                poi.local_business_type,
+                poi.image_url,
+                poi.gallery_urls,
+                poi.sub_category,
+                poi.cuisine,
+                poi.budget_tier,
+                poi.vibes,
+                poi.best_time,
+                poi.eco_features,
+                poi.ai_metadata,
+                poi.phone_number,
+                poi.website_url,
+                poi.social_links,
+                poi.opening_hours,
+                poi.email,
             )
             for poi in page
         ]
@@ -174,33 +234,143 @@ class FakeConnection:
 
 
 @pytest.fixture
-def test_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    poi = POI(
-        id=1,
-        name="Linh Ung Pagoda",
-        category="chua",
-        description="Famous pagoda",
-        latitude=16.1,
-        longitude=108.2,
-        address="Son Tra",
-        city="Da Nang",
-    )
+def sample_pois() -> list[POI]:
+    return [
+        # POI A: High cost (800k -> budget_score 0.2), Very high green score (95 -> green_score 0.95)
+        POI(
+            id="poi-eco-resort",
+            name="Alpha Eco Retreat",
+            category="canh-quan",
+            description="Luxury zero-waste nature retreat",
+            latitude=16.10,
+            longitude=108.25,
+            address="Son Tra",
+            city="Da Nang",
+            estimated_cost=800_000.0,
+            green_score=95.0,
+            budget_tier="$$$",
+            eco_features=["Zero-waste", "Solar"],
+            ai_metadata={"green_transit": False},
+        ),
+        # POI B: Very low cost (20k -> budget_score 0.98), Low green score (40 -> green_score 0.40)
+        POI(
+            id="poi-street-food",
+            name="Beta Street Stall",
+            category="quan-an",
+            description="Affordable local snack stall",
+            latitude=16.06,
+            longitude=108.22,
+            address="Hai Chau",
+            city="Da Nang",
+            estimated_cost=20_000.0,
+            green_score=40.0,
+            budget_tier="$",
+            eco_features=[],
+            ai_metadata={"green_transit": True},
+        ),
+        # POI C: Moderate cost (null cost, tier $$ -> budget_score 0.65), High green score (0.80 on 0..1 scale)
+        POI(
+            id="poi-heritage-park",
+            name="Gamma Heritage Garden",
+            category="di-tich",
+            description="Cultural garden near electric bus stop",
+            latitude=16.46,
+            longitude=107.58,
+            address="Hue Center",
+            city="Hue",
+            estimated_cost=None,
+            green_score=0.80,
+            budget_tier="$$",
+            eco_features=["Xe buýt điện", "Bảo tồn"],
+            ai_metadata={"green_transit": True},
+        ),
+    ]
+
+
+@pytest.fixture
+def test_client(
+    monkeypatch: pytest.MonkeyPatch, sample_pois: list[POI]
+) -> tuple[TestClient, list[tuple[str, Any]]]:
     queries: list[tuple[str, Any]] = []
     monkeypatch.setattr(
         repository,
         "get_connection",
-        lambda: FakeConnection([poi], queries),
+        lambda: FakeConnection(sample_pois, queries),
     )
     with TestClient(app) as client:
-        yield client
+        yield client, queries
 
 
-def test_api_accepts_valid_slider_weights(test_client: TestClient) -> None:
-    response = test_client.get("/pois?green_weight=80&budget_weight=20")
+def test_api_accepts_valid_slider_weights(
+    test_client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    client, _ = test_client
+    response = client.get("/pois?green_weight=80&budget_weight=20")
     assert response.status_code == 200
     data = response.json()
     assert "items" in data
-    assert len(data["items"]) == 1
+    assert len(data["items"]) == 3
+
+
+def test_changing_weights_reorders_pois_between_green_and_budget_priority(
+    test_client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    """
+    Proves that:
+    1) High green_weight (90/10) ranks high-green POI ('poi-eco-resort') first.
+    2) High budget_weight (10/90) ranks budget-friendly POI ('poi-street-food') first.
+    3) Slider weights do NOT drop POIs (all 3 POIs remain in the response).
+    """
+    client, _ = test_client
+
+    green_resp = client.get("/pois?green_weight=90&budget_weight=10")
+    assert green_resp.status_code == 200
+    green_items = green_resp.json()["items"]
+    assert len(green_items) == 3
+    assert [item["id"] for item in green_items] == [
+        "poi-eco-resort",
+        "poi-heritage-park",
+        "poi-street-food",
+    ]
+
+    budget_resp = client.get("/pois?green_weight=10&budget_weight=90")
+    assert budget_resp.status_code == 200
+    budget_items = budget_resp.json()["items"]
+    assert len(budget_items) == 3
+    assert [item["id"] for item in budget_items] == [
+        "poi-street-food",
+        "poi-heritage-park",
+        "poi-eco-resort",
+    ]
+
+
+def test_hard_filters_operate_independently_of_slider_weights(
+    test_client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    client, _ = test_client
+
+    # eco_priority=eco requires green_score >= 75 (excludes Beta Street Stall with green_score=40)
+    # while budget_weight=90 still ranks Gamma Heritage Garden ($$) ahead of Alpha Eco Retreat (800k)
+    resp = client.get("/pois?eco_priority=eco&green_weight=10&budget_weight=90")
+    assert resp.status_code == 200
+    items = resp.json()["items"]
+    assert [item["id"] for item in items] == ["poi-heritage-park", "poi-eco-resort"]
+
+    # green_transit_only=true keeps only POIs with green transit support
+    transit_resp = client.get("/pois?green_transit_only=true")
+    assert transit_resp.status_code == 200
+    transit_ids = [item["id"] for item in transit_resp.json()["items"]]
+    assert transit_ids == ["poi-street-food", "poi-heritage-park"]
+
+
+def test_default_request_preserves_alphabetical_order_sql(
+    test_client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    client, queries = test_client
+    resp = client.get("/pois")
+    assert resp.status_code == 200
+    page_query, _ = queries[0]
+    assert "ORDER BY p.name ASC" in page_query
 
 
 @pytest.mark.parametrize(
@@ -214,8 +384,11 @@ def test_api_accepts_valid_slider_weights(test_client: TestClient) -> None:
         "?eco_certified_only=true&green_transit_only=true",
     ],
 )
-def test_api_accepts_valid_boundary_values(test_client: TestClient, query: str) -> None:
-    response = test_client.get(f"/pois{query}")
+def test_api_accepts_valid_boundary_values(
+    test_client: tuple[TestClient, list[tuple[str, Any]]], query: str
+) -> None:
+    client, _ = test_client
+    response = client.get(f"/pois{query}")
     assert response.status_code == 200
 
 
@@ -233,16 +406,20 @@ def test_api_accepts_valid_boundary_values(test_client: TestClient, query: str) 
     ],
 )
 def test_api_rejects_invalid_boundary_values_with_422(
-    test_client: TestClient, invalid_query: str
+    test_client: tuple[TestClient, list[tuple[str, Any]]], invalid_query: str
 ) -> None:
-    response = test_client.get(f"/pois{invalid_query}")
+    client, _ = test_client
+    response = client.get(f"/pois{invalid_query}")
     assert response.status_code == 422
     data = response.json()
     assert "detail" in data
 
 
-def test_openapi_schema_contains_slider_parameters(test_client: TestClient) -> None:
-    response = test_client.get("/openapi.json")
+def test_openapi_schema_contains_slider_parameters(
+    test_client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    client, _ = test_client
+    response = client.get("/openapi.json")
     assert response.status_code == 200
     schema = response.json()
 

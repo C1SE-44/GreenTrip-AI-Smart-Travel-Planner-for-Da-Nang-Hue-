@@ -612,11 +612,11 @@ export default function LandingPage() {
                 count: "15 điểm",
               },
               {
-                title: "Bà Nà Hills & Cầu Vàng",
-                location: "Đà Nẵng, Việt Nam",
-                tag: "Kỳ quan",
-                img: "https://images.unsplash.com/photo-1627993077303-3450e1cd1639?auto=format&fit=crop&q=80",
-                count: "6 điểm",
+title: 'Bà Nà Hills & Cầu Vàng',
+                location: 'Đà Nẵng, Việt Nam',
+                tag: 'Kỳ quan',
+                img: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&q=80',
+                count: '6 điểm',
               },
               {
                 title: "Lăng Cô & Đèo Hải Vân",

@@ -277,15 +277,22 @@ export default function PoiDetailSection({
       {/* 2. Scrollable Detail Body */}
       <div className="flex-1 overflow-y-auto px-8 pt-6 pb-48 custom-scroll">
         {/* Title & Michelin Badge */}
-        <div className="flex flex-wrap items-center gap-3 mb-2">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 font-heading">
-            {displayName}
-          </h1>
-          {poi.isMichelin && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm animate-pulse">
-              <span className="text-rose-600 font-serif">🌸</span>
-              <span>MICHELIN Selected</span>
-            </span>
+        <div className="flex flex-col gap-1 mb-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 font-heading">
+              {poi.cleanTitle || displayName}
+            </h1>
+            {poi.isMichelin && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm animate-pulse">
+                <span className="text-rose-600 font-serif">🌸</span>
+                <span>MICHELIN Selected</span>
+              </span>
+            )}
+          </div>
+          {poi.subTitle && (
+            <p className="text-[13.5px] font-medium text-neutral-500">
+              {poi.subTitle}
+            </p>
           )}
         </div>
 
@@ -316,6 +323,7 @@ export default function PoiDetailSection({
           <div className="col-span-7 h-full relative overflow-hidden bg-neutral-100 group">
             <img 
               alt={displayName} 
+              referrerPolicy="no-referrer"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
               src={galleryImages[0]}
             />
@@ -327,6 +335,7 @@ export default function PoiDetailSection({
               <div key={i} className="relative overflow-hidden bg-neutral-100 group">
                 <img 
                   alt={`${displayName} gallery ${i + 1}`} 
+                  referrerPolicy="no-referrer"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                   src={imgUrl}
                 />
@@ -669,8 +678,8 @@ export default function PoiDetailSection({
           className="h-[50px] bg-white rounded-full border border-neutral-300 shadow-[0_6px_24px_rgba(0,0,0,0.1)] px-5 flex items-center justify-between hover:border-neutral-400 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100 transition"
         >
           <input 
-            className="w-full bg-transparent text-[14px] font-medium text-neutral-800 placeholder-neutral-400 outline-none border-none focus:ring-0 p-0" 
-            placeholder={`Hỏi GreenTrip AI về ${displayName}...`} 
+            className="w-full bg-transparent text-[13.5px] font-medium text-neutral-800 placeholder-neutral-400 outline-none border-none focus:ring-0 p-0" 
+            placeholder={`Hỏi AI về ${(poi.cleanTitle || displayName).length > 25 ? 'địa điểm này' : (poi.cleanTitle || displayName)}...`} 
             type="text"
             value={askAiQuery}
             onChange={(e) => setAskAiQuery(e.target.value)}

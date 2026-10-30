@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Leaf } from 'lucide-react';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
@@ -7,7 +7,14 @@ import PoiMap from '@/components/poi/PoiMap';
 import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
-import { getPois } from '@/services/poi';
+import {
+  computePoiWeightedScore,
+  ECO_PRIORITY_WEIGHT_MAP,
+  getPois,
+  isPoiEcoCertified,
+  isPoiGreenTransit,
+  normalizeSliderWeights,
+} from '@/services/poi';
 import { getMe, type UserProfile } from '@/services/auth';
 import ExploreFilterModal, {
   type ExploreFilterValues,
@@ -33,9 +40,23 @@ export default function ExplorePage() {
   const [activeTab, setActiveTab] = useState<'all' | PoiCategory>('all');
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'explore' | 'saved'>('explore');
-  const [addedTrips, setAddedTrips] = useState<Set<string>>(new Set());
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('greentrip_favorites');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  const [addedTrips, setAddedTrips] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('greentrip_added_trips');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,8 +67,22 @@ export default function ExplorePage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [filterValues, setFilterValues] = useState<ExploreFilterValues>(DEFAULT_FILTER_VALUES);
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const exploreHeaderRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('greentrip_favorites', JSON.stringify(Array.from(favorites)));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [favorites]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('greentrip_added_trips', JSON.stringify(Array.from(addedTrips)));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [addedTrips]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => !prev);
@@ -159,8 +194,10 @@ export default function ExplorePage() {
   };
 
   const filteredPois = useMemo(() => {
-    return allPois.filter((poi) => {
-      if (viewMode === 'saved' && !favorites.has(poi.id)) return false;
+    const matched = allPois.filter((poi) => {
+      if (viewMode === 'saved' && !favorites.has(poi.id)) {
+        return false;
+      }
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
       const matchCat = categoryFilter === 'all' || poi.category === categoryFilter;
       const s = search.trim().toLowerCase();
@@ -196,7 +233,16 @@ export default function ExplorePage() {
       }
 
       // Eco Certified Only
-      if (filterValues.ecoCertifiedOnly && poi.ecoScore < 75) {
+      if (filterValues.ecoCertifiedOnly && !isPoiEcoCertified(poi)) {
+        return false;
+      }
+      if (filterValues.greenTransitOnly && !isPoiGreenTransit(poi)) {
+        return false;
+      }
+      if (filterValues.rainyDayFriendly && poi.ai_metadata?.rainy_day_friendly !== true) {
+        return false;
+      }
+      if (filterValues.openNowOnly && poi.opening_hours?.open_now === false) {
         return false;
       }
 
@@ -245,10 +291,32 @@ export default function ExplorePage() {
 
       return matchCity && matchCat && matchSearch && matchEco && matchBudget && matchCatFilter;
     });
-  }, [allPois, search, cityFilter, categoryFilter, filterValues, viewMode, favorites]);
 
-  const displayedPois = filteredPois;
-  const mapPois = filteredPois;
+    const isCustomWeights =
+      filterValues.greenWeight !== 50 ||
+      filterValues.budgetWeight !== 50 ||
+      filterValues.ecoPriority !== 'all';
+
+    if (!isCustomWeights) {
+      return matched;
+    }
+
+    const effectiveGreenWeight =
+      filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50
+        ? filterValues.greenWeight
+        : ECO_PRIORITY_WEIGHT_MAP[filterValues.ecoPriority];
+    const effectiveBudgetWeight = filterValues.budgetWeight;
+
+    return [...matched].sort((a, b) => {
+      const scoreDiff =
+        computePoiWeightedScore(b, effectiveGreenWeight, effectiveBudgetWeight) -
+        computePoiWeightedScore(a, effectiveGreenWeight, effectiveBudgetWeight);
+      if (Math.abs(scoreDiff) > 1e-6) {
+        return scoreDiff;
+      }
+      return a.name.localeCompare(b.name, 'vi');
+    });
+  }, [allPois, search, cityFilter, categoryFilter, filterValues, viewMode, favorites]);
 
   // Đếm số lượng filter đang active chuẩn Mindtrip
   const activeFilterCount = useMemo(() => {
@@ -267,6 +335,7 @@ export default function ExplorePage() {
     if (filterValues.subCategories.length > 0) count += filterValues.subCategories.length;
     if (filterValues.rainyDayFriendly) count++;
     if (filterValues.freeTicketOnly) count++;
+    if (filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50) count++;
     return count;
   }, [filterValues]);
 
@@ -276,10 +345,8 @@ export default function ExplorePage() {
 
   const selectedPoi = useMemo(() => {
     if (!selectedPoiId) return null;
-    return displayedPois.find((poi) => poi.id === selectedPoiId)
-      || allPois.find((poi) => poi.id === selectedPoiId)
-      || null;
-  }, [allPois, displayedPois, selectedPoiId]);
+    return allPois.find((poi) => poi.id === selectedPoiId) || null;
+  }, [allPois, selectedPoiId]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -359,18 +426,18 @@ export default function ExplorePage() {
           {/* Navigation Links */}
           <nav className="flex flex-col space-y-[21px] text-sm">
             {[
-              {
-                key: 'explore',
-                onClick: () => { setViewMode('explore'); },
-                icon: viewMode === 'explore' ? 'ph-fill ph-compass' : 'ph ph-compass',
-                label: 'Khám phá',
-                active: viewMode === 'explore'
+              { 
+                key: 'explore', 
+                onClick: () => setViewMode('explore'), 
+                icon: viewMode === 'explore' ? 'ph-fill ph-compass' : 'ph ph-compass', 
+                label: 'Khám phá', 
+                active: viewMode === 'explore' 
               },
-              {
-                key: 'saved',
-                onClick: () => { setViewMode('saved'); },
-                icon: viewMode === 'saved' ? 'ph-fill ph-heart text-[#b45309]' : 'ph ph-heart',
-                label: 'Đã lưu',
+              { 
+                key: 'saved', 
+                onClick: () => setViewMode('saved'), 
+                icon: viewMode === 'saved' ? 'ph-fill ph-heart text-[#b45309]' : 'ph ph-heart', 
+                label: 'Đã lưu', 
                 active: viewMode === 'saved',
                 badge: favorites.size > 0 ? String(favorites.size) : undefined
               },
@@ -379,13 +446,20 @@ export default function ExplorePage() {
               { to: '#', icon: 'ph ph-plus-square', label: 'Tạo nên' },
             ].map((item) => {
               const itemContent = (
-                <div className="flex items-center py-0.5 text-black transition-colors group/item relative">
-                  <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                <div className={`flex items-center py-0.5 text-black transition-colors group/item relative ${item.active ? 'font-semibold' : ''}`}>
+                  <div className="w-9 h-9 flex items-center justify-center shrink-0 relative">
                     <i className={`${item.icon} text-[23px] text-black ${item.active ? '' : 'group-hover/item:opacity-75'} transition-opacity`}></i>
+                    {item.badge && (
+                      <span className="absolute -top-1 -right-1 bg-[#b45309] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                        {item.badge}
+                      </span>
+                    )}
                   </div>
                   
                   <span
-                    className={`text-[14px] tracking-tight text-black font-medium transition-all duration-300 overflow-hidden whitespace-nowrap ${
+                    className={`text-[14px] tracking-tight text-black transition-all duration-300 overflow-hidden whitespace-nowrap ${
+                      item.active ? 'font-bold' : 'font-medium'
+                    } ${
                       isSidebarCollapsed ? 'max-w-0 opacity-0 ml-0' : 'max-w-[120px] opacity-100 ml-2.5'
                     }`}
                   >
@@ -394,15 +468,19 @@ export default function ExplorePage() {
 
                   {isSidebarCollapsed && (
                     <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 bg-black text-white text-[12px] font-medium px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap pointer-events-none opacity-0 group-hover/item:opacity-100 transition-all duration-200 -translate-x-1 group-hover/item:translate-x-0 z-50">
-                      {item.label}
+                      {item.label} {item.badge ? `(${item.badge})` : ''}
                     </div>
                   )}
                 </div>
               );
 
-              if ('onClick' in item) {
+              if (item.onClick) {
                 return (
-                  <button key={item.label} type="button" onClick={item.onClick} className="text-left">
+                  <button 
+                    key={item.key} 
+                    onClick={item.onClick}
+                    className="w-full text-left bg-transparent border-0 cursor-pointer p-0 select-none"
+                  >
                     {itemContent}
                   </button>
                 );
@@ -505,16 +583,16 @@ export default function ExplorePage() {
         } h-full relative bg-white flex flex-col select-none transition-[width] duration-300 ease-in-out`}
         data-purpose="content-list-stream"
       >
-        <div ref={scrollContainerRef} className="w-full h-full overflow-y-auto auto-hide-scrollbar scroll-smooth">
+        <div className="w-full h-full overflow-y-auto auto-hide-scrollbar scroll-smooth">
           {/* Top Bar: Title & Search */}
-          <header ref={exploreHeaderRef} data-explore-header className="w-full bg-white px-6 pt-8 pb-3 space-y-3.5 sticky top-0 z-10 backdrop-blur-md bg-white/95">
+          <header className="w-full bg-white px-6 pt-8 pb-3 space-y-3.5 sticky top-0 z-10 backdrop-blur-md bg-white/95">
             {/* Location Title Dropdown / Saved View */}
             <div className="relative">
               {viewMode === 'saved' ? (
                 <div className="flex items-center justify-between">
                   <div className="inline-flex items-center gap-2">
                     <button
-                      onClick={() => { setViewMode('explore'); }}
+                      onClick={() => setViewMode('explore')}
                       className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition cursor-pointer"
                       title="Quay lại khám phá"
                     >
@@ -526,7 +604,7 @@ export default function ExplorePage() {
                   </div>
                 </div>
               ) : (
-                <div
+                <div 
                   onClick={() => setShowCityDropdown(!showCityDropdown)}
                   className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
                 >
@@ -537,7 +615,7 @@ export default function ExplorePage() {
                 </div>
               )}
 
-              {showCityDropdown && (
+              {showCityDropdown && viewMode === 'explore' && (
                 <div className="absolute top-10 left-0 bg-white shadow-xl border border-gray-100 rounded-2xl py-2 w-48 z-50 animate-fadeIn">
                   <button
                     onClick={() => { setCityFilter('all'); setShowCityDropdown(false); }}
@@ -569,10 +647,12 @@ export default function ExplorePage() {
               <div className="flex-1 relative flex items-center">
                 <i className="ph ph-magnifying-glass text-gray-400 absolute left-4 text-xl"></i>
                 <input
+                  id="poi-search-input"
+                  name="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-12 pr-4 h-[50px] bg-[#F3F4F6] text-[15px] placeholder-gray-400 text-gray-900 rounded-full border-none focus:outline-none focus:ring-1 focus:ring-gray-300 transition"
-                  placeholder="Tìm kiếm địa điểm, di tích, ẩm thực..."
+                  placeholder={viewMode === 'saved' ? "Tìm kiếm trong địa điểm đã lưu..." : "Tìm kiếm địa điểm, di tích, ẩm thực..."}
                   type="text"
                 />
                 {search && (
@@ -585,7 +665,7 @@ export default function ExplorePage() {
                 )}
               </div>
 
-              <button
+              <button 
                 onClick={() => setIsFilterPopoverOpen(true)}
                 className={`flex items-center gap-2 px-5 h-[50px] rounded-full border transition text-[15px] font-medium cursor-pointer ${
                   activeFilterCount > 0 || isFilterPopoverOpen
@@ -625,10 +705,27 @@ export default function ExplorePage() {
           </header>
 
           {/* Cards Grid */}
-          <div className="px-6 py-2 transition-all duration-300 ease-in-out">
+          <div className="px-6 py-2">
             <div className="mb-4 mt-2 flex items-center justify-between">
               <h2 className="text-[17px] font-bold text-gray-950 tracking-tight">
-                {`Địa điểm (${displayedPois.length})`}
+                <span>Địa điểm ({filteredPois.length})</span>
+                {(filterValues.greenWeight !== 50 ||
+                  filterValues.budgetWeight !== 50 ||
+                  filterValues.ecoPriority !== 'all') && (() => {
+                  const effG =
+                    filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50
+                      ? filterValues.greenWeight
+                      : ECO_PRIORITY_WEIGHT_MAP[filterValues.ecoPriority];
+                  const { normGreen, normBudget } = normalizeSliderWeights(
+                    effG,
+                    filterValues.budgetWeight
+                  );
+                  return (
+                    <span className="ml-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] font-semibold align-middle">
+                      <span>Xếp hạng AI: {Math.round(normGreen * 100)}% Xanh • {Math.round(normBudget * 100)}% Giá</span>
+                    </span>
+                  );
+                })()}
               </h2>
               {activeFilterCount > 0 && (
                 <button
@@ -640,31 +737,13 @@ export default function ExplorePage() {
               )}
             </div>
 
-            <div
-              data-recommendation-results
-              className="grid grid-cols-2 gap-x-4 gap-y-7 pb-16 transition-all duration-300 ease-in-out"
-            >
+            <div className="grid grid-cols-2 gap-x-4 gap-y-7 pb-16">
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => <PoiCardSkeleton key={i} />)
-              ) : displayedPois.length > 0 ? (
-                displayedPois.map((poi, idx) => (
-                  <div key={poi.id} data-poi-id={poi.id}>
-                    <PoiCard
-                      poi={poi}
-                      index={idx}
-                      active={poi.id === selectedPoiId}
-                      favorite={favorites.has(poi.id)}
-                      isAdded={addedTrips.has(poi.id)}
-                      onClick={() => handleSelectPoi(poi.id)}
-                      onHover={setHoveredPoiId}
-                      onToggleFavorite={toggleFavorite}
-                      onToggleAddTrip={toggleAddTrip}
-                    />
-                  </div>
-                ))
-              ) : error ? (
-                <ErrorState message={error} />
-              ) : viewMode === 'saved' ? (
+              ) : filteredPois.length === 0 ? (
+                error ? (
+                  <ErrorState message={error} />
+                ) : viewMode === 'saved' ? (
                   <div className="col-span-2 flex flex-col items-center justify-center py-20 text-center px-4">
                     <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center text-[#b45309] mb-4 text-3xl">
                       <i className="ph ph-heart"></i>
@@ -682,7 +761,24 @@ export default function ExplorePage() {
                   </div>
                 ) : (
                   <EmptyState />
-                )}
+                )
+              ) : (
+                filteredPois.map((poi, idx) => (
+                  <div key={poi.id} data-poi-id={poi.id}>
+                    <PoiCard
+                      poi={poi}
+                      index={idx}
+                      active={poi.id === selectedPoiId}
+                      favorite={favorites.has(poi.id)}
+                      isAdded={addedTrips.has(poi.id)}
+                      onClick={() => handleSelectPoi(poi.id)}
+                      onHover={setHoveredPoiId}
+                      onToggleFavorite={toggleFavorite}
+                      onToggleAddTrip={toggleAddTrip}
+                    />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -690,13 +786,13 @@ export default function ExplorePage() {
 
       {/* 3. RIGHT SECTION: Map hoặc Detail Section */}
       <section 
-        className={`flex-1 h-full relative bg-white ${selectedPoi ? 'overflow-visible z-30' : 'overflow-hidden'}`} 
+        className="flex-1 h-full relative bg-white overflow-hidden z-30" 
         data-purpose="right-panel-container"
       >
         <div className={`w-full h-full p-6 ${selectedPoi ? "invisible pointer-events-none" : "visible"}`}>
           <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
             <PoiMap
-              pois={mapPois}
+              pois={filteredPois}
               selectedPoiId={selectedPoiId}
               hoveredPoiId={hoveredPoiId}
               onSelectPoi={handleSelectPoi}

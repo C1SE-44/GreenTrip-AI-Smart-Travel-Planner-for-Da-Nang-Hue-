@@ -18,7 +18,7 @@ export default function PoiPopup({ poi, onClose, onSelect }: PoiPopupProps) {
     >
       {/* Image */}
       <div className="relative h-36 overflow-hidden">
-        <img src={poi.image} alt={poi.name} className="h-full w-full object-cover" />
+        <img src={poi.image} alt={poi.name} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-charcoal/40 to-transparent" />
         <button
           onClick={onClose}

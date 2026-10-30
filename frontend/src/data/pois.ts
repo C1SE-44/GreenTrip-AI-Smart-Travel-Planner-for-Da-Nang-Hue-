@@ -33,6 +33,8 @@ export interface Poi {
   id: string;
   name: string;
   cleanName?: string;
+  cleanTitle?: string;
+  subTitle?: string;
   isMichelin?: boolean;
   category: PoiCategory;
   city: PoiCity;
@@ -128,7 +130,7 @@ export const DEFAULT_IMAGES_BY_CATEGORY: Record<PoiCategory, string[]> = {
     'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1509099836639-18ba1795216d?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80',
   ],
   'quan-an': [
@@ -152,7 +154,7 @@ export const DEFAULT_IMAGES_BY_CATEGORY: Record<PoiCategory, string[]> = {
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1627993077303-3450e1cd1639?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=900&q=80',
@@ -164,7 +166,7 @@ export const DEFAULT_IMAGES_BY_CATEGORY: Record<PoiCategory, string[]> = {
     'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1599707367072-cd6ada2bc375?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1568084680786-a84f91d1153c?auto=format&fit=crop&w=900&q=80',
@@ -269,7 +271,7 @@ export function getDeterministicImage(name: string, id: string | number, categor
     if (lower.includes('đèo') || lower.includes('hải vân')) {
       return pick([
         'https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1627993077303-3450e1cd1639?auto=format&fit=crop&w=900&q=80',
+        'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=900&q=80',
       ]);
     }
     if (lower.includes('sông') || lower.includes('hương') || lower.includes('hàn')) {
@@ -296,13 +298,13 @@ export function getDeterministicImage(name: string, id: string | number, categor
     }
     if (lower.includes('cầu rồng') || lower.includes('rồng')) {
       return pick([
+        'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80',
         'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=900&q=80',
       ]);
     }
     if (lower.includes('tràng tiền') || lower.includes('cầu')) {
       return pick([
-        'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=900&q=80',
+        'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80',
         'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=900&q=80',
       ]);
     }
@@ -407,6 +409,14 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
   // Clean up parenthesized notes like (Đạt chuẩn MICHELIN Selected) for a polished title
   const cleanName = rawName.replace(/\s*\([^)]*michelin[^)]*\)/gi, '').trim() || rawName;
 
+  let cleanTitle = cleanName;
+  let subTitle: string | undefined = undefined;
+  const parenMatch = cleanName.match(/^(.*?)\s*\((.*?)\)$/);
+  if (parenMatch && parenMatch[1] && parenMatch[2]) {
+    cleanTitle = parenMatch[1].trim();
+    subTitle = parenMatch[2].trim();
+  }
+
   const image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id, category, city);
   const gallery = Array.isArray(item.gallery_urls) && item.gallery_urls.length > 0 ? item.gallery_urls : undefined;
 
@@ -416,14 +426,16 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
     ? `${Math.round(visitMinutes / 60)} giờ` 
     : `${visitMinutes} phút`;
 
-  const rawGreen = item.green_score ? Number(item.green_score) : 0.85;
+  const rawGreen = item.green_score !== null && item.green_score !== undefined && Number.isFinite(Number(item.green_score)) ? Number(item.green_score) : 0.85;
   const ecoScore = Math.round(rawGreen <= 1 ? rawGreen * 100 : rawGreen);
-  const estimatedCost = item.estimated_cost ? Number(item.estimated_cost) : null;
+  const estimatedCost = item.estimated_cost !== null && item.estimated_cost !== undefined && Number.isFinite(Number(item.estimated_cost)) ? Number(item.estimated_cost) : null;
 
   return {
     id: String(item.id),
     name: rawName,
     cleanName,
+    cleanTitle,
+    subTitle,
     isMichelin,
     category,
     city,

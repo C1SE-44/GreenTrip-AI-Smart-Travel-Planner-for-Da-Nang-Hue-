@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { Poi, PoiCategory } from '@/data/pois';
 import { getGalleryImages, getDeterministicImage, SUB_CATEGORY_LABELS, categoryLabels } from '@/data/pois';
+import ExplanationModal from '@/components/poi/ExplanationModal';
 
 const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
   'quan-an': { icon: 'ph-fork-knife', label: 'Quán ăn' },
@@ -40,7 +41,7 @@ export default function PoiCard({
 }: PoiCardProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [isCardHovered, setIsCardHovered] = useState(false);
-  const [isExplanationOpen, setIsExplanationOpen] = useState(false);
+  const [isExplanationModalOpen, setIsExplanationModalOpen] = useState(false);
 
   const gallery = useMemo(() => getGalleryImages(poi), [poi]);
 
@@ -134,7 +135,7 @@ export default function PoiCard({
           >
             <i className={`ph ${favorite ? 'ph-fill ph-heart text-[17px] text-[#b45309]' : 'ph-heart text-[17px]'}`}></i>
           </button>
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleAddTrip?.(poi.id);
@@ -235,31 +236,40 @@ export default function PoiCard({
             </button>
             <button
               type="button"
-              aria-expanded={isExplanationOpen}
-              aria-controls={`poi-explanation-${poi.id}`}
-              onClick={() => setIsExplanationOpen((open) => !open)}
-              className="mt-1.5 flex min-h-8 w-full items-center justify-center gap-1 text-[11px] font-medium text-emerald-800 transition-colors hover:text-emerald-950"
+              aria-haspopup="dialog"
+              aria-expanded={isExplanationModalOpen}
+              onClick={() => setIsExplanationModalOpen(true)}
+              className="mt-1.5 flex min-h-11 w-full items-center justify-center gap-1 text-xs font-medium text-emerald-800 transition-colors hover:text-emerald-950 focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               <i className="ph ph-sparkle" aria-hidden="true"></i>
-              {isExplanationOpen ? 'Ẩn lý do gợi ý' : 'Tại sao chọn điểm này?'}
+              Lý do AI gợi ý · Vì sao nơi này?
             </button>
-            <div
-              id={`poi-explanation-${poi.id}`}
-              role="region"
-              aria-label={`Lý do gợi ý ${poi.name}`}
-              className={`grid transition-all duration-300 ease-in-out ${
-                isExplanationOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-              }`}
-            >
-              <div className="overflow-hidden">
-                <p className="rounded-xl bg-emerald-50 px-3 py-2 text-[11px] leading-relaxed text-emerald-950">
-                  {recommendation.explanation || 'Địa điểm này phù hợp với sở thích và tiêu chí chuyến đi của bạn.'}
-                </p>
-              </div>
-            </div>
           </div>
         )}
+        {!recommendation && (
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={isExplanationModalOpen}
+            onClick={(event) => { event.stopPropagation(); setIsExplanationModalOpen(true); }}
+            className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full border border-emerald-200 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-500"
+          >
+            Vì sao nơi này?
+          </button>
+        )}
       </div>
+
+      {/* Explanation Modal (KG + AI) */}
+      {isExplanationModalOpen && (
+        <ExplanationModal
+          key={poi.id}
+          poiId={poi.id}
+          poiName={poi.name}
+          explanationSnippet={recommendation?.explanation}
+          isOpen={isExplanationModalOpen}
+          onClose={() => setIsExplanationModalOpen(false)}
+        />
+      )}
     </article>
   );
 }

@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.pois.explanation_service import (
@@ -57,7 +55,7 @@ def get_pois(
     summary="Return POI explanation facts",
     description="Return Knowledge Graph facts supporting a Why-this-place explanation.",
 )
-def get_explanation_facts(poi_id: UUID) -> POIExplanationFactsResponse:
+def get_explanation_facts(poi_id: str) -> POIExplanationFactsResponse:
     try:
         response = get_poi_explanation_facts(poi_id)
     except ExplanationServiceUnavailable as exc:

@@ -16,6 +16,7 @@ import {
   Check
 } from 'lucide-react';
 import { RecommendationCardSkeleton } from '@/components/ui/Skeleton';
+import ExplanationModal from '@/components/poi/ExplanationModal';
 import { getPoisByIds } from '@/services/poi';
 import type { BackendPoiItem } from '@/data/pois';
 import { 
@@ -28,6 +29,7 @@ import {
   fetchParsedSliderWeights,
   fetchPoiRecommendations,
   type RecommendationResponse,
+  type RecommendedPoiRecord,
   type SliderBudgetTier,
 } from '@/services/recommendations';
 
@@ -103,6 +105,7 @@ export default function TripParametersForm() {
   const [recommendationInputKey, setRecommendationInputKey] = useState<string | null>(null);
   const [recommendationPoiMetadata, setRecommendationPoiMetadata] = useState<Record<string, BackendPoiItem>>({});
   const [addedRecommendationPoiIds, setAddedRecommendationPoiIds] = useState<Set<string>>(new Set());
+  const [explanationPoiId, setExplanationPoiId] = useState<string | null>(null);
 
   // Quick preset handlers
   const handleDayPreset = (d: number) => {
@@ -169,6 +172,9 @@ export default function TripParametersForm() {
   const recommendationsAreCurrent = Boolean(
     recommendationResponse && recommendationInputKey === currentRecommendationInputKey,
   );
+  const explanationPoi: RecommendedPoiRecord | undefined = recommendationsAreCurrent && !recommendationLoading
+    ? recommendationResponse?.data.find((poi) => poi.poi_id === explanationPoiId)
+    : undefined;
 
   const createTripPayload = (): TripParametersPayload => ({
     destination,
@@ -220,6 +226,7 @@ export default function TripParametersForm() {
     }
 
     setRecommendationLoading(true);
+    setExplanationPoiId(null);
     setRecommendationError(null);
     setRecommendationResponse(null);
     setRecommendationInputKey(null);
@@ -1047,10 +1054,20 @@ export default function TripParametersForm() {
                           </p>
                         )}
                         {poi.explanation_snippet && (
-                          <p className="mb-2 line-clamp-2 text-xs leading-relaxed text-stone-600">
-                            {poi.explanation_snippet}
-                          </p>
+                          <section aria-label={`Lý do AI gợi ý ${poi.name}`} className="mb-2 rounded-xl bg-emerald-50 p-3">
+                            <h6 className="mb-1 text-xs font-semibold text-emerald-900">Lý do AI gợi ý</h6>
+                            <p className="text-xs leading-relaxed text-emerald-950">{poi.explanation_snippet}</p>
+                          </section>
                         )}
+                        <button
+                          type="button"
+                          aria-haspopup="dialog"
+                          aria-expanded={explanationPoi?.poi_id === poi.poi_id}
+                          onClick={() => setExplanationPoiId(poi.poi_id)}
+                          className="mb-2 flex min-h-11 w-full items-center justify-center rounded-full border border-emerald-200 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-500"
+                        >
+                          Vì sao nơi này?
+                        </button>
                       </div>
 
                       <div className="mt-1 border-t border-stone-100 pt-2">
@@ -1099,6 +1116,17 @@ export default function TripParametersForm() {
               )}
             </button>
           </section>
+
+          {explanationPoi && (
+            <ExplanationModal
+              key={explanationPoi.poi_id}
+              poiId={explanationPoi.poi_id}
+              poiName={explanationPoi.name}
+              explanationSnippet={explanationPoi.explanation_snippet}
+              isOpen
+              onClose={() => setExplanationPoiId(null)}
+            />
+          )}
 
           {/* DYNAMIC DAY-BY-DAY OUTLINE */}
           {result.data.itinerary_outline && result.data.itinerary_outline.length > 0 && (

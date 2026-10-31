@@ -426,7 +426,7 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
     ? `${Math.round(visitMinutes / 60)} giờ` 
     : `${visitMinutes} phút`;
 
-  const rawGreen = item.green_score !== null && item.green_score !== undefined && Number.isFinite(Number(item.green_score)) ? Number(item.green_score) : 0.85;
+  const rawGreen = item.green_score !== null && item.green_score !== undefined && Number.isFinite(Number(item.green_score)) ? Number(item.green_score) : 0.5;
   const ecoScore = Math.round(rawGreen <= 1 ? rawGreen * 100 : rawGreen);
   const estimatedCost = item.estimated_cost !== null && item.estimated_cost !== undefined && Number.isFinite(Number(item.estimated_cost)) ? Number(item.estimated_cost) : null;
 

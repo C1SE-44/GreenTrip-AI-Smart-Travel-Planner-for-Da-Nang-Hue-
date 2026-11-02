@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf } from 'lucide-react';
+import { Leaf, SlidersHorizontal } from 'lucide-react';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, normalizePois } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
@@ -16,21 +16,132 @@ import {
   normalizeSliderWeights,
 } from '@/services/poi';
 import { getMe, type UserProfile } from '@/services/auth';
+import WhyThisPlaceModal from '@/components/poi/WhyThisPlaceModal';
 import ExploreFilterModal, {
   type ExploreFilterValues,
   type PoiCategoryFilter,
+  type TimeOfDay,
   DEFAULT_FILTER_VALUES,
 } from '@/components/poi/ExploreFilterModal';
+import QuickFilterBar from '@/components/poi/QuickFilterBar';
 
 type CityFilter = 'all' | PoiCity;
 type CategoryFilter = 'all' | PoiCategory;
 
+const CITY_CENTERS: Record<string, { lat: number; lng: number }> = {
+  'Đà Nẵng': { lat: 16.0678, lng: 108.2208 }, // Cầu Rồng / Trung tâm Hải Châu
+  'Huế': { lat: 16.4637, lng: 107.5909 },     // Đại Nội / Bờ Nam sông Hương
+  default: { lat: 16.0678, lng: 108.2208 },
+};
+
+function getDistanceFromLatLonInKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371; // Bán kính trái đất (km)
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {
+  if (timeOfDayList.length === 0) return true;
+
+  return timeOfDayList.some((tod) => {
+    // 1. Explicit best_time match if provided
+    if (poi.best_time && poi.best_time.length > 0) {
+      const matchExplicit = poi.best_time.some((t) => t.toLowerCase().includes(tod));
+      if (matchExplicit) return true;
+    }
+
+    const name = poi.name.toLowerCase();
+    const desc = (poi.description || '').toLowerCase();
+    const sub = (poi.sub_category || '').toLowerCase();
+
+    if (tod === 'morning') {
+      // Buổi sáng: Chùa, danh thắng đón bình minh, quán ăn sáng, cafe sáng
+      if (poi.category === 'chua') return true;
+      if (
+        sub === 'traditional_noodles' ||
+        name.includes('bún') ||
+        name.includes('mì') ||
+        name.includes('phở') ||
+        name.includes('cháo')
+      )
+        return true;
+      if (
+        sub === 'workspace_study_cafe' ||
+        sub === 'specialty_roastery' ||
+        sub === 'retro_street_cafe'
+      )
+        return true;
+      if (
+        name.includes('bình minh') ||
+        desc.includes('bình minh') ||
+        name.includes('mỹ khê') ||
+        name.includes('chợ')
+      )
+        return true;
+      if (poi.category === 'di-tich') return true;
+      return false;
+    }
+
+    if (tod === 'afternoon') {
+      // Buổi chiều: Cảnh quan biển, đèo, vịnh, bảo tàng, cafe view đẹp
+      if (poi.category === 'canh-quan') return true;
+      if (poi.category === 'di-tich') return true;
+      if (sub === 'scenic_view_cafe' || sub === 'desserts_bakery') return true;
+      if (name.includes('hoàng hôn') || desc.includes('hoàng hôn') || desc.includes('chiều'))
+        return true;
+      if (poi.category === 'quan-an') return true;
+      return false;
+    }
+
+    if (tod === 'evening') {
+      // Buổi tối: Cầu Rồng, Cầu Sông Hàn, phố đêm, bar/pub, ăn tối, hải sản
+      if (
+        name.includes('cầu rồng') ||
+        name.includes('sông hàn') ||
+        name.includes('cầu trường tiền')
+      )
+        return true;
+      if (
+        name.includes('chợ đêm') ||
+        name.includes('phố đi bộ') ||
+        desc.includes('đêm') ||
+        desc.includes('tối')
+      )
+        return true;
+      if (
+        sub === 'nightlife_bars_pubs' ||
+        sub === 'scenic_view_cafe' ||
+        sub === 'heritage_fine_dining' ||
+        sub === 'coastal_seafood'
+      )
+        return true;
+      if (poi.category === 'quan-an') return true;
+      return false;
+    }
+
+    return true;
+  });
+}
+
 const TABS: { id: 'all' | PoiCategory; label: string }[] = [
-  { id: 'all', label: 'Tất cả' },
-  { id: 'di-tich', label: 'Di tích' },
-  { id: 'canh-quan', label: 'Cảnh quan' },
-  { id: 'chua', label: 'Chùa' },
-  { id: 'quan-an', label: 'Quán ăn' },
+  { id: 'all', label: 'Tất cả điểm đến' },
+  { id: 'di-tich', label: 'Di tích & Cố Đô' },
+  { id: 'canh-quan', label: 'Thiên nhiên & Cảnh quan' },
+  { id: 'chua', label: 'Chùa & Tĩnh tâm' },
+  { id: 'quan-an', label: 'Ẩm thực & Đặc sản' },
 ];
 
 export default function ExplorePage() {
@@ -67,6 +178,7 @@ export default function ExplorePage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [filterValues, setFilterValues] = useState<ExploreFilterValues>(DEFAULT_FILTER_VALUES);
+  const [whyThisPlacePoi, setWhyThisPlacePoi] = useState<Poi | null>(null);
 
   useEffect(() => {
     try {
@@ -210,10 +322,10 @@ export default function ExplorePage() {
 
       // Eco Priority
       let matchEco = true;
-      if (filterValues.ecoPriority === 'basic') matchEco = poi.ecoScore >= 30;
-      else if (filterValues.ecoPriority === 'balanced') matchEco = poi.ecoScore >= 55;
-      else if (filterValues.ecoPriority === 'eco') matchEco = poi.ecoScore >= 75;
-      else if (filterValues.ecoPriority === 'pure') matchEco = poi.ecoScore >= 90;
+      if (filterValues.ecoPriority === 'basic') matchEco = poi.ecoScore !== null && poi.ecoScore >= 30;
+      else if (filterValues.ecoPriority === 'balanced') matchEco = poi.ecoScore !== null && poi.ecoScore >= 55;
+      else if (filterValues.ecoPriority === 'eco') matchEco = poi.ecoScore !== null && poi.ecoScore >= 75;
+      else if (filterValues.ecoPriority === 'pure') matchEco = poi.ecoScore !== null && poi.ecoScore >= 90;
 
       // Budget
       let matchBudget = true;
@@ -228,7 +340,7 @@ export default function ExplorePage() {
       }
 
       // Rating filter
-      if (filterValues.minRating !== null && poi.rating < filterValues.minRating) {
+      if (filterValues.minRating !== null && (poi.rating === null || poi.rating < filterValues.minRating)) {
         return false;
       }
 
@@ -288,6 +400,22 @@ export default function ExplorePage() {
       const matchCatFilter =
         filterValues.categories.length === 0 ||
         filterValues.categories.includes(poi.category as PoiCategoryFilter);
+
+      // Radius filter (khoảng cách tính bằng km từ trung tâm thành phố)
+      if (filterValues.radiusKm !== null) {
+        const center = poi.city === 'Huế' ? CITY_CENTERS['Huế'] : CITY_CENTERS['Đà Nẵng'];
+        const distance = getDistanceFromLatLonInKm(center.lat, center.lng, poi.lat, poi.lng);
+        if (distance > filterValues.radiusKm) {
+          return false;
+        }
+      }
+
+      // Time of day filter (buổi sáng, chiều, tối)
+      if (filterValues.timeOfDay && filterValues.timeOfDay.length > 0) {
+        if (!matchesTimeOfDay(poi, filterValues.timeOfDay)) {
+          return false;
+        }
+      }
 
       return matchCity && matchCat && matchSearch && matchEco && matchBudget && matchCatFilter;
     });
@@ -642,66 +770,82 @@ export default function ExplorePage() {
               )}
             </div>
 
-            {/* Search Box & Filter Button */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 relative flex items-center">
-                <i className="ph ph-magnifying-glass text-gray-400 absolute left-4 text-xl"></i>
+            {/* 1. Search Box with Filter Button on the Right (Chuẩn Mindtrip & Ảnh người dùng) */}
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="relative flex-1 flex items-center">
+                <i className="ph ph-magnifying-glass text-gray-400 absolute left-4 text-lg"></i>
                 <input
                   id="poi-search-input"
                   name="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-12 pr-4 h-[50px] bg-[#F3F4F6] text-[15px] placeholder-gray-400 text-gray-900 rounded-full border-none focus:outline-none focus:ring-1 focus:ring-gray-300 transition"
-                  placeholder={viewMode === 'saved' ? "Tìm kiếm trong địa điểm đã lưu..." : "Tìm kiếm địa điểm, di tích, ẩm thực..."}
+                  className="w-full pl-11 pr-10 h-[44px] bg-[#F3F4F6] text-[14px] placeholder-gray-400 text-gray-900 rounded-full border border-transparent focus:border-neutral-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700/20 transition shadow-2xs"
+                  placeholder={viewMode === 'saved' ? "Tìm kiếm trong địa điểm đã lưu..." : "Tìm địa điểm, món ngon, danh thắng Đà Nẵng & Huế..."}
                   type="text"
                 />
                 {search && (
                   <button 
                     onClick={() => setSearch('')}
-                    className="absolute right-4 text-gray-400 hover:text-gray-600 cursor-pointer"
+                    className="absolute right-3.5 text-gray-400 hover:text-gray-600 cursor-pointer"
+                    aria-label="Xóa từ khóa tìm kiếm"
                   >
                     <i className="ph ph-x-circle text-lg"></i>
                   </button>
                 )}
               </div>
 
-              <button 
+              {/* Master Filter Button next to Search */}
+              <button
+                type="button"
                 onClick={() => setIsFilterPopoverOpen(true)}
-                className={`flex items-center gap-2 px-5 h-[50px] rounded-full border transition text-[15px] font-medium cursor-pointer ${
-                  activeFilterCount > 0 || isFilterPopoverOpen
-                    ? 'bg-black text-white border-black shadow-sm'
-                    : 'border-gray-200 hover:bg-gray-50 text-gray-800'
+                className={`h-[44px] px-4 rounded-full border flex items-center gap-2 shrink-0 text-[13.5px] font-semibold cursor-pointer transition-all duration-150 select-none active:scale-[0.97] shadow-2xs ${
+                  activeFilterCount > 0
+                    ? 'bg-emerald-800 border-emerald-800 text-white shadow-[0_2px_8px_rgba(6,95,70,0.22)]'
+                    : 'bg-white border-neutral-200/90 text-neutral-800 hover:border-emerald-300 hover:bg-neutral-50/80'
                 }`}
+                aria-label={`Bộ lọc chuyến đi${activeFilterCount > 0 ? ` (${activeFilterCount} điều kiện đang chọn)` : ''}`}
+                title="Mở bộ lọc chuyến đi chi tiết"
               >
-                <i className="ph ph-faders text-lg"></i>
+                <SlidersHorizontal className="w-4 h-4 shrink-0" />
                 <span>Bộ lọc</span>
                 {activeFilterCount > 0 && (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[11px] font-bold text-white ml-1">
+                  <span className="flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white shadow-xs">
                     {activeFilterCount}
                   </span>
                 )}
               </button>
             </div>
 
-            {/* Category Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[14px] font-medium no-scrollbar">
+            {/* 2. Category Tabs (Clean Underline Navigation) */}
+            <div className="flex items-center gap-5 border-b border-neutral-200/80 overflow-x-auto no-scrollbar pt-1">
               {TABS.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id)}
-                    className={`whitespace-nowrap transition-all cursor-pointer ${
+                    className={`pb-2.5 text-[13.5px] whitespace-nowrap transition-all cursor-pointer relative ${
                       isActive
-                        ? 'px-3.5 py-1.5 bg-black text-white rounded-full font-medium shadow-xs text-[13px]'
-                        : 'px-3 py-1.5 text-gray-700 hover:text-black hover:bg-gray-100/60 rounded-full font-normal text-[13.5px]'
+                        ? 'font-bold text-emerald-900'
+                        : 'font-medium text-neutral-600 hover:text-emerald-800'
                     }`}
                   >
-                    {tab.label}
+                    <span>{tab.label}</span>
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-emerald-700 rounded-full" />
+                    )}
                   </button>
                 );
               })}
             </div>
+
+            {/* 3. Quick Filter Pills Toolbar */}
+            <QuickFilterBar
+              values={filterValues}
+              onChange={setFilterValues}
+              activeFilterCount={activeFilterCount}
+              onClearAll={() => setFilterValues(DEFAULT_FILTER_VALUES)}
+            />
           </header>
 
           {/* Cards Grid */}
@@ -722,19 +866,11 @@ export default function ExplorePage() {
                   );
                   return (
                     <span className="ml-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] font-semibold align-middle">
-                      <span>Xếp hạng AI: {Math.round(normGreen * 100)}% Xanh • {Math.round(normBudget * 100)}% Giá</span>
+                      <span>AI gợi ý: {Math.round(normGreen * 100)}% Điểm đến Xanh • {Math.round(normBudget * 100)}% Tiết kiệm</span>
                     </span>
                   );
                 })()}
               </h2>
-              {activeFilterCount > 0 && (
-                <button
-                  onClick={() => setFilterValues(DEFAULT_FILTER_VALUES)}
-                  className="text-xs text-emerald-700 hover:underline font-medium cursor-pointer"
-                >
-                  Xóa bộ lọc
-                </button>
-              )}
             </div>
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-7 pb-16">
@@ -775,6 +911,7 @@ export default function ExplorePage() {
                       onHover={setHoveredPoiId}
                       onToggleFavorite={toggleFavorite}
                       onToggleAddTrip={toggleAddTrip}
+                      onOpenWhyThisPlace={setWhyThisPlacePoi}
                     />
                   </div>
                 ))
@@ -821,6 +958,7 @@ export default function ExplorePage() {
               onClose={() => setSelectedPoiId(null)}
               onToggleFavorite={toggleFavorite}
               onViewOnMap={() => setSelectedPoiId(null)}
+              onOpenWhyThisPlace={setWhyThisPlacePoi}
             />
           </div>
         )}
@@ -835,6 +973,15 @@ export default function ExplorePage() {
         onApply={(newValues) => setFilterValues(newValues)}
         onClearAll={() => setFilterValues(DEFAULT_FILTER_VALUES)}
         matchingCount={filteredPois.length}
+      />
+
+      {/* 5. Explainable AI (Why-This-Place) Knowledge Graph Modal (PB10) */}
+      <WhyThisPlaceModal
+        poi={whyThisPlacePoi}
+        isOpen={whyThisPlacePoi !== null}
+        onClose={() => setWhyThisPlacePoi(null)}
+        onToggleAddTrip={toggleAddTrip}
+        isAdded={whyThisPlacePoi ? addedTrips.has(whyThisPlacePoi.id) : false}
       />
     </div>
   );

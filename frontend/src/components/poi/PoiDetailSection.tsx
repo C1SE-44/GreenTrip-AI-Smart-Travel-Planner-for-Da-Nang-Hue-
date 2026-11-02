@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Sparkles, ArrowRight } from 'lucide-react';
 import type { Poi } from '@/data/pois';
 import { categoryLabels, getGalleryImages, SUB_CATEGORY_LABELS } from '@/data/pois';
 
@@ -8,6 +9,7 @@ interface PoiDetailSectionProps {
   onClose: () => void;
   onToggleFavorite: (id: string) => void;
   onViewOnMap?: () => void;
+  onOpenWhyThisPlace?: (poi: Poi) => void;
 }
 
 export default function PoiDetailSection({
@@ -16,6 +18,7 @@ export default function PoiDetailSection({
   onClose,
   onToggleFavorite,
   onViewOnMap,
+  onOpenWhyThisPlace,
 }: PoiDetailSectionProps) {
   const [askAiQuery, setAskAiQuery] = useState('');
   const [addedToTrip, setAddedToTrip] = useState(false);
@@ -43,18 +46,24 @@ export default function PoiDetailSection({
 
   const suggestedQuestions = [
     `Trải nghiệm đặc sắc nhất không nên bỏ lỡ tại ${displayName}?`,
-    `Cách di chuyển xanh (xe buýt, xe đạp) thuận tiện nhất đến đây?`,
-    `Mức giá và kinh nghiệm thực tế khi ghé thăm ${displayName}?`,
-    `Khung giờ lý tưởng trong ngày để tránh đông đúc?`,
+    `Có thông tin nào về đường đi đến đây không?`,
+    `Chi phí tham quan ${displayName} là bao nhiêu?`,
+    `Giờ hoạt động và thời lượng tham quan thế nào?`,
   ];
 
   const generateAiAnswer = (queryText: string) => {
     const qLower = queryText.toLowerCase();
-    const costText = poi.estimatedCost
-      ? `${poi.estimatedCost.toLocaleString('vi-VN')} ₫/người`
-      : 'khoảng 50.000 – 90.000 ₫/người';
-    const hoursText = poi.openHours || '09:30 – 21:30';
-    const durationText = poi.visitDuration || '60 phút';
+    const cost = poi.estimatedCost;
+    const hasCost = cost !== null && cost !== undefined;
+    const costText = cost !== null && cost !== undefined
+      ? cost === 0
+        ? 'miễn phí'
+        : `${cost.toLocaleString('vi-VN')} ₫`
+      : poi.budget_tier
+        ? `mức ngân sách ${poi.budget_tier}`
+        : 'chưa có dữ liệu';
+    const hoursText = poi.openHours || poi.opening_hours?.status_text || null;
+    const durationText = poi.visitDuration;
 
     if (
       qLower.includes('món') ||
@@ -65,21 +74,13 @@ export default function PoiDetailSection({
     ) {
       if (poi.category === 'quan-an') {
         return {
-          answer: `Tại **${displayName}**, món ăn trứ danh làm say lòng thực khách là bánh xèo miền Trung vỏ vàng giòn rụm với nhân tôm đồng tươi, thịt heo mềm thơm và giá đỗ ngọt thanh. Điểm khác biệt lớn nhất tạo nên thương hiệu chính là chén nước chấm đậu phộng gan heo béo bùi đậm đà gia truyền, ăn kèm rổ rau sống tươi sạch từ các vườn nông sản địa phương.`,
-          tips: [
-            'Nên gọi thêm một phần ram cuốn bắp hoặc nem lụi nướng than hoa để cuốn cùng bánh xèo.',
-            'Tự cuốn bánh tráng cùng rau thơm, dưa leo và chuối chát để cảm nhận trọn vẹn vị béo bùi, giòn tan.',
-            'Quán phục vụ nước đậu nành nấu tươi và sữa bắp rất thanh mát, giải nhiệt tuyệt vời.'
-          ]
+          answer: `Thông tin hiện có về **${displayName}**: ${poi.description}`,
+          tips: poi.sub_category ? [`Loại hình: ${poi.sub_category}`] : [],
         };
       } else {
         return {
-          answer: `Tại **${displayName}**, điểm đặc sắc nhất là không gian văn hóa lịch sử độc đáo và cảnh quan thiên nhiên trong lành của ${poi.city}. Đây là địa điểm lý tưởng để tìm hiểu về chiều sâu di sản kiến trúc truyền thống và thư thái tinh thần giữa lòng đô thị.`,
-          tips: [
-            `Thời lượng tham quan đề xuất khoảng ${durationText} để chiêm ngưỡng trọn vẹn.`,
-            'Nên mặc trang phục lịch sự, trang nhã nếu vào khu vực dâng hương chiêm bái.',
-            'Đừng quên ghi lại những khung hình đẹp dưới tán cây cổ thụ và các góc sân gạch cổ kính.'
-          ]
+          answer: `Thông tin hiện có về **${displayName}**: ${poi.description}`,
+          tips: durationText ? [`Thời lượng tham quan ghi nhận: ${durationText}`] : [],
         };
       }
     }
@@ -92,12 +93,8 @@ export default function PoiDetailSection({
       qLower.includes('đường đi')
     ) {
       return {
-        answer: `Để thực hiện chuyến đi xanh tới **${displayName}** (${poi.address || poi.city}), GreenTrip AI khuyến nghị 2 phương thức giao thông ít phát thải carbon nhất:`,
-        tips: [
-          `🚌 **Xe buýt công cộng**: Đón xe buýt nội thành ${poi.city === 'Đà Nẵng' ? 'DanaBus (tuyến R16, R6A)' : 'xe buýt điện du lịch Huế'}, xuống trạm gần nhất và đi bộ khoảng 150 – 250m.`,
-          `🚲 **Xe đạp chia sẻ**: Có trạm xe đạp công cộng Da Nang Bike / TNGo nằm cách đây chỉ khoảng 300m, chi phí 5.000 ₫ / 30 phút.`,
-          `🌱 **Dấu chân Carbon**: Lựa chọn di chuyển xanh giúp bạn cắt giảm ước tính **1.2 – 1.6 kg CO2** cho chuyến đi.`
-        ]
+        answer: `Dữ liệu hiện có chưa có tuyến đường hoặc phương tiện đến **${displayName}**. ${poi.address ? `Địa chỉ được ghi nhận: ${poi.address}.` : ''}`,
+        tips: [],
       };
     }
 
@@ -108,12 +105,10 @@ export default function PoiDetailSection({
       qLower.includes('bao nhiêu')
     ) {
       return {
-        answer: `Chi phí trải nghiệm tại **${displayName}** rất bình dân, minh bạch và phù hợp với nhiều nhóm du khách, mức giá ước tính trung bình khoảng **${costText}**.`,
-        tips: [
-          'Menu có giá niêm yết công khai rõ ràng, không có phí dịch vụ hay phụ thu ẩn.',
-          'Hỗ trợ thanh toán nhanh chóng bằng tiền mặt hoặc quét mã QR chuyển khoản ngân hàng tiện lợi.',
-          'Nên đi theo nhóm 2–4 người để có thể gọi thưởng thức nhiều món phong phú với chi phí tối ưu nhất.'
-        ]
+        answer: hasCost || poi.budget_tier
+          ? `Thông tin chi phí được ghi nhận cho **${displayName}**: ${costText}.`
+          : `Hiện chưa có dữ liệu chi phí cho **${displayName}**.`,
+        tips: [],
       };
     }
 
@@ -123,23 +118,23 @@ export default function PoiDetailSection({
       qLower.includes('đông') ||
       qLower.includes('khi nào')
     ) {
+      const facts = [
+        hoursText ? `Giờ hoạt động được ghi nhận: ${hoursText}.` : 'Chưa có dữ liệu giờ hoạt động.',
+        durationText ? `Thời lượng tham quan ghi nhận: ${durationText}.` : '',
+      ].filter(Boolean);
       return {
-        answer: `**${displayName}** mở cửa đón khách từ **${hoursText}** hàng ngày. Thời lượng tham quan trung bình kéo dài khoảng **${durationText}**.`,
-        tips: [
-          '🕒 **Khung giờ vàng**: 09:30 – 11:00 sáng hoặc 14:00 – 16:30 chiều (ít đông, phục vụ nhanh, không gian thông thoáng).',
-          '⚠️ **Khung giờ cao điểm**: 12:00 – 13:00 và 18:30 – 20:00 (lượng khách rất đông, có thể phải chờ xếp bàn từ 5–10 phút).',
-          '🌿 Nên ghé sớm vào buổi sáng để thưởng thức đồ ăn nóng hổi và cảm nhận nhịp sống thư thái của địa phương.'
-        ]
+        answer: `Thông tin về **${displayName}**: ${facts.join(' ')}`,
+        tips: [],
       };
     }
 
+    const facts = [
+      poi.rating !== null ? `Đánh giá: ${poi.rating}/5.` : '',
+      poi.ecoScore !== null ? `Điểm sinh thái: ${poi.ecoScore}%.` : '',
+    ].filter(Boolean);
     return {
-      answer: `**${displayName}** là một trong những điểm đến tiêu biểu tại ${poi.city} với điểm đánh giá ${poi.rating}/5 sao và chỉ số sinh thái Eco **${poi.ecoScore}%**. ${poi.description}`,
-      tips: [
-        `Địa chỉ cụ thể: ${poi.address || poi.city}`,
-        `Thời lượng ghé thăm: ${durationText} • Mức giá ước tính: ${costText}`,
-        'Được GreenTrip AI và cộng đồng du lịch bền vững kiểm chứng chất lượng phục vụ.'
-      ]
+      answer: `**${displayName}** tại ${poi.city}. ${poi.description}${facts.length ? ` ${facts.join(' ')}` : ''}`,
+      tips: poi.address ? [`Địa chỉ: ${poi.address}`] : [],
     };
   };
 
@@ -282,12 +277,6 @@ export default function PoiDetailSection({
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 font-heading">
               {poi.cleanTitle || displayName}
             </h1>
-            {poi.isMichelin && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm animate-pulse">
-                <span className="text-rose-600 font-serif">🌸</span>
-                <span>MICHELIN Selected</span>
-              </span>
-            )}
           </div>
           {poi.subTitle && (
             <p className="text-[13.5px] font-medium text-neutral-500">
@@ -298,12 +287,15 @@ export default function PoiDetailSection({
 
         {/* Clean Editorial Meta Line (Mindtrip Standard: Pure Typography, No Tag Clutter) */}
         <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-500 mb-5">
-          <span className="flex items-center gap-1 font-semibold text-neutral-900">
-            <span className="text-amber-500 text-sm">★</span>
-            <span>{poi.rating.toFixed(1)}</span>
-            <span className="text-neutral-400 font-normal">({Math.floor(poi.rating * 180)}+)</span>
-          </span>
-          <span className="text-neutral-300">·</span>
+          {poi.rating !== null && (
+            <>
+              <span className="flex items-center gap-1 font-semibold text-neutral-900">
+                <span className="text-amber-500 text-sm">★</span>
+                <span>{poi.rating.toFixed(1)}</span>
+              </span>
+              <span className="text-neutral-300">·</span>
+            </>
+          )}
           <span>{poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category] ? SUB_CATEGORY_LABELS[poi.sub_category] : categoryName}</span>
           <span className="text-neutral-300">·</span>
           <span>{poi.city}</span>
@@ -313,8 +305,12 @@ export default function PoiDetailSection({
               <span className="text-neutral-700 font-medium">{poi.budget_tier === 'free' ? 'Miễn phí' : poi.budget_tier}</span>
             </>
           )}
-          <span className="text-neutral-300">·</span>
-          <span className="text-emerald-700 font-medium">Eco {poi.ecoScore}</span>
+          {poi.ecoScore !== null && (
+            <>
+              <span className="text-neutral-300">·</span>
+              <span className="text-emerald-700 font-medium">Eco {poi.ecoScore}</span>
+            </>
+          )}
         </div>
 
         {/* 3. Photo Gallery Grid */}
@@ -345,14 +341,42 @@ export default function PoiDetailSection({
         </div>
 
         {/* Editorial Trust & Curator Assurance */}
-        <div className="flex items-center gap-2.5 mb-6 px-4 py-2.5 bg-neutral-50 rounded-xl border border-neutral-100 text-xs text-neutral-600">
+        <div className="flex items-center gap-2.5 mb-4 px-4 py-2.5 bg-neutral-50 rounded-xl border border-neutral-100 text-xs text-neutral-600">
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">✓</span>
           <span className="text-neutral-700 font-medium">
-            {poi.isMichelin 
-              ? 'Đạt chuẩn MICHELIN Guide & GreenTrip AI tuyển chọn cho hành trình miền Trung' 
-              : 'Tuyển chọn & thẩm định bởi GreenTrip AI cùng chuyên gia du lịch địa phương Đà Nẵng – Huế'}
+            Thông tin được hiển thị từ dữ liệu địa điểm hiện có.
           </span>
         </div>
+
+        {/* Explainable AI Knowledge Graph Card (PB10) */}
+        {onOpenWhyThisPlace && (
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-emerald-50/90 to-teal-50/50 border border-emerald-200/80 shadow-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Sparkles className="w-5 h-5 text-emerald-200" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+                  <span>Vì sao AI gợi ý điểm đến này?</span>
+                  <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">
+                    Neo4j Knowledge Graph
+                  </span>
+                </h4>
+                <p className="text-xs text-neutral-600">
+                  Xem dẫn chứng tri thức về độ xanh, phong cách trải nghiệm & sự phù hợp với bạn
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenWhyThisPlace(poi)}
+              className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold shrink-0 transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
+            >
+              <span>Xem lý do</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Seamless Single-Page Continuous Experience (Mindtrip Standard) */}
         <div className="space-y-6">
@@ -450,13 +474,8 @@ export default function PoiDetailSection({
                     )}
                   </div>
 
-                  <p className="text-emerald-700 font-semibold mt-0.5 flex items-center gap-1.5 text-xs">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>
-                      {poi.opening_hours?.status_text 
-                        ? `${poi.opening_hours.status_text} • ${poi.openHours || '08:00 – 22:00'}`
-                        : `Đang mở cửa • ${poi.openHours || '08:00 – 22:00'}`}
-                    </span>
+                  <p className="text-neutral-700 font-medium mt-0.5 text-xs">
+                    {poi.opening_hours?.status_text || poi.openHours || 'Chưa có dữ liệu giờ hoạt động'}
                   </p>
 
                   {/* 7-day schedule dropdown */}
@@ -472,9 +491,11 @@ export default function PoiDetailSection({
                     </div>
                   )}
 
-                  <p className="text-neutral-500 text-xs mt-1">
-                    Thời lượng khuyến nghị: ~ {poi.visitDuration}
-                  </p>
+                  {poi.visitDuration && (
+                    <p className="text-neutral-500 text-xs mt-1">
+                      Thời lượng tham quan ghi nhận: {poi.visitDuration}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -486,12 +507,14 @@ export default function PoiDetailSection({
                 <div>
                   <h4 className="font-bold text-neutral-900">Chi phí dự kiến</h4>
                   <p className="text-neutral-700 mt-0.5 text-xs font-medium">
-                    {poi.estimatedCost 
-                      ? `${poi.estimatedCost.toLocaleString('vi-VN')} VNĐ / khách` 
-                      : 'Miễn phí vé vào cổng'}
+                    {poi.estimatedCost === null || poi.estimatedCost === undefined
+                      ? 'Chưa có dữ liệu chi phí'
+                      : poi.estimatedCost === 0
+                        ? 'Miễn phí'
+                        : `${poi.estimatedCost.toLocaleString('vi-VN')} VNĐ`}
                   </p>
                   <p className="text-neutral-400 text-xs mt-0.5">
-                    Ngân sách: {poi.budget_tier === 'free' ? 'Miễn phí' : poi.budget_tier || 'Tiêu chuẩn'}
+                    Ngân sách: {poi.budget_tier === 'free' ? 'Miễn phí' : poi.budget_tier || 'Chưa có dữ liệu'}
                   </p>
                 </div>
               </div>
@@ -555,35 +578,25 @@ export default function PoiDetailSection({
             </div>
           </div>
 
-          {/* Section 3: Green Travel & Carbon Footprint Guide */}
-          <div className="p-5 rounded-2xl bg-emerald-50/50 border border-emerald-100 space-y-3 text-sm">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
-              <span>🌿</span>
-              <span>Cẩm nang du lịch xanh & Dấu chân Carbon</span>
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="p-3.5 rounded-xl bg-white/90 border border-emerald-100/80 space-y-1">
-                <div className="font-semibold text-emerald-900 flex items-center gap-1.5">
-                  <span>🚲</span>
-                  <span>Phương tiện di chuyển xanh</span>
-                </div>
-                <p className="text-neutral-600 leading-relaxed">
-                  Tại {poi.city}, bạn có thể đón xe buýt nội thành (DanaBus / xe buýt điện Huế) hoặc trạm xe đạp công cộng TNGo chỉ cách vài phút đi bộ.
+          {((poi.eco_features?.length ?? 0) > 0 ||
+            typeof poi.ai_metadata?.carbon_footprint_score === 'number') && (
+            <div className="p-5 rounded-2xl bg-emerald-50/50 border border-emerald-100 space-y-3 text-sm">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                <span>🌿</span>
+                <span>Thông tin bền vững được ghi nhận</span>
+              </h3>
+              {poi.eco_features && poi.eco_features.length > 0 && (
+                <p className="text-xs leading-relaxed text-neutral-700">
+                  {poi.eco_features.join(' · ')}
                 </p>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-white/90 border border-emerald-100/80 space-y-1">
-                <div className="font-semibold text-emerald-900 flex items-center gap-1.5">
-                  <span>🌱</span>
-                  <span>Cắt giảm phát thải</span>
-                </div>
-                <p className="text-neutral-600 leading-relaxed">
-                  Chọn đi bộ hoặc xe bus giúp bạn giảm trung bình <strong className="text-emerald-700">1.2 – 1.8 kg CO2</strong> cho chặng này so với phương tiện cá nhân.
+              )}
+              {typeof poi.ai_metadata?.carbon_footprint_score === 'number' && (
+                <p className="text-xs text-neutral-700">
+                  Điểm dữ liệu carbon: {poi.ai_metadata.carbon_footprint_score}
                 </p>
-              </div>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Section 4: Mindtrip-Style "You might want to ask" (Câu hỏi gợi ý) */}
           <div className="pt-1">
@@ -615,7 +628,7 @@ export default function PoiDetailSection({
                     ✨
                   </span>
                   <div>
-                    <h4 className="text-xs font-bold text-emerald-950">GreenTrip AI Assistant</h4>
+                    <h4 className="text-xs font-bold text-emerald-950">Trợ lý GreenTrip (demo)</h4>
                     <p className="text-[10px] text-emerald-700 font-medium truncate max-w-sm">
                       "{aiConversation.query}"
                     </p>
@@ -643,7 +656,7 @@ export default function PoiDetailSection({
               {aiConversation.isLoading ? (
                 <div className="py-6 flex flex-col items-center justify-center gap-2 text-emerald-800 text-xs">
                   <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                  <span>GreenTrip AI đang tra cứu dữ liệu địa phương...</span>
+                  <span>Đang tạo câu trả lời demo từ dữ liệu địa điểm...</span>
                 </div>
               ) : (
                 <div className="space-y-3 text-xs leading-relaxed text-neutral-800">
@@ -679,26 +692,18 @@ export default function PoiDetailSection({
         >
           <input 
             className="w-full bg-transparent text-[13.5px] font-medium text-neutral-800 placeholder-neutral-400 outline-none border-none focus:ring-0 p-0" 
-            placeholder={`Hỏi AI về ${(poi.cleanTitle || displayName).length > 25 ? 'địa điểm này' : (poi.cleanTitle || displayName)}...`} 
+            placeholder={`Hỏi trợ lý demo về ${(poi.cleanTitle || displayName).length > 25 ? 'địa điểm này' : (poi.cleanTitle || displayName)}...`}
             type="text"
             value={askAiQuery}
             onChange={(e) => setAskAiQuery(e.target.value)}
           />
           <div className="flex items-center gap-2 shrink-0 ml-2">
-            <button
-              type="button"
-              onClick={() => alert('Tính năng nhập bằng giọng nói đang được hoàn thiện!')}
-              className="text-neutral-400 hover:text-neutral-700 transition flex items-center justify-center p-1 cursor-pointer"
-              title="Nhập bằng giọng nói"
-            >
-              <i className="ph ph-microphone text-[19px]"></i>
-            </button>
             <button 
               type="submit"
               className="text-emerald-700 hover:text-emerald-800 transition flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full cursor-pointer"
-              title="Gửi câu hỏi cho GreenTrip AI"
+              title="Gửi câu hỏi cho trợ lý demo"
             >
-              <span>Hỏi AI</span>
+              <span>Hỏi demo</span>
               <svg className="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

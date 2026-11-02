@@ -3,6 +3,7 @@ import Navbar from '@/components/layout/Navbar';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import ExplorePage from '@/pages/ExplorePage';
 import LandingPage from '@/pages/LandingPage';
+import PlannerPage from '@/pages/PlannerPage';
 
 function App() {
   return (
@@ -47,20 +48,13 @@ function App() {
         />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-
         {/* Explore page - Now has its own Sidebar layout */}
         <Route path="/explore" element={<ExplorePage />} />
 
+        {/* Planner page with Trip Parameters Form, Sliders & AI Recommendations */}
+        <Route path="/planner" element={<PlannerPage />} />
+
         {/* Placeholder routes for future sprints */}
-        <Route
-          path="/planner"
-          element={
-            <>
-              <Navbar />
-              <ComingSoon title="Lập Lịch Trình" />
-            </>
-          }
-        />
         <Route
           path="/my-trips"
           element={

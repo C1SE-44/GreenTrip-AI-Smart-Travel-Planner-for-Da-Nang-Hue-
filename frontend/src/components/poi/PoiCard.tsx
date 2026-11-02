@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Sparkles } from 'lucide-react';
 import type { Poi, PoiCategory } from '@/data/pois';
 import { getGalleryImages, getDeterministicImage, SUB_CATEGORY_LABELS, categoryLabels } from '@/data/pois';
 
@@ -19,6 +20,7 @@ export interface PoiCardProps {
   onHover: (id: string | null) => void;
   onToggleFavorite: (id: string) => void;
   onToggleAddTrip?: (id: string) => void;
+  onOpenWhyThisPlace?: (poi: Poi) => void;
 }
 
 export default function PoiCard({
@@ -30,6 +32,7 @@ export default function PoiCard({
   onHover,
   onToggleFavorite,
   onToggleAddTrip,
+  onOpenWhyThisPlace,
 }: PoiCardProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [isCardHovered, setIsCardHovered] = useState(false);
@@ -99,6 +102,21 @@ export default function PoiCard({
           </button>
         )}
 
+        {/* Nút Why-This-Place (Giải thích AI từ Neo4j / CBF) ở góc trên bên trái */}
+        {onOpenWhyThisPlace && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenWhyThisPlace(poi);
+            }}
+            className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/45 hover:bg-emerald-800 text-emerald-200 hover:text-white backdrop-blur-md border border-emerald-400/30 text-[11px] font-semibold flex items-center gap-1.5 z-10 transition-all cursor-pointer shadow-sm active:scale-95 group/ai"
+            title="Vì sao GreenTrip AI gợi ý điểm đến này?"
+          >
+            <Sparkles className="w-3 h-3 text-emerald-300 group-hover/ai:text-white" />
+            <span className="hidden sm:inline">Vì sao gợi ý?</span>
+          </button>
+        )}
+
         {/* Nút tim và "+" ở góc trên */}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
           <button
@@ -127,14 +145,6 @@ export default function PoiCard({
           </button>
         </div>
 
-        {/* Michelin badge nếu có */}
-        {poi.isMichelin && (
-          <div className="absolute top-3 left-3 z-10 bg-rose-600 text-white text-[10.5px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
-            <span>★</span>
-            <span>MICHELIN</span>
-          </div>
-        )}
-
         {/* Chấm phân trang bên dưới */}
         <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 pointer-events-none z-10">
           {gallery.slice(0, 5).map((_, i) => (
@@ -159,7 +169,7 @@ export default function PoiCard({
           <h3 className="font-bold text-[15px] text-gray-950 tracking-tight truncate leading-tight group-hover:text-black" title={poi.name}>
             {poi.cleanTitle || poi.cleanName || poi.name}
           </h3>
-          {poi.rating > 0 && (
+          {poi.rating !== null && poi.rating > 0 && (
             <span className="text-[12px] font-semibold text-gray-800 shrink-0 flex items-center gap-0.5">
               <span className="text-amber-500">★</span> {poi.rating.toFixed(1)}
             </span>

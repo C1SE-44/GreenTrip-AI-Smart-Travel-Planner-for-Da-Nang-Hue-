@@ -474,10 +474,7 @@ function MapControlsLayer({
       <div className="absolute top-3.5 left-4 z-[1000] group">
         <button 
           aria-label={isExpanded ? 'Thu nhỏ bản đồ' : 'Mở rộng bản đồ'}
-          onClick={() => {
-            onToggleExpand?.();
-            setTimeout(() => map.invalidateSize(), 150);
-          }}
+          onClick={onToggleExpand}
           className="map-floating-btn w-10 h-10 bg-white rounded-full flex items-center justify-center text-zinc-700 hover:text-black transition cursor-pointer shadow-md active:scale-95"
         >
           {isExpanded ? (
@@ -550,16 +547,7 @@ function MapControlsLayer({
         </div>
       </div>
 
-      {/* 3. Weather Widget: Đã đổi thành "31°C Ít mây" */}
-      <div className="absolute bottom-6 left-4 z-[1000] pointer-events-auto">
-        <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-white/95 backdrop-blur-md rounded-full shadow-sm border border-zinc-200/80 text-xs font-semibold text-zinc-800">
-          <span>🌤️</span>
-          <span>31°C</span>
-          <span className="font-normal text-zinc-600">Ít mây</span>
-        </div>
-      </div>
-
-      {/* 4. Google Maps Footer */}
+      {/* Google Maps Footer */}
       <footer className="absolute bottom-0 left-0 right-0 h-6 bg-white/70 backdrop-blur-[2px] flex items-center justify-between px-3 text-[10px] text-zinc-600 z-[1000] pointer-events-none">
         <div className="pointer-events-auto">
           <span className="font-medium tracking-tight text-zinc-700">Google</span>

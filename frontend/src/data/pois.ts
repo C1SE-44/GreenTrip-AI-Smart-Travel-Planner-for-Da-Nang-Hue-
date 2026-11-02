@@ -35,7 +35,6 @@ export interface Poi {
   cleanName?: string;
   cleanTitle?: string;
   subTitle?: string;
-  isMichelin?: boolean;
   category: PoiCategory;
   city: PoiCity;
   lat: number;
@@ -44,9 +43,9 @@ export interface Poi {
   image: string;
   gallery?: string[];
   description: string;
-  rating: number;
-  visitDuration: string;
-  ecoScore: number;
+  rating: number | null;
+  visitDuration: string | null;
+  ecoScore: number | null;
   openHours?: string | null;
   estimatedCost?: number | null;
   isLocalBusiness?: boolean;
@@ -404,9 +403,6 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
   const city = normalizeCity(item.city);
   const rawName = (item.name ?? 'POI').trim() || 'POI';
 
-  // Check if Michelin guide selected (name or description)
-  const isMichelin = /michelin/i.test(rawName) || /michelin/i.test(item.description ?? '');
-  // Clean up parenthesized notes like (Đạt chuẩn MICHELIN Selected) for a polished title
   const cleanName = rawName.replace(/\s*\([^)]*michelin[^)]*\)/gi, '').trim() || rawName;
 
   let cleanTitle = cleanName;
@@ -420,14 +416,34 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
   const image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id, category, city);
   const gallery = Array.isArray(item.gallery_urls) && item.gallery_urls.length > 0 ? item.gallery_urls : undefined;
 
-  const rating = item.satisfaction_score ? Number(item.satisfaction_score) : 4.6;
-  const visitMinutes = item.average_visit_minutes ? Number(item.average_visit_minutes) : 60;
-  const visitDuration = visitMinutes >= 60 
-    ? `${Math.round(visitMinutes / 60)} giờ` 
-    : `${visitMinutes} phút`;
+  const rating =
+    item.satisfaction_score !== null &&
+    item.satisfaction_score !== undefined &&
+    Number.isFinite(Number(item.satisfaction_score))
+      ? Number(item.satisfaction_score)
+      : null;
+  const visitMinutes =
+    item.average_visit_minutes !== null &&
+    item.average_visit_minutes !== undefined &&
+    Number.isFinite(Number(item.average_visit_minutes)) &&
+    Number(item.average_visit_minutes) > 0
+      ? Number(item.average_visit_minutes)
+      : null;
+  const visitDuration = visitMinutes === null
+    ? null
+    : visitMinutes >= 60
+      ? `${Math.round(visitMinutes / 60)} giờ`
+      : `${visitMinutes} phút`;
 
-  const rawGreen = item.green_score !== null && item.green_score !== undefined && Number.isFinite(Number(item.green_score)) ? Number(item.green_score) : 0.5;
-  const ecoScore = Math.round(rawGreen <= 1 ? rawGreen * 100 : rawGreen);
+  const rawGreen =
+    item.green_score !== null &&
+    item.green_score !== undefined &&
+    Number.isFinite(Number(item.green_score))
+      ? Number(item.green_score)
+      : null;
+  const ecoScore = rawGreen === null
+    ? null
+    : Math.round(rawGreen <= 1 ? rawGreen * 100 : rawGreen);
   const estimatedCost = item.estimated_cost !== null && item.estimated_cost !== undefined && Number.isFinite(Number(item.estimated_cost)) ? Number(item.estimated_cost) : null;
 
   return {
@@ -436,7 +452,6 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
     cleanName,
     cleanTitle,
     subTitle,
-    isMichelin,
     category,
     city,
     lat: latitude,
@@ -448,12 +463,12 @@ export function normalizePoi(item: BackendPoiItem): Poi | null {
     rating,
     visitDuration,
     ecoScore,
-    openHours: item.open_hours?.trim() || (category === 'quan-an' ? '09:30 – 21:30' : '07:30 – 17:30'),
+    openHours: item.open_hours?.trim() || null,
     estimatedCost,
     isLocalBusiness: item.is_local_business ?? undefined,
     sub_category: item.sub_category ?? null,
     cuisine: item.cuisine ?? null,
-    budget_tier: item.budget_tier ?? '$$',
+    budget_tier: item.budget_tier ?? null,
     vibes: Array.isArray(item.vibes) ? item.vibes : [],
     best_time: Array.isArray(item.best_time) ? item.best_time : [],
     eco_features: Array.isArray(item.eco_features) ? item.eco_features : [],

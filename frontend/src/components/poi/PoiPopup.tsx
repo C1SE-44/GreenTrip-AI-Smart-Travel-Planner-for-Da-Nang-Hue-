@@ -43,20 +43,26 @@ export default function PoiPopup({ poi, onClose, onSelect }: PoiPopupProps) {
           {poi.description}
         </p>
 
-        <div className="mt-3 flex items-center gap-3 text-xs text-muted">
-          <span className="flex items-center gap-1">
-            <Star size={13} className="fill-amber-400 text-amber-400" />
-            <span className="font-medium text-charcoal">{poi.rating.toFixed(1)}</span>
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock size={13} />
-            {poi.visitDuration}
-          </span>
-        </div>
+        {(poi.rating !== null || poi.visitDuration) && (
+          <div className="mt-3 flex items-center gap-3 text-xs text-muted">
+            {poi.rating !== null && (
+              <span className="flex items-center gap-1">
+                <Star size={13} className="fill-amber-400 text-amber-400" />
+                <span className="font-medium text-charcoal">{poi.rating.toFixed(1)}</span>
+              </span>
+            )}
+            {poi.visitDuration && (
+              <span className="flex items-center gap-1">
+                <Clock size={13} />
+                {poi.visitDuration}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="mt-2.5 flex items-center gap-2">
           <CityTag city={poi.city} />
-          {poi.ecoScore >= 75 && <EcoBadge score={poi.ecoScore} />}
+          {poi.ecoScore !== null && poi.ecoScore >= 75 && <EcoBadge score={poi.ecoScore} />}
         </div>
 
         {onSelect && (

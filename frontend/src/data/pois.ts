@@ -392,9 +392,13 @@ export function normalizeCity(value?: string | null): PoiCity {
   return 'Đà Nẵng';
 }
 
-export function normalizePoi(item: BackendPoiItem): Poi | null {
-  const latitude = Number(item.latitude);
-  const longitude = Number(item.longitude);
+export function normalizePoi(item: BackendPoiItem | Poi | any): Poi | null {
+  if (!item) return null;
+  if (item.id && item.name && Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lng)) && item.category && item.city) {
+    return item as Poi;
+  }
+  const latitude = Number(item.latitude ?? item.lat);
+  const longitude = Number(item.longitude ?? item.lng);
 
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     return null;

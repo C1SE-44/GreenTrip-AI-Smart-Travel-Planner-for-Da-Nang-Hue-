@@ -164,7 +164,7 @@ export default function PoiCard({
             </span>
             {isEcoLocal && (
               <span className="rounded-full border border-emerald-100/70 bg-emerald-950/85 px-2 py-1 text-[10px] font-semibold text-emerald-50 shadow-md backdrop-blur-sm">
-                🌿 Eco / Local
+                📍 Điểm bản địa
               </span>
             )}
           </div>
@@ -239,7 +239,7 @@ export default function PoiCard({
               aria-haspopup="dialog"
               aria-expanded={isExplanationModalOpen}
               onClick={() => setIsExplanationModalOpen(true)}
-              className="mt-1.5 flex min-h-11 w-full items-center justify-center gap-1 text-xs font-medium text-emerald-800 transition-colors hover:text-emerald-950 focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="mt-1.5 flex h-[34px] w-full items-center justify-center gap-1 text-xs font-medium text-emerald-800 transition-colors hover:text-emerald-950 focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               <i className="ph ph-sparkle" aria-hidden="true"></i>
               Lý do AI gợi ý · Vì sao nơi này?
@@ -252,7 +252,7 @@ export default function PoiCard({
             aria-haspopup="dialog"
             aria-expanded={isExplanationModalOpen}
             onClick={(event) => { event.stopPropagation(); setIsExplanationModalOpen(true); }}
-            className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-full border border-emerald-200 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="mt-2 flex h-[34px] w-full items-center justify-center gap-1.5 rounded-full border border-emerald-200 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             Vì sao nơi này?
           </button>

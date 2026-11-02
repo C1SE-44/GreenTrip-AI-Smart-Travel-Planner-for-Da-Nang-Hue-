@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+﻿from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -37,6 +37,16 @@ app.include_router(trips_router)
 app.include_router(
     recommendations_router,
     prefix="/api/v1/recommendations",
+    tags=["Recommendations"],
+)
+app.include_router(
+    recommendations_router,
+    prefix="/v1/recommendations",
+    tags=["Recommendations"],
+)
+app.include_router(
+    recommendations_router,
+    prefix="/recommendations",
     tags=["Recommendations"],
 )
 

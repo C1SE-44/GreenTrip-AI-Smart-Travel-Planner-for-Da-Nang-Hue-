@@ -50,3 +50,5 @@ data/b2b/
 data/test_scraper/
 data/*.txt
 
+
+*.db

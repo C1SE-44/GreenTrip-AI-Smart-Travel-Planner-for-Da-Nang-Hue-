@@ -1,6 +1,6 @@
 """Request and response models for POI recommendations."""
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -13,8 +13,11 @@ class RecommendationRequest(BaseModel):
 
     interests: list[str] = Field(default_factory=list)
     budget_band: int = Field(default=2, ge=1, le=3, description="1=Low, 2=Medium, 3=High")
+    budget_tier: str | None = Field(default=None, description="any, budget, standard, upgrade, luxury")
+    destination: str | None = Field(default=None, description="Destination city, e.g. Đà Nẵng, Huế")
+    ideas: list[str] = Field(default_factory=list, description="POI names or IDs user added to ideas")
     green_priority: float = Field(default=0.7, ge=0.0, le=1.0)
-    top_k: int = Field(default=50, ge=1, le=50)
+    top_k: int = Field(default=10, ge=1, le=50)
     trip_data: ValidatedTripData | None = Field(
         default=None,
         description="Validated PB07 response data; submit the response's data object.",
@@ -24,20 +27,18 @@ class RecommendationRequest(BaseModel):
         description="Parsed PB08 slider weights and hard eco/budget constraints.",
     )
 
-    @field_validator("interests")
+    @field_validator("interests", mode="before")
     @classmethod
-    def interests_must_not_be_blank(cls, interests: list[str]) -> list[str]:
-        cleaned = [interest.strip() for interest in interests]
-        return [interest for interest in cleaned if interest]
+    def interests_must_not_be_blank(cls, interests: Any) -> list[str]:
+        if not interests:
+            return []
+        if isinstance(interests, list):
+            cleaned = [str(interest).strip() for interest in interests]
+            return [interest for interest in cleaned if interest]
+        return [str(interests).strip()]
 
     @model_validator(mode="after")
     def require_preferences(self) -> "RecommendationRequest":
-        if (self.trip_data is None) != (self.slider_weights is None):
-            raise ValueError("trip_data and slider_weights must be provided together")
-        if not self.interests and not (
-            self.trip_data and self.trip_data.preferences
-        ):
-            raise ValueError("provide interests or PB07 trip_data preferences")
         return self
 
 
@@ -54,6 +55,8 @@ class RecommendationPOI(BaseModel):
     green_score: float | None = None
     lat: float | None = None
     lng: float | None = None
+    image: str | None = None
+    city: str | None = None
     explanation_snippet: str
 
 

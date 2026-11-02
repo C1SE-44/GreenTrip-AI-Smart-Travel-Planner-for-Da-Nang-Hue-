@@ -1038,9 +1038,6 @@ export default function TripParametersForm() {
                           <span className="rounded-md border border-forest-100 bg-forest-50 px-2 py-0.5 text-[10px] font-bold text-forest-800">
                             {poi.category_name || metadata?.category || 'Địa điểm'}
                           </span>
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                            🌿 {score == null ? 'Chưa có điểm xanh' : `${score}/100`}
-                          </span>
                           <span className="ml-auto rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] font-bold text-forest-700">
                             {Math.round(poi.match_score)}% phù hợp
                           </span>

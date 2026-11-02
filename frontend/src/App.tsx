@@ -50,27 +50,12 @@ function App() {
 
 
         {/* Explore page - Now has its own Sidebar layout */}
-        <Route path="/explore" element={<ExplorePage />} />
+        <Route path="/explore" element={<ExplorePage initialView="explore" />} />
 
         {/* Trip Planner page */}
-        <Route
-          path="/planner"
-          element={
-            <>
-              <Navbar />
-              <PlannerPage />
-            </>
-          }
-        />
-        <Route
-          path="/my-trips"
-          element={
-            <>
-              <Navbar />
-              <ComingSoon title="Chuyến Đi Của Tôi" />
-            </>
-          }
-        />
+        <Route path="/planner" element={<ExplorePage initialView="trips" />} />
+        <Route path="/my-trips" element={<ExplorePage initialView="trips" />} />
+        <Route path="/trips" element={<ExplorePage initialView="trips" />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

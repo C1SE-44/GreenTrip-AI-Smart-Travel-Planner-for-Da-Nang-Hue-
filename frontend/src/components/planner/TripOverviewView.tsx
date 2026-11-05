@@ -114,6 +114,47 @@ export default function TripOverviewView({
   // Tab con kích hoạt khi bấm vào Ý tưởng hoặc Lịch
   const [activeRightDrawer, setActiveRightDrawer] = useState<'ideas' | 'calendar' | null>(null);
 
+  // ─── DANH SÁCH Ý TƯỞNG (IDEAS / WISHLIST) CỦA CHUYẾN ĐI ───
+  const [tripIdeas, setTripIdeas] = useState<string[]>(() => trip.ideas || []);
+
+  // ─── STATE CHO GỢI Ý ĐỊA ĐIỂM (TOP 10 TỐI ƯU THEO BACKEND PB09) ───
+  const [recommendedPois, setRecommendedPois] = useState<Poi[]>([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [recommendationTitle, setRecommendationTitle] = useState('Gợi ý cho bạn');
+  const [recommendationSubtitle, setRecommendationSubtitle] = useState('Theo gu và hành trình của bạn.');
+  const [explanationPoi, setExplanationPoi] = useState<{ id: string; name: string; snippet?: string } | null>(null);
+
+  // State điều khiển hiển thị panel Ý tưởng ở cột phải (thay thế 4 ô + bản đồ)
+  const [showIdeasView, setShowIdeasView] = useState(false);
+
+  // State điều khiển Modal "Thêm vào chuyến đi" (Add to trip)
+  const [showAddIdeasModal, setShowAddIdeasModal] = useState(false);
+  const [modalTab, setModalTab] = useState<'search' | 'saved' | 'custom'>('search');
+  const [modalCity, setModalCity] = useState<'all' | 'Đà Nẵng' | 'Huế'>('all');
+  const [modalSearch, setModalSearch] = useState('');
+  const [modalCategory, setModalCategory] = useState<'for-you' | 'experiences' | 'restaurants' | 'spiritual' | 'all'>('for-you');
+  const [customIdeaInput, setCustomIdeaInput] = useState('');
+
+  // State bản đồ & chọn POI chi tiết
+  const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
+  const [hoveredMapPoiId, setHoveredMapPoiId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (trip.ideas) {
+      setTripIdeas(trip.ideas);
+    }
+  }, [trip.ideas]);
+
+  const handleToggleIdea = (poiId: string) => {
+    setTripIdeas((prev) => {
+      const next = prev.includes(poiId) ? prev.filter((id) => id !== poiId) : [...prev, poiId];
+      if (onUpdateTrip) {
+        onUpdateTrip({ ...trip, ideas: next });
+      }
+      return next;
+    });
+  };
+
   // Helper kiểm tra điểm đến linh hoạt
   const isDaNang = (c?: string) => /da\s*nang|đà\s*nẵng/i.test(c || '');
   const isHue = (c?: string) => /hue|huế/i.test(c || '');
@@ -157,43 +198,16 @@ export default function TripOverviewView({
     return Array.from(map.values());
   }, [recommendedPois, tripIdeas, trip.destination]);
 
-  const [explanationPoi, setExplanationPoi] = useState<{ id: string; name: string; snippet?: string } | null>(null);
-
-  // ─── DANH SÁCH Ý TƯỞNG (IDEAS / WISHLIST) CỦA CHUYẾN ĐI ───
-  const [tripIdeas, setTripIdeas] = useState<string[]>(() => trip.ideas || []);
-
-  useEffect(() => {
-    if (trip.ideas) {
-      setTripIdeas(trip.ideas);
-    }
-  }, [trip.ideas]);
-
-  const handleToggleIdea = (poiId: string) => {
-    setTripIdeas((prev) => {
-      const next = prev.includes(poiId) ? prev.filter((id) => id !== poiId) : [...prev, poiId];
-      if (onUpdateTrip) {
-        onUpdateTrip({ ...trip, ideas: next });
-      }
-      return next;
-    });
-  };
-
-  // State điều khiển hiển thị panel Ý tưởng ở cột phải (thay thế 4 ô + bản đồ)
-  const [showIdeasView, setShowIdeasView] = useState(false);
-
-  // State điều khiển Modal "Thêm vào chuyến đi" (Add to trip)
-  const [showAddIdeasModal, setShowAddIdeasModal] = useState(false);
-  const [modalTab, setModalTab] = useState<'search' | 'saved' | 'custom'>('search');
-  const [modalCity, setModalCity] = useState<'all' | 'Đà Nẵng' | 'Huế'>('all');
-  const [modalSearch, setModalSearch] = useState('');
-  const [modalCategory, setModalCategory] = useState<'for-you' | 'experiences' | 'restaurants' | 'spiritual' | 'all'>('for-you');
-  const [customIdeaInput, setCustomIdeaInput] = useState('');
-
-  // ─── STATE CHO GỢI Ý ĐỊA ĐIỂM (TOP 10 TỐI ƯU THEO BACKEND PB09) ───
-  const [recommendedPois, setRecommendedPois] = useState<Poi[]>([]);
-  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
-  const [recommendationTitle, setRecommendationTitle] = useState('Top 10 địa điểm gợi ý cho chuyến đi');
-  const [recommendationSubtitle, setRecommendationSubtitle] = useState('Được tính toán bởi AI Recommendation Engine (PB09) từ backend.');
+  // POI đang được chọn để mở Card chi tiết lớn (PoiDetailSection) chuẩn trang Explore
+  const selectedPoi = useMemo(() => {
+    if (!selectedMapPoiId) return null;
+    return (
+      relevantPois.find((p) => p.id === selectedMapPoiId) ||
+      recommendedPois.find((p) => p.id === selectedMapPoiId) ||
+      allPois.find((p) => p.id === selectedMapPoiId) ||
+      null
+    );
+  }, [relevantPois, recommendedPois, selectedMapPoiId]);
 
   // Gọi trực tiếp Backend API (/api/v1/recommendations/poi) khi Điểm đến, Ngân sách hoặc Ý tưởng thay đổi
   useEffect(() => {
@@ -354,20 +368,6 @@ export default function TripOverviewView({
 
     return list;
   }, [modalCity, modalCategory, modalSearch, modalTab, tripIdeas]);
-
-  const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
-  const [hoveredMapPoiId, setHoveredMapPoiId] = useState<string | null>(null);
-
-  // POI đang được chọn để mở Card chi tiết lớn (PoiDetailSection) chuẩn trang Explore
-  const selectedPoi = useMemo(() => {
-    if (!selectedMapPoiId) return null;
-    return (
-      relevantPois.find((p) => p.id === selectedMapPoiId) ||
-      recommendedPois.find((p) => p.id === selectedMapPoiId) ||
-      allPois.find((p) => p.id === selectedMapPoiId) ||
-      null
-    );
-  }, [relevantPois, recommendedPois, selectedMapPoiId]);
 
   // Tiêu đề lớn hiển thị (1 dòng rút gọn chuẩn Mindtrip)
   const displayTitle = `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}`;

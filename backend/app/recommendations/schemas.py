@@ -16,6 +16,7 @@ class RecommendationRequest(BaseModel):
     budget_tier: str | None = Field(default=None, description="any, budget, standard, upgrade, luxury")
     destination: str | None = Field(default=None, description="Destination city, e.g. Đà Nẵng, Huế")
     ideas: list[str] = Field(default_factory=list, description="POI names or IDs user added to ideas")
+    trip_days: int | None = Field(default=None, ge=1, le=30, description="Duration of the trip in days")
     green_priority: float = Field(default=0.7, ge=0.0, le=1.0)
     top_k: int = Field(default=10, ge=1, le=50)
     trip_data: ValidatedTripData | None = Field(

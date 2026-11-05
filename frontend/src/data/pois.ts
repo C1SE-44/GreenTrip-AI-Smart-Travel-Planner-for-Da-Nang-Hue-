@@ -49,6 +49,7 @@ export interface Poi {
   ecoScore: number;
   openHours?: string | null;
   estimatedCost?: number | null;
+  matchScore?: number;
   isLocalBusiness?: boolean;
   // Taxonomy V2 fields
   sub_category?: string | null;

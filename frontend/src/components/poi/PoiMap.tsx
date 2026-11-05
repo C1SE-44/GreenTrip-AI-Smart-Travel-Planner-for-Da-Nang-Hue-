@@ -16,6 +16,7 @@ interface PoiMapProps {
   onToggleFavorite?: (id: string) => void;
   addedTrips?: Set<string>;
   onToggleAddTrip?: (id: string) => void;
+  hideTopControls?: boolean;
 }
 
 interface MarkerOffset {
@@ -437,22 +438,33 @@ function MapAutoFitter({ pois }: { pois: Poi[] }) {
     const currentIds = pois.map((p) => p.id).sort().join(',');
     if (prevIdsRef.current === currentIds) return;
 
-    if (prevIdsRef.current !== '') {
+    const timer = setTimeout(() => {
       try {
+        map.invalidateSize();
         const bounds = L.latLngBounds(pois.map((p) => [p.lat, p.lng] as [number, number]));
         if (bounds.isValid()) {
-          map.flyToBounds(bounds, {
-            padding: [48, 48],
-            maxZoom: 15,
-            duration: 0.9,
-            easeLinearity: 0.25,
-          });
+          if (prevIdsRef.current !== '') {
+            map.flyToBounds(bounds, {
+              padding: [40, 40],
+              maxZoom: 14,
+              duration: 0.8,
+              easeLinearity: 0.25,
+            });
+          } else {
+            // Lần đầu mount: Tự động zoom vừa vặn toàn bộ các điểm đến (Đà Nẵng & Huế)
+            map.fitBounds(bounds, {
+              padding: [36, 36],
+              maxZoom: 13,
+            });
+          }
         }
       } catch {
         // safe fallback
       }
-    }
+    }, 120);
+
     prevIdsRef.current = currentIds;
+    return () => clearTimeout(timer);
   }, [pois, map]);
 
   return null;
@@ -462,52 +474,58 @@ function MapAutoFitter({ pois }: { pois: Poi[] }) {
 function MapControlsLayer({
   isExpanded,
   onToggleExpand,
+  hideTopControls = false,
 }: {
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  hideTopControls?: boolean;
 }) {
   const map = useMap();
 
   return (
     <>
-      {/* 0. Nút Thu gọn / Mở rộng toàn màn hình bản đồ */}
-      <div className="absolute top-3.5 left-4 z-[1000] group">
-        <button 
-          aria-label={isExpanded ? 'Thu nhỏ bản đồ' : 'Mở rộng bản đồ'}
-          onClick={() => {
-            onToggleExpand?.();
-            setTimeout(() => map.invalidateSize(), 150);
-          }}
-          className="map-floating-btn w-10 h-10 bg-white rounded-full flex items-center justify-center text-zinc-700 hover:text-black transition cursor-pointer shadow-md active:scale-95"
-        >
-          {isExpanded ? (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 19l7-7-7-7M18 5v14" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18 19l-7-7 7-7M6 5v14" />
-            </svg>
-          )}
-        </button>
-        <div className="absolute top-12 left-0 hidden group-hover:block bg-black text-white text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-md whitespace-nowrap pointer-events-none animate-fadeIn">
-          {isExpanded ? 'Thu nhỏ' : 'Mở rộng'}
-        </div>
-      </div>
+      {!hideTopControls && (
+        <>
+          {/* 0. Nút Thu gọn / Mở rộng toàn màn hình bản đồ */}
+          <div className="absolute top-3.5 left-4 z-[1000] group">
+            <button 
+              aria-label={isExpanded ? 'Thu nhỏ bản đồ' : 'Mở rộng bản đồ'}
+              onClick={() => {
+                onToggleExpand?.();
+                setTimeout(() => map.invalidateSize(), 150);
+              }}
+              className="map-floating-btn w-10 h-10 bg-white rounded-full flex items-center justify-center text-zinc-700 hover:text-black transition cursor-pointer shadow-md active:scale-95"
+            >
+              {isExpanded ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 19l7-7-7-7M18 5v14" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 19l-7-7 7-7M6 5v14" />
+                </svg>
+              )}
+            </button>
+            <div className="absolute top-12 left-0 hidden group-hover:block bg-black text-white text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-md whitespace-nowrap pointer-events-none animate-fadeIn">
+              {isExpanded ? 'Thu nhỏ' : 'Mở rộng'}
+            </div>
+          </div>
 
-      {/* 1. Visibility / Eye Toggle (Top Right) */}
-      <button 
-        aria-label="Toggle visible items"
-        className="map-floating-btn absolute top-3.5 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center text-zinc-700 hover:text-black z-[1000] transition cursor-pointer shadow-md"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round"></path>
-          <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" strokeLinecap="round" strokeLinejoin="round"></path>
-        </svg>
-      </button>
+          {/* 1. Visibility / Eye Toggle (Top Right) */}
+          <button 
+            aria-label="Toggle visible items"
+            className="map-floating-btn absolute top-3.5 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center text-zinc-700 hover:text-black z-[1000] transition cursor-pointer shadow-md"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round"></path>
+              <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" strokeLinecap="round" strokeLinejoin="round"></path>
+            </svg>
+          </button>
+        </>
+      )}
 
-      {/* 2. Right Toolbar Layer */}
-      <div className="absolute right-4 bottom-8 flex flex-col space-y-2 z-[1000]">
+      {/* 2. Right Toolbar Layer - cách mép phải +15% khi ẩn top controls */}
+      <div className={`absolute ${hideTopControls ? 'right-6' : 'right-4'} bottom-8 flex flex-col space-y-2 z-[1000]`}>
         <button 
           onClick={() => map.flyTo([16.0590, 108.2230], 15, { duration: 0.8 })}
           aria-label="Your location" 
@@ -745,6 +763,7 @@ export default function PoiMap({
   onToggleFavorite,
   addedTrips,
   onToggleAddTrip,
+  hideTopControls = false,
 }: PoiMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const [hoveredMapPinId, setHoveredMapPinId] = useState<string | null>(null);
@@ -758,6 +777,19 @@ export default function PoiMap({
         .leaflet-container {
           background-color: #f2ede5 !important;
           outline: none !important;
+        }
+        .leaflet-control-attribution {
+          font-size: 10px !important;
+          white-space: nowrap !important;
+          line-height: 1.2 !important;
+          background: rgba(255, 255, 255, 0.75) !important;
+          padding: 2px 6px !important;
+          border-radius: 4px !important;
+          margin-right: 8px !important;
+          margin-bottom: 4px !important;
+        }
+        .leaflet-control-attribution a {
+          font-size: 10px !important;
         }
         .leaflet-tile-pane {
           will-change: transform;
@@ -792,10 +824,10 @@ export default function PoiMap({
         }
       `}</style>
 
-      {/* Dịch tâm bản đồ xuống 15% (16.0590, 108.2230) và zoom thêm 1 mức (zoom=15) để ghim dồn vào giữa khung */}
+      {/* Tâm bản đồ trung điểm Đà Nẵng & Huế, zoom 10 bao quát toàn vùng */}
       <MapContainer
-        center={[16.0590, 108.2230]}
-        zoom={15}
+        center={[16.2500, 107.9000]}
+        zoom={10}
         minZoom={7}
         maxZoom={18}
         zoomControl={false}
@@ -825,6 +857,7 @@ export default function PoiMap({
         <MapControlsLayer 
           isExpanded={isExpanded}
           onToggleExpand={onToggleExpand}
+          hideTopControls={hideTopControls}
         />
 
         <DynamicMarkersLayer

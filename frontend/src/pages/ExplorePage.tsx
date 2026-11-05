@@ -708,49 +708,49 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         ) : (
         /* ─── MINDTRIP TRIPS VIEW ─── */
         <main className="flex-1 h-full bg-white overflow-y-auto auto-hide-scrollbar select-none animate-fadeIn">
-          {/* Section 1: Lề & khung nội dung - Lề trái 115px, lề phải 134px, mở rộng toàn vùng nội dung không bị co hẹp */}
-          <div className="w-full pl-6 sm:pl-12 lg:pl-[115px] pr-6 sm:pr-12 lg:pr-[134px] pt-[124px] pb-24">
-            {/* Section 2.1: Tiêu đề & nút Chuyến đi mới - Cách mép trên 124px (pt-[124px]), khoảng cách đến tab 93px (mb-[58px]) */}
-            <div className="flex items-center justify-between mb-[58px]">
-              <h1 className="text-[32px] sm:text-[38px] lg:text-[44px] font-bold text-gray-950 tracking-tight leading-none">
+          {/* Section 1: Lề & khung nội dung - Lề trái 115px (pl-[64px]), lề phải 134px (pr-[74px]), tâm tiêu đề cách mép trên 160px (pt-[74px]) */}
+          <div className="w-full pl-6 sm:pl-10 lg:pl-[64px] pr-6 sm:pr-10 lg:pr-[74px] pt-[74px] pb-24">
+            {/* Section 2.1: Tiêu đề & nút Chuyến đi mới - Tiêu đề 52px (text-[28px] sm:text-[32px] lg:text-[34px], -5%); nút cao 71px (h-[40px]), mb-[38px] đến hàng tab (120px) */}
+            <div className="flex items-center justify-between mb-[38px]">
+              <h1 className="text-[28px] sm:text-[32px] lg:text-[34px] font-bold text-gray-950 tracking-tight leading-none">
                 Lịch trình của bạn
               </h1>
               <button
                 onClick={() => setIsCreateTripModalOpen(true)}
-                className="bg-black text-white hover:bg-neutral-800 h-[44px] px-5 rounded-full text-[14px] font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-xs cursor-pointer shrink-0"
+                className="ml-auto w-auto whitespace-nowrap bg-black text-white hover:bg-neutral-800 h-[40px] px-[36px] rounded-full text-[13.5px] font-semibold flex items-center gap-[14px] transition active:scale-95 shadow-xs cursor-pointer shrink-0"
               >
                 <i className="ph ph-plus font-bold text-sm"></i>
                 <span>Chuyến đi mới</span>
               </button>
             </div>
 
-            {/* Section 2.2: Hàng Tab - Bỏ đường kẻ mảnh full-width; padding 14px mỗi bên; gap 20px (khoảng cách 2 chữ = 48px); chữ cách gạch chân 38px */}
-            <div className="flex items-center gap-5">
+            {/* Section 2.2: Hàng Tab - Cỡ chữ 147px (text-[16px]), padding ngang 14px (px-[8px]), khoảng cách 2 chữ 48px (gap-[11px]), chữ cách gạch chân 38px (pb-[8px], -5%), gạch chân dày 3px (border-b-[1.5px]) */}
+            <div className="flex items-center gap-[11px]">
               <button
                 onClick={() => setTripsSubTab('trips')}
-                className={`px-[14px] pb-[11px] text-[17px] sm:text-[18px] cursor-pointer transition-colors ${
+                className={`px-[8px] pb-[8px] text-[16px] cursor-pointer transition-colors ${
                   tripsSubTab === 'trips'
-                    ? 'border-b-[2.5px] border-black font-bold text-black'
-                    : 'font-medium text-gray-500 hover:text-black border-b-[2.5px] border-transparent'
+                    ? 'border-b-[1.5px] border-black font-bold text-black'
+                    : 'font-medium text-gray-500 hover:text-black border-b-[1.5px] border-transparent'
                 }`}
               >
                 Chuyến đi
               </button>
               <button
                 onClick={() => setTripsSubTab('calendar')}
-                className={`px-[14px] pb-[11px] text-[17px] sm:text-[18px] cursor-pointer transition-colors ${
+                className={`px-[8px] pb-[8px] text-[16px] cursor-pointer transition-colors ${
                   tripsSubTab === 'calendar'
-                    ? 'border-b-[2.5px] border-black font-bold text-black'
-                    : 'font-medium text-gray-500 hover:text-black border-b-[2.5px] border-transparent'
+                    ? 'border-b-[1.5px] border-black font-bold text-black'
+                    : 'font-medium text-gray-500 hover:text-black border-b-[1.5px] border-transparent'
                 }`}
               >
                 Lịch
               </button>
             </div>
 
-            {/* Section 2.3: Ô "Tất cả ⌄" - Hàng riêng bên dưới, cách tab khoảng 109px, thụt vào 25px so với mép phải */}
-            <div className="flex justify-end pr-[25px] mt-[64px] mb-[28px]">
-              <button className="flex items-center gap-1.5 text-[14px] sm:text-[15px] text-gray-800 hover:text-black font-medium transition cursor-pointer">
+            {/* Section 2.3: Ô "Tất cả ⌄" - Cách hàng tab 108px (mt-[32px], -14%), thụt lề 24px so với mép phải nút (pr-[13px]), cỡ chữ 13px */}
+            <div className="flex justify-end pr-[13px] mt-[32px] mb-[20px]">
+              <button className="flex items-center gap-1.5 text-[13px] text-gray-800 hover:text-black font-medium transition cursor-pointer">
                 <span>Tất cả</span>
                 <i className="ph ph-caret-down text-xs"></i>
               </button>
@@ -759,23 +759,91 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
             {tripsSubTab === 'trips' ? (
               userTrips.length === 0 ? (
                 /* Section 3: Khối trạng thái trống ("Bạn chưa có chuyến đi nào") chuẩn Mindtrip */
-                <div className="pt-10 pb-20 flex flex-col items-center justify-center text-center">
-                  {/* Icon lịch - Cách tiêu đề nhỏ ~130px (mb-[76px] + line space) */}
-                  <div className="w-[72px] h-[72px] rounded-full bg-gray-50/90 border border-gray-200/60 flex items-center justify-center text-gray-400 text-2xl mb-[76px] shadow-2xs">
-                    <i className="ph ph-calendar-plus text-[28px]"></i>
+                <div className="pt-[138px] pb-[120px] flex flex-col items-center justify-center text-center">
+                  {/* Cụm hai tấm ảnh du lịch nghiêng chồng lên nhau - Kích thước chuẩn Mindtrip (195px x 180px thực tế hiển thị), thu nhỏ 46% so với trước, tâm cách "Tất cả" 324px, đáy cách tiêu đề nhỏ 150px (mb-[78px]) */}
+                  <div
+                    aria-hidden="true"
+                    className="relative mx-auto w-[101px] h-[90px] mb-[78px] group/cards select-none"
+                  >
+                    {/* Tấm sau: Cảnh Cầu Rồng / Đại Nội Huế (tông ấm), vuông 58px, left 0, top 32px, viền 3.2px, rotate(7deg), hover rotate(4deg) */}
+                    <div
+                      className="absolute left-0 top-[32px] w-[58px] h-[58px] rounded-[8px] border-[3.2px] border-white bg-[#E5E7EB] overflow-hidden shadow-[0_6px_14px_rgba(0,0,0,0.14)] rotate-[7deg] group-hover/cards:rotate-[4deg] motion-safe:transition-transform motion-safe:duration-200 motion-reduce:transform-none z-0"
+                    >
+                      <img
+                        src="/images/empty-trips/back-landmark.jpg"
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      {/* Gradient từ trong suốt lên đen 55% ở 40% chiều cao phía dưới */}
+                      <div className="absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
+                      {/* Góc dưới trái cách mép 5px: Icon vali viền trắng mảnh 7px + thanh trắng 19x4px cách 3px */}
+                      <div className="absolute bottom-[5px] left-[5px] flex items-center gap-[3px] z-10 pointer-events-none">
+                        <svg
+                          className="w-[7px] h-[7px] text-white shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M6 20h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
+                          <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                        </svg>
+                        <div className="w-[19px] h-[4px] rounded-full bg-white/85 shrink-0" />
+                      </div>
+                    </div>
+
+                    {/* Tấm trước: Cảnh biển / đèo Hải Vân (tông xanh sáng), vuông 58px, right 0, top 0, viền 3.2px, rotate(15deg), hover rotate(18deg), z-index cao hơn đè 1/3 góc phải trên của tấm sau */}
+                    <div
+                      className="absolute right-0 top-0 w-[58px] h-[58px] rounded-[8px] border-[3.2px] border-white bg-[#E5E7EB] overflow-hidden shadow-[0_6px_14px_rgba(0,0,0,0.14)] rotate-[15deg] group-hover/cards:rotate-[18deg] motion-safe:transition-transform motion-safe:duration-200 motion-reduce:transform-none z-10"
+                    >
+                      <img
+                        src="/images/empty-trips/front-sea.jpg"
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      {/* Gradient từ trong suốt lên đen 55% ở 40% chiều cao phía dưới */}
+                      <div className="absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
+                      {/* Góc dưới trái cách mép 5px: Icon vali viền trắng mảnh 7px + thanh trắng 19x4px cách 3px */}
+                      <div className="absolute bottom-[5px] left-[5px] flex items-center gap-[3px] z-10 pointer-events-none">
+                        <svg
+                          className="w-[7px] h-[7px] text-white shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M6 20h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
+                          <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                        </svg>
+                        <div className="w-[19px] h-[4px] rounded-full bg-white/85 shrink-0" />
+                      </div>
+                    </div>
                   </div>
-                  {/* Tiêu đề nhỏ */}
-                  <h3 className="text-[20px] sm:text-[22px] font-bold text-gray-950 mb-3.5 tracking-tight">
+
+                  {/* Tiêu đề nhỏ: rộng 395px (text-[18px]), cách mô tả 62px (mb-[10px], -6%) */}
+                  <h3 className="text-[18px] font-bold text-gray-950 mb-[10px] tracking-tight">
                     Bạn chưa có chuyến đi nào
                   </h3>
-                  {/* Mô tả: cỡ chữ ~32px (+15%), màu #333 đậm hơn */}
-                  <p className="text-[16px] text-[#333333] max-w-md mb-9 leading-relaxed font-normal">
+                  {/* Mô tả: giữ nguyên cỡ chữ đã khớp với Mindtrip, cách nút 60px (mb-[19px], -19%) */}
+                  <p className="text-[16px] text-[#333333] max-w-md mb-[19px] leading-relaxed font-normal">
                     Bắt đầu lên kế hoạch cho chuyến phiêu lưu tiếp theo đến Đà Nẵng hoặc Huế bằng AI.
                   </p>
-                  {/* Nút Tạo chuyến đi đầu tiên: cao hơn 28% (h-[54px]), padding ngang 52px (px-[48px]), cỡ chữ 15px */}
+                  {/* Nút Tạo chuyến đi đầu tiên: cao 100px (h-[54px]), padding 48px, cỡ chữ 15px, không bị cắt đáy */}
                   <button
                     onClick={() => setIsCreateTripModalOpen(true)}
-                    className="bg-black text-white px-[48px] h-[54px] rounded-full text-[15px] font-semibold hover:bg-neutral-800 transition active:scale-95 shadow-xs cursor-pointer flex items-center justify-center"
+                    className="bg-black text-white px-[48px] h-[54px] rounded-full text-[15px] font-semibold hover:bg-neutral-800 transition active:scale-95 shadow-xs cursor-pointer flex items-center justify-center shrink-0"
                   >
                     Tạo chuyến đi đầu tiên
                   </button>

@@ -417,10 +417,10 @@ def _generate_poi_signature_hook(poi: dict[str, Any]) -> str:
             clean_s = sentences[0]
             if len(clean_s) > 105:
                 clean_s = clean_s[:102].rstrip() + "..."
-            return f"{clean_s} ({sat}⭐)."
+            return f"{clean_s}."
 
     # 4. Fallback with satisfaction score
-    return f"Trải nghiệm bản địa đặc sắc được đông đảo du khách đánh giá cao ({sat}⭐)."
+    return "Trải nghiệm bản địa đặc sắc được đông đảo du khách đánh giá cao."
 
 
 def _build_smart_recommendation_snippet(
@@ -430,38 +430,28 @@ def _build_smart_recommendation_snippet(
     p_bucket: str,
     c_bucket: str,
 ) -> str:
-    """Build a natural, contextual explanation connecting the recommendation to the user's journey."""
-    closest_name = closest_lp.get("name") or "điểm bạn quan tâm"
+    """Build a concise, natural explanation connecting the recommendation to the user's journey."""
+    raw_name = closest_lp.get("name") or "điểm đã lưu"
+    closest_name = raw_name.split("–")[0].split("-")[0].strip()
     hook = _generate_poi_signature_hook(poi)
 
-    # Proximity phrasing (Point b): Regional cluster instead of rigid air distance/minutes
-    if min_dist <= 1.5:
-        loc_str = f"📍 Cùng khu vực với '{closest_name}' (trong bán kính ~1.5km)"
+    # Concise proximity phrasing requested by user (e.g. "Cách Gé Cafe ~1.5km")
+    if min_dist <= 0.3:
+        loc_str = f"Ngay gần {closest_name}"
+    elif min_dist <= 1.5:
+        d_km = f"{min_dist:.1f}".rstrip("0").rstrip(".")
+        loc_str = f"Cách {closest_name} ~{d_km}km"
     elif min_dist <= 4.0:
-        loc_str = f"📍 Thuận tiện kết hợp cùng cụm di chuyển với '{closest_name}'"
+        loc_str = f"Cùng khu vực {closest_name}"
     elif min_dist <= 8.0:
-        loc_str = f"📍 Cùng trung tâm thành phố, rất tiện ghé thăm sau '{closest_name}'"
+        loc_str = f"Cùng trung tâm, tiện ghé sau {closest_name}"
     elif min_dist <= 25.0:
-        loc_str = f"📍 Cùng tuyến trải nghiệm khám phá trong ngày từ '{closest_name}'"
+        loc_str = f"Cùng tuyến đi trong ngày từ {closest_name}"
     else:
         city_name = poi.get("city_name") or poi.get("city") or "thành phố"
-        loc_str = f"📍 Điểm đến tiêu biểu tại {city_name}"
+        loc_str = f"Điểm nổi bật tại {city_name}"
 
-    # Contextual journey transition based on bucket combination
-    if c_bucket in ("DISCOVER", "CULTURE") and p_bucket == "EAT":
-        action_str = "Sau khi tham quan, đây là nơi tuyệt vời để bạn dừng chân thưởng thức ẩm thực:"
-    elif c_bucket in ("DISCOVER", "CULTURE") and p_bucket == "DRINK":
-        action_str = "Điểm dừng chân lý tưởng để uống nước giải khát và thư giãn:"
-    elif c_bucket == "DRINK" and p_bucket == "EAT":
-        action_str = "Tiếp nối buổi cà phê, bạn có thể ghé dùng bữa đậm vị bản địa tại đây:"
-    elif c_bucket == "DRINK" and p_bucket in ("DISCOVER", "CULTURE"):
-        action_str = "Rất thích hợp để kết hợp dạo chơi và khám phá ngay gần đó:"
-    elif c_bucket == "EAT" and p_bucket == "DRINK":
-        action_str = "Quán nước lý tưởng để ghé tráng miệng hoặc hàn huyên sau bữa ăn:"
-    else:
-        action_str = "Rất thuận tiện kết hợp ghé thăm liền một mạch:"
-
-    return f"{loc_str}: {action_str} {hook}"
+    return f"{loc_str}. {hook}"
 
 
 def _recommend_by_ideas_and_taxonomy(
@@ -490,7 +480,12 @@ def _recommend_by_ideas_and_taxonomy(
 
         # Point a: Dynamic Capacity Quota based on Trip Duration (days)
         trip_days = 3
-        if request.trip_data and getattr(request.trip_data, "days", None):
+        if getattr(request, "trip_days", None):
+            try:
+                trip_days = max(1, int(request.trip_days))
+            except (TypeError, ValueError):
+                trip_days = 3
+        elif request.trip_data and getattr(request.trip_data, "days", None):
             try:
                 trip_days = max(1, int(request.trip_data.days))
             except (TypeError, ValueError):
@@ -498,9 +493,9 @@ def _recommend_by_ideas_and_taxonomy(
 
         quotas = {
             "EAT": max(2, int(trip_days * 2.0)),       # ~2 meals / day
-            "DRINK": max(2, int(trip_days * 1.5)),     # 1-2 drinks / day
+            "DRINK": max(1, int(trip_days * 1.0)),     # ~1 drink / day
             "DISCOVER": max(2, int(trip_days * 1.5)),  # 1-2 scenic spots / day
-            "CULTURE": max(2, int(trip_days * 1.5)),   # 1-2 heritage visits / day
+            "CULTURE": max(1, int(trip_days * 1.0)),   # ~1 heritage visit / day
         }
 
         liked_subcategories = [p.get("sub_category") for p in liked_pois if p.get("sub_category")]
@@ -650,7 +645,7 @@ def _recommend_by_ideas_and_taxonomy(
 
             city_display = poi.get("city_name") or poi.get("city") or "Đà Nẵng & Huế"
             usp_hook = _generate_poi_signature_hook(poi)
-            snippet = f"Trải nghiệm nổi bật tại {city_display} (phân khúc {tier_label}): {usp_hook}"
+            snippet = usp_hook
 
             ranked_list.append((match_score, snippet, poi))
 

@@ -708,69 +708,74 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         ) : (
         /* ─── MINDTRIP TRIPS VIEW ─── */
         <main className="flex-1 h-full bg-white overflow-y-auto auto-hide-scrollbar select-none animate-fadeIn">
-          <div className="max-w-[1040px] mx-auto px-6 sm:px-12 pt-10 pb-24">
-            {/* Top Row: Heading & + New trip button */}
-            <div className="flex items-center justify-between mb-8">
-              <h1 className="text-[32px] sm:text-[36px] font-bold text-gray-950 tracking-tight leading-none">
+          {/* Section 1: Lề & khung nội dung - Lề trái 115px, lề phải 134px, mở rộng toàn vùng nội dung không bị co hẹp */}
+          <div className="w-full pl-6 sm:pl-12 lg:pl-[115px] pr-6 sm:pr-12 lg:pr-[134px] pt-[124px] pb-24">
+            {/* Section 2.1: Tiêu đề & nút Chuyến đi mới - Cách mép trên 124px (pt-[124px]), khoảng cách đến tab 93px (mb-[58px]) */}
+            <div className="flex items-center justify-between mb-[58px]">
+              <h1 className="text-[32px] sm:text-[38px] lg:text-[44px] font-bold text-gray-950 tracking-tight leading-none">
                 Lịch trình của bạn
               </h1>
               <button
                 onClick={() => setIsCreateTripModalOpen(true)}
-                className="bg-black text-white hover:bg-neutral-800 px-5 py-2.5 rounded-full text-[14px] font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-xs cursor-pointer"
+                className="bg-black text-white hover:bg-neutral-800 h-[44px] px-5 rounded-full text-[14px] font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-xs cursor-pointer shrink-0"
               >
                 <i className="ph ph-plus font-bold text-sm"></i>
                 <span>Chuyến đi mới</span>
               </button>
             </div>
 
-            {/* Sub-header Tabs & Filter Dropdown */}
-            <div className="border-b border-gray-200 flex items-center justify-between mb-12">
-              <div className="flex items-center gap-8 -mb-px">
-                <button
-                  onClick={() => setTripsSubTab('trips')}
-                  className={`pb-3 text-[15px] cursor-pointer transition-colors ${
-                    tripsSubTab === 'trips'
-                      ? 'border-b-2 border-black font-bold text-black'
-                      : 'font-medium text-gray-500 hover:text-black border-b-2 border-transparent'
-                  }`}
-                >
-                  Chuyến đi
-                </button>
-                <button
-                  onClick={() => setTripsSubTab('calendar')}
-                  className={`pb-3 text-[15px] cursor-pointer transition-colors ${
-                    tripsSubTab === 'calendar'
-                      ? 'border-b-2 border-black font-bold text-black'
-                      : 'font-medium text-gray-500 hover:text-black border-b-2 border-transparent'
-                  }`}
-                >
-                  Lịch
-                </button>
-              </div>
+            {/* Section 2.2: Hàng Tab - Bỏ đường kẻ mảnh full-width; padding 14px mỗi bên; gap 20px (khoảng cách 2 chữ = 48px); chữ cách gạch chân 38px */}
+            <div className="flex items-center gap-5">
+              <button
+                onClick={() => setTripsSubTab('trips')}
+                className={`px-[14px] pb-[11px] text-[17px] sm:text-[18px] cursor-pointer transition-colors ${
+                  tripsSubTab === 'trips'
+                    ? 'border-b-[2.5px] border-black font-bold text-black'
+                    : 'font-medium text-gray-500 hover:text-black border-b-[2.5px] border-transparent'
+                }`}
+              >
+                Chuyến đi
+              </button>
+              <button
+                onClick={() => setTripsSubTab('calendar')}
+                className={`px-[14px] pb-[11px] text-[17px] sm:text-[18px] cursor-pointer transition-colors ${
+                  tripsSubTab === 'calendar'
+                    ? 'border-b-[2.5px] border-black font-bold text-black'
+                    : 'font-medium text-gray-500 hover:text-black border-b-[2.5px] border-transparent'
+                }`}
+              >
+                Lịch
+              </button>
+            </div>
 
-              {/* Right Filter Dropdown: "Tất cả v" */}
-              <div className="relative pb-2">
-                <button className="flex items-center gap-1.5 text-[14px] text-gray-700 hover:text-black font-medium transition cursor-pointer">
-                  <span>Tất cả</span>
-                  <i className="ph ph-caret-down text-xs"></i>
-                </button>
-              </div>
+            {/* Section 2.3: Ô "Tất cả ⌄" - Hàng riêng bên dưới, cách tab khoảng 109px, thụt vào 25px so với mép phải */}
+            <div className="flex justify-end pr-[25px] mt-[64px] mb-[28px]">
+              <button className="flex items-center gap-1.5 text-[14px] sm:text-[15px] text-gray-800 hover:text-black font-medium transition cursor-pointer">
+                <span>Tất cả</span>
+                <i className="ph ph-caret-down text-xs"></i>
+              </button>
             </div>
 
             {tripsSubTab === 'trips' ? (
               userTrips.length === 0 ? (
-                /* Empty state */
-                <div className="py-20 flex flex-col items-center justify-center text-center">
-                  <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 text-2xl mb-4">
-                    <i className="ph ph-calendar-plus"></i>
+                /* Section 3: Khối trạng thái trống ("Bạn chưa có chuyến đi nào") chuẩn Mindtrip */
+                <div className="pt-10 pb-20 flex flex-col items-center justify-center text-center">
+                  {/* Icon lịch - Cách tiêu đề nhỏ ~130px (mb-[76px] + line space) */}
+                  <div className="w-[72px] h-[72px] rounded-full bg-gray-50/90 border border-gray-200/60 flex items-center justify-center text-gray-400 text-2xl mb-[76px] shadow-2xs">
+                    <i className="ph ph-calendar-plus text-[28px]"></i>
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-1.5">Bạn chưa có chuyến đi nào</h3>
-                  <p className="text-sm text-gray-500 max-w-sm mb-6 leading-relaxed">
+                  {/* Tiêu đề nhỏ */}
+                  <h3 className="text-[20px] sm:text-[22px] font-bold text-gray-950 mb-3.5 tracking-tight">
+                    Bạn chưa có chuyến đi nào
+                  </h3>
+                  {/* Mô tả: cỡ chữ ~32px (+15%), màu #333 đậm hơn */}
+                  <p className="text-[16px] text-[#333333] max-w-md mb-9 leading-relaxed font-normal">
                     Bắt đầu lên kế hoạch cho chuyến phiêu lưu tiếp theo đến Đà Nẵng hoặc Huế bằng AI.
                   </p>
+                  {/* Nút Tạo chuyến đi đầu tiên: cao hơn 28% (h-[54px]), padding ngang 52px (px-[48px]), cỡ chữ 15px */}
                   <button
                     onClick={() => setIsCreateTripModalOpen(true)}
-                    className="bg-black text-white px-6 py-3 rounded-full text-sm font-semibold hover:bg-neutral-800 transition active:scale-95 shadow-xs cursor-pointer"
+                    className="bg-black text-white px-[48px] h-[54px] rounded-full text-[15px] font-semibold hover:bg-neutral-800 transition active:scale-95 shadow-xs cursor-pointer flex items-center justify-center"
                   >
                     Tạo chuyến đi đầu tiên
                   </button>
@@ -778,7 +783,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               ) : (
                 /* Grid of Trip Cards */
                 <div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {userTrips.map((trip) => (
                       <div
                         key={trip.id}
@@ -824,8 +829,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                     ))}
                   </div>
                 </div>
-              )
-            ) : (
+              )            ) : (
               /* Calendar SubTab View */
               <div className="py-24 flex flex-col items-center justify-center text-center">
                 <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 text-2xl mb-4">

@@ -151,6 +151,7 @@ def test_list_pois_defaults_to_first_page_of_ten(
     }
 
 
+
 def test_custom_page_and_limit_use_database_limit_offset(
     client: tuple[TestClient, list[tuple[str, Any]]],
 ) -> None:

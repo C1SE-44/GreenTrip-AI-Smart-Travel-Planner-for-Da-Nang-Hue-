@@ -1,5 +1,4 @@
 import logging
-from uuid import UUID
 
 from app.pois import explanation_repository
 from app.pois.schemas import (
@@ -17,10 +16,10 @@ class ExplanationServiceUnavailable(Exception):
 
 
 def get_poi_explanation_facts(
-    poi_id: UUID,
+    poi_id: str,
 ) -> POIExplanationFactsResponse | None:
     try:
-        payload = explanation_repository.fetch_poi_explanation_facts(str(poi_id))
+        payload = explanation_repository.fetch_poi_explanation_facts(poi_id)
         if payload is None:
             return None
 

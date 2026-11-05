@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { Poi, PoiCategory } from '@/data/pois';
 import { getGalleryImages, getDeterministicImage, SUB_CATEGORY_LABELS, categoryLabels } from '@/data/pois';
+import ExplanationModal from '@/components/poi/ExplanationModal';
 
 const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
   'quan-an': { icon: 'ph-fork-knife', label: 'Quán ăn' },
@@ -19,6 +20,12 @@ export interface PoiCardProps {
   onHover: (id: string | null) => void;
   onToggleFavorite: (id: string) => void;
   onToggleAddTrip?: (id: string) => void;
+  recommendation?: {
+    matchScore: number;
+    greenScore: number | null;
+    isLocalBusiness: boolean;
+    explanation: string;
+  };
 }
 
 export default function PoiCard({
@@ -30,15 +37,30 @@ export default function PoiCard({
   onHover,
   onToggleFavorite,
   onToggleAddTrip,
+  recommendation,
 }: PoiCardProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [isCardHovered, setIsCardHovered] = useState(false);
+  const [isExplanationModalOpen, setIsExplanationModalOpen] = useState(false);
 
   const gallery = useMemo(() => getGalleryImages(poi), [poi]);
 
   const categoryLabel = poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category]
     ? SUB_CATEGORY_LABELS[poi.sub_category]
     : CATEGORY_META[poi.category]?.label || categoryLabels[poi.category] || 'Điểm tham quan';
+  const isEcoLocal = Boolean(
+    recommendation &&
+      (recommendation.isLocalBusiness || (recommendation.greenScore ?? 0) >= 0.7),
+  );
+  const formattedCost = poi.estimatedCost == null
+    ? 'Chưa cập nhật giá'
+    : poi.estimatedCost === 0
+      ? 'Miễn phí'
+      : new Intl.NumberFormat('vi-VN', {
+          style: 'currency',
+          currency: 'VND',
+          maximumFractionDigits: 0,
+        }).format(poi.estimatedCost);
 
   return (
     <article
@@ -113,7 +135,7 @@ export default function PoiCard({
           >
             <i className={`ph ${favorite ? 'ph-fill ph-heart text-[17px] text-[#b45309]' : 'ph-heart text-[17px]'}`}></i>
           </button>
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleAddTrip?.(poi.id);
@@ -132,6 +154,19 @@ export default function PoiCard({
           <div className="absolute top-3 left-3 z-10 bg-rose-600 text-white text-[10.5px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
             <span>★</span>
             <span>MICHELIN</span>
+          </div>
+        )}
+
+        {recommendation && (
+          <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-5rem)] flex-col items-start gap-1.5">
+            <span className="rounded-full bg-gradient-to-r from-emerald-700 to-teal-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-md">
+              {Math.round(recommendation.matchScore)}% Phù hợp
+            </span>
+            {isEcoLocal && (
+              <span className="rounded-full border border-emerald-100/70 bg-emerald-950/85 px-2 py-1 text-[10px] font-semibold text-emerald-50 shadow-md backdrop-blur-sm">
+                📍 Điểm bản địa
+              </span>
+            )}
           </div>
         )}
 
@@ -176,7 +211,65 @@ export default function PoiCard({
         <div className="text-[12.5px] text-gray-400 font-normal truncate">
           <span>{poi.address || `${poi.city === 'Đà Nẵng' ? 'Hải Châu, Đà Nẵng' : `${poi.city}, Việt Nam`}`}</span>
         </div>
+
+        {recommendation && (
+          <div className="pt-1.5" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between gap-2 text-[12px]">
+              <span className="truncate font-semibold text-gray-800">{formattedCost}</span>
+              <span className="shrink-0 text-gray-600">
+                <span className="text-amber-500" aria-hidden="true">★</span>{' '}
+                {poi.rating > 0 ? poi.rating.toFixed(1) : '—'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onToggleAddTrip?.(poi.id)}
+              aria-pressed={isAdded}
+              className={`mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-full text-[12px] font-semibold transition-all duration-200 ${
+                isAdded
+                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                  : 'bg-[#102b21] text-white hover:bg-[#194332]'
+              }`}
+            >
+              <i className={`ph ${isAdded ? 'ph-check' : 'ph-plus'} text-sm`} aria-hidden="true"></i>
+              {isAdded ? 'Đã thêm vào chuyến đi' : '+ Thêm vào chuyến đi'}
+            </button>
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={isExplanationModalOpen}
+              onClick={() => setIsExplanationModalOpen(true)}
+              className="mt-1.5 flex h-[34px] w-full items-center justify-center gap-1 text-xs font-medium text-emerald-800 transition-colors hover:text-emerald-950 focus-visible:ring-2 focus-visible:ring-emerald-500"
+            >
+              <i className="ph ph-sparkle" aria-hidden="true"></i>
+              Lý do AI gợi ý · Vì sao nơi này?
+            </button>
+          </div>
+        )}
+        {!recommendation && (
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={isExplanationModalOpen}
+            onClick={(event) => { event.stopPropagation(); setIsExplanationModalOpen(true); }}
+            className="mt-2 flex h-[34px] w-full items-center justify-center gap-1.5 rounded-full border border-emerald-200 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-500"
+          >
+            Vì sao nơi này?
+          </button>
+        )}
       </div>
+
+      {/* Explanation Modal (KG + AI) */}
+      {isExplanationModalOpen && (
+        <ExplanationModal
+          key={poi.id}
+          poiId={poi.id}
+          poiName={poi.name}
+          explanationSnippet={recommendation?.explanation}
+          isOpen={isExplanationModalOpen}
+          onClose={() => setIsExplanationModalOpen(false)}
+        />
+      )}
     </article>
   );
 }

@@ -49,4 +49,9 @@ data/backup/
 data/b2b/
 data/test_scraper/
 data/*.txt
+mindtrip_artifacts/
+graphify-out/
 
+
+
+*.db

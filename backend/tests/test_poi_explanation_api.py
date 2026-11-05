@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 from typing import Any
-from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,7 +17,7 @@ from app.pois.explanation_service import ExplanationServiceUnavailable
 from app.pois.schemas import POIExplanationFactsResponse
 
 
-POI_ID = UUID("46aa7aee-c255-4f1b-9cc2-5aaf72575a65")
+POI_ID = "12345"
 
 
 def response_payload(facts: list[dict[str, Any]]) -> POIExplanationFactsResponse:
@@ -65,9 +64,9 @@ def test_existing_poi_returns_structured_multiple_facts(
             "target_name": "Hue",
         },
     ]
-    requested_ids: list[UUID] = []
+    requested_ids: list[str] = []
 
-    def fake_service(poi_id: UUID) -> POIExplanationFactsResponse:
+    def fake_service(poi_id: str) -> POIExplanationFactsResponse:
         requested_ids.append(poi_id)
         return response_payload(facts)
 
@@ -111,7 +110,7 @@ def test_missing_poi_returns_404(
 def test_neo4j_failure_returns_safe_503(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def unavailable(_poi_id: UUID) -> None:
+    def unavailable(_poi_id: str) -> None:
         raise ExplanationServiceUnavailable("sensitive driver details")
 
     monkeypatch.setattr(router, "get_poi_explanation_facts", unavailable)
@@ -124,21 +123,21 @@ def test_neo4j_failure_returns_safe_503(
     assert "neo4j" not in response.text.lower()
 
 
-def test_invalid_uuid_returns_422_without_calling_service(
+def test_numeric_poi_id_is_passed_through_to_service(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    called = False
+    requested_ids: list[str] = []
 
-    def fake_service(_poi_id: UUID) -> None:
-        nonlocal called
-        called = True
+    def fake_service(poi_id: str) -> POIExplanationFactsResponse:
+        requested_ids.append(poi_id)
+        return response_payload([])
 
     monkeypatch.setattr(router, "get_poi_explanation_facts", fake_service)
 
-    response = client.get("/pois/not-a-uuid/explanation-facts")
+    response = client.get(f"/pois/{POI_ID}/explanation-facts")
 
-    assert response.status_code == 422
-    assert called is False
+    assert response.status_code == 200
+    assert requested_ids == [POI_ID]
 
 
 def test_service_removes_duplicate_facts_in_existing_order(
@@ -238,6 +237,7 @@ def test_endpoint_is_public_and_documented_in_openapi(client: TestClient) -> Non
     operation = response.json()["paths"]["/pois/{poi_id}/explanation-facts"]["get"]
     assert operation["summary"] == "Return POI explanation facts"
     assert operation.get("security") in (None, [])
-    assert operation["parameters"][0]["schema"]["format"] == "uuid"
+    assert operation["parameters"][0]["schema"]["type"] == "string"
+    assert "format" not in operation["parameters"][0]["schema"]
     assert "200" in operation["responses"]
     assert "POIExplanationFactsResponse" in response.text

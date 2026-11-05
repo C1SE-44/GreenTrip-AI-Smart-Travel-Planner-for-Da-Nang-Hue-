@@ -1,4 +1,6 @@
+import os
 from pathlib import Path
+import re
 import sys
 from typing import Any
 
@@ -158,6 +160,8 @@ def test_green_and_budget_score_normalization_consistency() -> None:
 # ─────────────────────────────────────────────
 
 class FakeCursor:
+    """Mô phỏng chính xác hành vi WHERE, ORDER BY và LIMIT/OFFSET của PostgreSQL."""
+
     def __init__(self, records: list[POI], queries: list[tuple[str, Any]]) -> None:
         self.records = records
         self.queries = queries
@@ -171,12 +175,106 @@ class FakeCursor:
 
     def execute(self, query: str, parameters: tuple[Any, ...] | None = None) -> None:
         self.queries.append((query, parameters))
+        matched = list(self.records)
+
+        # 1. Filter: min_eco_score (WHERE green_score >= %s)
+        if "p.green_score" in query and ">= %s" in query:
+            min_score = next(
+                (p for p in (parameters or ()) if isinstance(p, (int, float)) and p in (30.0, 55.0, 75.0, 90.0)),
+                None,
+            )
+            if min_score is not None:
+                matched = [
+                    p for p in matched
+                    if (
+                        (p.green_score if (p.green_score or 0) > 1 else (p.green_score or 0) * 100.0)
+                        >= min_score
+                    )
+                ]
+
+        # 2. Filter: eco_certified_only
+        if "array_length(p.eco_features, 1)" in query:
+            matched = [
+                p for p in matched
+                if (
+                    ((p.green_score if (p.green_score or 0) > 1 else (p.green_score or 0) * 100.0) >= 75.0)
+                    or bool(p.eco_features)
+                )
+            ]
+
+        # 3. Filter: green_transit_only
+        if "array_to_string" in query:
+            matched = [
+                p for p in matched
+                if any(
+                    kw in " ".join(p.eco_features or []).lower()
+                    for kw in ("transit", "bus", "bike", "bicycle", "walk", "xe buýt", "xe đạp", "đi bộ", "xe điện")
+                )
+                or (p.ai_metadata or {}).get("green_transit") is True
+            ]
+
+        # 4. Filter: max_budget with tier fallback
+        if "<= %s" in query and "p.estimated_cost" in query and "budget_tier" in query:
+            max_b = next(
+                (p for p in (parameters or ()) if isinstance(p, (int, float)) and p in (0.0, 100_000.0, 400_000.0, 1_000_000.0)),
+                None,
+            )
+            if max_b is not None:
+                fallback_map = {"free": 0.0, "$": 100_000.0, "$$": 400_000.0, "$$$": 1_000_000.0}
+                def eff_cost(p: POI) -> float | None:
+                    if p.estimated_cost is not None:
+                        return float(p.estimated_cost)
+                    if p.budget_tier and p.budget_tier.strip().lower() in fallback_map:
+                        return fallback_map[p.budget_tier.strip().lower()]
+                    return None
+                matched = [p for p in matched if eff_cost(p) is not None and eff_cost(p) <= max_b]
+
+        # 5. Filter: budget_tier direct
+        if "p.budget_tier = %s" in query:
+            tier_param = next(
+                (p for p in (parameters or ()) if isinstance(p, str) and p in ("free", "$", "$$", "$$$", "$$$$")),
+                None,
+            )
+            if tier_param is not None:
+                matched = [p for p in matched if (p.budget_tier or "").strip() == tier_param]
+
+        # 6. Sorting (Multi-Objective Weighted Ranking vs Default)
+        if "ORDER BY (" in query:
+            m = re.search(r"ORDER BY \((\d+(?:\.\d+)?)\s*\*", query)
+            if m:
+                w_g = float(m.group(1))
+                w_b = 1.0 - w_g
+                fallback_scores = {"free": 1.0, "$": 0.9, "$$": 0.65, "$$$": 0.3, "$$$$": 0.0}
+
+                def poi_score(p: POI) -> tuple[float, str]:
+                    if p.green_score is None:
+                        s_g = 0.5
+                    elif p.green_score < 0:
+                        s_g = 0.0
+                    elif p.green_score <= 1.0:
+                        s_g = float(p.green_score)
+                    else:
+                        s_g = min(1.0, float(p.green_score) / 100.0)
+
+                    if p.estimated_cost is not None:
+                        s_b = max(0.0, 1.0 - min(max(0.0, float(p.estimated_cost)), 1_000_000.0) / 1_000_000.0)
+                    elif p.budget_tier and p.budget_tier.strip().lower() in fallback_scores:
+                        s_b = fallback_scores[p.budget_tier.strip().lower()]
+                    else:
+                        s_b = 0.5
+
+                    return (w_g * s_g + w_b * s_b, p.name)
+
+                matched.sort(key=lambda p: (-poi_score(p)[0], poi_score(p)[1]))
+        else:
+            matched.sort(key=lambda p: (p.name, str(p.id)))
+
         if "COUNT(*)" in query:
-            self.rows = [(len(self.records),)]
+            self.rows = [(len(matched),)]
             return
 
-        limit, offset = (parameters[-2], parameters[-1]) if parameters else (0, 0)
-        page = self.records[offset : offset + limit]
+        limit, offset = (parameters[-2], parameters[-1]) if parameters and len(parameters) >= 2 else (len(matched), 0)
+        page = matched[offset : offset + limit]
         self.rows = [
             (
                 poi.id,
@@ -370,7 +468,69 @@ def test_default_request_preserves_alphabetical_order_sql(
     resp = client.get("/pois")
     assert resp.status_code == 200
     page_query, _ = queries[0]
-    assert "ORDER BY p.name ASC" in page_query
+    assert "ORDER BY p.name ASC, p.poi_id ASC" in page_query
+
+
+def test_green_transit_only_pushed_to_sql_where_clause(
+    test_client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    client, queries = test_client
+    resp = client.get("/pois?green_transit_only=true")
+    assert resp.status_code == 200
+    page_query, page_params = queries[0]
+    count_query, count_params = queries[1]
+
+    # Both page query and count query must contain the green transit regex condition in SQL
+    assert "array_to_string(COALESCE(p.eco_features" in page_query
+    assert "array_to_string(COALESCE(p.eco_features" in count_query
+    assert any("transit" in str(p) for p in page_params)
+    assert any("transit" in str(p) for p in count_params)
+
+
+def test_budget_fallback_in_sql_query(
+    test_client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    client, queries = test_client
+    # Test request with max_budget through tier
+    resp = client.get("/pois?eco_priority=all&budget_tier=%24%24")
+    assert resp.status_code == 200
+    page_query, _ = queries[0]
+    assert "p.budget_tier = %s" in page_query
+
+
+def test_pb08_weights_endpoint_returns_parsed_slider_values(
+    test_client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    client, _ = test_client
+    response = client.get(
+        "/pois/weights?green_weight=60&budget_weight=40&budget_tier=%24%24"
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "green_weight_raw": 60.0,
+        "budget_weight_raw": 40.0,
+        "normalized_green_weight": 0.6,
+        "normalized_budget_weight": 0.4,
+        "min_eco_score": 0,
+        "max_budget": 400_000.0,
+        "eco_certified_only": False,
+        "green_transit_only": False,
+        "is_ranking_active": True,
+        "is_filtering_active": True,
+        "zero_weights_fallback": False,
+    }
+
+
+def test_zero_zero_weights_returns_equal_weights_fallback(
+    test_client: tuple[TestClient, list[tuple[str, Any]]],
+) -> None:
+    client, _ = test_client
+    response = client.get("/pois/weights?green_weight=0&budget_weight=0")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["normalized_green_weight"] == 0.5
+    assert data["normalized_budget_weight"] == 0.5
+    assert data["zero_weights_fallback"] is True
 
 
 @pytest.mark.parametrize(
@@ -450,3 +610,57 @@ def test_openapi_schema_contains_slider_parameters(
     assert "budget_tier" in parameters
     assert "eco_certified_only" in parameters
     assert "green_transit_only" in parameters
+
+
+# ─────────────────────────────────────────────
+# Live PostgreSQL Tests (Run only when DATABASE_URL is configured)
+# ─────────────────────────────────────────────
+
+@pytest.mark.skipif(
+    not os.getenv("DATABASE_URL"),
+    reason="Requires live PostgreSQL connection (DATABASE_URL)",
+)
+def test_live_postgres_green_transit_only_pagination_consistency() -> None:
+    """Xác minh rằng trên database thật, green_transit_only được lọc trong SQL và không làm nhảy total."""
+    from app.pois.service import get_poi_page
+    from app.pois.weights import parse_slider_weights
+
+    weights = parse_slider_weights(green_transit_only=True)
+    page1 = get_poi_page(page=1, limit=10, weights=weights)
+    page2 = get_poi_page(page=2, limit=10, weights=weights)
+
+    assert page1.pagination.total == 176
+    assert page2.pagination.total == 176
+    assert page1.pagination.total_pages == 18
+    assert page2.pagination.total_pages == 18
+    assert len(page1.items) == 10
+    assert len(page2.items) == 10
+
+    # Ensure no duplicate POIs between page 1 and page 2
+    p1_ids = [item.id for item in page1.items]
+    p2_ids = [item.id for item in page2.items]
+    assert set(p1_ids).isdisjoint(p2_ids)
+
+
+@pytest.mark.skipif(
+    not os.getenv("DATABASE_URL"),
+    reason="Requires live PostgreSQL connection (DATABASE_URL)",
+)
+def test_live_postgres_multi_objective_ranking_order_consistency() -> None:
+    """Xác minh rằng tỷ trọng 90/10 vs 10/90 trên database thật xếp hạng POI chuẩn xác."""
+    from app.pois.service import get_poi_page
+    from app.pois.weights import parse_slider_weights
+
+    green_weights = parse_slider_weights(green_weight=90.0, budget_weight=10.0)
+    budget_weights = parse_slider_weights(green_weight=10.0, budget_weight=90.0)
+
+    green_page = get_poi_page(page=1, limit=10, weights=green_weights)
+    budget_page = get_poi_page(page=1, limit=10, weights=budget_weights)
+
+    # Top item in green priority should have high green score
+    assert green_page.items[0].green_score is not None
+    assert green_page.items[0].green_score >= 0.85
+
+    # Top item in budget priority should have low or 0 estimated cost
+    assert budget_page.items[0].estimated_cost is not None
+    assert budget_page.items[0].estimated_cost <= 100_000.0

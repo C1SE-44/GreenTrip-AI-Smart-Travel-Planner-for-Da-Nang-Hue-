@@ -33,6 +33,12 @@ CATEGORY_ALIAS_MAP: dict[str, list[str]] = {
 }
 
 
+GREEN_TRANSIT_SQL_PATTERN: str = (
+    r"(transit|bus|bike|bicycle|walk|pedestrian|electric|\yev\y|"
+    r"xe buýt|xe đạp|đi bộ|xe điện|giao thông xanh)"
+)
+
+
 def list_pois(
     limit: int,
     offset: int,
@@ -90,7 +96,16 @@ def list_pois(
                 budget_tier and budget_tier.strip().casefold() not in {"all", ""}
             ):
                 where_clauses.append(
-                    "(p.estimated_cost IS NOT NULL AND p.estimated_cost::float <= %s)"
+                    "("
+                    "CASE "
+                    "WHEN p.estimated_cost IS NOT NULL THEN p.estimated_cost::float "
+                    "WHEN LOWER(TRIM(COALESCE(p.budget_tier, ''))) = 'free' THEN 0.0 "
+                    "WHEN TRIM(COALESCE(p.budget_tier, '')) = '$' THEN 100000.0 "
+                    "WHEN TRIM(COALESCE(p.budget_tier, '')) = '$$' THEN 400000.0 "
+                    "WHEN TRIM(COALESCE(p.budget_tier, '')) = '$$$' THEN 1000000.0 "
+                    "WHEN TRIM(COALESCE(p.budget_tier, '')) = '$$$$' THEN 1500000.0 "
+                    "ELSE NULL END"
+                    ") <= %s"
                 )
                 params.append(float(weights.max_budget))
 
@@ -101,6 +116,19 @@ def list_pois(
                     "ELSE p.green_score::float END) >= 75.0 "
                     "OR COALESCE(array_length(p.eco_features, 1), 0) > 0)"
                 )
+
+            if weights.green_transit_only:
+                where_clauses.append(
+                    "("
+                    "array_to_string(COALESCE(p.eco_features, ARRAY[]::text[]), ' ') ~* %s "
+                    "OR (p.ai_metadata->>'green_transit') = 'true' "
+                    "OR ("
+                    "jsonb_typeof(p.ai_metadata->'carbon_footprint_score') = 'number' "
+                    "AND (p.ai_metadata->>'carbon_footprint_score')::float >= 75.0"
+                    ")"
+                    ")"
+                )
+                params.append(GREEN_TRANSIT_SQL_PATTERN)
 
         where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
@@ -124,10 +152,10 @@ def list_pois(
             w_g = float(weights.normalized_green_weight)
             w_b = float(weights.normalized_budget_weight)
             order_by_sql = (
-                f"ORDER BY ({w_g} * {green_norm_sql} + {w_b} * {budget_norm_sql}) DESC, p.name ASC"
+                f"ORDER BY ({w_g} * {green_norm_sql} + {w_b} * {budget_norm_sql}) DESC, p.name ASC, p.poi_id ASC"
             )
         else:
-            order_by_sql = "ORDER BY p.name ASC"
+            order_by_sql = "ORDER BY p.name ASC, p.poi_id ASC"
 
         with connection.cursor() as cursor:
             query = f"""

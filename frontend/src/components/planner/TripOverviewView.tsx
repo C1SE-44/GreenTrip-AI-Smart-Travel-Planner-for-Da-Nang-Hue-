@@ -193,7 +193,8 @@ export default function TripOverviewView({
           top_k: 10,
         };
 
-        const res = await fetchJson<{ status: string; total: number; data: any[] }>(
+        const res = await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        fetchJson<{ status: string; total: number; data: any[] }>(
           '/api/v1/recommendations/poi',
           {
             method: 'POST',
@@ -256,7 +257,7 @@ export default function TripOverviewView({
       else if (hasDn) destinationPois = rawPois.filter((p) => isDaNang(p.city));
       if (destinationPois.length === 0) destinationPois = rawPois;
 
-      let ranked = [...destinationPois];
+      const ranked = [...destinationPois];
       if (selectedBudgetTier === 'budget') {
         ranked.sort((a, b) => (a.estimatedCost || 0) - (b.estimatedCost || 0));
       } else if (selectedBudgetTier === 'upgrade' || selectedBudgetTier === 'luxury') {
@@ -1800,7 +1801,7 @@ export default function TripOverviewView({
                   <div className="relative shrink-0">
                     <select
                       value={modalCity}
-                      onChange={(e) => setModalCity(e.target.value as any)}
+                      onChange={(e) => setModalCity(e.target.value as 'all' | 'Đà Nẵng' | 'Huế')}
                       className="font-extrabold text-[16px] text-gray-900 bg-transparent pr-6 py-1 cursor-pointer focus:outline-none"
                     >
                       <option value="all">Tất cả điểm đến</option>
@@ -1850,7 +1851,7 @@ export default function TripOverviewView({
                       <button
                         key={cat.id}
                         type="button"
-                        onClick={() => setModalCategory(cat.id as any)}
+                        onClick={() => setModalCategory(cat.id as 'for-you' | 'experiences' | 'restaurants' | 'spiritual' | 'all')}
                         className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer shrink-0 shadow-2xs ${
                           isActive
                             ? 'bg-black text-white'

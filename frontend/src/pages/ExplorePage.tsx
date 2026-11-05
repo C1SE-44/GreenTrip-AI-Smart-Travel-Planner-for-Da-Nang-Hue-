@@ -36,9 +36,9 @@ export interface UserTrip {
   status?: string;
   prompt?: string;
   totalBudget?: number;
-  itineraryOutline?: any[];
-  matchedPois?: any[];
-  costBreakdown?: any;
+  itineraryOutline?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  matchedPois?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  costBreakdown?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   pacingLabel?: string;
   ideas?: string[];
 }

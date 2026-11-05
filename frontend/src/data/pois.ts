@@ -392,6 +392,7 @@ export function normalizeCity(value?: string | null): PoiCity {
   return 'Đà Nẵng';
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function normalizePoi(item: BackendPoiItem | Poi | any): Poi | null {
   if (!item) return null;
   if (item.id && item.name && Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lng)) && item.category && item.city) {

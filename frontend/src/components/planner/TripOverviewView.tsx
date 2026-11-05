@@ -150,14 +150,11 @@ export default function TripOverviewView({
   }, [trip.ideas]);
 
   const handleToggleIdea = (poiId: string) => {
-    setTripIdeas((prev) => {
-      const next = prev.includes(poiId) ? prev.filter((id) => id !== poiId) : [...prev, poiId];
-      if (onUpdateTrip) {
-        onUpdateTrip({ ...trip, ideas: next });
-      }
-      return next;
-    });
+    const next = tripIdeas.includes(poiId) ? tripIdeas.filter((id) => id !== poiId) : [...tripIdeas, poiId];
+    setTripIdeas(next);
+    onUpdateTrip?.({ ...trip, ideas: next });
   };
+
 
   // State điều khiển hiển thị panel Ý tưởng ở cột phải (thay thế 4 ô + bản đồ)
   const [showIdeasView, setShowIdeasView] = useState(false);
@@ -220,6 +217,7 @@ export default function TripOverviewView({
               lat: item.lat || 16.0,
               lng: item.lng || 108.0,
               image: item.image || foundLocal?.image || getDeterministicImage(item.name, item.poi_id || idx, category, city),
+              gallery: Array.isArray(item.gallery) && item.gallery.length > 0 ? item.gallery : foundLocal?.gallery,
               description: item.explanation_snippet || foundLocal?.description || 'Địa điểm hấp dẫn cho chuyến đi của bạn.',
               rating: item.satisfaction_score || foundLocal?.rating || 4.6,
               visitDuration: '1–2 giờ',
@@ -645,6 +643,7 @@ export default function TripOverviewView({
                           <img
                             src={poi.image}
                             alt={poi.name}
+                            referrerPolicy="no-referrer"
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
                               e.currentTarget.src = 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
@@ -1015,6 +1014,7 @@ export default function TripOverviewView({
                           <img
                             src={poi.image}
                             alt={poi.name}
+                            referrerPolicy="no-referrer"
                             className="w-13 h-13 rounded-xl object-cover shrink-0"
                           />
                           <div className="min-w-0">
@@ -1901,6 +1901,7 @@ export default function TripOverviewView({
                               <img
                                 src={poi.image}
                                 alt={poi.name}
+                            referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                 onError={(e) => {
                                   e.currentTarget.src = 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';

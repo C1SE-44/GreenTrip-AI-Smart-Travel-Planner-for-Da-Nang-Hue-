@@ -56,6 +56,7 @@ class RecommendationPOI(BaseModel):
     lat: float | None = None
     lng: float | None = None
     image: str | None = None
+    gallery: list[str] | None = None
     city: str | None = None
     explanation_snippet: str
 

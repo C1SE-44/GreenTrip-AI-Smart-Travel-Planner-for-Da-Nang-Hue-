@@ -56,6 +56,8 @@ def _load_pois_from_csv(destination: str | None = None) -> list[dict[str, Any]]:
                     "lat": _safe_float(row.get("latitude"), 16.0),
                     "lng": _safe_float(row.get("longitude"), 108.0),
                     "city_name": row.get("city_name") or "Đà Nẵng",
+                    "image_url": row.get("image_url") or None,
+                    "gallery_urls": [row["image_url"]] if row.get("image_url") else [],
                     "is_local_business": True,
                     "is_active": True,
                 })
@@ -269,6 +271,8 @@ def list_recommendation_pois(
             "ai_metadata": "NULL::jsonb",
             "average_visit_minutes": "NULL",
             "popularity_score": "NULL",
+            "image_url": "NULL::text",
+            "gallery_urls": "NULL::text[]",
         }
         optional_expressions = {
             name: f"p.{name}" if name in poi_columns else fallback
@@ -293,6 +297,8 @@ def list_recommendation_pois(
                 {optional_expressions['budget_tier']} AS budget_tier,
                 {optional_expressions['vibes']} AS vibes,
                 {optional_expressions['ai_metadata']} AS ai_metadata,
+                {optional_expressions['image_url']} AS image_url,
+                {optional_expressions['gallery_urls']} AS gallery_urls,
                 p.local_business_type,
                 p.estimated_cost AS estimated_cost,
                 p.satisfaction_score::double precision AS satisfaction_score,

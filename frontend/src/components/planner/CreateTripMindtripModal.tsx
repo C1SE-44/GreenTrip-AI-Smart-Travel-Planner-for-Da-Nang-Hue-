@@ -377,7 +377,7 @@ export default function CreateTripMindtripModal({
                 <span>Đang xử lý qua AI...</span>
               </>
             ) : (
-              <span>Tạo nên</span>
+              <span>Tạo chuyến đi</span>
             )}
           </button>
         </div>

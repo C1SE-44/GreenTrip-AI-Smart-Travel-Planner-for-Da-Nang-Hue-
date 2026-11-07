@@ -14,8 +14,8 @@ CITY_ALIAS_MAP: dict[str, str] = {
 }
 
 CATEGORY_ALIAS_MAP: dict[str, list[str]] = {
-    "di-tich": ["Di tích lịch sử và văn hóa"],
-    "di tích": ["Di tích lịch sử và văn hóa"],
+    "di-tich": ["Di tích lịch sử và văn hóa", "Tâm linh và chùa thiền"],
+    "di tích": ["Di tích lịch sử và văn hóa", "Tâm linh và chùa thiền"],
     "canh-quan": ["Cảnh quan và thiên nhiên"],
     "cảnh quan": ["Cảnh quan và thiên nhiên"],
     "chua": ["Tâm linh và chùa thiền"],

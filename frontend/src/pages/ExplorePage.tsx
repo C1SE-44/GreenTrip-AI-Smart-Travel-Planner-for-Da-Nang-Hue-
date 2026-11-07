@@ -483,6 +483,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const handleTabChange = (tabId: 'all' | 'quan-an' | 'di-tich' | 'canh-quan') => {
     setActiveTab(tabId);
     setCategoryFilter(tabId);
+    if (tabId === 'all') {
+      setFilterValues((prev) => ({ ...prev, vibes: [], subCategories: [] }));
+    }
   };
 
   const filteredPois = useMemo(() => {
@@ -564,7 +567,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       }
 
       // Sub-categories filter
-      if (filterValues.subCategories.length > 0) {
+      if (categoryFilter !== 'all' && filterValues.subCategories.length > 0) {
         const matchSub = filterValues.subCategories.some((sc) => {
           const scLower = sc.toLowerCase();
           const pSub = (poi.sub_category || '').toLowerCase();
@@ -584,7 +587,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       }
 
       // Vibes filter (Khớp theo keywords ngữ nghĩa trong database)
-      if (filterValues.vibes.length > 0) {
+      if (categoryFilter !== 'all' && filterValues.vibes.length > 0) {
         const pVibes = (poi.vibes || []).map((v) => v.toLowerCase());
         const allVibesList = Object.values(VIBES_BY_CATEGORY).flat();
         const matchVibe = filterValues.vibes.some((vId) => {
@@ -658,8 +661,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     if (filterValues.cuisines.length > 0) count += filterValues.cuisines.length;
     if (filterValues.minRating !== null) count++;
     if (filterValues.openNowOnly) count++;
-    if (filterValues.vibes.length > 0) count += filterValues.vibes.length;
-    if (filterValues.subCategories.length > 0) count += filterValues.subCategories.length;
+    if (categoryFilter !== 'all' && filterValues.vibes.length > 0) count += filterValues.vibes.length;
+    if (categoryFilter !== 'all' && filterValues.subCategories.length > 0) count += filterValues.subCategories.length;
     if (filterValues.rainyDayFriendly) count++;
     if (filterValues.freeTicketOnly) count++;
     if (filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50) count++;
@@ -1364,7 +1367,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   <button type="button" onClick={() => setFilterValues(p => ({ ...p, timeOfDay: [] }))} className="hover:text-black font-bold">×</button>
                 </span>
               )}
-              {filterValues.vibes.map((v) => {
+              {activeTab !== 'all' && filterValues.vibes.map((v) => {
                 const allVibes = Object.values(VIBES_BY_CATEGORY).flat();
                 const label = allVibes.find((item) => item.id === v)?.label || v;
                 return (
@@ -1374,7 +1377,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   </span>
                 );
               })}
-              {filterValues.subCategories.map((sc) => (
+              {activeTab !== 'all' && filterValues.subCategories.map((sc) => (
                 <span key={sc} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
                   <span>{SUB_CATEGORY_LABELS[sc] || (sc === 'chua' ? 'Chùa & Điểm tâm linh' : sc)}</span>
                   <button type="button" onClick={() => setFilterValues(p => ({ ...p, subCategories: p.subCategories.filter(item => item !== sc) }))} className="hover:text-black font-bold">×</button>

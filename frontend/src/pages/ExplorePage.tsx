@@ -17,6 +17,7 @@ import ExploreFilterModal, {
   type PoiCategoryFilter,
   type TimeOfDay,
   DEFAULT_FILTER_VALUES,
+  VIBES_BY_CATEGORY,
 } from '@/components/poi/ExploreFilterModal';
 import QuickFilterBar from '@/components/poi/QuickFilterBar';
 import {
@@ -582,12 +583,15 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         if (!matchSub) return false;
       }
 
-      // Vibes filter
+      // Vibes filter (Khớp theo keywords ngữ nghĩa trong database)
       if (filterValues.vibes.length > 0) {
         const pVibes = (poi.vibes || []).map((v) => v.toLowerCase());
-        const matchVibe = filterValues.vibes.some((v) =>
-          pVibes.some((pv) => pv.includes(v.toLowerCase()))
-        );
+        const allVibesList = Object.values(VIBES_BY_CATEGORY).flat();
+        const matchVibe = filterValues.vibes.some((vId) => {
+          const item = allVibesList.find((v) => v.id === vId);
+          const keywords = (item?.keywords || [vId]).map((k) => k.toLowerCase());
+          return keywords.some((kw) => pVibes.some((pv) => pv.includes(kw) || kw.includes(pv)));
+        });
         if (!matchVibe) return false;
       }
 
@@ -1360,12 +1364,16 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   <button type="button" onClick={() => setFilterValues(p => ({ ...p, timeOfDay: [] }))} className="hover:text-black font-bold">×</button>
                 </span>
               )}
-              {filterValues.vibes.map((v) => (
-                <span key={v} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
-                  <span>Vibe: {v}</span>
-                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, vibes: p.vibes.filter(item => item !== v) }))} className="hover:text-black font-bold">×</button>
-                </span>
-              ))}
+              {filterValues.vibes.map((v) => {
+                const allVibes = Object.values(VIBES_BY_CATEGORY).flat();
+                const label = allVibes.find((item) => item.id === v)?.label || v;
+                return (
+                  <span key={v} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
+                    <span>Vibe: {label}</span>
+                    <button type="button" onClick={() => setFilterValues(p => ({ ...p, vibes: p.vibes.filter(item => item !== v) }))} className="hover:text-black font-bold">×</button>
+                  </span>
+                );
+              })}
               {filterValues.subCategories.map((sc) => (
                 <span key={sc} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
                   <span>{SUB_CATEGORY_LABELS[sc] || (sc === 'chua' ? 'Chùa & Điểm tâm linh' : sc)}</span>

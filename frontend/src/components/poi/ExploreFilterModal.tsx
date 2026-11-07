@@ -228,44 +228,51 @@ const TIME_OPTIONS: { value: TimeOfDay | 'all'; label: string; desc: string }[] 
 // TAXONOMY VIBES & LOẠI HÌNH CỤ THỂ (THEO NHÓM DATA)
 // ─────────────────────────────────────────────
 
-// 1. VIBES THEO NHÓM
-export const VIBES_BY_CATEGORY: Record<string, { id: string; label: string; icon: typeof Sparkles }[]> = {
+// 1. VIBES THEO NHÓM (MAP CHUẨN XÁC 100% THEO VIBES CÓ THỰC TRONG DATABASE)
+export interface VibeItem {
+  id: string;
+  label: string;
+  icon: typeof Sparkles;
+  keywords: string[];
+}
+
+export const VIBES_BY_CATEGORY: Record<string, VibeItem[]> = {
   'di-tich': [
-    { id: 'Cổ kính', label: 'Cổ kính & Trầm mặc', icon: Landmark },
-    { id: 'Thanh tịnh', label: 'Thanh tịnh & Thiền tịnh', icon: Sparkles },
-    { id: 'Uy nghiêm', label: 'Uy nghiêm & Cung đình', icon: Building2 },
-    { id: 'Di sản', label: 'Di sản & Lịch sử Cố Đô', icon: Landmark },
-    { id: 'Truyền thống', label: 'Truyền thống & Làng nghề', icon: Sparkles },
-    { id: 'Biểu tượng', label: 'Biểu tượng đô thị & Phố đêm', icon: MapPin },
-    { id: 'Sống ảo', label: 'Góc chụp hoài cổ & Áo dài', icon: Camera },
+    { id: 'Cổ kính', label: 'Cổ kính & Trầm mặc', icon: Landmark, keywords: ['Cổ kính', 'Trầm mặc', 'Trầm tư'] },
+    { id: 'Lịch sử', label: 'Lịch sử & Dấu ấn Cố Đô', icon: Building2, keywords: ['Lịch sử', 'Di sản', 'Cung đình', 'Uy nghiêm'] },
+    { id: 'Thanh tịnh', label: 'Thanh tịnh & Thiền định', icon: Sparkles, keywords: ['Thanh tịnh', 'Tôn nghiêm', 'Trang nghiêm'] },
+    { id: 'Nghệ thuật', label: 'Kiến trúc & Nghệ thuật Di sản', icon: Landmark, keywords: ['Nghệ thuật', 'Kiến trúc Châu Âu'] },
+    { id: 'Truyền thống', label: 'Làng nghề truyền thống & Văn hóa', icon: Sparkles, keywords: ['Truyền thống', 'Trải nghiệm', 'Học hỏi'] },
+    { id: 'Biểu tượng', label: 'Biểu tượng đô thị & Phố đêm', icon: MapPin, keywords: ['Biểu tượng', 'Về đêm', 'Hiện đại'] },
+    { id: 'Sống ảo', label: 'Góc chụp hoài cổ & Áo dài', icon: Camera, keywords: ['Sống ảo', 'Check-in'] },
   ],
   'quan-an': [
-    { id: 'Bản địa', label: 'Đặc sản bản địa xứ Quảng - Huế', icon: UtensilsCrossed },
-    { id: 'Gió biển', label: 'Gió biển & View sông, biển', icon: Waves },
-    { id: 'Yên bình', label: 'Không gian xanh & Yên tĩnh', icon: Leaf },
-    { id: 'Náo nhiệt', label: 'Náo nhiệt, phố đêm & Gặp gỡ', icon: Sparkles },
-    { id: 'Ấm cúng', label: 'Ẩm thực gia đình & Ấm cúng', icon: Users },
-    { id: 'Lãng mạn', label: 'Lãng mạn & Hẹn hò', icon: Heart },
-    { id: 'Hoài niệm', label: 'Hoài niệm & Mộc mạc vintage', icon: Coffee },
-    { id: 'Sống ảo', label: 'Góc chụp đẹp & Check-in sống ảo', icon: Camera },
+    { id: 'Bản địa', label: 'Đặc sản bản địa xứ Quảng - Huế', icon: UtensilsCrossed, keywords: ['Bản địa', 'Bình dân'] },
+    { id: 'Gió biển', label: 'Gió biển & View sông, biển', icon: Waves, keywords: ['Gió biển', 'Ngoài trời'] },
+    { id: 'Yên bình', label: 'Không gian xanh & Yên tĩnh', icon: Leaf, keywords: ['Yên tĩnh', 'Yên bình', 'Thanh tịnh'] },
+    { id: 'Náo nhiệt', label: 'Náo nhiệt, phố đêm & Gặp gỡ', icon: Sparkles, keywords: ['Náo nhiệt', 'Vỉa hè', 'Ăn vặt', 'Về đêm'] },
+    { id: 'Ấm cúng', label: 'Ẩm thực gia đình & Ấm cúng', icon: Users, keywords: ['Ấm cúng', 'Trang trọng'] },
+    { id: 'Lãng mạn', label: 'Lãng mạn & Hẹn hò', icon: Heart, keywords: ['Lãng mạn', 'Hẹn hò'] },
+    { id: 'Hoài niệm', label: 'Hoài niệm & Mộc mạc vintage', icon: Coffee, keywords: ['Hoài niệm', 'Mộc mạc'] },
+    { id: 'Sống ảo', label: 'Góc chụp đẹp & Check-in sống ảo', icon: Camera, keywords: ['Sống ảo', 'Check-in'] },
   ],
   'canh-quan': [
-    { id: 'Hùng vĩ', label: 'Hùng vĩ & Chinh phục đèo dốc', icon: Mountain },
-    { id: 'Biển xanh', label: 'Biển xanh & Bờ cát mịn màng', icon: Waves },
-    { id: 'Thư giãn', label: 'Nghỉ dưỡng suối khoáng & Thư giãn', icon: Trees },
-    { id: 'Hoàng hôn', label: 'Ngắm bình minh & Hoàng hôn đầm phá', icon: Camera },
-    { id: 'Tự nhiên', label: 'Thiên nhiên sinh thái nguyên sơ', icon: Leaf },
-    { id: 'Ngoài trời', label: 'Dã ngoại & Hoạt động ngoài trời', icon: Users },
+    { id: 'Hùng vĩ', label: 'Hùng vĩ & Chinh phục đèo dốc', icon: Mountain, keywords: ['Hùng vĩ', 'Khám phá'] },
+    { id: 'Biển xanh', label: 'Biển xanh & Bờ cát mịn màng', icon: Waves, keywords: ['Biển xanh'] },
+    { id: 'Thư giãn', label: 'Nghỉ dưỡng suối khoáng & Thư giãn', icon: Trees, keywords: ['Thư giãn', 'Hồi phục', 'Trong lành'] },
+    { id: 'Hoàng hôn', label: 'Ngắm bình minh & Hoàng hôn đầm phá', icon: Camera, keywords: ['Hoàng hôn', 'Mênh mang', 'Thơ mộng'] },
+    { id: 'Tự nhiên', label: 'Thiên nhiên sinh thái nguyên sơ', icon: Leaf, keywords: ['Tự nhiên'] },
+    { id: 'Ngoài trời', label: 'Dã ngoại & Hoạt động ngoài trời', icon: Users, keywords: ['Ngoài trời', 'Vui vẻ', 'picnic'] },
   ],
   'all': [
-    { id: 'Bản địa', label: 'Đặc sản bản địa xứ Quảng - Huế', icon: UtensilsCrossed },
-    { id: 'Di sản', label: 'Di sản & Dấu ấn lịch sử Cố Đô', icon: Landmark },
-    { id: 'Thanh tịnh', label: 'Tâm linh & Thanh tịnh chữa lành', icon: Sparkles },
-    { id: 'Hùng vĩ', label: 'Thiên nhiên hùng vĩ & Khám phá', icon: Mountain },
-    { id: 'Biển xanh', label: 'Biển xanh & Nghỉ dưỡng trong lành', icon: Waves },
-    { id: 'Sống ảo', label: 'Góc chụp đẹp & Sống ảo', icon: Camera },
-    { id: 'Ấm cúng', label: 'Ấm cúng, phù hợp gia đình', icon: Users },
-    { id: 'Náo nhiệt', label: 'Sôi động & Phố đêm náo nhiệt', icon: Sparkles },
+    { id: 'Bản địa', label: 'Đặc sản bản địa xứ Quảng - Huế', icon: UtensilsCrossed, keywords: ['Bản địa', 'Bình dân'] },
+    { id: 'Lịch sử', label: 'Di sản & Lịch sử Cố Đô', icon: Landmark, keywords: ['Cổ kính', 'Lịch sử', 'Di sản'] },
+    { id: 'Thanh tịnh', label: 'Tâm linh & Thanh tịnh chữa lành', icon: Sparkles, keywords: ['Thanh tịnh', 'Trang nghiêm'] },
+    { id: 'Hùng vĩ', label: 'Thiên nhiên hùng vĩ & Khám phá', icon: Mountain, keywords: ['Hùng vĩ', 'Khám phá'] },
+    { id: 'Biển xanh', label: 'Biển xanh & Nghỉ dưỡng trong lành', icon: Waves, keywords: ['Biển xanh', 'Thư giãn'] },
+    { id: 'Sống ảo', label: 'Góc chụp đẹp & Sống ảo', icon: Camera, keywords: ['Sống ảo', 'Check-in'] },
+    { id: 'Ấm cúng', label: 'Ấm cúng, phù hợp gia đình', icon: Users, keywords: ['Ấm cúng', 'Trang trọng'] },
+    { id: 'Náo nhiệt', label: 'Sôi động & Phố đêm náo nhiệt', icon: Sparkles, keywords: ['Náo nhiệt', 'Về đêm'] },
   ],
 };
 
@@ -394,6 +401,13 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Lấy danh sách từ khóa tương ứng của vibe
+  const getVibeKeywords = (vibeId: string) => {
+    const list = VIBES_BY_CATEGORY[activeTab] || VIBES_BY_CATEGORY['all'];
+    const item = list.find((v) => v.id === vibeId);
+    return (item?.keywords || [vibeId]).map((k) => k.toLowerCase());
+  };
+
   // ── LIVE COUNT / PREVIEW TÍNH THEO DATA THẬT ──
   const liveMatchingPois = useMemo(() => {
     if (!allPois || allPois.length === 0) return null;
@@ -442,12 +456,13 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
         return false;
       }
 
-      // 7. Vibes
+      // 7. Vibes (Khớp theo keywords ngữ nghĩa trong database)
       if (vibes.length > 0) {
         const pVibes = (poi.vibes || []).map((v) => v.toLowerCase());
-        const matchVibe = vibes.some((v) =>
-          pVibes.some((pv) => pv.includes(v.toLowerCase()) || v.toLowerCase().includes(pv))
-        );
+        const matchVibe = vibes.some((vId) => {
+          const keywords = getVibeKeywords(vId);
+          return keywords.some((kw) => pVibes.some((pv) => pv.includes(kw) || kw.includes(pv)));
+        });
         if (!matchVibe) return false;
       }
 
@@ -471,10 +486,10 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
 
   const liveCount = liveMatchingPois !== null ? liveMatchingPois.length : matchingCount;
 
-  // Đếm POI theo từng Vibe
+    // Đếm POI theo từng Vibe (Khớp theo keywords dữ liệu thật)
   const getVibeCount = (vibeId: string) => {
     if (!allPois) return null;
-    const vLower = vibeId.toLowerCase();
+    const keywords = getVibeKeywords(vibeId);
     return allPois.filter((p) => {
       if (activeTab === 'di-tich') {
         if (p.category !== 'di-tich' && p.category !== 'chua') return false;
@@ -482,7 +497,7 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
         if (p.category !== activeTab) return false;
       }
       const pVibes = (p.vibes || []).map((v) => v.toLowerCase());
-      return pVibes.some((pv) => pv.includes(vLower) || vLower.includes(pv));
+      return keywords.some((kw) => pVibes.some((pv) => pv.includes(kw) || kw.includes(pv)));
     }).length;
   };
 

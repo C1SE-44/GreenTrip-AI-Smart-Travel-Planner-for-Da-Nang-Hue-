@@ -12,6 +12,13 @@ export type CuisineType =
   | 'thai_spicy'
   | 'plant_based_vegan';
 
+export interface FeaturedReview {
+  author: string;
+  rating: number;
+  relative_time: string;
+  text: string;
+}
+
 export interface AiMetadata {
   dna_tags?: string[];
   target_crowd?: ('solo' | 'couples' | 'family' | 'friends' | 'nomad')[];
@@ -19,12 +26,30 @@ export interface AiMetadata {
   rainy_day_friendly?: boolean;
   carbon_footprint_score?: number;
   heritage_impact_score?: number;
+  eco_place_code?: string;
+  area?: string;
+  google_category?: string;
+  mindtrip_category?: string;
+  plus_code?: string;
+  raw_rating?: number;
+  review_count?: number;
+  price_range_display?: string;
+  recommended_duration_hours?: string;
+  eco_highlights?: string;
+  amenities?: string[];
+  transport_tip?: string;
+  seasonal_note?: string;
+  featured_reviews?: FeaturedReview[];
+  green_transit?: boolean;
+  source?: string;
   [key: string]: unknown;
 }
 
 export interface OpeningHoursInfo {
   open_now?: boolean;
   status_text?: string;
+  live_status?: string;
+  is_temporarily_closed?: boolean;
   weekday_text?: string[];
   [key: string]: unknown;
 }
@@ -425,15 +450,26 @@ export function normalizePoi(item: BackendPoiItem | Poi | any): Poi | null {
   const image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id, category, city);
   const gallery = Array.isArray(item.gallery_urls) && item.gallery_urls.length > 0 ? item.gallery_urls : undefined;
 
-  const rating = item.satisfaction_score ? Number(item.satisfaction_score) : 4.6;
+  const rawRating = Number(item.ai_metadata?.raw_rating);
+  const rating = Number.isFinite(rawRating) && rawRating > 0
+    ? rawRating
+    : item.satisfaction_score
+      ? Number(item.satisfaction_score)
+      : 4.6;
   const visitMinutes = item.average_visit_minutes ? Number(item.average_visit_minutes) : 60;
-  const visitDuration = visitMinutes >= 60 
-    ? `${Math.round(visitMinutes / 60)} giờ` 
-    : `${visitMinutes} phút`;
+  const rawRecHours = typeof item.ai_metadata?.recommended_duration_hours === 'string'
+    ? item.ai_metadata.recommended_duration_hours.trim()
+    : '';
+  const visitDuration = rawRecHours
+    ? `${rawRecHours.replace('-', '–')} giờ`
+    : visitMinutes >= 60
+      ? `${Math.round(visitMinutes / 60)} giờ`
+      : `${visitMinutes} phút`;
 
   const rawGreen = item.green_score !== null && item.green_score !== undefined && Number.isFinite(Number(item.green_score)) ? Number(item.green_score) : 0.5;
   const ecoScore = Math.round(rawGreen <= 1 ? rawGreen * 100 : rawGreen);
   const estimatedCost = item.estimated_cost !== null && item.estimated_cost !== undefined && Number.isFinite(Number(item.estimated_cost)) ? Number(item.estimated_cost) : null;
+  const statusOpenHours = typeof item.opening_hours?.status_text === 'string' ? item.opening_hours.status_text.trim() : '';
 
   return {
     id: String(item.id),
@@ -453,7 +489,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any): Poi | null {
     rating,
     visitDuration,
     ecoScore,
-    openHours: item.open_hours?.trim() || (category === 'quan-an' ? '09:30 – 21:30' : '07:30 – 17:30'),
+    openHours: statusOpenHours || item.open_hours?.trim() || (category === 'quan-an' ? '09:30 – 21:30' : '07:30 – 17:30'),
     estimatedCost,
     isLocalBusiness: item.is_local_business ?? undefined,
     sub_category: item.sub_category ?? null,
@@ -519,6 +555,149 @@ export const CUISINE_LABELS: Record<string, string> = {
   chinese_dimsum: 'Dimsum & Trung Hoa',
   thai_spicy: 'Món Thái chua cay',
   plant_based_vegan: 'Thuần chay thực dưỡng',
+};
+
+export const VIBE_LABELS: Record<string, string> = {
+  trekking: 'Trekking rừng xanh',
+  wildlife_watching: 'Ngắm động vật hoang dã',
+  cloud_hunting: 'Săn mây bình minh',
+  scenic_drive: 'Cung đường cảnh quan',
+  nature_walk: 'Tản bộ giữa thiên nhiên',
+  tea_relaxation: 'Thưởng trà an nhiên',
+  ancient_trees: 'Quần thể cây cổ thụ',
+  sightseeing: 'Ngắm cảnh sinh thái',
+  kayak: 'Chèo thuyền Kayak',
+  sup: 'Chèo SUP không động cơ',
+  cycling: 'Đạp xe khám phá',
+  picnic: 'Dã ngoại ngoài trời',
+  camping: 'Cắm trại xanh',
+  glamping: 'Glamping giữa thiên nhiên',
+  healing: 'Chữa lành & sống chậm',
+  river_view: 'Ven sông mát lành',
+  bbq: 'Tiệc nướng ngoài trời',
+  stream_bathing: 'Tắm suối tự nhiên',
+  cafe: 'Cà phê không gian mở',
+  photography: 'Góc ảnh thiên nhiên',
+  eco_farm: 'Nông trại sinh thái',
+  kids_activities: 'Trải nghiệm cho trẻ nhỏ',
+  organic_farming: 'Thu hoạch rau hữu cơ',
+  organic_shopping: 'Mua sắm nông sản sạch',
+  local_produce: 'Nông sản bản địa',
+  zero_waste_bag: 'Khuyến khích túi vải',
+  zero_waste: 'Giảm rác thải nhựa',
+  fruit_picking: 'Hái trái cây tại vườn',
+  teambuilding: 'Gắn kết đội nhóm',
+  eco_stay: 'Lưu trú sinh thái',
+  family: 'Thân thiện gia đình',
+  village_tour: 'Tham quan làng cổ',
+  local_food: 'Ẩm thực bản địa',
+  beach_walk: 'Dạo bộ ven biển',
+  vegetarian: 'Ẩm thực chay thanh đạm',
+  vegan: 'Thuần chay thực vật',
+  local_vegan: 'Món chay địa phương',
+  zen_dining: 'Không gian tĩnh tại',
+  healthy_food: 'Thực dưỡng lành mạnh',
+  garden_cafe: 'Cà phê sân vườn',
+  workshop: 'Workshop thủ công xanh',
+  handicraft: 'Nghề thủ công truyền thống',
+  garden_house: 'Nhà vườn xứ Huế',
+  pomelo_orchard: 'Vườn thanh trà cổ thụ',
+  herbal_foot_bath: 'Ngâm chân thảo dược',
+  mangrove_forest: 'Rừng ngập mặn',
+  boat_trip: 'Đi thuyền sinh thái',
+  sunset: 'Ngắm hoàng hôn đầm phá',
+  national_park: 'Vườn quốc gia bảo tồn',
+  waterfall: 'Thác nước rừng nguyên sinh',
+  hot_spring: 'Khoáng nóng tự nhiên',
+  meditation: 'Thiền định & tịnh tâm',
+  heritage: 'Di sản kiến trúc & cảnh quan',
+  farm_to_table: 'Từ nông trại đến bàn ăn',
+  snorkeling: 'Lặn ngắm biển tự nhiên',
+  walking: 'Đi bộ trải nghiệm',
+  beach_stroll: 'Tản bộ bờ biển',
+  dining: 'Ẩm thực tại chỗ',
+  plastic_free_initiative: 'Tuyến phố giảm nhựa',
+  healthy_dining: 'Thực đơn lành mạnh',
+  brunch: 'Bữa sáng muộn (Brunch)',
+  plant_milk: 'Sữa hạt tự nhiên',
+  specialty_coffee: 'Cà phê đặc sản',
+  traditional_music: 'Âm nhạc truyền thống',
+  acoustic: 'Đêm nhạc mộc Acoustic',
+  kombucha: 'Trà lên men Kombucha',
+  relaxation: 'Thư giãn tĩnh lặng',
+  work_friendly: 'Phù hợp đọc sách & làm việc',
+  smoothie: 'Sinh tố trái cây tươi',
+  bakery: 'Bánh thủ công',
+  tropical_cafe: 'Không gian xanh nhiệt đới',
+  salt_coffee: 'Cà phê muối xứ Huế',
+  latte_art: 'Pha chế thủ công',
+  koi_pond: 'Hồ cá Koi sinh thái',
+  vegan_dining: 'Ẩm thực thuần chay',
+  smoothie_bowl: 'Smoothie Bowl dinh dưỡng',
+  cold_pressed_juice: 'Nước ép lạnh nguyên chất',
+  artisan_pizza: 'Pizza thủ công từ nông trại',
+  sustainable_dining: 'Ẩm thực bền vững',
+  vegan_bakery: 'Bánh ngọt thuần chay',
+  healthy_brunch: 'Brunch thực vật',
+  plastic_free: 'Không nhựa dùng một lần',
+  coastal_rock: 'Ghềnh đá ven biển hoang sơ',
+  nature_photography: 'Nhiếp ảnh thiên nhiên',
+  eco_museum: 'Bảo tàng sinh thái rừng',
+  forest_garden: 'Khu vườn dưới tán rừng',
+  art_gallery: 'Không gian nghệ thuật',
+  hiking: 'Leo núi khám phá',
+  cave_exploring: 'Khám phá hang động tự nhiên',
+  pagoda: 'Chùa cổ thanh tịnh',
+  panoramic_view: 'Tầm nhìn toàn cảnh',
+  cotu_culture: 'Văn hóa bản địa Cơ Tu',
+  forest_walk: 'Đi bộ dưới tán rừng',
+  nature_relax: 'Nghỉ ngơi giữa thiên nhiên',
+  sunrise: 'Đón bình minh',
+  swimming: 'Tắm biển trong lành',
+  fishing_village: 'Làng chài bản địa',
+  eco_sport: 'Thể thao biển không động cơ',
+  wooden_boat: 'Đò gỗ truyền thống',
+  lagoon_seafood: 'Đặc sản đầm phá',
+  clam_catching: 'Trải nghiệm bắt trìa đầm phá',
+  fishing_experience: 'Trải nghiệm ngư dân đầm phá',
+  mangrove_walk: 'Đi bộ xuyên rừng ngập mặn',
+  observation_tower: 'Đài quan sát cảnh quan',
+  birdwatching: 'Ngắm chim di cư',
+  rural_market: 'Chợ quê truyền thống',
+  farming_experience: 'Trải nghiệm nhà nông',
+  eco_cleanup: 'Hoạt động giữ gìn môi trường',
+  nature_conservation: 'Bảo tồn đa dạng sinh học',
+  pine_forest: 'Rừng thông xanh mát',
+  water_refill_station: 'Trạm tiếp nước giảm chai nhựa',
+  electric_buggy: 'Xe điện thân thiện môi trường',
+  royal_garden: 'Thượng uyển & vườn hoàng gia',
+  unesco: 'Di sản Thế giới UNESCO',
+  local_cuisine: 'Ẩm thực truyền thống xứ Huế',
+  royal_tea: 'Thưởng trà cung đình',
+  art: 'Thưởng lãm nghệ thuật',
+  pool: 'Hồ bơi giữa vườn xanh',
+  spa: 'Trị liệu thảo mộc tự nhiên',
+  petting_zoo: 'Vườn thú thân thiện cho bé',
+  hue_vegan: 'Cơm chay truyền thống Huế',
+  garden_dining: 'Dùng bữa giữa sân vườn',
+  garden_courtyard: 'Sân vườn rợp bóng cây',
+  budget_friendly: 'Chi phí hợp lý',
+  scenic_walk: 'Đường dạo bộ ngắm cảnh',
+  lagoon_view: 'Ngắm cảnh đầm phá & núi',
+  ancient_village: 'Làng cổ di sản',
+  pottery_workshop: 'Trải nghiệm gốm cổ',
+  bamboo_craft: 'Đan lát mây tre thủ công',
+  eco_souvenir: 'Quà lưu niệm mây tre thay nhựa',
+  onsen: 'Tắm khoáng nóng Onsen',
+  forest_bathing: 'Tắm rừng chữa lành',
+  eco_resort: 'Khu nghỉ dưỡng sinh thái',
+  zen_meditation: 'Thiền định giữa núi rừng',
+  boat_ride: 'Đi thuyền qua hồ Trừu Sơn',
+  lake_view: 'Cảnh hồ non nước',
+  spiritual: 'Không gian tâm linh tịnh độ',
+  zen_garden: 'Vườn thiền & rừng thông',
+  calligraphy: 'Thư pháp & thơ thiền',
+  lotus_lake: 'Hồ sen cổ kính',
 };
 
 export function normalizePois(items: BackendPoiItem[] = []): Poi[] {

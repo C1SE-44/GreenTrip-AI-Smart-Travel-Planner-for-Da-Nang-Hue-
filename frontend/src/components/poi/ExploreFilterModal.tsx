@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
+  Clock,
   Sparkles,
   Star,
   Check,
@@ -97,12 +98,26 @@ const RATING_OPTIONS: { value: number | null; score: string; travelerTag: string
   { value: 4.5, score: '4.5★+', travelerTag: 'Xuất sắc', icon: Star },
 ];
 
-const BUDGET_OPTIONS: { id: BudgetTier; label: string; desc: string; detail: string }[] = [
-  { id: 'all', label: 'Tất cả', desc: 'Mọi mức giá', detail: 'Tự do ngân sách' },
-  { id: '$', label: '$', desc: 'Bình dân', detail: '< 100k' },
-  { id: '$$', label: '$$', desc: 'Vừa túi', detail: '100k–400k' },
-  { id: '$$$', label: '$$$', desc: 'Thoải mái', detail: '400k–1tr' },
-  { id: '$$$$', label: '$$$$', desc: 'Cao cấp', detail: '> 1 triệu' },
+const BUDGET_OPTIONS: { id: BudgetTier; label: string; desc: string; detail: string; sub: string }[] = [
+  { id: 'all', label: 'Tất cả', desc: 'Mọi mức giá', detail: 'Tự do ngân sách', sub: 'Mọi ngân sách' },
+  { id: '$', label: '$', desc: 'Bình dân', detail: '< 100k', sub: 'Chợ đêm, vỉa hè' },
+  { id: '$$', label: '$$', desc: 'Tiêu chuẩn', detail: '100k – 400k', sub: 'Nhà hàng đặc sản' },
+  { id: '$$$', label: '$$$', desc: 'Thoải mái', detail: '400k – 1tr', sub: 'Không gian cao cấp' },
+  { id: '$$$$', label: '$$$$', desc: 'Sang trọng', detail: '> 1 triệu', sub: 'Fine dining / 5 sao' },
+];
+
+const RADIUS_OPTIONS: { value: number | null; label: string; desc: string }[] = [
+  { value: null, label: 'Tất cả', desc: 'Toàn thành phố' },
+  { value: 1, label: '1 km', desc: 'Đi bộ gần' },
+  { value: 3, label: '3 km', desc: 'Xe đạp / Xe máy' },
+  { value: 5, label: '5 km', desc: 'Trung tâm' },
+  { value: 10, label: '10 km', desc: 'Ngoại ô / Bán đảo' },
+];
+
+const TIME_OPTIONS: { value: TimeOfDay | 'all'; label: string; desc: string }[] = [
+  { value: 'all', label: 'Tất cả', desc: 'Mọi thời điểm' },
+  { value: 'morning', label: 'Ban ngày', desc: 'Sáng – Chiều' },
+  { value: 'evening', label: 'Buổi tối', desc: 'Sau 17:00' },
 ];
 
 // Curated Travel Vibes giàu cảm xúc trải nghiệm (100% có Icon đồng bộ)
@@ -234,6 +249,9 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
   const isDefaultState =
     budget === 'all' &&
     minRating === null &&
+    radiusKm === null &&
+    timeOfDay.length === 0 &&
+    ecoCertifiedOnly === false &&
     vibes.length === 0 &&
     subCategories.length === 0 &&
     cuisines.length === 0 &&
@@ -247,6 +265,9 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
         ...values,
         budget,
         minRating,
+        radiusKm,
+        timeOfDay,
+        ecoCertifiedOnly,
         vibes,
         subCategories,
         cuisines,
@@ -261,6 +282,9 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
   const handleClear = () => {
     setBudget('all');
     setMinRating(null);
+    setRadiusKm(null);
+    setTimeOfDay([]);
+    setEcoCertifiedOnly(false);
     setVibes([]);
     setSubCategories([]);
     setCuisines([]);
@@ -357,69 +381,33 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
         <div className="px-5 sm:px-6 py-4 space-y-3.5 overflow-y-auto overscroll-contain flex-1 auto-hide-scrollbar">
           
           {/* ══════════════════════════════════════════════════════
-              CARD 1: GU DU LỊCH & MỨC CHI TIÊU (SINGLE-SELECT GRID)
+              TẦNG 1: BỘ LỌC CHUNG (GIÁ THỰC, BÁN KÍNH, THỜI ĐIỂM, CHUẨN XANH)
               ══════════════════════════════════════════════════════ */}
-          <div className="bg-white rounded-2xl border border-[#E3EAE4] p-4 shadow-[0_2px_10px_rgba(20,35,25,0.03)] space-y-3.5">
-            {/* Header Card */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100/90 text-emerald-900 text-[10px] font-bold tracking-wide uppercase">
-                  <Sparkles className="w-3 h-3 text-emerald-700 shrink-0" />
-                  AI GỢI Ý RIÊNG
-                </span>
-                <h3 className="text-xs font-bold text-neutral-900 tracking-tight uppercase">
-                  Gu du lịch & Ưu tiên AI
+          <div className="bg-white rounded-2xl border border-[#E3EAE4] p-4 shadow-[0_2px_10px_rgba(20,35,25,0.03)] space-y-4">
+            {/* Header Tầng 1 */}
+            <div className="flex items-center justify-between gap-2 border-b border-neutral-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                <h3 className="text-xs font-extrabold text-neutral-900 uppercase tracking-wider">
+                  Tầng 1: Bộ lọc chung theo nhu cầu thực tế
                 </h3>
               </div>
-
-              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-full">
-                {WEIGHT_PRESETS.find((p) => p.g === greenWeight && p.b === budgetWeight)?.label ?? `${greenPct}% Xanh`}
-              </span>
+              <span className="text-[11px] font-semibold text-neutral-500">Áp dụng cho mọi nhóm</span>
             </div>
 
-            {/* 4 Presets Segmented Buttons (Chuẩn hóa Single-Select 1 tầng) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              {WEIGHT_PRESETS.map((preset) => {
-                const active = greenWeight === preset.g && budgetWeight === preset.b;
-                const PresetIcon = preset.icon;
-                return (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => {
-                      setGreenWeight(preset.g);
-                      setBudgetWeight(preset.b);
-                    }}
-                    className={`${SEGMENTED_BUTTON_BASE} ${
-                      active ? SEGMENTED_BUTTON_SELECTED : SEGMENTED_BUTTON_UNSELECTED
-                    }`}
-                  >
-                    <span className="text-xs font-bold leading-tight flex items-center justify-center gap-1.5">
-                      <PresetIcon
-                        className={`w-3.5 h-3.5 shrink-0 ${
-                          active ? 'text-emerald-200' : 'text-emerald-700'
-                        }`}
-                      />
-                      <span>{preset.label}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Mức chi tiêu / người (Phương án B: Chuẩn hóa Single-Select 1 tầng) */}
-            <div className="pt-2 border-t border-neutral-100 space-y-1.5">
+            {/* 1. Mức giá & Chi tiêu thực tế / người */}
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-neutral-800 uppercase tracking-tight">
-                  Mức chi tiêu / người
+                <span className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
+                  <Wallet className="w-3.5 h-3.5 text-neutral-600" />
+                  <span>Khoảng giá / người (VND)</span>
                 </span>
-                <span className="text-[11px] font-semibold text-neutral-600">
-                  {BUDGET_OPTIONS.find((b) => b.id === budget)?.desc} ({BUDGET_OPTIONS.find((b) => b.id === budget)?.detail})
+                <span className="text-[11px] font-semibold text-emerald-800">
+                  {BUDGET_OPTIONS.find((b) => b.id === budget)?.detail}
                 </span>
               </div>
               <div className="grid grid-cols-5 gap-1.5">
-                {BUDGET_OPTIONS.map(({ id, desc }) => {
+                {BUDGET_OPTIONS.map(({ id, label, detail }) => {
                   const isSelected = budget === id;
                   return (
                     <button
@@ -427,15 +415,119 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
                       type="button"
                       aria-pressed={isSelected}
                       onClick={() => setBudget(id)}
-                      className={`${SEGMENTED_BUTTON_BASE} ${
+                      className={`py-2 px-1 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
                         isSelected ? SEGMENTED_BUTTON_SELECTED : SEGMENTED_BUTTON_UNSELECTED
                       }`}
                     >
-                      <span className="text-xs font-bold leading-tight">{desc}</span>
+                      <span className="text-xs font-bold leading-tight">{label}</span>
+                      <span className={`text-[9.5px] leading-tight mt-0.5 truncate max-w-full ${
+                        isSelected ? 'text-emerald-100' : 'text-neutral-500'
+                      }`}>
+                        {detail}
+                      </span>
                     </button>
                   );
                 })}
               </div>
+            </div>
+
+            {/* 2. Bán kính di chuyển (Distance / Radius) */}
+            <div className="pt-2 border-t border-neutral-100 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-neutral-600" />
+                  <span>Bán kính di chuyển</span>
+                </span>
+                <span className="text-[11px] font-semibold text-neutral-500">
+                  {radiusKm ? `Trong vòng ${radiusKm} km` : 'Toàn thành phố'}
+                </span>
+              </div>
+              <div className="grid grid-cols-5 gap-1.5">
+                {RADIUS_OPTIONS.map(({ value, label, desc }) => {
+                  const isSelected = radiusKm === value;
+                  return (
+                    <button
+                      key={String(value)}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => setRadiusKm(value)}
+                      className={`py-2 px-1 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
+                        isSelected ? SEGMENTED_BUTTON_SELECTED : SEGMENTED_BUTTON_UNSELECTED
+                      }`}
+                    >
+                      <span className="text-xs font-bold leading-tight">{label}</span>
+                      <span className={`text-[9.5px] leading-tight mt-0.5 truncate max-w-full ${
+                        isSelected ? 'text-emerald-100' : 'text-neutral-500'
+                      }`}>
+                        {desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10.5px] text-neutral-500 italic">
+                * Bán kính được tính từ tâm Trung tâm Hải Châu (Đà Nẵng) hoặc Đại Nội (Huế)
+              </p>
+            </div>
+
+            {/* 3. Thời điểm trải nghiệm (Ngày / Buổi tối) */}
+            <div className="pt-2 border-t border-neutral-100 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-neutral-600" />
+                  <span>Thời điểm trải nghiệm</span>
+                </span>
+                <span className="text-[11px] font-semibold text-neutral-500">
+                  {timeOfDay.length === 0 ? 'Mọi thời điểm' : timeOfDay.includes('evening') ? 'Buổi tối' : 'Ban ngày'}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {TIME_OPTIONS.map(({ value, label, desc }) => {
+                  const isSelected = value === 'all' ? timeOfDay.length === 0 : timeOfDay.includes(value);
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => {
+                        if (value === 'all') setTimeOfDay([]);
+                        else setTimeOfDay([value]);
+                      }}
+                      className={`py-2 px-2 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
+                        isSelected ? SEGMENTED_BUTTON_SELECTED : SEGMENTED_BUTTON_UNSELECTED
+                      }`}
+                    >
+                      <span className="text-xs font-bold leading-tight">{label}</span>
+                      <span className={`text-[10px] leading-tight mt-0.5 ${
+                        isSelected ? 'text-emerald-100' : 'text-neutral-500'
+                      }`}>
+                        {desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. Công tắc Điểm đến Xanh & Sinh thái */}
+            <div className="pt-2 border-t border-neutral-100">
+              <label className="flex items-start gap-3 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/60 cursor-pointer select-none hover:bg-emerald-50 transition">
+                <input
+                  type="checkbox"
+                  checked={ecoCertifiedOnly}
+                  onChange={(e) => setEcoCertifiedOnly(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded text-emerald-800 focus:ring-emerald-700 cursor-pointer"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-950">
+                    <Leaf className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <span>Chỉ hiển thị Địa điểm Xanh & Sinh thái</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800/90 leading-relaxed mt-0.5">
+                    Lọc các địa điểm đạt điểm sinh thái cao (Green Score ≥ 70/100), ưu tiên không gian tự nhiên, giảm rác thải nhựa và bảo tồn di sản.
+                  </p>
+                </div>
+              </label>
             </div>
           </div>
 

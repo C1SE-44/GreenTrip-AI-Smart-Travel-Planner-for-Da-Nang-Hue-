@@ -57,13 +57,42 @@ export interface UserTrip {
 }
 
 
-const TABS: { id: 'all' | PoiCategory; label: string }[] = [
+const TABS: { id: 'all' | 'quan-an' | 'di-tich' | 'canh-quan'; label: string }[] = [
   { id: 'all', label: 'Tất cả' },
-  { id: 'di-tich', label: 'Di tích' },
-  { id: 'canh-quan', label: 'Cảnh quan' },
-  { id: 'chua', label: 'Chùa' },
-  { id: 'quan-an', label: 'Quán ăn' },
+  { id: 'quan-an', label: 'Ẩm thực & Cafe' },
+  { id: 'di-tich', label: 'Di tích & Văn hóa' },
+  { id: 'canh-quan', label: 'Cảnh quan & Thiên nhiên' },
 ];
+
+const SUB_CHIPS_CONFIG: Record<string, { id: string; label: string }[]> = {
+  'di-tich': [
+    { id: 'all', label: 'Tất cả di tích' },
+    { id: 'chua', label: 'Chùa & Tâm linh' },
+    { id: 'dai-noi', label: 'Đại Nội & Hoàng cung' },
+    { id: 'lang-tam', label: 'Lăng tẩm Hoàng gia' },
+    { id: 'bao-tang', label: 'Bảo tàng & Di sản' },
+    { id: 'cau', label: 'Cầu biểu tượng' },
+    { id: 'lang-nghe', label: 'Làng nghề truyền thống' },
+  ],
+  'quan-an': [
+    { id: 'all', label: 'Tất cả ẩm thực' },
+    { id: 'dac-san', label: 'Mì & Bún đặc sản' },
+    { id: 'hai-san', label: 'Hải sản tươi sống' },
+    { id: 'chay', label: 'Quán chay & Thực dưỡng' },
+    { id: 'mon-cuon', label: 'Bánh bèo, Nậm, Lọc' },
+    { id: 'cafe-view', label: 'Cafe view đẹp & Sống ảo' },
+    { id: 'cafe-work', label: 'Cafe làm việc 24/7' },
+    { id: 'che', label: 'Chè & Ăn vặt' },
+  ],
+  'canh-quan': [
+    { id: 'all', label: 'Tất cả cảnh quan' },
+    { id: 'bien', label: 'Bãi biển & Vịnh' },
+    { id: 'deo-ban-dao', label: 'Đèo Hải Vân & Sơn Trà' },
+    { id: 'song-dam-pha', label: 'Sông Hương & Đầm phá' },
+    { id: 'doi-thong', label: 'Đồi thông & Công viên' },
+    { id: 'thac-suoi', label: 'Thác nước & Suối khoáng' },
+  ],
+};
 
 const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
   'quan-an': { icon: 'ph-fork-knife', label: 'Quán ăn' },
@@ -225,7 +254,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
-  const [activeTab, setActiveTab] = useState<'all' | PoiCategory>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
+  const [selectedSubChip, setSelectedSubChip] = useState<string>('all');
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(() => {
@@ -450,8 +480,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     };
   }, [cityFilter, categoryFilter, filterValues]);
 
-  const handleTabChange = (tabId: 'all' | PoiCategory) => {
+  const handleTabChange = (tabId: 'all' | 'quan-an' | 'di-tich' | 'canh-quan') => {
     setActiveTab(tabId);
+    setSelectedSubChip('all');
     setCategoryFilter(tabId);
   };
 
@@ -461,7 +492,44 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         return false;
       }
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
-      const matchCat = categoryFilter === 'all' || poi.category === categoryFilter;
+      let matchCat = true;
+      if (categoryFilter === 'di-tich') {
+        matchCat = poi.category === 'di-tich' || poi.category === 'chua';
+      } else if (categoryFilter === 'quan-an') {
+        matchCat = poi.category === 'quan-an';
+      } else if (categoryFilter === 'canh-quan') {
+        matchCat = poi.category === 'canh-quan';
+      }
+
+      // Lọc theo nhánh nhỏ (Sub-category Quick Chip 1-chạm)
+      if (matchCat && selectedSubChip !== 'all') {
+        const name = poi.name.toLowerCase();
+        const sub = (poi.sub_category || '').toLowerCase();
+        const desc = (poi.description || '').toLowerCase();
+
+        if (categoryFilter === 'di-tich') {
+          if (selectedSubChip === 'chua' && !(poi.category === 'chua' || sub.includes('temple') || name.includes('chùa') || name.includes('thiền viện'))) return false;
+          if (selectedSubChip === 'dai-noi' && !(sub.includes('citadel') || name.includes('đại nội') || name.includes('hoàng thành') || name.includes('ngọ môn'))) return false;
+          if (selectedSubChip === 'lang-tam' && !(sub.includes('mausoleum') || name.includes('lăng'))) return false;
+          if (selectedSubChip === 'bao-tang' && !(name.includes('bảo tàng') || sub.includes('museum'))) return false;
+          if (selectedSubChip === 'cau' && !name.includes('cầu')) return false;
+          if (selectedSubChip === 'lang-nghe' && !(name.includes('làng') || sub.includes('craft'))) return false;
+        } else if (categoryFilter === 'quan-an') {
+          if (selectedSubChip === 'dac-san' && !(name.includes('bún') || name.includes('mì') || sub.includes('noodles'))) return false;
+          if (selectedSubChip === 'hai-san' && !(name.includes('hải sản') || sub.includes('seafood'))) return false;
+          if (selectedSubChip === 'chay' && !(name.includes('chay') || sub.includes('vegan') || sub.includes('vegetarian'))) return false;
+          if (selectedSubChip === 'mon-cuon' && !(name.includes('bánh') || name.includes('cuốn') || name.includes('nem') || name.includes('ram'))) return false;
+          if (selectedSubChip === 'cafe-view' && !(name.includes('cafe') || name.includes('cà phê') || sub.includes('cafe'))) return false;
+          if (selectedSubChip === 'cafe-work' && !(name.includes('workspace') || sub.includes('workspace'))) return false;
+          if (selectedSubChip === 'che' && !(name.includes('chè') || name.includes('kem') || name.includes('ăn vặt'))) return false;
+        } else if (categoryFilter === 'canh-quan') {
+          if (selectedSubChip === 'bien' && !(name.includes('biển') || name.includes('vịnh') || sub.includes('beach'))) return false;
+          if (selectedSubChip === 'deo-ban-dao' && !(name.includes('đèo') || name.includes('sơn trà') || sub.includes('peninsula'))) return false;
+          if (selectedSubChip === 'song-dam-pha' && !(name.includes('sông') || name.includes('đầm') || name.includes('phá'))) return false;
+          if (selectedSubChip === 'doi-thong' && !(name.includes('đồi') || name.includes('công viên') || name.includes('núi'))) return false;
+          if (selectedSubChip === 'thac-suoi' && !(name.includes('thác') || name.includes('suối') || name.includes('khoáng'))) return false;
+        }
+      }
       const s = search.trim().toLowerCase();
       const matchSearch =
         !s ||
@@ -1242,7 +1310,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
             </button>
           </div>
 
-          {/* Scrollable Category Tabs (+20% size and padding) */}
+          {/* Scrollable Category Tabs: Nhóm lớn cấp 1 */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[14px] font-medium no-scrollbar">
             {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
@@ -1252,8 +1320,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   onClick={() => handleTabChange(tab.id)}
                   className={`whitespace-nowrap transition-all cursor-pointer ${
                     isActive
-                      ? 'px-3.5 py-1.5 bg-black text-white rounded-full font-medium shadow-xs text-[13px]'
-                      : 'px-3 py-1.5 text-gray-700 hover:text-black hover:bg-gray-100/60 rounded-full font-normal text-[13.5px]'
+                      ? 'px-3.5 py-1.5 bg-black text-white rounded-full font-bold shadow-xs text-[13px]'
+                      : 'px-3 py-1.5 text-gray-700 hover:text-black hover:bg-gray-100/60 rounded-full font-medium text-[13.5px]'
                   }`}
                 >
                   {tab.label}
@@ -1261,6 +1329,29 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               );
             })}
           </div>
+
+          {/* Nhánh nhỏ dạng chip gợi ý nhanh 1-chạm (Sub-category Quick Chips) */}
+          {activeTab !== 'all' && SUB_CHIPS_CONFIG[activeTab] && (
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1 text-xs no-scrollbar scroll-smooth">
+              {SUB_CHIPS_CONFIG[activeTab].map((chip) => {
+                const isSelected = selectedSubChip === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setSelectedSubChip(chip.id)}
+                    className={`px-3 py-1 rounded-full whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-neutral-900 text-white font-bold shadow-xs'
+                        : 'bg-neutral-100 hover:bg-neutral-200/80 text-neutral-700 font-medium'
+                    }`}
+                  >
+                    <span>{chip.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Quick Filter Pills Toolbar */}
           <div className="mt-2.5">
@@ -1276,10 +1367,61 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
         {/* Cards Scrollable Area */}
         <div className="px-6 py-1">
-          {/* Section Subheading matching Mindtrip Locations */}
-          <div className="mb-5 mt-4">
-            <h2 className="text-[17px] font-bold text-gray-950 tracking-tight">Địa điểm</h2>
+          {/* Section Subheading & Active Filter Badges */}
+          <div className="mb-3 mt-4 flex items-center justify-between">
+            <h2 className="text-[17px] font-bold text-gray-950 tracking-tight">
+              Địa điểm ({filteredPois.length})
+            </h2>
+            {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || selectedSubChip !== 'all') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterValues(DEFAULT_FILTER_VALUES);
+                  setSelectedSubChip('all');
+                }}
+                className="text-xs font-semibold text-rose-600 hover:text-rose-800 underline cursor-pointer"
+              >
+                Xóa tất cả bộ lọc
+              </button>
+            )}
           </div>
+
+          {/* Active Filter Chips Bar */}
+          {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || selectedSubChip !== 'all') && (
+            <div className="flex items-center gap-1.5 flex-wrap mb-4 py-1.5 px-3 bg-neutral-50 rounded-xl border border-neutral-200/60">
+              <span className="text-[11px] font-bold text-neutral-500 uppercase">Đang lọc:</span>
+              {selectedSubChip !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
+                  <span>{SUB_CHIPS_CONFIG[activeTab]?.find(c => c.id === selectedSubChip)?.label}</span>
+                  <button type="button" onClick={() => setSelectedSubChip('all')} className="hover:text-black font-bold">×</button>
+                </span>
+              )}
+              {filterValues.minRating !== null && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
+                  <span>★ {filterValues.minRating}+</span>
+                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, minRating: null }))} className="hover:text-black font-bold">×</button>
+                </span>
+              )}
+              {filterValues.budget !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
+                  <span>Giá: {filterValues.budget}</span>
+                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, budget: 'all' }))} className="hover:text-black font-bold">×</button>
+                </span>
+              )}
+              {filterValues.radiusKm !== null && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
+                  <span>Trong {filterValues.radiusKm} km</span>
+                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, radiusKm: null }))} className="hover:text-black font-bold">×</button>
+                </span>
+              )}
+              {filterValues.ecoCertifiedOnly && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold">
+                  <span>🍃 Chuẩn Xanh</span>
+                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, ecoCertifiedOnly: false }))} className="hover:text-emerald-950 font-bold">×</button>
+                </span>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-x-4 gap-y-7 pb-12">
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => <PoiCardSkeleton key={i} />)
@@ -1287,7 +1429,40 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               error ? (
                 <ErrorState message={error} />
               ) : (
-                <EmptyState />
+                <div className="col-span-2 py-12 px-6 text-center bg-neutral-50/80 rounded-3xl border border-neutral-200/80 my-2">
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto mb-3">
+                    <Compass size={22} />
+                  </div>
+                  <h4 className="text-base font-bold text-neutral-900 mb-1">
+                    Không tìm thấy địa điểm phù hợp
+                  </h4>
+                  <p className="text-xs text-neutral-500 max-w-md mx-auto mb-4">
+                    {filterValues.radiusKm
+                      ? `Không có địa điểm nào trong bán kính ${filterValues.radiusKm} km. Bạn có muốn nới rộng bán kính để xem thêm gợi ý?`
+                      : 'Thử điều chỉnh hoặc xóa bớt tiêu chí lọc để khám phá thêm nhiều địa điểm hấp dẫn.'}
+                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    {filterValues.radiusKm && (
+                      <button
+                        type="button"
+                        onClick={() => setFilterValues(prev => ({ ...prev, radiusKm: null }))}
+                        className="px-4 py-2 rounded-full bg-black text-white text-xs font-bold hover:bg-neutral-800 transition cursor-pointer"
+                      >
+                        Mở rộng toàn thành phố
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterValues(DEFAULT_FILTER_VALUES);
+                        setSelectedSubChip('all');
+                      }}
+                      className="px-4 py-2 rounded-full border border-neutral-300 text-neutral-800 text-xs font-bold hover:bg-neutral-100 transition cursor-pointer"
+                    >
+                      Xem tất cả địa điểm
+                    </button>
+                  </div>
+                </div>
               )
             ) : (
               filteredPois.map((poi, idx) => (

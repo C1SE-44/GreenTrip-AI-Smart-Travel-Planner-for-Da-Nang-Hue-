@@ -706,19 +706,37 @@ function DynamicMarkersLayer({
     };
   }, [map, computeOffsets]);
 
+  // Tự động lướt mượt mà (flyTo) đến đúng địa điểm đang xem (hover)
   useEffect(() => {
     if (!hoveredPoiId) return;
     const target = pois.find((p) => p.id === hoveredPoiId);
-    if (!target) return;
+    if (!target || !Number.isFinite(target.lat) || !Number.isFinite(target.lng)) return;
     try {
-      const bounds = map.getBounds();
-      if (!bounds.contains([target.lat, target.lng])) {
-        map.panTo([target.lat, target.lng], { animate: true, duration: 0.5 });
-      }
+      map.flyTo([target.lat, target.lng], Math.max(map.getZoom(), 14), {
+        animate: true,
+        duration: 0.65,
+        easeLinearity: 0.25,
+      });
     } catch {
       // safe fallback
     }
   }, [hoveredPoiId, pois, map]);
+
+  // Tự động lướt và zoom cận cảnh khi click chọn địa điểm (select)
+  useEffect(() => {
+    if (!selectedPoiId) return;
+    const target = pois.find((p) => p.id === selectedPoiId);
+    if (!target || !Number.isFinite(target.lat) || !Number.isFinite(target.lng)) return;
+    try {
+      map.flyTo([target.lat, target.lng], 15, {
+        animate: true,
+        duration: 0.8,
+        easeLinearity: 0.25,
+      });
+    } catch {
+      // safe fallback
+    }
+  }, [selectedPoiId, pois, map]);
 
   return (
     <>
@@ -757,6 +775,7 @@ export default function PoiMap({
   selectedPoiId,
   hoveredPoiId,
   onSelectPoi,
+  onHoverPoi,
   isExpanded = false,
   onToggleExpand,
   favorites,
@@ -865,7 +884,10 @@ export default function PoiMap({
           selectedPoiId={selectedPoiId}
           hoveredPoiId={hoveredPoiId || hoveredMapPinId}
           onSelectPoi={onSelectPoi}
-          onHoverMapPin={setHoveredMapPinId}
+          onHoverMapPin={(id) => {
+            setHoveredMapPinId(id);
+            if (onHoverPoi) onHoverPoi(id);
+          }}
         />
 
         {/* Card xem trước khi rê chuột (hover) hoặc chọn ghim trên bản đồ */}

@@ -12,7 +12,20 @@ import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
 import { getMe, type UserProfile } from '@/services/auth';
 import { getPois } from '@/services/poi';
-import ExploreFilterPopover, { type ExploreFilterValues, type EcoPriority, type PoiCategoryFilter } from '@/components/poi/ExploreFilterPopover';
+import ExploreFilterModal, {
+  type ExploreFilterValues,
+  type PoiCategoryFilter,
+  type TimeOfDay,
+  DEFAULT_FILTER_VALUES,
+} from '@/components/poi/ExploreFilterModal';
+import QuickFilterBar from '@/components/poi/QuickFilterBar';
+import {
+  computePoiWeightedScore,
+  ECO_PRIORITY_WEIGHT_MAP,
+  isPoiEcoCertified,
+  isPoiGreenTransit,
+  normalizeSliderWeights,
+} from '@/services/poi';
 
 
 type CityFilter = 'all' | PoiCity;
@@ -59,6 +72,114 @@ const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
   'canh-quan': { icon: 'ph-mountains', label: 'Cảnh quan' },
 };
 
+
+const CITY_CENTERS: Record<string, { lat: number; lng: number }> = {
+  'Đà Nẵng': { lat: 16.0678, lng: 108.2208 }, // Cầu Rồng / Trung tâm Hải Châu
+  'Huế': { lat: 16.4637, lng: 107.5909 },     // Đại Nội / Bờ Nam sông Hương
+  default: { lat: 16.0678, lng: 108.2208 },
+};
+
+function getDistanceFromLatLonInKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371; // Bán kính trái đất (km)
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {
+  if (timeOfDayList.length === 0) return true;
+
+  return timeOfDayList.some((tod) => {
+    // 1. Explicit best_time match if provided
+    if (poi.best_time && poi.best_time.length > 0) {
+      const matchExplicit = poi.best_time.some((t) => t.toLowerCase().includes(tod));
+      if (matchExplicit) return true;
+    }
+
+    const name = poi.name.toLowerCase();
+    const desc = (poi.description || '').toLowerCase();
+    const sub = (poi.sub_category || '').toLowerCase();
+
+    if (tod === 'morning') {
+      // Buổi sáng: Chùa, danh thắng đón bình minh, quán ăn sáng, cafe sáng
+      if (poi.category === 'chua') return true;
+      if (
+        sub === 'traditional_noodles' ||
+        name.includes('bún') ||
+        name.includes('mì') ||
+        name.includes('phở') ||
+        name.includes('cháo')
+      )
+        return true;
+      if (
+        sub === 'workspace_study_cafe' ||
+        sub === 'specialty_roastery' ||
+        sub === 'retro_street_cafe'
+      )
+        return true;
+      if (
+        name.includes('bình minh') ||
+        desc.includes('bình minh') ||
+        name.includes('mỹ khê') ||
+        name.includes('chợ')
+      )
+        return true;
+      if (poi.category === 'di-tich') return true;
+      return false;
+    }
+
+    if (tod === 'afternoon') {
+      // Buổi chiều: Cảnh quan biển, đèo, vịnh, bảo tàng, cafe view đẹp
+      if (poi.category === 'canh-quan') return true;
+      if (poi.category === 'di-tich') return true;
+      if (sub === 'scenic_view_cafe' || sub === 'desserts_bakery') return true;
+      if (name.includes('hoàng hôn') || desc.includes('hoàng hôn') || desc.includes('chiều'))
+        return true;
+      if (poi.category === 'quan-an') return true;
+      return false;
+    }
+
+    if (tod === 'evening') {
+      // Buổi tối: Cầu Rồng, Cầu Sông Hàn, phố đêm, bar/pub, ăn tối, hải sản
+      if (
+        name.includes('cầu rồng') ||
+        name.includes('sông hàn') ||
+        name.includes('cầu trường tiền')
+      )
+        return true;
+      if (
+        name.includes('chợ đêm') ||
+        name.includes('phố đi bộ') ||
+        desc.includes('đêm') ||
+        desc.includes('tối')
+      )
+        return true;
+      if (
+        sub === 'nightlife_bars_pubs' ||
+        sub === 'scenic_view_cafe' ||
+        sub === 'heritage_fine_dining' ||
+        sub === 'coastal_seafood'
+      )
+        return true;
+      if (poi.category === 'quan-an') return true;
+      return false;
+    }
+
+    return true;
+  });
+}
 
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'explore' | 'trips' | 'saved' }) {
   const navigate = useNavigate();
@@ -164,27 +285,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
-  const [filterValues, setFilterValues] = useState<ExploreFilterValues>({
-    budget: 'all',
-    ecoPriority: 'all',
-    ecoCertifiedOnly: false,
-    greenTransitOnly: false,
-    categories: [],
-    timeOfDay: [],
-    radiusKm: null,
-  });
-
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (filterValues.budget !== 'all') count++;
-    if (filterValues.ecoPriority !== 'all') count++;
-    if (filterValues.ecoCertifiedOnly) count++;
-    if (filterValues.greenTransitOnly) count++;
-    if (filterValues.categories.length > 0) count += filterValues.categories.length;
-    if (filterValues.timeOfDay.length > 0) count += filterValues.timeOfDay.length;
-    if (filterValues.radiusKm !== null) count++;
-    return count;
-  }, [filterValues]);
+  const [filterValues, setFilterValues] = useState<ExploreFilterValues>(DEFAULT_FILTER_VALUES);
 
   const [isHovered, setIsHovered] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
@@ -355,35 +456,94 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   };
 
   const filteredPois = useMemo(() => {
-    const ecoScoreMap: Record<EcoPriority, number> = { all: 0, basic: 30, balanced: 55, eco: 75, pure: 90 };
-    const minEco = ecoScoreMap[filterValues.ecoPriority];
-
-    return allPois.filter((poi) => {
-      if (viewMode === 'saved' && !favorites.has(poi.id)) return false;
+    const matched = allPois.filter((poi) => {
+      if (viewMode === 'saved' && !favorites.has(poi.id)) {
+        return false;
+      }
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
       const matchCat = categoryFilter === 'all' || poi.category === categoryFilter;
+      const s = search.trim().toLowerCase();
       const matchSearch =
-        !search ||
-        poi.name.toLowerCase().includes(search.toLowerCase()) ||
-        poi.description.toLowerCase().includes(search.toLowerCase());
+        !s ||
+        poi.name.toLowerCase().includes(s) ||
+        (poi.cleanName && poi.cleanName.toLowerCase().includes(s)) ||
+        poi.description.toLowerCase().includes(s) ||
+        (poi.address && poi.address.toLowerCase().includes(s));
 
-      // Eco Score filter
-      const ecoScore = poi.ecoScore ?? 80;
-      let matchEco = ecoScore >= minEco;
-      if (filterValues.ecoCertifiedOnly && ecoScore < 85) matchEco = false;
+      // Eco Priority
+      let matchEco = true;
+      if (filterValues.ecoPriority === 'basic') matchEco = poi.ecoScore !== null && poi.ecoScore >= 30;
+      else if (filterValues.ecoPriority === 'balanced') matchEco = poi.ecoScore !== null && poi.ecoScore >= 55;
+      else if (filterValues.ecoPriority === 'eco') matchEco = poi.ecoScore !== null && poi.ecoScore >= 75;
+      else if (filterValues.ecoPriority === 'pure') matchEco = poi.ecoScore !== null && poi.ecoScore >= 90;
 
-      // Budget filter (category-based proxy)
+      // Budget
       let matchBudget = true;
-      if (filterValues.budget !== 'all') {
-        if (filterValues.budget === '$') {
-          matchBudget = poi.category === 'chua' || poi.category === 'canh-quan';
-        } else if (filterValues.budget === '$$') {
-          matchBudget = poi.category === 'quan-an' || poi.category === 'chua';
-        } else if (filterValues.budget === '$$$') {
-          matchBudget = poi.category === 'di-tich' || poi.category === 'canh-quan';
-        } else if (filterValues.budget === '$$$$') {
-          matchBudget = poi.category === 'quan-an';
-        }
+      if (filterValues.budget === '$') {
+        matchBudget = poi.budget_tier === '$' || poi.budget_tier === 'free' || (poi.estimatedCost ?? 0) <= 100000;
+      } else if (filterValues.budget === '$$') {
+        matchBudget = poi.budget_tier === '$$' || ((poi.estimatedCost ?? 0) > 100000 && (poi.estimatedCost ?? 0) <= 400000);
+      } else if (filterValues.budget === '$$$') {
+        matchBudget = poi.budget_tier === '$$$' || ((poi.estimatedCost ?? 0) > 400000 && (poi.estimatedCost ?? 0) <= 1000000);
+      } else if (filterValues.budget === '$$$$') {
+        matchBudget = poi.budget_tier === '$$$$' || (poi.estimatedCost ?? 0) > 1000000;
+      }
+
+      // Rating filter
+      if (filterValues.minRating !== null && (poi.rating === null || poi.rating < filterValues.minRating)) {
+        return false;
+      }
+
+      // Eco Certified Only
+      if (filterValues.ecoCertifiedOnly && !isPoiEcoCertified(poi)) {
+        return false;
+      }
+      if (filterValues.greenTransitOnly && !isPoiGreenTransit(poi)) {
+        return false;
+      }
+      if (filterValues.rainyDayFriendly && poi.ai_metadata?.rainy_day_friendly !== true) {
+        return false;
+      }
+      if (filterValues.openNowOnly && poi.opening_hours?.open_now === false) {
+        return false;
+      }
+
+      // Free Ticket Only
+      if (filterValues.freeTicketOnly) {
+        const isFree = poi.budget_tier === 'free' || (poi.estimatedCost ?? 0) === 0;
+        if (!isFree) return false;
+      }
+
+      // Cuisines filter
+      if (filterValues.cuisines.length > 0) {
+        const matchCuisine = filterValues.cuisines.some((c) => {
+          const cLower = c.toLowerCase();
+          const pCuisine = (poi.cuisine || '').toLowerCase();
+          const pSub = (poi.sub_category || '').toLowerCase();
+          const pName = poi.name.toLowerCase();
+          return pCuisine === cLower || pSub === cLower || pName.includes(cLower);
+        });
+        if (!matchCuisine) return false;
+      }
+
+      // Sub-categories filter
+      if (filterValues.subCategories.length > 0) {
+        const matchSub = filterValues.subCategories.some((sc) => {
+          const scLower = sc.toLowerCase();
+          const pSub = (poi.sub_category || '').toLowerCase();
+          const pName = poi.name.toLowerCase();
+          return pSub === scLower || pName.includes(scLower);
+        });
+        if (!matchSub) return false;
+      }
+
+      // Vibes filter
+      if (filterValues.vibes.length > 0) {
+        const pVibes = (poi.vibes || []).map((v) => v.toLowerCase());
+        const matchVibe = filterValues.vibes.some((v) =>
+          pVibes.some((pv) => pv.includes(v.toLowerCase()))
+        );
+        if (!matchVibe) return false;
       }
 
       // Category multi-select filter
@@ -391,9 +551,72 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         filterValues.categories.length === 0 ||
         filterValues.categories.includes(poi.category as PoiCategoryFilter);
 
+      // Radius filter (khoảng cách tính bằng km từ trung tâm thành phố)
+      if (filterValues.radiusKm !== null) {
+        const center = poi.city === 'Huế' ? CITY_CENTERS['Huế'] : CITY_CENTERS['Đà Nẵng'];
+        const distance = getDistanceFromLatLonInKm(center.lat, center.lng, poi.lat, poi.lng);
+        if (distance > filterValues.radiusKm) {
+          return false;
+        }
+      }
+
+      // Time of day filter (buổi sáng, chiều, tối)
+      if (filterValues.timeOfDay && filterValues.timeOfDay.length > 0) {
+        if (!matchesTimeOfDay(poi, filterValues.timeOfDay)) {
+          return false;
+        }
+      }
+
       return matchCity && matchCat && matchSearch && matchEco && matchBudget && matchCatFilter;
     });
-  }, [allPois, search, cityFilter, categoryFilter, filterValues]);
+
+    const isCustomWeights =
+      filterValues.greenWeight !== 50 ||
+      filterValues.budgetWeight !== 50 ||
+      filterValues.ecoPriority !== 'all';
+
+    if (!isCustomWeights) {
+      return matched;
+    }
+
+    const effectiveGreenWeight =
+      filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50
+        ? filterValues.greenWeight
+        : ECO_PRIORITY_WEIGHT_MAP[filterValues.ecoPriority];
+    const effectiveBudgetWeight = filterValues.budgetWeight;
+
+    return [...matched].sort((a, b) => {
+      const scoreDiff =
+        computePoiWeightedScore(b, effectiveGreenWeight, effectiveBudgetWeight) -
+        computePoiWeightedScore(a, effectiveGreenWeight, effectiveBudgetWeight);
+      if (Math.abs(scoreDiff) > 1e-6) {
+        return scoreDiff;
+      }
+      return a.name.localeCompare(b.name, 'vi');
+    });
+  }, [allPois, search, cityFilter, categoryFilter, filterValues, viewMode, favorites]);
+
+  // Đếm số lượng filter đang active chuẩn Mindtrip
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterValues.budget !== 'all') count++;
+    if (filterValues.ecoPriority !== 'all') count++;
+    if (filterValues.ecoCertifiedOnly) count++;
+    if (filterValues.greenTransitOnly) count++;
+    if (filterValues.categories.length > 0) count++;
+    if (filterValues.timeOfDay.length > 0) count++;
+    if (filterValues.radiusKm !== null) count++;
+    if (filterValues.cuisines.length > 0) count += filterValues.cuisines.length;
+    if (filterValues.minRating !== null) count++;
+    if (filterValues.openNowOnly) count++;
+    if (filterValues.vibes.length > 0) count += filterValues.vibes.length;
+    if (filterValues.subCategories.length > 0) count += filterValues.subCategories.length;
+    if (filterValues.rainyDayFriendly) count++;
+    if (filterValues.freeTicketOnly) count++;
+    if (filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50) count++;
+    return count;
+  }, [filterValues]);
+
 
   const handleSelectPoi = (id: string | null) => {
     setSelectedPoiId((prev) => (prev === id ? null : id));
@@ -1038,6 +1261,17 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               );
             })}
           </div>
+
+          {/* Quick Filter Pills Toolbar */}
+          <div className="mt-2.5">
+            <QuickFilterBar
+              values={filterValues}
+              onChange={setFilterValues}
+              onOpenModal={() => setIsFilterPopoverOpen(true)}
+              activeFilterCount={activeFilterCount}
+              onClearAll={() => setFilterValues(DEFAULT_FILTER_VALUES)}
+            />
+          </div>
         </header>
 
         {/* Cards Scrollable Area */}
@@ -1143,24 +1377,18 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         </>
       )}
 
-      {/* 4. Explore Filter Popover Modal (Mindtrip-Style Floating Modal) */}
-      <ExploreFilterPopover
+      {/* 4. Explore Filter Modal (Đa Tab chuẩn Quiet Luxury & Mindtrip) */}
+      <ExploreFilterModal
         isOpen={isFilterPopoverOpen}
         onClose={() => setIsFilterPopoverOpen(false)}
+        activeTab={activeTab}
         values={filterValues}
-        onApply={(newValues) => setFilterValues(newValues)}
+        onApply={(newValues) => {
+          setFilterValues(newValues);
+          setIsFilterPopoverOpen(false);
+        }}
+        onClearAll={() => setFilterValues(DEFAULT_FILTER_VALUES)}
         matchingCount={filteredPois.length}
-        onClearAll={() =>
-          setFilterValues({
-            budget: 'all',
-            ecoPriority: 'all',
-            ecoCertifiedOnly: false,
-            greenTransitOnly: false,
-            categories: [],
-            timeOfDay: [],
-            radiusKm: null,
-          })
-        }
       />
 
       {/* 5. Create Trip Modal */}

@@ -10,6 +10,22 @@ const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
   'canh-quan': { icon: 'ph-mountains', label: 'Cảnh quan' },
 };
 
+function formatCompactPrice(poi: Poi): string {
+  const display = poi.ai_metadata?.price_range_display?.trim();
+  if (display) {
+    if (/^miễn phí/i.test(display)) return 'Miễn phí';
+    const shortMatch = display.match(/^([^(]+)/);
+    return (shortMatch ? shortMatch[1] : display).trim();
+  }
+  if (poi.estimatedCost == null) return 'Chưa cập nhật giá';
+  if (poi.estimatedCost === 0) return 'Miễn phí';
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(poi.estimatedCost);
+}
+
 export interface PoiCardProps {
   poi: Poi;
   index?: number;
@@ -48,19 +64,19 @@ export default function PoiCard({
   const categoryLabel = poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category]
     ? SUB_CATEGORY_LABELS[poi.sub_category]
     : CATEGORY_META[poi.category]?.label || categoryLabels[poi.category] || 'Điểm tham quan';
+
   const isEcoLocal = Boolean(
     recommendation &&
       (recommendation.isLocalBusiness || (recommendation.greenScore ?? 0) >= 0.7),
   );
-  const formattedCost = poi.estimatedCost == null
-    ? 'Chưa cập nhật giá'
-    : poi.estimatedCost === 0
-      ? 'Miễn phí'
-      : new Intl.NumberFormat('vi-VN', {
-          style: 'currency',
-          currency: 'VND',
-          maximumFractionDigits: 0,
-        }).format(poi.estimatedCost);
+
+  const reviewCount = typeof poi.ai_metadata?.review_count === 'number' && poi.ai_metadata.review_count > 0
+    ? poi.ai_metadata.review_count
+    : null;
+
+  const areaText = poi.ai_metadata?.area?.trim();
+  const locationLabel = areaText ? `${areaText}, ${poi.city}` : poi.city;
+  const formattedCost = formatCompactPrice(poi);
 
   return (
     <article
@@ -75,9 +91,9 @@ export default function PoiCard({
       }}
       className="flex flex-col group cursor-pointer select-none"
     >
-      {/* 1. Card Image Box: aspect-[1.05/1], rounded-[20px], isolate */}
-      <div className={`relative w-full aspect-[1.05/1] rounded-[20px] overflow-hidden bg-gray-100 shadow-sm transition-all duration-200 isolate ${
-        active ? 'ring-2 ring-black' : ''
+      {/* 1. Card Image Box */}
+      <div className={`relative w-full aspect-[1.05/1] rounded-[20px] overflow-hidden bg-neutral-100 shadow-sm transition-all duration-200 isolate ${
+        active ? 'ring-2 ring-emerald-900' : ''
       }`}>
         <img
           src={gallery[imgIdx] || poi.image}
@@ -86,84 +102,101 @@ export default function PoiCard({
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           onError={(e) => {
             const target = e.currentTarget;
-            const fallback = getDeterministicImage(poi.name, poi.id, poi.category, poi.city);
+            const fallback = getDeterministicImage(poi.name, `${poi.id}_${imgIdx}`, poi.category, poi.city);
             if (target.src !== fallback) {
               target.src = fallback;
             }
           }}
         />
 
-        {/* Nút tròn chuyển ảnh ‹ (chỉ hiện khi hover và từ ảnh thứ 2 trở đi) */}
+        {/* Nút tròn chuyển ảnh ‹ */}
         {isCardHovered && imgIdx > 0 && (
           <button
+            type="button"
+            aria-label="Ảnh trước"
             onClick={(e) => {
               e.stopPropagation();
               setImgIdx((prev) => Math.max(0, prev - 1));
             }}
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/95 text-zinc-900 shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-10 cursor-pointer backdrop-blur-xs"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/95 text-neutral-900 shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-10 cursor-pointer backdrop-blur-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
             title="Ảnh trước"
           >
-            <i className="ph ph-caret-left text-base font-bold"></i>
+            <i className="ph ph-caret-left text-base font-bold" aria-hidden="true"></i>
           </button>
         )}
 
-        {/* Nút tròn chuyển ảnh › (chỉ hiện khi hover và chưa đến ảnh cuối) */}
+        {/* Nút tròn chuyển ảnh › */}
         {isCardHovered && imgIdx < gallery.length - 1 && (
           <button
+            type="button"
+            aria-label="Ảnh kế tiếp"
             onClick={(e) => {
               e.stopPropagation();
               setImgIdx((prev) => Math.min(gallery.length - 1, prev + 1));
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/95 text-zinc-900 shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-10 cursor-pointer backdrop-blur-xs"
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/95 text-neutral-900 shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-10 cursor-pointer backdrop-blur-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
             title="Ảnh kế tiếp"
           >
-            <i className="ph ph-caret-right text-base font-bold"></i>
+            <i className="ph ph-caret-right text-base font-bold" aria-hidden="true"></i>
           </button>
         )}
 
-        {/* Nút tim và "+" ở góc trên */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+        {/* Nút tim và "+" ở góc trên (vùng chạm chuẩn >= 40px) */}
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
           <button
+            type="button"
+            aria-label="Lưu yêu thích"
+            aria-pressed={favorite}
             onClick={(e) => {
               e.stopPropagation();
               onToggleFavorite(poi.id);
             }}
-            className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
-              favorite ? 'bg-white text-[#b45309]' : 'bg-black/35 hover:bg-black/55 text-white'
+            className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+              favorite ? 'bg-white text-[#b45309]' : 'bg-black/45 hover:bg-black/65 text-white'
             }`}
             title="Lưu yêu thích"
           >
-            <i className={`ph ${favorite ? 'ph-fill ph-heart text-[17px] text-[#b45309]' : 'ph-heart text-[17px]'}`}></i>
+            <i className={`ph ${favorite ? 'ph-fill ph-heart text-[18px] text-[#b45309]' : 'ph-heart text-[18px]'}`} aria-hidden="true"></i>
           </button>
           <button
+            type="button"
+            aria-label="Thêm vào chuyến đi"
+            aria-pressed={isAdded}
             onClick={(e) => {
               e.stopPropagation();
               onToggleAddTrip?.(poi.id);
             }}
-            className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
-              isAdded ? 'bg-emerald-600 text-white' : 'bg-black/35 hover:bg-black/55 text-white'
+            className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+              isAdded ? 'bg-emerald-700 text-white' : 'bg-black/45 hover:bg-black/65 text-white'
             }`}
             title="Thêm vào chuyến đi"
           >
-            <i className={`ph ${isAdded ? 'ph-check text-[17px] font-bold' : 'ph-plus text-[17px]'}`}></i>
+            <i className={`ph ${isAdded ? 'ph-check text-[18px] font-bold' : 'ph-plus text-[18px]'}`} aria-hidden="true"></i>
           </button>
         </div>
 
-        {/* Michelin badge nếu có */}
-        {poi.isMichelin && (
-          <div className="absolute top-3 left-3 z-10 bg-rose-600 text-white text-[10.5px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
-            <span>★</span>
+        {/* Michelin badge hoặc Điểm Xanh badge */}
+        {poi.isMichelin && !recommendation && (
+          <div className="absolute top-3 left-3 z-10 bg-rose-700 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+            <span aria-hidden="true">★</span>
             <span>MICHELIN</span>
           </div>
         )}
 
+        {!poi.isMichelin && !recommendation && poi.ecoScore >= 80 && (
+          <div className="absolute top-3 left-3 z-10 bg-emerald-950/85 text-emerald-50 text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm backdrop-blur-xs flex items-center gap-1">
+            <span aria-hidden="true">🌿</span>
+            <span>{poi.ecoScore} Điểm Xanh</span>
+          </div>
+        )}
+
         {recommendation && (
-          <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-5rem)] flex-col items-start gap-1.5">
-            <span className="rounded-full bg-gradient-to-r from-emerald-700 to-teal-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-md">
+          <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-6rem)] flex-col items-start gap-1.5">
+            <span className="rounded-full bg-emerald-800 px-2.5 py-1 text-xs font-bold text-white shadow-md">
               {Math.round(recommendation.matchScore)}% Phù hợp
             </span>
             {isEcoLocal && (
-              <span className="rounded-full border border-emerald-100/70 bg-emerald-950/85 px-2 py-1 text-[10px] font-semibold text-emerald-50 shadow-md backdrop-blur-sm">
+              <span className="rounded-full border border-emerald-100/70 bg-emerald-950/85 px-2.5 py-1 text-xs font-semibold text-emerald-50 shadow-md backdrop-blur-sm">
                 📍 Điểm bản địa
               </span>
             )}
@@ -176,58 +209,53 @@ export default function PoiCard({
             <span
               key={i}
               className={`w-1.5 h-1.5 rounded-full transition-all ${
-                i === imgIdx ? 'bg-white scale-125 shadow-xs' : 'bg-white/40'
+                i === imgIdx ? 'bg-white scale-125 shadow-xs' : 'bg-white/45'
               }`}
             />
           ))}
         </div>
-
-        {/* Icon ⓘ ở góc phải đáy */}
-        <div className="absolute bottom-2.5 right-2.5 pointer-events-none z-10">
-          <i className="ph ph-info text-white/80 hover:text-white text-[14px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"></i>
-        </div>
       </div>
 
-      {/* 2. Card Details: Tên, loại hình, địa chỉ & rating */}
+      {/* 2. Card Details: Tên, loại hình, địa chỉ, giá & rating */}
       <div className="mt-2.5 space-y-1">
-        <div className="flex items-center justify-between gap-1.5 min-w-0">
-          <h3 className="font-bold text-[15px] text-gray-950 tracking-tight truncate leading-tight group-hover:text-black" title={poi.name}>
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <h3 className="font-bold text-[15px] text-neutral-950 tracking-tight truncate leading-snug group-hover:text-emerald-900" title={poi.name}>
             {poi.cleanTitle || poi.cleanName || poi.name}
           </h3>
           {poi.rating > 0 && (
-            <span className="text-[12px] font-semibold text-gray-800 shrink-0 flex items-center gap-0.5">
-              <span className="text-amber-500">★</span> {poi.rating.toFixed(1)}
+            <span className="text-xs font-semibold text-neutral-800 shrink-0 flex items-center gap-0.5">
+              <span className="text-amber-500" aria-hidden="true">★</span>
+              <span>{poi.rating.toFixed(1)}</span>
+              {reviewCount && (
+                <span className="text-neutral-600 font-normal">({reviewCount.toLocaleString('vi-VN')})</span>
+              )}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-normal">
-          <i className={`ph ${CATEGORY_META[poi.category]?.icon || 'ph-map-pin'} text-gray-400 text-[14px] shrink-0`}></i>
+        <div className="flex items-center gap-1.5 text-[13px] text-neutral-600 font-normal min-w-0">
+          <i className={`ph ${CATEGORY_META[poi.category]?.icon || 'ph-map-pin'} text-neutral-600 text-[14px] shrink-0`} aria-hidden="true"></i>
           <span className="truncate">{categoryLabel}</span>
-          <span className="text-gray-300">·</span>
-          <span className="truncate">{poi.city}</span>
+          <span className="text-neutral-400" aria-hidden="true">·</span>
+          <span className="truncate">{locationLabel}</span>
         </div>
 
-        <div className="text-[12.5px] text-gray-400 font-normal truncate">
-          <span>{poi.address || `${poi.city === 'Đà Nẵng' ? 'Hải Châu, Đà Nẵng' : `${poi.city}, Việt Nam`}`}</span>
+        <div className="flex items-center justify-between gap-2 text-xs text-neutral-600 min-w-0">
+          <span className="truncate" title={poi.address || locationLabel}>
+            {poi.address || `${poi.city}, Việt Nam`}
+          </span>
+          <span className="shrink-0 font-semibold text-emerald-800">{formattedCost}</span>
         </div>
 
         {recommendation && (
           <div className="pt-1.5" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between gap-2 text-[12px]">
-              <span className="truncate font-semibold text-gray-800">{formattedCost}</span>
-              <span className="shrink-0 text-gray-600">
-                <span className="text-amber-500" aria-hidden="true">★</span>{' '}
-                {poi.rating > 0 ? poi.rating.toFixed(1) : '—'}
-              </span>
-            </div>
             <button
               type="button"
               onClick={() => onToggleAddTrip?.(poi.id)}
               aria-pressed={isAdded}
-              className={`mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-full text-[12px] font-semibold transition-all duration-200 ${
+              className={`mt-1.5 flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-full text-xs font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
                 isAdded
-                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                  ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
                   : 'bg-[#102b21] text-white hover:bg-[#194332]'
               }`}
             >
@@ -239,7 +267,7 @@ export default function PoiCard({
               aria-haspopup="dialog"
               aria-expanded={isExplanationModalOpen}
               onClick={() => setIsExplanationModalOpen(true)}
-              className="mt-1.5 flex h-[34px] w-full items-center justify-center gap-1 text-xs font-medium text-emerald-800 transition-colors hover:text-emerald-950 focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="mt-1 flex min-h-[40px] w-full items-center justify-center gap-1 rounded-full text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-50 hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
             >
               <i className="ph ph-sparkle" aria-hidden="true"></i>
               Lý do AI gợi ý · Vì sao nơi này?
@@ -252,7 +280,7 @@ export default function PoiCard({
             aria-haspopup="dialog"
             aria-expanded={isExplanationModalOpen}
             onClick={(event) => { event.stopPropagation(); setIsExplanationModalOpen(true); }}
-            className="mt-2 flex h-[34px] w-full items-center justify-center gap-1.5 rounded-full border border-emerald-200 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="mt-2 flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-full border border-emerald-200 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
           >
             Vì sao nơi này?
           </button>

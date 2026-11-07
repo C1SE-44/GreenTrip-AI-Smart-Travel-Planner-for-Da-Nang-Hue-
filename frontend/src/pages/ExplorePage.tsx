@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
 import CreateTripMindtripModal from '@/components/planner/CreateTripMindtripModal';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
-import { pois, categoryLabels, normalizePois, getGalleryImages, type PaginatedPoisResponse } from '@/data/pois';
+import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
@@ -255,7 +255,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [activeTab, setActiveTab] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
-  const [selectedSubChip, setSelectedSubChip] = useState<string>('all');
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(() => {
@@ -482,7 +481,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
   const handleTabChange = (tabId: 'all' | 'quan-an' | 'di-tich' | 'canh-quan') => {
     setActiveTab(tabId);
-    setSelectedSubChip('all');
     setCategoryFilter(tabId);
   };
 
@@ -499,36 +497,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         matchCat = poi.category === 'quan-an';
       } else if (categoryFilter === 'canh-quan') {
         matchCat = poi.category === 'canh-quan';
-      }
-
-      // Lọc theo nhánh nhỏ (Sub-category Quick Chip 1-chạm)
-      if (matchCat && selectedSubChip !== 'all') {
-        const name = poi.name.toLowerCase();
-        const sub = (poi.sub_category || '').toLowerCase();
-        const desc = (poi.description || '').toLowerCase();
-
-        if (categoryFilter === 'di-tich') {
-          if (selectedSubChip === 'chua' && !(poi.category === 'chua' || sub.includes('temple') || name.includes('chùa') || name.includes('thiền viện'))) return false;
-          if (selectedSubChip === 'dai-noi' && !(sub.includes('citadel') || name.includes('đại nội') || name.includes('hoàng thành') || name.includes('ngọ môn'))) return false;
-          if (selectedSubChip === 'lang-tam' && !(sub.includes('mausoleum') || name.includes('lăng'))) return false;
-          if (selectedSubChip === 'bao-tang' && !(name.includes('bảo tàng') || sub.includes('museum'))) return false;
-          if (selectedSubChip === 'cau' && !name.includes('cầu')) return false;
-          if (selectedSubChip === 'lang-nghe' && !(name.includes('làng') || sub.includes('craft'))) return false;
-        } else if (categoryFilter === 'quan-an') {
-          if (selectedSubChip === 'dac-san' && !(name.includes('bún') || name.includes('mì') || sub.includes('noodles'))) return false;
-          if (selectedSubChip === 'hai-san' && !(name.includes('hải sản') || sub.includes('seafood'))) return false;
-          if (selectedSubChip === 'chay' && !(name.includes('chay') || sub.includes('vegan') || sub.includes('vegetarian'))) return false;
-          if (selectedSubChip === 'mon-cuon' && !(name.includes('bánh') || name.includes('cuốn') || name.includes('nem') || name.includes('ram'))) return false;
-          if (selectedSubChip === 'cafe-view' && !(name.includes('cafe') || name.includes('cà phê') || sub.includes('cafe'))) return false;
-          if (selectedSubChip === 'cafe-work' && !(name.includes('workspace') || sub.includes('workspace'))) return false;
-          if (selectedSubChip === 'che' && !(name.includes('chè') || name.includes('kem') || name.includes('ăn vặt'))) return false;
-        } else if (categoryFilter === 'canh-quan') {
-          if (selectedSubChip === 'bien' && !(name.includes('biển') || name.includes('vịnh') || sub.includes('beach'))) return false;
-          if (selectedSubChip === 'deo-ban-dao' && !(name.includes('đèo') || name.includes('sơn trà') || sub.includes('peninsula'))) return false;
-          if (selectedSubChip === 'song-dam-pha' && !(name.includes('sông') || name.includes('đầm') || name.includes('phá'))) return false;
-          if (selectedSubChip === 'doi-thong' && !(name.includes('đồi') || name.includes('công viên') || name.includes('núi'))) return false;
-          if (selectedSubChip === 'thac-suoi' && !(name.includes('thác') || name.includes('suối') || name.includes('khoáng'))) return false;
-        }
       }
       const s = search.trim().toLowerCase();
       const matchSearch =
@@ -600,7 +568,16 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           const scLower = sc.toLowerCase();
           const pSub = (poi.sub_category || '').toLowerCase();
           const pName = poi.name.toLowerCase();
-          return pSub === scLower || pName.includes(scLower);
+          if (scLower === 'chua') {
+            return (
+              poi.category === 'chua' ||
+              pSub.includes('temple') ||
+              pSub.includes('monaster') ||
+              pName.includes('chùa') ||
+              pName.includes('thiền viện')
+            );
+          }
+          return pSub === scLower || (poi.cuisine && poi.cuisine.toLowerCase() === scLower) || pName.includes(scLower);
         });
         if (!matchSub) return false;
       }
@@ -1329,31 +1306,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               );
             })}
           </div>
-
-          {/* Nhánh nhỏ dạng chip gợi ý nhanh 1-chạm (Sub-category Quick Chips) */}
-          {activeTab !== 'all' && SUB_CHIPS_CONFIG[activeTab] && (
-            <div className="flex items-center gap-1.5 overflow-x-auto py-1 text-xs no-scrollbar scroll-smooth">
-              {SUB_CHIPS_CONFIG[activeTab].map((chip) => {
-                const isSelected = selectedSubChip === chip.id;
-                return (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    onClick={() => setSelectedSubChip(chip.id)}
-                    className={`px-3 py-1 rounded-full whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-neutral-900 text-white font-bold shadow-xs'
-                        : 'bg-neutral-100 hover:bg-neutral-200/80 text-neutral-700 font-medium'
-                    }`}
-                  >
-                    <span>{chip.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-
         </header>
 
         {/* Cards Scrollable Area */}
@@ -1363,13 +1315,10 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
             <h2 className="text-[17px] font-bold text-gray-950 tracking-tight">
               Địa điểm ({filteredPois.length})
             </h2>
-            {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || selectedSubChip !== 'all') && (
+            {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || filterValues.subCategories.length > 0 || filterValues.vibes.length > 0) && (
               <button
                 type="button"
-                onClick={() => {
-                  setFilterValues(DEFAULT_FILTER_VALUES);
-                  setSelectedSubChip('all');
-                }}
+                onClick={() => setFilterValues(DEFAULT_FILTER_VALUES)}
                 className="text-xs font-semibold text-rose-600 hover:text-rose-800 underline cursor-pointer"
               >
                 Xóa tất cả bộ lọc
@@ -1378,15 +1327,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           </div>
 
           {/* Active Filter Chips Bar */}
-          {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || selectedSubChip !== 'all') && (
+          {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || filterValues.subCategories.length > 0 || filterValues.vibes.length > 0 || filterValues.timeOfDay.length > 0) && (
             <div className="flex items-center gap-1.5 flex-wrap mb-4 py-1.5 px-3 bg-neutral-50 rounded-xl border border-neutral-200/60">
               <span className="text-[11px] font-bold text-neutral-500 uppercase">Đang lọc:</span>
-              {selectedSubChip !== 'all' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
-                  <span>{SUB_CHIPS_CONFIG[activeTab]?.find(c => c.id === selectedSubChip)?.label}</span>
-                  <button type="button" onClick={() => setSelectedSubChip('all')} className="hover:text-black font-bold">×</button>
-                </span>
-              )}
               {filterValues.minRating !== null && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
                   <span>★ {filterValues.minRating}+</span>
@@ -1411,6 +1354,31 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   <button type="button" onClick={() => setFilterValues(p => ({ ...p, ecoCertifiedOnly: false }))} className="hover:text-emerald-950 font-bold">×</button>
                 </span>
               )}
+              {filterValues.timeOfDay.length > 0 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
+                  <span>{filterValues.timeOfDay.includes('evening') ? 'Buổi tối' : 'Ban ngày'}</span>
+                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, timeOfDay: [] }))} className="hover:text-black font-bold">×</button>
+                </span>
+              )}
+              {filterValues.vibes.map((v) => (
+                <span key={v} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
+                  <span>Vibe: {v}</span>
+                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, vibes: p.vibes.filter(item => item !== v) }))} className="hover:text-black font-bold">×</button>
+                </span>
+              ))}
+              {filterValues.subCategories.map((sc) => (
+                <span key={sc} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
+                  <span>{SUB_CATEGORY_LABELS[sc] || (sc === 'chua' ? 'Chùa & Điểm tâm linh' : sc)}</span>
+                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, subCategories: p.subCategories.filter(item => item !== sc) }))} className="hover:text-black font-bold">×</button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => setFilterValues(DEFAULT_FILTER_VALUES)}
+                className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 underline ml-auto cursor-pointer"
+              >
+                Xóa tất cả
+              </button>
             </div>
           )}
           <div className="grid grid-cols-2 gap-x-4 gap-y-7 pb-12">
@@ -1422,7 +1390,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               ) : (
                 <div className="col-span-2 py-12 px-6 text-center bg-neutral-50/80 rounded-3xl border border-neutral-200/80 my-2">
                   <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto mb-3">
-                    <Compass size={22} />
+                    <i className="ph ph-compass text-3xl text-emerald-800"></i>
                   </div>
                   <h4 className="text-base font-bold text-neutral-900 mb-1">
                     Không tìm thấy địa điểm phù hợp
@@ -1444,10 +1412,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                     )}
                     <button
                       type="button"
-                      onClick={() => {
-                        setFilterValues(DEFAULT_FILTER_VALUES);
-                        setSelectedSubChip('all');
-                      }}
+                      onClick={() => setFilterValues(DEFAULT_FILTER_VALUES)}
                       className="px-4 py-2 rounded-full border border-neutral-300 text-neutral-800 text-xs font-bold hover:bg-neutral-100 transition cursor-pointer"
                     >
                       Xem tất cả địa điểm
@@ -1555,6 +1520,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         }}
         onClearAll={() => setFilterValues(DEFAULT_FILTER_VALUES)}
         matchingCount={filteredPois.length}
+        allPois={allPois}
       />
 
       {/* 5. Create Trip Modal */}

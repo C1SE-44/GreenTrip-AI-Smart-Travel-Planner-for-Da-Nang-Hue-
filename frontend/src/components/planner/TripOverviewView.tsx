@@ -77,6 +77,58 @@ const MINDTRIP_MODAL_TABS: { id: 'for-you' | 'experiences' | 'restaurants' | 'sc
   { id: 'all', label: 'Tất cả' },
 ];
 
+export interface CategoryBudgets {
+  dining: string;
+  lodging: string;
+  activities: string;
+}
+
+export function parseCategoryBudgets(raw?: string): CategoryBudgets {
+  const def: CategoryBudgets = { dining: 'any', lodging: 'any', activities: 'any' };
+  if (!raw) return def;
+  if (raw.includes('dining:') || raw.includes('lodging:') || raw.includes('activities:')) {
+    const parts = raw.split(';');
+    for (const p of parts) {
+      const [k, v] = p.split(':');
+      if (k === 'dining') def.dining = v || 'any';
+      if (k === 'lodging') def.lodging = v || 'any';
+      if (k === 'activities') def.activities = v || 'any';
+    }
+    return def;
+  }
+  if (raw === '$' || raw === 'budget') {
+    return { dining: '$', lodging: '$', activities: '$' };
+  }
+  if (raw === '$$$' || raw === 'luxury' || raw === 'upgrade') {
+    return { dining: '$$$', lodging: '$$$', activities: '$$$' };
+  }
+  if (raw === '$$' || raw === 'standard') {
+    return { dining: '$$', lodging: '$$', activities: '$$' };
+  }
+  return def;
+}
+
+const DINING_BUDGET_OPTIONS = [
+  { id: 'any', label: 'Tất cả', desc: 'Mọi mức giá' },
+  { id: '$', label: '$', desc: '< 100k', sub: 'Bình dân / chợ đêm' },
+  { id: '$$', label: '$$', desc: '150k – 300k', sub: 'Tiêu chuẩn / nhà hàng' },
+  { id: '$$$', label: '$$$', desc: '> 500k', sub: 'Cao cấp / Michelin' },
+];
+
+const LODGING_BUDGET_OPTIONS = [
+  { id: 'any', label: 'Tất cả', desc: 'Mọi loại phòng' },
+  { id: '$', label: '$', desc: '< 400k/đêm', sub: 'Homestay / Hostel' },
+  { id: '$$', label: '$$', desc: '500k – 1tr/đêm', sub: 'Khách sạn 3 sao' },
+  { id: '$$$', label: '$$$', desc: '> 1.5tr/đêm', sub: 'Resort / 4–5 sao' },
+];
+
+const ACTIVITIES_BUDGET_OPTIONS = [
+  { id: 'any', label: 'Tất cả', desc: 'Mọi hoạt động' },
+  { id: '$', label: '$', desc: '< 100k/vé', sub: 'Miễn phí / vé rẻ' },
+  { id: '$$', label: '$$', desc: '150k – 400k/vé', sub: 'Tour / Vé phổ thông' },
+  { id: '$$$', label: '$$$', desc: '> 500k/vé', sub: 'Trải nghiệm cao cấp' },
+];
+
 export default function TripOverviewView({
   trip,
   allPois: allPoisProp,
@@ -131,15 +183,15 @@ export default function TripOverviewView({
   const [infants, setInfants] = useState(0);
   const [pets, setPets] = useState(0);
 
-  // 4. Popup Ngân sách
+  // 4. Popup Ngân sách 3 dòng độc lập (Ăn uống, Lưu trú, Hoạt động)
   const [showBudgetModal, setShowBudgetModal] = useState(false);
-  const [selectedBudgetTier, setSelectedBudgetTier] = useState<string>(trip.budgetTier || 'any');
+  const [categoryBudgets, setCategoryBudgets] = useState<CategoryBudgets>(() => parseCategoryBudgets(trip.budgetTier));
 
   // Đồng bộ khi trip prop thay đổi
   useEffect(() => {
     setWhereTarget(trip.destination);
     setFlexibleDays(trip.daysCount || 4);
-    setSelectedBudgetTier(trip.budgetTier || 'any');
+    setCategoryBudgets(parseCategoryBudgets(trip.budgetTier));
     setAdults(trip.peopleCount || 2);
   }, [trip]);
 
@@ -362,14 +414,22 @@ export default function TripOverviewView({
       else if (hasDn) destinationPois = rawPois.filter((p) => isDaNang(p.city));
       if (destinationPois.length === 0) destinationPois = rawPois;
 
-      const ranked = [...destinationPois];
-      if (selectedBudgetTier === 'budget') {
-        ranked.sort((a, b) => (a.estimatedCost || 0) - (b.estimatedCost || 0));
-      } else if (selectedBudgetTier === 'upgrade' || selectedBudgetTier === 'luxury') {
-        ranked.sort((a, b) => (b.estimatedCost || 0) - (a.estimatedCost || 0));
-      } else {
-        ranked.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-      }
+      // Lọc theo ngân sách riêng từng danh mục: Ăn uống -> Ngân sách Ăn; Điểm đến -> Ngân sách Hoạt động
+      const ranked = [...destinationPois].filter((p) => {
+        const cost = p.estimatedCost ?? 0;
+        if (p.category === 'quan-an') {
+          if (categoryBudgets.dining === '$') return cost <= 120000;
+          if (categoryBudgets.dining === '$$') return cost >= 80000 && cost <= 350000;
+          if (categoryBudgets.dining === '$$$') return cost >= 300000;
+          return true;
+        } else {
+          if (categoryBudgets.activities === '$') return cost <= 100000;
+          if (categoryBudgets.activities === '$$') return cost >= 80000 && cost <= 450000;
+          if (categoryBudgets.activities === '$$$') return cost >= 400000;
+          return true;
+        }
+      });
+      ranked.sort((a, b) => (b.rating || 0) - (a.rating || 0));
 
       setRecommendedPois(ranked.slice(0, 10));
       setRecommendationTitle(`Top 10 địa điểm gợi ý cho ${trip.destination}`);
@@ -382,7 +442,7 @@ export default function TripOverviewView({
     return () => {
       isCancelled = true;
     };
-  }, [trip.destination, selectedBudgetTier, tripIdeas]);
+  }, [trip.destination, categoryBudgets.dining, categoryBudgets.lodging, categoryBudgets.activities, tripIdeas]);
 
   const getRecommendationReason = (poi: Poi) => {
     let text = poi.description || 'Địa điểm hấp dẫn cho hành trình của bạn.';
@@ -524,11 +584,12 @@ export default function TripOverviewView({
     setShowWhoModal(false);
   };
 
-  // 4. Cập nhật Ngân sách
+  // 4. Cập nhật Ngân sách 3 dòng
   const handleSaveBudget = () => {
+    const encoded = `dining:${categoryBudgets.dining};lodging:${categoryBudgets.lodging};activities:${categoryBudgets.activities}`;
     const updated: UserTrip = {
       ...trip,
-      budgetTier: selectedBudgetTier,
+      budgetTier: encoded,
     };
     onUpdateTrip?.(updated);
     setShowBudgetModal(false);
@@ -1579,70 +1640,152 @@ export default function TripOverviewView({
         </div>
       )}
 
-      {/* ─── MODAL 4: NGÂN SÁCH (KHI BẤM VÀO PILL NGÂN SÁCH) ─── */}
+      {/* ─── MODAL 4: NGÂN SÁCH 3 DÒNG ĐỘC LẬP (ĂN UỐNG, LƯU TRÚ, HOẠT ĐỘNG) ─── */}
       {showBudgetModal && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn select-none"
           onClick={() => setShowBudgetModal(false)}
         >
           <div 
-            className="w-full max-w-[450px] bg-white rounded-[28px] p-7 sm:p-8 shadow-2xl relative border border-gray-100 flex flex-col"
+            className="w-full max-w-[560px] bg-white rounded-[28px] p-6 sm:p-7 shadow-2xl relative border border-gray-100 flex flex-col max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Nút X đóng góc trên bên trái */}
+            {/* Nút X đóng góc trên bên phải */}
             <button
               type="button"
               onClick={() => setShowBudgetModal(false)}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition absolute top-6 left-6 cursor-pointer"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition absolute top-5 right-5 cursor-pointer"
               title="Đóng"
             >
               <X size={18} strokeWidth={2.5} />
             </button>
 
-            {/* Tiêu đề & Phụ đề căn giữa */}
-            <div className="text-center mb-6 pt-1">
-              <h3 className="text-[19px] font-bold text-gray-950">Ngân sách</h3>
-              <p className="text-[13px] text-gray-500 mt-1">Chọn phạm vi ngân sách của bạn</p>
+            {/* Tiêu đề & Phụ đề */}
+            <div className="mb-5 pr-8">
+              <h3 className="text-[19px] font-bold text-gray-950">Phân loại ngân sách chuyến đi</h3>
+              <p className="text-[12.5px] text-gray-500 mt-0.5">
+                Chọn mức chi tiêu riêng theo từng nhóm để nhận gợi ý địa điểm chính xác theo nhu cầu thực tế
+              </p>
             </div>
 
-            {/* 5 lựa chọn Radio chuẩn Mindtrip */}
-            <div className="space-y-4 mb-7 px-1">
-              {BUDGET_OPTIONS.map((opt) => {
-                const isChecked = selectedBudgetTier === opt.id;
-                return (
-                  <div
-                    key={opt.id}
-                    onClick={() => setSelectedBudgetTier(opt.id)}
-                    className="flex items-center gap-3.5 cursor-pointer group py-1 select-none"
-                  >
-                    {/* Nút Radio tròn viền đen có chấm đen bên trong khi chọn */}
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${
-                      isChecked ? 'border-black' : 'border-gray-400 group-hover:border-gray-600'
-                    }`}>
-                      {isChecked && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-black"></div>
-                      )}
-                    </div>
+            {/* 3 dòng lựa chọn độc lập */}
+            <div className="space-y-4 mb-5">
+              {/* DÒNG 1: 🍽️ Ăn uống */}
+              <div className="p-3.5 bg-gray-50/80 rounded-2xl border border-gray-200/70">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[13.5px] font-bold text-gray-900 flex items-center gap-1.5">
+                    <span>🍽️</span> Ăn uống & Ẩm thực
+                  </span>
+                  <span className="text-[11px] font-medium text-gray-500">
+                    {categoryBudgets.dining === 'any' ? 'Mọi mức giá' : DINING_BUDGET_OPTIONS.find(o => o.id === categoryBudgets.dining)?.sub}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {DINING_BUDGET_OPTIONS.map((opt) => {
+                    const isSelected = categoryBudgets.dining === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setCategoryBudgets(prev => ({ ...prev, dining: opt.id }))}
+                        className={`py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                          isSelected
+                            ? 'bg-black text-white border-black shadow-xs font-bold'
+                            : 'bg-white hover:bg-gray-100 text-gray-800 border-gray-200/80 font-medium'
+                        }`}
+                      >
+                        <span className="text-[13px] leading-tight">{opt.label}</span>
+                        <span className={`text-[10px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
+                          {opt.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-                    {/* Nhãn văn bản */}
-                    <span className={`text-[14.5px] transition-colors ${
-                      isChecked ? 'font-bold text-black' : 'font-normal text-gray-800 group-hover:text-black'
-                    }`}>
-                      {opt.label}
-                    </span>
-                  </div>
-                );
-              })}
+              {/* DÒNG 2: 🏨 Lưu trú */}
+              <div className="p-3.5 bg-gray-50/80 rounded-2xl border border-gray-200/70">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[13.5px] font-bold text-gray-900 flex items-center gap-1.5">
+                    <span>🏨</span> Lưu trú & Khách sạn
+                  </span>
+                  <span className="text-[11px] font-medium text-gray-500">
+                    {categoryBudgets.lodging === 'any' ? 'Mọi loại phòng' : LODGING_BUDGET_OPTIONS.find(o => o.id === categoryBudgets.lodging)?.sub}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {LODGING_BUDGET_OPTIONS.map((opt) => {
+                    const isSelected = categoryBudgets.lodging === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setCategoryBudgets(prev => ({ ...prev, lodging: opt.id }))}
+                        className={`py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                          isSelected
+                            ? 'bg-black text-white border-black shadow-xs font-bold'
+                            : 'bg-white hover:bg-gray-100 text-gray-800 border-gray-200/80 font-medium'
+                        }`}
+                      >
+                        <span className="text-[13px] leading-tight">{opt.label}</span>
+                        <span className={`text-[10px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
+                          {opt.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* DÒNG 3: 🎡 Hoạt động / Tham quan */}
+              <div className="p-3.5 bg-gray-50/80 rounded-2xl border border-gray-200/70">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[13.5px] font-bold text-gray-900 flex items-center gap-1.5">
+                    <span>🎡</span> Hoạt động & Tham quan
+                  </span>
+                  <span className="text-[11px] font-medium text-gray-500">
+                    {categoryBudgets.activities === 'any' ? 'Mọi hoạt động' : ACTIVITIES_BUDGET_OPTIONS.find(o => o.id === categoryBudgets.activities)?.sub}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {ACTIVITIES_BUDGET_OPTIONS.map((opt) => {
+                    const isSelected = categoryBudgets.activities === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setCategoryBudgets(prev => ({ ...prev, activities: opt.id }))}
+                        className={`py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                          isSelected
+                            ? 'bg-black text-white border-black shadow-xs font-bold'
+                            : 'bg-white hover:bg-gray-100 text-gray-800 border-gray-200/80 font-medium'
+                        }`}
+                      >
+                        <span className="text-[13px] leading-tight">{opt.label}</span>
+                        <span className={`text-[10px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
+                          {opt.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Chú thích thông minh */}
+            <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-[11.5px] text-amber-900 leading-relaxed mb-5">
+              💡 <strong>Cơ chế gợi ý theo danh mục:</strong> Gợi ý Nhà hàng sẽ áp dụng ngân sách Ăn uống; Gợi ý Di tích & Cảnh quan sẽ áp dụng ngân sách Hoạt động để không bị áp một mức chung cho cả chuyến đi.
             </div>
 
             {/* Nút Cập nhật góc dưới bên phải */}
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end pt-1">
               <button
                 type="button"
                 onClick={handleSaveBudget}
-                className="px-8 py-3 bg-black text-white font-bold text-[14px] rounded-full hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs"
+                className="px-8 py-2.5 bg-black text-white font-bold text-[13.5px] rounded-full hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs"
               >
-                Cập nhật
+                Cập nhật ngân sách
               </button>
             </div>
           </div>

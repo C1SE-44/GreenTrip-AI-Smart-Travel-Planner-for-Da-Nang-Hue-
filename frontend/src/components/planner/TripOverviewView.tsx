@@ -344,7 +344,7 @@ export default function TripOverviewView({
       try {
         const payload = {
           destination: trip.destination || 'Đà Nẵng & Huế',
-          budget_tier: selectedBudgetTier,
+          budget_tier: categoryBudgets.activities !== 'any' ? categoryBudgets.activities : (categoryBudgets.dining !== 'any' ? categoryBudgets.dining : 'any'),
           trip_days: trip.daysCount || 4,
           ideas: tripIdeas.map((id) => {
             const found = allPois.find((p) => p.id === id);
@@ -523,16 +523,14 @@ export default function TripOverviewView({
     if (parts.length > 0 && parts[0].trim()) return `Từ ${parts[0].trim()}`;
     return dateStr;
   };
-
-  // Rút gọn nhãn Ngân sách (ví dụ: $$$$, không nền đen)
-  const getBudgetBrief = (tier?: string) => {
-    if (tier === 'budget') return '$';
-    if (tier === 'standard') return '$$';
-    if (tier === 'upgrade') return '$$$';
-    if (tier === 'luxury') return '$$$$';
-    return 'Ngân sách';
+  const getBudgetBrief = () => {
+    const { dining, lodging, activities } = categoryBudgets;
+    if (dining === 'any' && lodging === 'any' && activities === 'any') return 'Ngân sách';
+    const activeTiers = [dining, lodging, activities].filter((t) => t !== 'any');
+    if (activeTiers.length === 0) return 'Ngân sách';
+    return Array.from(new Set(activeTiers)).join('/');
   };
-  const budgetBriefText = getBudgetBrief(selectedBudgetTier);
+  const budgetBriefText = getBudgetBrief();
 
   // ─── CÁC HÀM CẬP NHẬT THÔNG SỐ KHI BẤM NÚT "CẬP NHẬT" ───
   // 1. Cập nhật Điểm đến

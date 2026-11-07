@@ -1353,16 +1353,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
             </div>
           )}
 
-          {/* Quick Filter Pills Toolbar */}
-          <div className="mt-2.5">
-            <QuickFilterBar
-              values={filterValues}
-              onChange={setFilterValues}
-              onOpenModal={() => setIsFilterPopoverOpen(true)}
-              activeFilterCount={activeFilterCount}
-              onClearAll={() => setFilterValues(DEFAULT_FILTER_VALUES)}
-            />
-          </div>
+
         </header>
 
         {/* Cards Scrollable Area */}

@@ -211,6 +211,9 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
 }) => {
   const [budget, setBudget] = useState<BudgetTier>(values.budget);
   const [minRating, setMinRating] = useState<number | null>(values.minRating);
+  const [radiusKm, setRadiusKm] = useState<number | null>(values.radiusKm ?? null);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay[]>(values.timeOfDay || []);
+  const [ecoCertifiedOnly, setEcoCertifiedOnly] = useState<boolean>(values.ecoCertifiedOnly ?? false);
   const [vibes, setVibes] = useState<string[]>(values.vibes || []);
   const [subCategories, setSubCategories] = useState<string[]>(values.subCategories || []);
   const [cuisines, setCuisines] = useState<string[]>(values.cuisines || []);
@@ -223,6 +226,9 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
     if (isOpen) {
       setBudget(values.budget);
       setMinRating(values.minRating);
+      setRadiusKm(values.radiusKm ?? null);
+      setTimeOfDay(values.timeOfDay || []);
+      setEcoCertifiedOnly(values.ecoCertifiedOnly ?? false);
       setVibes(values.vibes || []);
       setSubCategories(values.subCategories || []);
       setCuisines(values.cuisines || []);

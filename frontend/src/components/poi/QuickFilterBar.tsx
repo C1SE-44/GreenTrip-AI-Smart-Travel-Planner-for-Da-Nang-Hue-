@@ -4,6 +4,7 @@ import {
   Clock,
   Star,
   Award,
+  Leaf,
   Ticket,
   CloudRain,
   Wallet,
@@ -152,7 +153,7 @@ export const QuickFilterBar: React.FC<QuickFilterBarProps> = ({
 
         <div
           ref={scrollRef}
-          className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pr-6 py-0.5"
+          className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pr-10 py-0.5"
         >
           {/* Pill 1: Đang mở cửa */}
           <button
@@ -199,12 +200,12 @@ export const QuickFilterBar: React.FC<QuickFilterBarProps> = ({
                 : PILL_UNSELECTED
             }`}
           >
-            <Award
+            <Leaf
               className={`w-3.5 h-3.5 shrink-0 ${
                 values.ecoCertifiedOnly ? 'text-emerald-300' : 'text-emerald-700'
               }`}
             />
-            <span>Điểm đến Xanh</span>
+            <span>Chuẩn Xanh</span>
             {values.ecoCertifiedOnly && <Check className="w-3 h-3 ml-0.5 text-white" />}
           </button>
 

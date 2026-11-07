@@ -745,7 +745,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 key: 'create',
                 onClick: () => setIsCreateTripModalOpen(true),
                 icon: 'ph ph-plus-square', 
-                label: 'Tạo nên' 
+                label: 'Tạo chuyến đi' 
               },
             ].map((item) => {
               const itemContent = (

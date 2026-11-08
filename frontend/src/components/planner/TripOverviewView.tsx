@@ -61,7 +61,9 @@ const BUDGET_OPTIONS = [
 
 // Danh mục bộ lọc trong Modal Thêm vào chuyến đi chuẩn Mindtrip theo ảnh
 // Danh mục bộ lọc trong Modal chuẩn Explore & Mindtrip
-const MODAL_CATEGORY_TABS: { id: string; label: string }[] = [
+export type ModalCategoryType = 'for-you' | 'experiences' | 'restaurants' | 'scenic' | 'all' | 'di-tich' | 'canh-quan' | 'chua' | 'quan-an';
+
+const MODAL_CATEGORY_TABS: { id: ModalCategoryType; label: string }[] = [
   { id: 'for-you', label: 'Dành cho bạn' },
   { id: 'all', label: 'Tất cả' },
   { id: 'di-tich', label: 'Di tích' },
@@ -234,9 +236,7 @@ export default function TripOverviewView({
   const [showModalCityDropdown, setShowModalCityDropdown] = useState(false);
   const [modalCity, setModalCity] = useState<'all' | 'Đà Nẵng' | 'Huế'>('all');
   const [modalSearch, setModalSearch] = useState('');
-  const [modalCategory, setModalCategory] = useState<
-    'for-you' | 'experiences' | 'restaurants' | 'scenic' | 'all' | 'di-tich' | 'canh-quan' | 'chua' | 'quan-an'
-  >('for-you');
+  const [modalCategory, setModalCategory] = useState<ModalCategoryType>('for-you');
   const [customIdeaInput, setCustomIdeaInput] = useState('');
 
   // State bản đồ & chọn POI chi tiết
@@ -2024,7 +2024,7 @@ export default function TripOverviewView({
                         <button
                           key={tab.id}
                           type="button"
-                          onClick={() => setModalCategory(tab.id as any)}
+                          onClick={() => setModalCategory(tab.id)}
                           className={`whitespace-nowrap h-[32px] px-3.5 text-[12.5px] rounded-full transition-all cursor-pointer shrink-0 flex items-center justify-center ${
                             isActive
                               ? 'bg-black text-white font-medium shadow-xs'

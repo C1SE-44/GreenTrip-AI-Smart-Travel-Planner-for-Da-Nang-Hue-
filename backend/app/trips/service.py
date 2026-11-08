@@ -464,3 +464,156 @@ def validate_and_process_trip_parameters(params: TripParametersRequest) -> Valid
         matched_pois=matched_pois,
         itinerary_outline=itinerary_outline,
     )
+
+
+# ============================================================================
+# PB14: In-Planner AI Travel Copilot Service
+# ============================================================================
+
+from psycopg import Connection
+from app.trips.schemas import CopilotChatRequest, CopilotChatResponse
+from app.trips.handlers.swap_meal_handler import handle_swap_meal
+from app.trips.handlers.rainy_day_handler import handle_rainy_day
+from app.trips.handlers.night_eco_handler import handle_night_eco
+from app.trips.handlers.late_adjust_handler import handle_late_adjust
+
+
+def detect_copilot_intent(message: str) -> str:
+    msg = message.strip().lower()
+    
+    # Check late schedule / pacing adjustment intent (Live Trip Adjuster)
+    late_keywords = [
+        "trễ giờ", "muộn giờ", "chậm giờ", "không kịp", "cháy giáo án", 
+        "lỡ giờ", "rút gọn", "tối ưu lại", "tối ưu chiều", "gọn hơn", 
+        "late", "running late", "delay", "chậm tiến độ", "bị trễ"
+    ]
+    if any(k in msg for k in late_keywords):
+        return "late_schedule_adjust"
+
+    # Check vegetarian meal swap intent
+    veg_keywords = [
+        "chay", "quán chay", "ăn chay", "đổi quán", "đổi món", "đổi trưa", 
+        "đổi tối", "đổi bữa", "thực dưỡng", "vegan", "vegetarian", "cơm chay",
+        "thanh đạm", "thanh tịnh", "đồ chay", "món chay"
+    ]
+    if any(k in msg for k in veg_keywords):
+        return "swap_meal_vegetarian"
+        
+    # Check rainy day intent
+    rain_keywords = [
+        "mưa", "trời mưa", "mưa to", "mưa bão", "thời tiết xấu", 
+        "trong nhà", "có mái che", "ướt", "bảo tàng", "rain", "rainy"
+    ]
+    if any(k in msg for k in rain_keywords):
+        return "rainy_day_alternatives"
+
+    # Check night eco activities intent
+    night_keywords = [
+        "buổi tối", "tối nay", "về đêm", "ban đêm", "đi chơi đêm", 
+        "hoạt động đêm", "trải nghiệm đêm", "ngắm cảnh đêm", "cầu rồng", 
+        "phun lửa", "sông hàn", "ca huế", "sông hương", "chợ đêm", "night"
+    ]
+    if any(k in msg for k in night_keywords):
+        return "night_eco_activities"
+        
+    return "general_chat"
+
+
+def process_copilot_chat(
+    request: CopilotChatRequest,
+    connection: Connection,
+) -> CopilotChatResponse:
+    """
+    Main entrypoint for In-Planner Copilot Chat (PB14).
+    """
+    intent = detect_copilot_intent(request.message)
+    ctx = request.trip_context
+
+    if intent == "late_schedule_adjust":
+        reply_text, suggested_pois = handle_late_adjust(ctx, connection)
+        return CopilotChatResponse(
+            reply_text=reply_text,
+            intent=intent,
+            target_slot=ctx.current_slot or "afternoon",
+            suggested_pois=suggested_pois,
+            action_type="replace_stop",
+            next_suggested_prompts=[
+                "Cách di chuyển nhanh bằng xe buýt hoặc đi bộ?",
+                "Quán ăn tối chuẩn xanh gần khu vực này?",
+                "Thời gian mở cửa của điểm dừng này?",
+            ],
+            budget_impact_summary="Lựa chọn điểm dừng gần trung tâm giúp tiết kiệm chi phí taxi ~50.000 ₫ và tránh kẹt xe giờ cao điểm.",
+            green_impact_summary="Giảm khoảng cách di chuyển giúp giảm phát thải phương tiện, khuyến khích tản bộ thư thái.",
+        )
+
+    if intent == "swap_meal_vegetarian":
+        reply_text, suggested_pois = handle_swap_meal(ctx, connection)
+        return CopilotChatResponse(
+            reply_text=reply_text,
+            intent=intent,
+            target_slot=ctx.current_slot or "lunch",
+            suggested_pois=suggested_pois,
+            action_type="replace_stop",
+            next_suggested_prompts=[
+                "Gợi ý quán cafe yên tĩnh gần quán chay này?",
+                "Phương tiện di chuyển xanh đến quán?",
+                "Món ăn thực dưỡng nổi bật nhất tại quán?",
+            ],
+            budget_impact_summary="Bữa ăn thanh đạm tại quán địa phương tiết kiệm ~35.000 ₫/người so với nhà hàng thông thường.",
+            green_impact_summary="Bữa ăn thuần chay giúp giảm ~60% lượng phát thải carbon so với bữa ăn thông thường, bảo vệ nguồn nước và sức khỏe.",
+        )
+
+    if intent == "rainy_day_alternatives":
+        reply_text, suggested_pois = handle_rainy_day(ctx, connection)
+        return CopilotChatResponse(
+            reply_text=reply_text,
+            intent=intent,
+            target_slot=ctx.current_slot or "afternoon",
+            suggested_pois=suggested_pois,
+            action_type="replace_stop",
+            avoid_notice="Lưu ý an toàn: Tạm hoãn tham quan Bãi biển Mỹ Khê, Bán đảo Sơn Trà và Đèo Hải Vân khi trời mưa to do nguy cơ trơn trượt và hạn chế tầm nhìn.",
+            next_suggested_prompts=[
+                "Cách di chuyển an toàn trong nhà khi trời mưa?",
+                "Tìm quán cafe hoặc workshop ấm cúng gần đây?",
+                "Thời gian mở cửa và giá vé của các điểm này?",
+            ],
+        )
+
+    if intent == "night_eco_activities":
+        reply_text, suggested_pois = handle_night_eco(ctx, connection)
+        return CopilotChatResponse(
+            reply_text=reply_text,
+            intent=intent,
+            target_slot="dinner",
+            suggested_pois=suggested_pois,
+            action_type="replace_stop",
+            next_suggested_prompts=[
+                "Mấy giờ Cầu Rồng phun lửa vào cuối tuần?",
+                "Tuyến xe buýt công cộng đến điểm này?",
+                "Các điểm đi bộ ngắm cảnh đêm gần đây?",
+            ],
+            green_impact_summary="Khám phá phố đi bộ và phương tiện công cộng về đêm giúp giảm phát thải, tận hưởng không khí trong lành của thành phố.",
+        )
+
+    # General Chat / Orientation
+    dest = ctx.destination or "Đà Nẵng - Huế"
+    days = ctx.days_count or 3
+    reply_text = (
+        f"Chào bạn! Mình là GreenTrip Copilot, đang theo sát hành trình {dest} {days} ngày của bạn. "
+        f"Bạn có thể nhắn cho mình bất cứ khi nào cần điều chỉnh lịch trình, ví dụ như: "
+        f"'Đổi quán ăn trưa sang quán chay' hoặc 'Trời mưa thì đi đâu chơi?'."
+    )
+
+    return CopilotChatResponse(
+        reply_text=reply_text,
+        intent="general_chat",
+        target_slot=None,
+        suggested_pois=[],
+        action_type="none",
+        next_suggested_prompts=[
+            "Đổi quán ăn trưa sang quán chay",
+            "Trời mưa thì đi đâu chơi?",
+            "Gợi ý trải nghiệm văn hóa đạt chuẩn xanh",
+            "Tìm quán cafe view đẹp",
+        ],
+    )

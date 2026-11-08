@@ -225,3 +225,54 @@ class TripParametersResponse(BaseModel):
     valid: bool = True
     message: str = "Thông số chuyến đi hợp lệ và sẵn sàng để tạo lịch trình."
     data: ValidatedTripData
+
+
+# ============================================================================
+# PB14: In-Planner AI Travel Copilot Schemas
+# ============================================================================
+
+class TripContextPayload(BaseModel):
+    destination: str = Field(default="Đà Nẵng", description="Thành phố mục tiêu: 'Đà Nẵng' hoặc 'Huế'")
+    days_count: int = Field(default=3, ge=1, le=14, description="Tổng số ngày chuyến đi")
+    current_day: int = Field(default=1, ge=1, description="Ngày đang xem trong lịch trình")
+    current_slot: str | None = Field(default="lunch", description="Khung giờ: morning, lunch, afternoon, dinner")
+    current_stop_name: str | None = Field(default=None, description="Tên điểm dừng hiện tại cần đổi")
+    current_stop_id: str | None = Field(default=None, description="ID của điểm dừng hiện tại")
+    saved_ideas: list[str] = Field(default_factory=list, description="Danh sách địa điểm người dùng đã lưu vào Ý tưởng")
+
+
+class CopilotChatRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=1000, description="Nội dung người dùng gửi cho Copilot")
+    trip_context: TripContextPayload = Field(
+        default_factory=TripContextPayload,
+        description="Ngữ cảnh chuyến đi hiện tại (thành phố, ngày, điểm dừng)"
+    )
+
+
+class CopilotSuggestedPoiItem(BaseModel):
+    id: str
+    name: str
+    category: str
+    sub_category: str | None = None
+    image_url: str
+    green_score: int
+    rating: float
+    address: str
+    swap_reason: str
+    distance_info: str | None = None
+    estimated_cost: float | None = None
+    price_range_display: str | None = None
+    budget_delta: str | None = None
+    carbon_saved: str | None = None
+
+
+class CopilotChatResponse(BaseModel):
+    reply_text: str
+    intent: str  # 'swap_meal_vegetarian', 'rainy_day_alternatives', 'night_eco_activities', 'late_schedule_adjust', 'general_chat'
+    target_slot: str | None = None
+    suggested_pois: list[CopilotSuggestedPoiItem] = []
+    action_type: str = "none"  # 'replace_stop', 'add_stop', 'none'
+    next_suggested_prompts: list[str] = []
+    avoid_notice: str | None = None
+    green_impact_summary: str | None = None
+    budget_impact_summary: str | None = None

@@ -55,6 +55,7 @@ export interface UserTrip {
   costBreakdown?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   pacingLabel?: string;
   ideas?: string[];
+  copilotChatHistory?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 

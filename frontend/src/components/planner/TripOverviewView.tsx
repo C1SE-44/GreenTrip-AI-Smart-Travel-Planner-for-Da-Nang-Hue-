@@ -24,8 +24,11 @@ import {
   Star,
   ChevronDown,
   MessageSquare,
+  ArrowRight,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
+import PlannerCopilotDrawer from './PlannerCopilotDrawer';
+import type { CopilotSuggestedPoi } from '@/services/copilotService';
 import { 
   pois as defaultAllPois, 
   normalizePois, 
@@ -216,6 +219,8 @@ export default function TripOverviewView({
 
   // Tab con kích hoạt khi bấm vào Ý tưởng hoặc Lịch
   const [activeRightDrawer, setActiveRightDrawer] = useState<'ideas' | 'calendar' | null>(null);
+  const [isCopilotDrawerOpen, setIsCopilotDrawerOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // ─── DANH SÁCH Ý TƯỞNG (IDEAS / WISHLIST) CỦA CHUYẾN ĐI ───
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => trip.ideas || []);
@@ -685,6 +690,66 @@ export default function TripOverviewView({
     }, 700);
   };
 
+  // Xử lý áp dụng thay thế điểm dừng từ Trợ lý AI (PB14 Task 3.34)
+  const handleApplySwapStop = (dayIndex: number, slot: string, newPoi: CopilotSuggestedPoi) => {
+    // 1. Cập nhật ý tưởng
+    const nextIdeas = tripIdeas.includes(newPoi.id) ? tripIdeas : [...tripIdeas, newPoi.id];
+    setTripIdeas(nextIdeas);
+
+    // 2. Cập nhật itineraryOutline nếu có
+    const nextItinerary = Array.isArray(trip.itineraryOutline)
+      ? trip.itineraryOutline.map((dayItem: any) => {
+          if (dayItem.day === dayIndex) {
+            const slotLabel = slot === 'dinner' ? 'Bữa tối' : slot === 'breakfast' ? 'Bữa sáng' : 'Bữa trưa';
+            const newAct = `${slotLabel}: Thưởng thức ẩm thực tại ${newPoi.name} (${newPoi.address})`;
+            const existingActs = Array.isArray(dayItem.suggested_activities) ? [...dayItem.suggested_activities] : [];
+            const idx = existingActs.findIndex((a: string) => a.toLowerCase().includes(slotLabel.toLowerCase()));
+            if (idx >= 0) {
+              existingActs[idx] = newAct;
+            } else {
+              existingActs.push(newAct);
+            }
+            return { ...dayItem, suggested_activities: existingActs };
+          }
+          return dayItem;
+        })
+      : [];
+
+    // 3. Cập nhật matchedPois nếu có
+    const nextMatched = Array.isArray(trip.matchedPois) ? [...trip.matchedPois] : [];
+    if (!nextMatched.some((p: any) => p.name === newPoi.name || p.id === newPoi.id)) {
+      nextMatched.push({
+        name: newPoi.name,
+        category: newPoi.category,
+        city: trip.destination,
+        address: newPoi.address,
+        description: newPoi.swap_reason,
+        highlight_tag: 'Đã đổi qua Trợ lý AI',
+        estimated_price_range: newPoi.price_range_display || 'Phù hợp',
+        green_score: newPoi.green_score,
+        image_url: newPoi.image_url,
+      });
+    }
+
+    const updatedTrip: UserTrip = {
+      ...trip,
+      ideas: nextIdeas,
+      itineraryOutline: nextItinerary.length > 0 ? nextItinerary : trip.itineraryOutline,
+      matchedPois: nextMatched,
+    };
+
+    if (onUpdateTrip) {
+      onUpdateTrip(updatedTrip);
+    }
+
+    // Tu dong dinh vi va ghim ngay dia diem moi len ban do
+    setSelectedMapPoiId(newPoi.id);
+    setHoveredMapPoiId(newPoi.id);
+
+    setToastMessage(`Đã cập nhật "${newPoi.name}" vào lịch trình Ngày ${dayIndex}!`);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
   return (
     <div className="flex-1 h-full bg-white overflow-y-auto auto-hide-scrollbar select-none animate-fadeIn flex flex-col">
       <div className="max-w-[1360px] w-full mx-auto px-5 sm:px-8 pt-4.5 sm:pt-5 pb-10 flex flex-col">
@@ -908,172 +973,21 @@ export default function TripOverviewView({
                 </div>
               </div>
             ) : (
-/* ─── SLIDE 2: HỖ TRỢ LẬP KẾ HOẠCH CHI TIẾT CHO CHUYẾN ĐI (CHUẨN TỰ NHIÊN, BỎ TEM NHÃN AI) ─── */
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-[19px] sm:text-[21px] font-extrabold text-gray-950 leading-snug tracking-tight mb-2">
-                    {`Hỗ trợ lên kế hoạch chi tiết cho chuyến đi ${trip.destination}`}
-                  </h3>
-                  <p className="text-[13px] sm:text-[13.5px] text-gray-600 leading-relaxed font-normal">
-                    Tại đây bạn có thể trao đổi để nhận hướng dẫn sắp xếp lịch trình từng ngày, tối ưu cung đường di chuyển, cân đối ngân sách và gợi ý các trải nghiệm phù hợp nhất với sở thích của mình.
-                  </p>
-                </div>
-
-                {/* Các hướng hỗ trợ lập kế hoạch chuyến đi (Pills thực tế, không dịch máy) */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {[
-                    { 
-                      id: 'itinerary', 
-                      label: 'Lộ trình từng ngày',
-                      tip: `Lộ trình tham khảo tại ${trip.destination}: Ngày 1 tham quan cụm điểm biểu tượng trung tâm; Ngày 2 khám phá văn hóa di sản & ẩm thực đặc sản; Ngày 3 thư giãn thiên nhiên và mua sắm quà lưu niệm.`
-                    },
-                    { 
-                      id: 'route', 
-                      label: 'Tối ưu di chuyển',
-                      tip: `Gợi ý di chuyển tại ${trip.destination}: Nhóm các điểm đến gần nhau trong bán kính 2km để tránh quay đầu xe nhiều lần và tiết kiệm thời gian.`
-                    },
-                    { 
-                      id: 'food', 
-                      label: 'Kinh nghiệm ăn uống',
-                      tip: `Ẩm thực ${trip.destination}: Nên thưởng thức các món đặc sản vào bữa trưa và tối tại các quán chuẩn vị bản địa gần tuyến đường tham quan.`
-                    },
-                    { 
-                      id: 'budget', 
-                      label: 'Cân đối ngân sách',
-                      tip: 'Kế hoạch chi tiêu cho chuyến đi: Ước lượng hợp lý giữa vé tham quan, ăn uống và phương tiện di chuyển theo mức ngân sách bạn đã chọn.'
-                    },
-                  ].map((pill) => {
-                    const isActive = activeQuickTip === pill.id;
-                    return (
-                      <button
-                        key={pill.id}
-                        type="button"
-                        onClick={() => setActiveQuickTip(isActive ? null : pill.id)}
-                        className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-medium transition cursor-pointer ${
-                          isActive 
-                            ? 'bg-black text-white shadow-xs' 
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                        }`}
-                      >
-                        {pill.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Gợi ý câu hỏi thực tế cho kế hoạch chuyến đi */}
-                <div className="pt-1">
-                  <p className="text-xs font-semibold text-gray-500 mb-2">Gợi ý câu hỏi nhanh:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      `Gợi ý cách phân bổ thời gian tham quan ${trip.destination} hợp lý?`,
-                      `Những quán ăn đặc sản ngon chuẩn vị gần các điểm tham quan?`,
-                      `Thứ tự ghé thăm các điểm để không bị ngược đường?`,
-                    ].map((q, qIdx) => (
-                      <button
-                        key={qIdx}
-                        type="button"
-                        onClick={() => setChatInput(q)}
-                        className="text-left text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200/80 rounded-full px-3.5 py-1.5 text-gray-700 transition cursor-pointer"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Hộp thông tin popover khi bấm vào các nút thao tác nhanh */}
-                {activeQuickTip && (
-                  <div className="mt-3 p-3.5 rounded-2xl bg-gray-50 border border-gray-200 text-[13px] text-gray-800 leading-relaxed flex items-start justify-between animate-fadeIn">
-                    <div className="flex items-start gap-2">
-                      <Info size={16} className="text-emerald-700 shrink-0 mt-0.5" />
-                      <span>
-                        {activeQuickTip === 'weather' && `Thời tiết tại ${trip.destination}: 24°C - 28°C, gió mát, thích hợp du ngoạn ngoài trời.`}
-                        {activeQuickTip === 'packing' && 'Gợi ý hành lý: Trang phục nhẹ nhàng, giày đi bộ, kem chống nắng, sạc dự phòng, bình nước cá nhân.'}
-                        {activeQuickTip === 'airport' && `Di chuyển từ sân bay đến trung tâm ${trip.destination}: Ưu tiên sử dụng xe buýt điện hoặc taxi điện Xanh SM.`}
-                        {activeQuickTip === 'explore' && 'Kế hoạch đã được tối ưu bảo đảm ngân sách và thời gian di chuyển hợp lý.'}
-                      </span>
-                    </div>
-                    <button 
-                      onClick={() => setActiveQuickTip(null)}
-                      className="text-gray-400 hover:text-black cursor-pointer ml-2"
-                    >
-                      <X size={15} />
-                    </button>
-                  </div>
-                )}
-
-                {/* Khung Trò chuyện chuyến đi (Chat Box nằm trong Slide 2 chuẩn Mindtrip) */}
-                <div className="pt-2">
-                  <div className="rounded-[24px] border border-gray-200/90 p-4 shadow-sm bg-white hover:border-gray-300 transition-all flex flex-col justify-between min-h-[110px]">
-                    {/* Input text */}
-                    <input
-                      type="text"
-                      placeholder="Bắt đầu một cuộc trò chuyện mới cho chuyến đi này"
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSendChatMessage();
-                      }}
-                      className="w-full text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none bg-transparent pt-1"
-                    />
-
-                    {/* Hàng nút dưới cùng của ô chat: (+) bên trái, (xe, mic, gửi) bên phải */}
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-100/70 mt-3">
-                      <button
-                        type="button"
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                        title="Thêm tệp hoặc địa điểm"
-                      >
-                        <Plus size={18} />
-                      </button>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                          title="Phương tiện di chuyển xanh"
-                        >
-                          <Car size={17} />
-                        </button>
-
-                        <button
-                          type="button"
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                          title="Ghi chú giọng nói"
-                        >
-                          <Mic size={17} />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleSendChatMessage}
-                          className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs"
-                          title="Gửi"
-                        >
-                          <Send size={14} className="ml-0.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Lịch sử tin nhắn trao đổi nhanh */}
-                  {chatMessages.length > 1 && (
-                    <div className="mt-3 space-y-2 max-h-48 overflow-y-auto pr-1">
-                      {chatMessages.slice(-3).map((msg, idx) => (
-                        <div
-                          key={idx}
-                          className={`p-3 rounded-2xl text-[13px] leading-relaxed ${
-                            msg.sender === 'user'
-                              ? 'bg-neutral-900 text-white ml-auto max-w-[80%]'
-                              : 'bg-gray-50 text-gray-800 mr-auto max-w-[90%] border border-gray-100'
-                          }`}
-                        >
-                          {msg.text}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+/* ─── SLIDE 2: TRỢ LÝ DU LỊCH AI MINDTRIP COPILOT (INLINE TRONG CỘT TRÁI, KHÔNG CHE BẢN ĐỒ) ─── */
+              <div className="h-[calc(100vh-230px)] min-h-[580px] flex flex-col animate-fadeIn">
+                <PlannerCopilotDrawer
+                  inline={true}
+                  trip={trip}
+                  activeDayIndex={1}
+                  savedIdeas={tripIdeas}
+                  onApplySwapStop={handleApplySwapStop}
+                  onViewPoiDetail={(poiId) => setSelectedMapPoiId(poiId)}
+                  onHighlightOnMap={(poiId) => {
+                    setHoveredMapPoiId(poiId);
+                    setSelectedMapPoiId(poiId);
+                  }}
+                  onUpdateTrip={onUpdateTrip}
+                />
               </div>
             )}
           </div>
@@ -2419,6 +2333,39 @@ export default function TripOverviewView({
           isOpen={Boolean(explanationPoi)}
           onClose={() => setExplanationPoi(null)}
         />
+      )}
+
+      {/* ─── NÚT NỔI FAB TRỢ LÝ AI (CHUYỂN TAB SLIDE 2 INLINE) ─── */}
+      {currentSlide !== 2 && (
+        <button
+          type="button"
+          onClick={() => setCurrentSlide(2)}
+          className="fixed bottom-6 right-6 z-40 bg-neutral-900 hover:bg-neutral-800 text-white px-4 py-3 rounded-full shadow-xl hover:shadow-2xl transition-all flex items-center gap-2.5 font-bold text-[13.5px] cursor-pointer border border-white/20 active:scale-95 group"
+          title="Mở Trợ lý du lịch AI"
+          aria-label="Mở Trợ lý du lịch AI"
+        >
+          <div className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
+            <Sparkles size={14} />
+          </div>
+          <span>Trợ lý AI</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        </button>
+      )}
+
+      {/* ─── TOAST THÔNG BÁO THÀNH CÔNG ─── */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-sm font-semibold animate-slideUp border border-white/10">
+          <Check size={18} className="text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="ml-2 text-gray-400 hover:text-white cursor-pointer"
+            aria-label="Đóng thông báo"
+          >
+            <X size={14} />
+          </button>
+        </div>
       )}
     </div>
   );

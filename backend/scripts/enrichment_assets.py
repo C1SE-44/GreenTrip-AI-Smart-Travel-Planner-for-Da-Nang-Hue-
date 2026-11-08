@@ -76,11 +76,11 @@ PHOTO_POOLS: dict[str, list[str]] = {
         "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80",
     ],
     "beach": [
-        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80",
+        "https://upload.wikimedia.org/wikipedia/commons/2/22/Bai_bien_My_Khe.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/e/eb/Lang_Co_beach.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/5/52/Da_Nang_beach.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/3/36/Son_Tra_Peninsula_Beach.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/6/62/Thuan_An_Beach_Hue.jpg",
     ],
     "mountain_pass": [
         "https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=1200&q=80",
@@ -97,11 +97,11 @@ PHOTO_POOLS: dict[str, list[str]] = {
         "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1200&q=80",
     ],
     "heritage": [
-        "https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1599707367072-cd6ada2bc375?auto=format&fit=crop&w=1200&q=80",
+        "https://upload.wikimedia.org/wikipedia/commons/4/4a/C%E1%BA%A7u_R%E1%BB%93ng.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/8/88/ThienMuPagoda.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/d/dd/Annam_-_Hu%C3%A9_-_Pavillons_sur_le_bassin_fleuri_au_Tombeau_de_Tu-Duc.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/c/c2/Khai_Dinh_Tomb_Hue.jpg",
+        "https://upload.wikimedia.org/wikipedia/commons/1/14/Ngu_Hanh_Son_Da_Nang.jpg",
     ],
     "pagoda": [
         "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=1200&q=80",
@@ -254,6 +254,10 @@ def generate_featured_reviews(
         t1 = f"Ngôi chùa/thánh đường cổ kính toát lên vẻ trang nghiêm và an tịnh. Tiếng chuông ngân vang giữa khung cảnh thiên nhiên giúp lòng người lắng đọng bình an."
         t2 = f"Kiến trúc tâm linh hòa quyện tuyệt vời với cảnh quan rừng cây hoa lá. Khuôn viên luôn được giữ gìn sạch bóng, thanh tịnh không có cảnh xô bồ chèo kéo."
         t3 = f"Trang phục lịch sự kín đáo khi đến chiêm bái. Khuyên nên ghé thăm vào sáng sớm để cảm nhận trọn vẹn sự tĩnh tại và không khí trong lành."
+    elif "show" in n_lower or "áo dài" in n_lower or "biểu diễn" in n_lower or "nghệ thuật" in n_lower:
+        t1 = f"Show diễn {name} thực sự để lại ấn tượng sâu sắc về chiều sâu văn hóa truyền thống Cố Đô. Các bộ trang phục Áo Dài qua từng thời kỳ lịch sử được phục dựng tỉ mỉ và tôn vinh trang trọng."
+        t2 = f"Âm nhạc cung đình hòa quyện với các màn trình diễn võ thuật cổ truyền và vũ khúc hoàng gia rất hào hùng, mãn nhãn. Diễn viên biểu diễn nhiệt huyết, phong thái đài các."
+        t3 = f"Không gian sân khấu chỉn chu, có phụ đề thuyết minh song ngữ giúp du khách hiểu rõ ý nghĩa từng phân cảnh. Rất đáng để trải nghiệm một đêm văn hóa trọn vẹn tại {city}."
     elif sub_cat in ("craft_village", "market"):
         t1 = f"Không khí giao thương và nét nghề truyền thống tại {name} vô cùng sống động. Được tận mắt chứng kiến đôi bàn tay khéo léo của các nghệ nhân làng nghề."
         t2 = f"Mọi người thân thiện, nhiệt tình hướng dẫn du khách trải nghiệm tự tay làm thử sản phẩm. Mua quà lưu niệm thủ công ủng hộ bà con làng nghề rất ý nghĩa."

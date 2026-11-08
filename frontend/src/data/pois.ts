@@ -193,26 +193,19 @@ export const DEFAULT_IMAGES_BY_CATEGORY: Record<PoiCategory, string[]> = {
     'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80',
   ],
   'canh-quan': [
-    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=900&q=80',
+    'https://upload.wikimedia.org/wikipedia/commons/2/22/Bai_bien_My_Khe.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/e/eb/Lang_Co_beach.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/5/52/Da_Nang_beach.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/3/36/Son_Tra_Peninsula_Beach.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/6/62/Thuan_An_Beach_Hue.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/1/14/Ngu_Hanh_Son_Da_Nang.jpg',
   ],
   'di-tich': [
-    'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1599707367072-cd6ada2bc375?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1568084680786-a84f91d1153c?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80',
+    'https://upload.wikimedia.org/wikipedia/commons/4/4a/C%E1%BA%A7u_R%E1%BB%93ng.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/8/88/ThienMuPagoda.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/d/dd/Annam_-_Hu%C3%A9_-_Pavillons_sur_le_bassin_fleuri_au_Tombeau_de_Tu-Duc.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/c/c2/Khai_Dinh_Tomb_Hue.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/1/14/Ngu_Hanh_Son_Da_Nang.jpg',
   ],
 };
 
@@ -371,18 +364,7 @@ export function getGalleryImages(poi: Poi): string[] {
     return result.slice(0, 5);
   }
 
-  // Pad remaining slots only using the place's own authentic photos to avoid irrelevant stock photos
-  // Bổ sung các ảnh đẹp cùng danh mục để bộ sưu tập 5 ảnh luôn phong phú và thực tế
-  const categoryPool = DEFAULT_IMAGES_BY_CATEGORY[poi.category] || DEFAULT_IMAGES_BY_CATEGORY['canh-quan'];
-  let poolIdx = 0;
-  while (result.length < 5 && poolIdx < categoryPool.length) {
-    const candidate = categoryPool[poolIdx++];
-    if (!result.includes(candidate)) {
-      result.push(candidate);
-    }
-  }
-
-  // Nếu vẫn chưa đủ thì mới cycle từ base
+  // Strictly cycle only from the place's own authentic photos to prevent leaking unrelated stock photos
   while (result.length < 5) {
     const cyclePhoto = base[result.length % base.length] || poi.image;
     result.push(cyclePhoto);

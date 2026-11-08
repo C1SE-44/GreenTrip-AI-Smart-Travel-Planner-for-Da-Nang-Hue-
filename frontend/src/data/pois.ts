@@ -19,7 +19,17 @@ export interface FeaturedReview {
   text: string;
 }
 
+export interface MenuItem {
+  name: string;
+  price: number;
+  description?: string;
+  is_signature?: boolean;
+  category_tag?: string;
+}
+
 export interface AiMetadata {
+  menu_image_url?: string;
+  menu_items?: MenuItem[];
   dna_tags?: string[];
   target_crowd?: ('solo' | 'couples' | 'family' | 'friends' | 'nomad')[];
   noise_pace?: 'peaceful_zen' | 'chill_slow' | 'bustling_vibrant' | string;
@@ -42,6 +52,11 @@ export interface AiMetadata {
   featured_reviews?: FeaturedReview[];
   green_transit?: boolean;
   source?: string;
+  facebook_url?: string;
+  google_maps_url?: string;
+  verification_status?: string;
+  last_verified_at?: string;
+  data_source?: string;
   [key: string]: unknown;
 }
 

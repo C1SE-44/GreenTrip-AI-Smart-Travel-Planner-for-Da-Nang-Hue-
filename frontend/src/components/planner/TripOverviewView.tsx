@@ -61,7 +61,8 @@ const BUDGET_OPTIONS = [
 
 // Danh mục bộ lọc trong Modal Thêm vào chuyến đi chuẩn Mindtrip theo ảnh
 // Danh mục bộ lọc trong Modal chuẩn Explore & Mindtrip
-type ModalCategory = 'for-you' | 'all' | 'di-tich' | 'canh-quan' | 'chua' | 'quan-an' | 'experiences' | 'restaurants' | 'scenic';
+export type ModalCategoryType = 'for-you' | 'experiences' | 'restaurants' | 'scenic' | 'all' | 'di-tich' | 'canh-quan' | 'chua' | 'quan-an';
+type ModalCategory = ModalCategoryType;
 type RecommendedPoi = Poi & { matchScore?: number };
 
 const MODAL_CATEGORY_TABS: { id: ModalCategory; label: string }[] = [

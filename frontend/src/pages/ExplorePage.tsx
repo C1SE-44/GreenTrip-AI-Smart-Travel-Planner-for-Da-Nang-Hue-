@@ -449,20 +449,63 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         setLoading(true);
         setError(null);
 
-        const response = await getPois({
+        const queryParams = {
           limit: 100,
-          page: 1,
           city: cityFilter !== 'all' ? cityFilter : undefined,
           category: categoryFilter !== 'all' ? categoryFilter : undefined,
           eco_priority: filterValues.ecoPriority,
           budget_tier: filterValues.budget,
           eco_certified_only: filterValues.ecoCertifiedOnly,
           green_transit_only: filterValues.greenTransitOnly,
+        };
+
+        // 1. Tải trang 1 tức thì để hiển thị ngay trong 100ms
+        const firstPage = await getPois({
+          ...queryParams,
+          page: 1,
         });
 
-        const normalized = normalizePois(response.items);
         if (!active) return;
-        setAllPois(normalized.length > 0 ? normalized : pois);
+
+        const firstItems = firstPage.items || [];
+        const initialNormalized = normalizePois(firstItems);
+        if (initialNormalized.length > 0) {
+          setAllPois(initialNormalized);
+        } else {
+          setAllPois(pois);
+        }
+        setLoading(false);
+
+        // 2. Tải song song các trang còn lại nếu có >100 địa điểm (482 POIs = 5 trang)
+        const totalPages = firstPage.pagination?.total_pages || 1;
+        if (totalPages > 1) {
+          try {
+            const remainingPromises = [];
+            for (let p = 2; p <= totalPages; p++) {
+              remainingPromises.push(
+                getPois({
+                  ...queryParams,
+                  page: p,
+                })
+              );
+            }
+            const remainingResponses = await Promise.all(remainingPromises);
+            if (!active) return;
+
+            const allItems = [...firstItems];
+            for (const res of remainingResponses) {
+              if (res.items && res.items.length > 0) {
+                allItems.push(...res.items);
+              }
+            }
+            const fullNormalized = normalizePois(allItems);
+            if (fullNormalized.length > 0) {
+              setAllPois(fullNormalized);
+            }
+          } catch (secondaryError) {
+            console.warn('Could not fetch remaining POI pages, keeping page 1 items:', secondaryError);
+          }
+        }
       } catch (loadError) {
         if (!active) return;
         console.warn('Backend POIs fetch failed, using fallback data:', loadError);
@@ -782,7 +825,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 active: viewMode === 'saved',
                 badge: favorites.size > 0 ? String(favorites.size) : undefined
               },
-              { to: '#', icon: 'ph ph-bell', label: 'Cập nhật' },
               { 
                 key: 'trips', 
                 onClick: () => { 
@@ -833,7 +875,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 </div>
               );
 
-              return 'onClick' in item ? (
+              return (
                 <button
                   key={item.label}
                   onClick={item.onClick}
@@ -841,34 +883,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 >
                   {itemContent}
                 </button>
-              ) : item.to === '#' ? (
-                <a key={item.label} href="#">{itemContent}</a>
-              ) : (
-                <Link key={item.label} to={item.to}>{itemContent}</Link>
               );
             })}
           </nav>
-
-          {/* Button Trò chuyện mới - Cố định tọa độ */}
-          <div className="pt-6">
-            {isSidebarCollapsed ? (
-              <div className="w-9 h-9 flex items-center justify-center shrink-0">
-                <button
-                  className="w-9 h-9 bg-[#F0F2F5] hover:bg-[#E4E6EB] text-gray-950 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 group/newchat relative"
-                  title="Trò chuyện mới"
-                >
-                  <i className="ph ph-chat-circle-dots text-[19px] text-black"></i>
-                  <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 bg-black text-white text-[11.5px] font-medium px-2.5 py-1 rounded-md shadow-md whitespace-nowrap pointer-events-none opacity-0 group-hover/newchat:opacity-100 transition-opacity z-50">
-                    Trò chuyện mới
-                  </div>
-                </button>
-              </div>
-            ) : (
-              <button className="w-full py-2.5 px-4 bg-[#F0F2F5] hover:bg-[#E4E6EB] text-gray-950 font-semibold text-[13.5px] rounded-full transition-all text-center border-0 shadow-none cursor-pointer whitespace-nowrap overflow-hidden">
-                Trò chuyện mới
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Sidebar Bottom / User & Footer - Cố định tọa độ */}
@@ -941,18 +958,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           {/* Legal footer */}
           <div className="overflow-hidden transition-all duration-300">
             {!isSidebarCollapsed ? (
-              <div className="px-0 text-[11.5px] text-gray-500/80 leading-relaxed font-normal mt-1 animate-fadeIn">
-                <p className="space-x-1">
-                  <span>Công ty</span><span>•</span><span>Liên hệ</span><span>•</span><span>Giúp đỡ</span>
-                </p>
-                <p className="space-x-1">
-                  <span>Điều khoản</span><span>•</span><span>Sự riêng tư</span>
-                </p>
-                <p className="mt-1.5 text-gray-500/80 text-[11px]">© 2026 GreenTrip, Inc.</p>
+              <div className="px-0 text-[11px] text-gray-400 leading-relaxed font-normal mt-1 animate-fadeIn">
+                <p>© 2026 GreenTrip • Du lịch thông minh & Bền vững</p>
               </div>
             ) : (
               <div className="w-9 h-9 flex items-center justify-center shrink-0">
-                <div className="flex justify-center text-gray-400 hover:text-black transition cursor-pointer text-xs" title="© 2026 GreenTrip, Inc.">
+                <div className="flex justify-center text-gray-400 hover:text-black transition cursor-pointer text-xs" title="© 2026 GreenTrip • Du lịch thông minh & Bền vững">
                   <i className="ph ph-info text-[16px]"></i>
                 </div>
               </div>
@@ -1729,10 +1740,7 @@ function PoiCard({
           ))}
         </div>
 
-        {/* Icon ⓘ ở góc phải đáy */}
-        <div className="absolute bottom-2.5 right-2.5 pointer-events-none z-10">
-          <i className="ph ph-info text-white/80 hover:text-white text-[15px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"></i>
-        </div>
+
       </div>
 
       {/* 2. Card Details: Tên, loại hình, địa chỉ */}

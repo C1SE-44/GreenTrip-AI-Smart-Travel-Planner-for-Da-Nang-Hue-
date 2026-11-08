@@ -26,6 +26,8 @@ class SQLiteCursorWrapper:
     def execute(self, query: str, params: Any = None) -> "SQLiteCursorWrapper":
         # 1. Bỏ tiền tố schema public.
         clean_query = re.sub(r"\bpublic\.", "", query, flags=re.IGNORECASE)
+        # 1b. Bỏ typecast postgres như ::text, ::jsonb, ::geometry
+        clean_query = re.sub(r"::\w+", "", clean_query)
         # 2. Chuyển đổi tham số %s của postgres sang ? của sqlite
         clean_query = clean_query.replace("%s", "?")
         # 3. Chuẩn hóa giá trị boolean nếu có

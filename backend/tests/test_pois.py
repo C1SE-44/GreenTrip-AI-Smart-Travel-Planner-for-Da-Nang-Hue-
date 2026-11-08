@@ -339,12 +339,12 @@ def test_list_pois_resolves_city_and_category_aliases(
 
     assert "c.name = ANY(%s)" in page_query
     assert "ci.code = %s" in page_query
-    assert ["Di tích lịch sử và văn hóa"] in page_parameters
+    assert ["Di tích lịch sử và văn hóa", "Tâm linh và chùa thiền"] in page_parameters
     assert "DANANG" in page_parameters
 
     assert "c.name = ANY(%s)" in count_query
     assert "ci.code = %s" in count_query
-    assert ["Di tích lịch sử và văn hóa"] in count_parameters
+    assert ["Di tích lịch sử và văn hóa", "Tâm linh và chùa thiền"] in count_parameters
     assert "DANANG" in count_parameters
 
 

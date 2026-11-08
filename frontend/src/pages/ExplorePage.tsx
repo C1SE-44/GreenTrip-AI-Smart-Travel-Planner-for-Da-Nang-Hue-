@@ -447,20 +447,63 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         setLoading(true);
         setError(null);
 
-        const response = await getPois({
+        const queryParams = {
           limit: 100,
-          page: 1,
           city: cityFilter !== 'all' ? cityFilter : undefined,
           category: categoryFilter !== 'all' ? categoryFilter : undefined,
           eco_priority: filterValues.ecoPriority,
           budget_tier: filterValues.budget,
           eco_certified_only: filterValues.ecoCertifiedOnly,
           green_transit_only: filterValues.greenTransitOnly,
+        };
+
+        // 1. Tải trang 1 tức thì để hiển thị ngay trong 100ms
+        const firstPage = await getPois({
+          ...queryParams,
+          page: 1,
         });
 
-        const normalized = normalizePois(response.items);
         if (!active) return;
-        setAllPois(normalized.length > 0 ? normalized : pois);
+
+        const firstItems = firstPage.items || [];
+        const initialNormalized = normalizePois(firstItems);
+        if (initialNormalized.length > 0) {
+          setAllPois(initialNormalized);
+        } else {
+          setAllPois(pois);
+        }
+        setLoading(false);
+
+        // 2. Tải song song các trang còn lại nếu có >100 địa điểm (482 POIs = 5 trang)
+        const totalPages = firstPage.pagination?.total_pages || 1;
+        if (totalPages > 1) {
+          try {
+            const remainingPromises = [];
+            for (let p = 2; p <= totalPages; p++) {
+              remainingPromises.push(
+                getPois({
+                  ...queryParams,
+                  page: p,
+                })
+              );
+            }
+            const remainingResponses = await Promise.all(remainingPromises);
+            if (!active) return;
+
+            const allItems = [...firstItems];
+            for (const res of remainingResponses) {
+              if (res.items && res.items.length > 0) {
+                allItems.push(...res.items);
+              }
+            }
+            const fullNormalized = normalizePois(allItems);
+            if (fullNormalized.length > 0) {
+              setAllPois(fullNormalized);
+            }
+          } catch (secondaryError) {
+            console.warn('Could not fetch remaining POI pages, keeping page 1 items:', secondaryError);
+          }
+        }
       } catch (loadError) {
         if (!active) return;
         console.warn('Backend POIs fetch failed, using fallback data:', loadError);

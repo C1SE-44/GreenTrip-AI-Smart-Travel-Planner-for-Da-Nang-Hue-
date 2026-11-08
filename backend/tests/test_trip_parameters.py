@@ -281,6 +281,46 @@ def test_validate_parameters_matched_pois_from_database() -> None:
     assert len(outline) == 3
     assert outline[0]["day"] == 1
     assert len(outline[0]["suggested_activities"]) > 0
+    assert outline[0]["rest_periods"][0]["time_range"] == "12:00–14:00"
+    assert outline[0]["rest_periods"][0]["duration_minutes"] == 90
+    assert outline[0]["assistant_tip"]
+
+
+def test_fast_pacing_adds_recovery_break_and_advice() -> None:
+    res = client.post(
+        "/trips/validate-parameters",
+        json={
+            "destination": "Đà Nẵng",
+            "days": 1,
+            "total_budget": 500000.0,
+            "num_people": 1,
+            "preferences": ["culture", "food", "nature", "eco", "beach", "adventure"],
+        },
+    )
+
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["pacing_level"] == "Fast"
+    assert data["itinerary_outline"][0]["rest_periods"][0]["time_range"] == "09:30–10:00"
+    assert any("nghỉ trưa" in recommendation for recommendation in data["recommendations"])
+
+
+def test_relaxed_pacing_keeps_afternoon_flexible() -> None:
+    res = client.post(
+        "/trips/validate-parameters",
+        json={
+            "destination": "Huế",
+            "days": 2,
+            "total_budget": 1000000.0,
+            "num_people": 1,
+            "preferences": ["relaxation"],
+        },
+    )
+
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["pacing_level"] == "Relaxed"
+    assert "buổi chiều linh hoạt" in data["itinerary_outline"][0]["assistant_tip"]
 
 
 def test_validate_parameters_dynamic_percentage_breakdown() -> None:

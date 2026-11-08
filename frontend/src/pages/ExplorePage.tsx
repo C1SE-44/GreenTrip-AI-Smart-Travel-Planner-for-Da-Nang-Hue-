@@ -20,6 +20,7 @@ import ExploreFilterModal, {
   VIBES_BY_CATEGORY,
 } from '@/components/poi/ExploreFilterModal';
 import QuickFilterBar from '@/components/poi/QuickFilterBar';
+import type { DailyItineraryOutline, MatchedPOI, CostBreakdown } from '@/services/tripService';
 import {
   computePoiWeightedScore,
   ECO_PRIORITY_WEIGHT_MAP,
@@ -50,10 +51,12 @@ export interface UserTrip {
   status?: string;
   prompt?: string;
   totalBudget?: number;
-  itineraryOutline?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
-  matchedPois?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
-  costBreakdown?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  itineraryOutline?: DailyItineraryOutline[];
+  matchedPois?: MatchedPOI[];
+  costBreakdown?: CostBreakdown;
+  pacingLevel?: 'Relaxed' | 'Balanced' | 'Fast';
   pacingLabel?: string;
+  customIdeas?: Array<{ id: string; name: string; city: PoiCity; address?: string }>;
   ideas?: string[];
 }
 
@@ -217,7 +220,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
-  const [selectedTripForDetails, setSelectedTripForDetails] = useState<UserTrip | null>(null);
 
   useEffect(() => {
     setViewMode(initialView);
@@ -964,7 +966,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           <TripOverviewView
             trip={activeOverviewTrip}
             onBack={() => setActiveOverviewTrip(null)}
-            onOpenItineraryDetails={() => setSelectedTripForDetails(activeOverviewTrip)}
             onUpdateTrip={(updatedTrip) => {
               setActiveOverviewTrip(updatedTrip);
               setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));

@@ -71,6 +71,7 @@ export interface Poi {
   description: string;
   rating: number;
   visitDuration: string;
+  average_visit_minutes?: number | null;
   ecoScore: number;
   openHours?: string | null;
   estimatedCost?: number | null;
@@ -499,6 +500,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any): Poi | null {
     description: (item.description ?? '').trim() || 'Địa điểm đáng ghé thăm trong hành trình của bạn.',
     rating,
     visitDuration,
+    average_visit_minutes: item.average_visit_minutes ?? null,
     ecoScore,
     openHours: statusOpenHours || item.open_hours?.trim() || (category === 'quan-an' ? '09:30 – 21:30' : '07:30 – 17:30'),
     estimatedCost,

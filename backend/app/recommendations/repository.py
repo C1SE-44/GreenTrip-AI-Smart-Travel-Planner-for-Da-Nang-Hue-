@@ -36,7 +36,7 @@ def _load_pois_from_csv(destination: str | None = None) -> list[dict[str, Any]]:
                 name = (row.get("name") or "").strip()
                 if not name:
                     continue
-                def _safe_float(v: Any, default: float) -> float:
+                def _safe_float(v: Any, default: float | None) -> float | None:
                     try:
                         return float(v) if v is not None and str(v).strip() != "" else default
                     except (ValueError, TypeError):
@@ -53,8 +53,8 @@ def _load_pois_from_csv(destination: str | None = None) -> list[dict[str, Any]]:
                     "estimated_cost": _safe_float(row.get("estimated_cost"), 50000.0),
                     "effective_estimated_cost": _safe_float(row.get("estimated_cost"), 50000.0),
                     "average_visit_minutes": _safe_float(row.get("average_visit_minutes"), 60.0),
-                    "lat": _safe_float(row.get("latitude"), 16.0),
-                    "lng": _safe_float(row.get("longitude"), 108.0),
+                    "lat": _safe_float(row.get("latitude"), None),
+                    "lng": _safe_float(row.get("longitude"), None),
                     "city_name": row.get("city_name") or "Đà Nẵng",
                     "image_url": row.get("image_url") or None,
                     "gallery_urls": [row["image_url"]] if row.get("image_url") else [],

@@ -41,6 +41,14 @@ export interface DailyItineraryOutline {
   theme: string;
   focus_city: string;
   suggested_activities: string[];
+  rest_periods?: RestPeriod[];
+  assistant_tip?: string;
+}
+
+export interface RestPeriod {
+  time_range: string;
+  activity: string;
+  duration_minutes: number;
 }
 
 export interface ValidatedTripData {

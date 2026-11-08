@@ -389,3 +389,19 @@ def test_database_failure_is_propagated_without_mock_recommendations(
     monkeypatch.setattr(service, "list_recommendation_pois", fail)
     with pytest.raises(RecommendationRepositoryError, match="database unavailable"):
         service.get_poi_recommendations(make_request(), object())
+
+
+def test_csv_fallback_keeps_missing_poi_coordinates_unknown(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    csv_path = tmp_path / "pois.csv"
+    csv_path.write_text(
+        "osm_id,name,category_name,city_name,latitude,longitude\n"
+        "place-1,Quán chưa xác minh,Ẩm thực,Đà Nẵng,,\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(repository, "_CSV_PATH", csv_path)
+
+    pois = repository._load_pois_from_csv("Đà Nẵng")
+
+    assert len(pois) == 1
+    assert pois[0]["lat"] is None
+    assert pois[0]["lng"] is None

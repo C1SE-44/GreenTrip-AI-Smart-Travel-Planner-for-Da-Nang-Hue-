@@ -2,12 +2,13 @@ export const API_BASE_URL = (
   import.meta.env.VITE_API_URL || 
   import.meta.env.VITE_API_BASE_URL || 
   (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:8000'
+    ? 'http://127.0.0.1:8000'
     : '/api')
 ).replace(/\/$/, '');
 
 export interface ApiError extends Error {
   status?: number;
+  detail?: string;
 }
 
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -29,8 +30,22 @@ export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T>
   });
 
   if (!response.ok) {
-    const error = new Error(`Request failed with status ${response.status}`) as ApiError;
+    let detail: string | undefined;
+    try {
+      const body = await response.json() as { detail?: unknown };
+      if (typeof body.detail === 'string') detail = body.detail;
+      else if (Array.isArray(body.detail)) {
+        detail = body.detail
+          .map((item) => item && typeof item === 'object' && 'msg' in item ? String(item.msg) : '')
+          .filter(Boolean)
+          .join(' ');
+      }
+    } catch {
+      // Keep the status-based fallback when the server doesn't return JSON.
+    }
+    const error = new Error(detail || `Request failed with status ${response.status}`) as ApiError;
     error.status = response.status;
+    error.detail = detail;
     throw error;
   }
 

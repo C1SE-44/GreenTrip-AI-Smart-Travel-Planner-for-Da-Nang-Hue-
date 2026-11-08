@@ -15,6 +15,8 @@ interface PoiDetailSectionProps {
   onClose: () => void;
   onToggleFavorite: (id: string) => void;
   onViewOnMap?: () => void;
+  isAddedToTrip?: boolean;
+  onToggleAddTrip?: (id: string) => void;
 }
 
 function cleanDescription(text?: string | null): string {
@@ -39,10 +41,21 @@ export default function PoiDetailSection({
   onClose,
   onToggleFavorite,
   onViewOnMap,
+  isAddedToTrip,
+  onToggleAddTrip,
 }: PoiDetailSectionProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'guides' | 'location'>('overview');
   const [isMenuZoomOpen, setIsMenuZoomOpen] = useState(false);
-  const [addedToTrip, setAddedToTrip] = useState(false);
+  const [localAddedToTrip, setLocalAddedToTrip] = useState(false);
+  const isAdded = isAddedToTrip !== undefined ? isAddedToTrip : localAddedToTrip;
+
+  const handleToggleAddTrip = () => {
+    if (onToggleAddTrip) {
+      onToggleAddTrip(poi.id);
+    } else {
+      setLocalAddedToTrip((prev) => !prev);
+    }
+  };
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [isMobileView, setIsMobileView] = useState(() =>
@@ -57,6 +70,7 @@ export default function PoiDetailSection({
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
+
 
   useEffect(() => {
     if (!isMenuZoomOpen) return;
@@ -220,16 +234,16 @@ export default function PoiDetailSection({
 
           <button
             type="button"
-            aria-pressed={addedToTrip}
-            onClick={() => setAddedToTrip(!addedToTrip)}
+            aria-pressed={isAdded}
+            onClick={handleToggleAddTrip}
             className={`flex items-center gap-1.5 px-3.5 min-h-[40px] border rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
-              addedToTrip
+              isAdded
                 ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
                 : 'bg-[#102b21] border-[#102b21] text-white hover:bg-[#194332]'
             }`}
           >
-            <span className="text-sm font-bold leading-none" aria-hidden="true">{addedToTrip ? '✓' : '+'}</span>
-            <span>{addedToTrip ? 'Đã thêm' : 'Thêm chuyến đi'}</span>
+            <span className="text-sm font-bold leading-none" aria-hidden="true">{isAdded ? '✓' : '+'}</span>
+            <span>{isAdded ? 'Đã thêm' : 'Thêm vào chuyến đi'}</span>
           </button>
 
           <button
@@ -885,8 +899,6 @@ export default function PoiDetailSection({
         </div>,
         document.body
       )}
-
-      
     </section>
   );
 

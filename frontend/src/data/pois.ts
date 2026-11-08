@@ -104,6 +104,7 @@ export interface Poi {
   social_links?: Record<string, string> | null;
   opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
+  matchScore?: number;
 }
 
 export interface BackendPoiItem {
@@ -137,6 +138,7 @@ export interface BackendPoiItem {
   social_links?: Record<string, string> | null;
   opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
+  matchScore?: number;
 }
 
 export interface PaginationMetadata {
@@ -192,7 +194,7 @@ export const DEFAULT_IMAGES_BY_CATEGORY: Record<PoiCategory, string[]> = {
   ],
   'canh-quan': [
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=900&q=80',
@@ -370,6 +372,17 @@ export function getGalleryImages(poi: Poi): string[] {
   }
 
   // Pad remaining slots only using the place's own authentic photos to avoid irrelevant stock photos
+  // Bổ sung các ảnh đẹp cùng danh mục để bộ sưu tập 5 ảnh luôn phong phú và thực tế
+  const categoryPool = DEFAULT_IMAGES_BY_CATEGORY[poi.category] || DEFAULT_IMAGES_BY_CATEGORY['canh-quan'];
+  let poolIdx = 0;
+  while (result.length < 5 && poolIdx < categoryPool.length) {
+    const candidate = categoryPool[poolIdx++];
+    if (!result.includes(candidate)) {
+      result.push(candidate);
+    }
+  }
+
+  // Nếu vẫn chưa đủ thì mới cycle từ base
   while (result.length < 5) {
     const cyclePhoto = base[result.length % base.length] || poi.image;
     result.push(cyclePhoto);

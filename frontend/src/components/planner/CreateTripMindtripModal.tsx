@@ -257,65 +257,66 @@ export default function CreateTripMindtripModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn select-none"
       onClick={onClose}
     >
+      {/* Khung hộp thoại: rộng 917px (max-w-[508px], -5%), bo góc 36px (rounded-[20px], -28%), hạ giữa dọc, padding chuẩn Mindtrip */}
       <div 
-        className="w-full max-w-[540px] bg-white rounded-[28px] p-7 sm:p-8 shadow-2xl relative border border-gray-100"
+        className="w-full max-w-[508px] bg-white rounded-[20px] px-7 sm:px-[30px] pt-[22px] pb-[24px] shadow-2xl relative border border-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Nút đóng modal chính */}
+        {/* Nút đóng modal chính: cách mép trái/trên 43/42px (top-[17px] left-[17px], -28%), màu đen đậm nét dày */}
         <button
           onClick={onClose}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition absolute top-6 left-6 cursor-pointer"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-black hover:bg-gray-100 transition absolute top-[17px] left-[17px] cursor-pointer"
           title="Đóng"
         >
-          <X size={18} strokeWidth={2.5} />
+          <X size={20} strokeWidth={2.7} className="text-black" />
         </button>
 
-        {/* Top-center Icon Badge (Mindtrip Style) */}
-        <div className="w-11 h-11 rounded-full bg-[#e6f4ea] text-emerald-700 flex items-center justify-center mx-auto mb-3 shadow-2xs">
-          <Sparkles size={20} className="text-emerald-700" />
+        {/* Top-center Icon Badge: đường kính 73px (w-[40px] h-[40px], -9%), cách trên 43px (pt-[22px]), cách tiêu đề 46px (mb-[14px]) */}
+        <div className="w-[40px] h-[40px] rounded-full bg-[#e6f4ea] text-emerald-700 flex items-center justify-center mx-auto mb-[14px] shadow-2xs">
+          <Sparkles size={18} className="text-emerald-700" />
         </div>
 
-        {/* Modal Heading */}
-        <h2 className="text-[20px] sm:text-[22px] font-bold text-gray-950 text-center tracking-tight mb-5 px-6 leading-snug">
-          Anh ơi , em cần lưu ý điều gì cho chuyến đi này ?
+        {/* Modal Heading: tiêu đề chuẩn chính tả (đã sửa khoảng trắng thừa), cỡ chữ 33px (text-[19px] sm:text-[20.5px], -3%), giãn dòng 50px (leading-[1.3], -7%), cách ô nhập 45px (mb-[22px]) */}
+        <h2 className="text-[19px] sm:text-[20.5px] font-bold text-gray-950 text-center tracking-tight mb-[22px] px-3 leading-[1.3]">
+          Anh ơi, em cần lưu ý điều gì cho chuyến đi này?
         </h2>
 
-        {/* Prompt Textarea (Không có nút mic, có bộ đếm 2000 ký tự) */}
-        <div className="relative mb-5">
+        {/* Prompt Textarea: cao 188px (h-[106px], -18%), viền xám trung bình #c8c8c8, padding trái 23px (px-[13px] py-[12px], -23%), placeholder 1 dòng ngắn gọn */}
+        <div className="mb-[16px]">
           <textarea
-            placeholder="Ví dụ: 3 ngày ở Đà Nẵng - Huế, ngắm cầu Rồng, tham quan Đại Nội, thưởng thức bún bò và ẩm thực địa phương..."
+            placeholder="Ví dụ: 3 ngày ở Đà Nẵng và Huế, thích ngắm cảnh, ẩm thực..."
             value={tripPrompt}
             onChange={(e) => setTripPrompt(e.target.value.slice(0, 2000))}
-            className="w-full rounded-[18px] border border-gray-200 p-4 pb-8 text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black transition-all resize-none h-32 leading-relaxed"
+            className="w-full rounded-[16px] border border-[#c8c8c8] px-[13px] py-[12px] text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black transition-all resize-none h-[106px] leading-relaxed"
           />
-          <div className="absolute bottom-3 right-4 flex items-center gap-2">
+          {/* Bộ đếm ký tự: nằm ngoài dưới ô, căn phải, cách đáy ô 14px (mt-[6px]) */}
+          <div className="flex justify-end mt-[6px]">
             <span className="text-[11px] text-gray-400 font-mono">
               {tripPrompt.length} / 2000
             </span>
           </div>
         </div>
 
-        {/* Subtitle */}
-        <p className="text-[13px] text-gray-500 mb-3 font-normal">
+        {/* Dòng chữ gợi ý: cách bộ đếm 70px (mt-[16px]), màu xám trung bình #666666 */}
+        <p className="text-[13px] text-[#666666] mt-[16px] mb-[12px] font-normal">
           Bạn có thông tin chi tiết? Hãy chia sẻ những gì bạn biết.
         </p>
 
-        {/* 3 Detail Rows */}
-        <div className="space-y-3">
+        {/* 3 Detail Rows: cao mỗi hàng 81px (h-[44px], -17%), khoảng cách giữa các hàng 16px (space-y-[9px], -27%), viền #c8c8c8, padding trái nhãn 31px (pl-[17px]), padding phải 31px (pr-[17px]), đã bỏ mũi tên ">" */}
+        <div className="space-y-[9px]">
           {/* 1. Ở ĐÂU (Where) */}
           <button
             type="button"
             onClick={() => setShowWhereModal(true)}
-            className="w-full flex items-center justify-between px-5 py-3.5 rounded-2xl border border-gray-200 hover:border-gray-300 transition-colors bg-white cursor-pointer group text-left"
+            className="w-full h-[44px] flex items-center justify-between pl-[17px] pr-[17px] rounded-[14px] border border-[#c8c8c8] hover:border-gray-400 transition-colors bg-white cursor-pointer group text-left"
           >
             <div className="flex items-center gap-2.5">
               <span className="text-[13.5px] font-bold text-black">Ở đâu</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+            <div className="flex items-center">
+              <span className="text-[12.5px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
                 {destinationDisplay}
               </span>
-              <i className="ph ph-caret-right text-xs text-gray-400"></i>
             </div>
           </button>
 
@@ -323,16 +324,15 @@ export default function CreateTripMindtripModal({
           <button
             type="button"
             onClick={() => setShowWhenModal(true)}
-            className="w-full flex items-center justify-between px-5 py-3.5 rounded-2xl border border-gray-200 hover:border-gray-300 transition-colors bg-white cursor-pointer group text-left"
+            className="w-full h-[44px] flex items-center justify-between pl-[17px] pr-[17px] rounded-[14px] border border-[#c8c8c8] hover:border-gray-400 transition-colors bg-white cursor-pointer group text-left"
           >
             <div className="flex items-center gap-2.5">
               <span className="text-[13.5px] font-bold text-black">Khi</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] font-medium text-gray-700">
+            <div className="flex items-center">
+              <span className="text-[12.5px] font-medium text-gray-600">
                 {whenDisplay}
               </span>
-              <i className="ph ph-caret-right text-xs text-gray-400"></i>
             </div>
           </button>
 
@@ -340,16 +340,15 @@ export default function CreateTripMindtripModal({
           <button
             type="button"
             onClick={() => setShowWhoModal(true)}
-            className="w-full flex items-center justify-between px-5 py-3.5 rounded-2xl border border-gray-200 hover:border-gray-300 transition-colors bg-white cursor-pointer group text-left"
+            className="w-full h-[44px] flex items-center justify-between pl-[17px] pr-[17px] rounded-[14px] border border-[#c8c8c8] hover:border-gray-400 transition-colors bg-white cursor-pointer group text-left"
           >
             <div className="flex items-center gap-2.5">
               <span className="text-[13.5px] font-bold text-black">Ai</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] font-medium text-gray-700">
+            <div className="flex items-center">
+              <span className="text-[12.5px] font-medium text-gray-600">
                 {whoDisplay}
               </span>
-              <i className="ph ph-caret-right text-xs text-gray-400"></i>
             </div>
           </button>
         </div>
@@ -360,26 +359,29 @@ export default function CreateTripMindtripModal({
           </p>
         )}
 
-        {/* Nút Tạo nên */}
-        <div className="mt-7 flex justify-center">
+        {/* Nút Tạo nên: căn phải (flex justify-end), rộng 300px (w-[166px], +11%), cao 72px (h-[40px], -10%), cách hàng Ai 72px (mt-[40px], +44%), cách đáy 43px (pb-[24px]), đen khi có thông tin, xám khi chưa nhập */}
+        <div className="mt-[40px] flex justify-end">
           <button
             type="button"
             onClick={handleCreate}
-            disabled={isSubmitting}
-            className="px-12 py-3 rounded-full text-[14px] font-bold transition-all shadow-sm active:scale-95 cursor-pointer bg-black text-white hover:bg-neutral-800 disabled:opacity-50 flex items-center gap-2"
+            disabled={!tripPrompt.trim() || isSubmitting}
+            className={`w-[166px] h-[40px] rounded-full text-[14px] font-bold transition-all shadow-xs flex items-center justify-center gap-2 ${
+              tripPrompt.trim() && !isSubmitting
+                ? 'bg-black text-white hover:bg-neutral-800 active:scale-95 cursor-pointer'
+                : 'bg-[#E5E7EB] text-gray-400 cursor-not-allowed'
+            }`}
           >
             {isSubmitting ? (
               <>
-                <Loader2 size={16} className="animate-spin text-white" />
+                <Loader2 size={16} className="animate-spin text-gray-500" />
                 <span>Đang xử lý qua AI...</span>
               </>
             ) : (
-              <span>Tạo nên</span>
+              <span>Tạo chuyến đi</span>
             )}
           </button>
         </div>
       </div>
-
       {/* ─── POPUP CON 1: Ở ĐÂU (ĐÀ NẴNG, HUẾ, CẢ HAI) ─── */}
       {showWhereModal && (
         <div 

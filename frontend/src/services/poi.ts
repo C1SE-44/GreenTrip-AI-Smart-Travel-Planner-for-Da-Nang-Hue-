@@ -7,6 +7,8 @@ export interface GetPoisParams {
   limit?: number;
   category?: string;
   city?: string;
+  sub_category?: string;
+  cuisine?: string;
   green_weight?: number;
   budget_weight?: number;
   eco_priority?: EcoPriority;
@@ -155,7 +157,7 @@ export function computePoiWeightedScore(
 export function isPoiEcoCertified(
   poi: Pick<Poi, 'ecoScore' | 'eco_features'>
 ): boolean {
-  if (poi.ecoScore >= ECO_CERTIFIED_MIN_SCORE) {
+  if (poi.ecoScore !== null && poi.ecoScore !== undefined && poi.ecoScore >= ECO_CERTIFIED_MIN_SCORE) {
     return true;
   }
   if (Array.isArray(poi.eco_features) && poi.eco_features.length > 0) {
@@ -213,6 +215,12 @@ export async function getPois(params: GetPoisParams = {}): Promise<PaginatedPois
   if (params.city && params.city !== 'all') {
     query.set('city', params.city);
   }
+  if (params.sub_category) {
+    query.set('sub_category', params.sub_category);
+  }
+  if (params.cuisine) {
+    query.set('cuisine', params.cuisine);
+  }
 
   // Tách bạch trọng số xếp hạng (green_weight, budget_weight) khỏi ngưỡng lọc (eco_priority)
   if (params.green_weight !== undefined) {
@@ -243,7 +251,6 @@ export async function getPois(params: GetPoisParams = {}): Promise<PaginatedPois
   return fetchJson<PaginatedPoisResponse>(path);
 }
 
-/** Loads existing POI records by their real database IDs for card enrichment. */
 export async function getPoisByIds(ids: string[]): Promise<BackendPoiItem[]> {
   const requestedIds = new Set(ids.map(String));
   if (requestedIds.size === 0) return [];
@@ -263,4 +270,44 @@ export async function getPoisByIds(ids: string[]): Promise<BackendPoiItem[]> {
   return pages
     .flatMap((page) => page.items ?? [])
     .filter((poi) => requestedIds.has(String(poi.id)));
+}
+
+// ─────────────────────────────────────────────
+// PB10: Neo4j Knowledge Graph Explanation Facts API
+// ─────────────────────────────────────────────
+
+export interface ExplanationFact {
+  relationship: string;
+  target_type: string;
+  target_key: string;
+  target_name: string | null;
+}
+
+export interface ExplanationPoi {
+  id: string;
+  name: string | null;
+  is_local_business: boolean | null;
+  local_business_type: string | null;
+  source: string | null;
+}
+
+export interface PoiExplanationFactsResponse {
+  poi: ExplanationPoi;
+  facts: ExplanationFact[];
+}
+
+/**
+ * Gọi API lấy dữ liệu dẫn chứng giải thích (Why-this-place) từ Neo4j Knowledge Graph.
+ * Trả về danh sách facts (IN_CATEGORY, OFFERS_ACTIVITY, LOCATED_IN).
+ * Nếu Neo4j chưa cấu hình hoặc tạm thời offline, hàm trả về null để UI fallback an toàn sang CBF.
+ */
+export async function getPoiExplanationFacts(
+  poiId: string
+): Promise<PoiExplanationFactsResponse | null> {
+  try {
+    return await fetchJson<PoiExplanationFactsResponse>('/pois/' + encodeURIComponent(poiId) + '/explanation-facts');
+  } catch (error) {
+    console.warn('[KnowledgeGraph] Could not fetch explanation facts for POI ' + poiId + ':', error);
+    return null;
+  }
 }

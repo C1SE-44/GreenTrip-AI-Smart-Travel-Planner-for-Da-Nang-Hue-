@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -65,6 +66,7 @@ class FakeCursor:
                 poi.social_links,
                 poi.opening_hours,
                 poi.email,
+                poi.saved_count,
             )
             for poi in page
         ]
@@ -149,6 +151,23 @@ def test_list_pois_defaults_to_first_page_of_ten(
         "has_next": True,
         "has_previous": False,
     }
+
+
+def test_poi_response_includes_saved_count_from_distinct_user_aggregate(
+    client: tuple[TestClient, list[tuple[str, Any]]],
+    poi_records: list[POI],
+) -> None:
+    test_client, queries = client
+    poi_records[0] = replace(poi_records[0], saved_count=4)
+
+    response = test_client.get("/pois?page=1&limit=1")
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["saved_count"] == 4
+    query = queries[0][0]
+    assert "COUNT(DISTINCT c.user_id)" in query
+    assert "public.saved_place_collection_items" in query
+    assert "public.saved_place_collections" in query
 
 
 
@@ -339,12 +358,18 @@ def test_list_pois_resolves_city_and_category_aliases(
 
     assert "c.name = ANY(%s)" in page_query
     assert "ci.code = %s" in page_query
-    assert ["Di tích lịch sử và văn hóa"] in page_parameters
+    assert page_parameters[0] == [
+        "Di tích lịch sử và văn hóa",
+        "Tâm linh và chùa thiền",
+    ]
     assert "DANANG" in page_parameters
 
     assert "c.name = ANY(%s)" in count_query
     assert "ci.code = %s" in count_query
-    assert ["Di tích lịch sử và văn hóa"] in count_parameters
+    assert count_parameters[0] == [
+        "Di tích lịch sử và văn hóa",
+        "Tâm linh và chùa thiền",
+    ]
     assert "DANANG" in count_parameters
 
 

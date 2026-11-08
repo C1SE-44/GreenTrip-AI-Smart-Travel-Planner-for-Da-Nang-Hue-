@@ -34,12 +34,14 @@ import {
   getDeterministicImage,
   type Poi 
 } from '@/data/pois';
+import type { PoiCity } from '@/data/pois';
 import { getPois } from '@/services/poi';
 import { fetchJson } from '@/lib/api';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import ExplanationModal from '@/components/poi/ExplanationModal';
+import { useSavedPlaces } from '@/context/SavedPlacesContext';
 
 export interface TripOverviewViewProps {
   trip: UserTrip;
@@ -60,7 +62,9 @@ const BUDGET_OPTIONS = [
 
 // Danh mục bộ lọc trong Modal Thêm vào chuyến đi chuẩn Mindtrip theo ảnh
 // Danh mục bộ lọc trong Modal chuẩn Explore & Mindtrip
-const MODAL_CATEGORY_TABS: { id: string; label: string }[] = [
+type ModalCategory = 'for-you' | 'all' | 'di-tich' | 'canh-quan' | 'chua' | 'quan-an' | 'experiences' | 'restaurants' | 'scenic';
+
+const MODAL_CATEGORY_TABS: { id: ModalCategory; label: string }[] = [
   { id: 'for-you', label: 'Dành cho bạn' },
   { id: 'all', label: 'Tất cả' },
   { id: 'di-tich', label: 'Di tích' },
@@ -82,6 +86,8 @@ export interface CategoryBudgets {
   lodging: string;
   activities: string;
 }
+
+type RecommendedPoi = Poi & { matchScore?: number };
 
 export function parseCategoryBudgets(raw?: string): CategoryBudgets {
   const def: CategoryBudgets = { dining: 'any', lodging: 'any', activities: 'any' };
@@ -136,6 +142,10 @@ export default function TripOverviewView({
   onOpenItineraryDetails,
   onUpdateTrip,
 }: TripOverviewViewProps) {
+  const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
+  const handleOpenSavedCollections = (_poiId: string, poi?: Poi) => {
+    if (poi) openCollectionPicker(poi);
+  };
   // Bộ dữ liệu POI hoàn chỉnh từ Explore / backend
   const [loadedPois, setLoadedPois] = useState<Poi[]>([]);
 
@@ -218,7 +228,7 @@ export default function TripOverviewView({
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => trip.ideas || []);
 
   // ─── STATE CHO GỢI Ý ĐỊA ĐIỂM (TOP 10 TỐI ƯU THEO BACKEND PB09) ───
-  const [recommendedPois, setRecommendedPois] = useState<Poi[]>([]);
+  const [recommendedPois, setRecommendedPois] = useState<RecommendedPoi[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [recommendationTitle, setRecommendationTitle] = useState('Gợi ý cho bạn');
   const [recommendationSubtitle, setRecommendationSubtitle] = useState('Theo gu và hành trình của bạn.');
@@ -233,7 +243,7 @@ export default function TripOverviewView({
   const [showModalCityDropdown, setShowModalCityDropdown] = useState(false);
   const [modalCity, setModalCity] = useState<'all' | 'Đà Nẵng' | 'Huế'>('all');
   const [modalSearch, setModalSearch] = useState('');
-  const [modalCategory, setModalCategory] = useState<'for-you' | 'experiences' | 'restaurants' | 'scenic' | 'all'>('for-you');
+  const [modalCategory, setModalCategory] = useState<ModalCategory>('for-you');
   const [customIdeaInput, setCustomIdeaInput] = useState('');
 
   // State bản đồ & chọn POI chi tiết
@@ -328,7 +338,7 @@ export default function TripOverviewView({
     if (fullPoi) {
       return {
         ...fullPoi,
-        matchScore: recPoi?.matchScore ?? fullPoi.matchScore,
+        matchScore: recPoi?.matchScore ?? (fullPoi as RecommendedPoi).matchScore,
       };
     }
     const ideaPoi = ideaPois.find((p) => p.id === selectedMapPoiId || p.name.toLowerCase() === selectedMapPoiId.toLowerCase());
@@ -366,7 +376,7 @@ export default function TripOverviewView({
         if (isCancelled) return;
 
         if (res && res.data && res.data.length > 0) {
-          const mapped: Poi[] = res.data.map((item, idx) => {
+          const mapped: RecommendedPoi[] = res.data.map((item, idx) => {
             const foundLocal = allPois.find(
               (p) => p.id === item.poi_id || p.name.toLowerCase() === item.name.toLowerCase()
             );
@@ -1152,8 +1162,9 @@ export default function TripOverviewView({
                       window.dispatchEvent(new Event('resize'));
                     }, 200);
                   }}
-                  favorites={new Set(tripIdeas)}
-                  onToggleFavorite={handleToggleIdea}
+                  favorites={savedIds}
+                  pendingFavorites={pendingIds}
+                  onToggleFavorite={handleOpenSavedCollections}
                   addedTrips={new Set(tripIdeas)}
                   onToggleAddTrip={handleToggleIdea}
                 />
@@ -2021,7 +2032,7 @@ export default function TripOverviewView({
                         <button
                           key={tab.id}
                           type="button"
-                          onClick={() => setModalCategory(tab.id as any)}
+                          onClick={() => setModalCategory(tab.id)}
                           className={`whitespace-nowrap h-[32px] px-3.5 text-[12.5px] rounded-full transition-all cursor-pointer shrink-0 flex items-center justify-center ${
                             isActive
                               ? 'bg-black text-white font-medium shadow-xs'
@@ -2394,10 +2405,11 @@ export default function TripOverviewView({
         >
           <PoiDetailSection
             poi={selectedPoi}
-            isFavorite={tripIdeas.includes(selectedPoi.id)}
+            isFavorite={savedIds.has(selectedPoi.id)}
+            isFavoritePending={pendingIds.has(selectedPoi.id)}
             isAddedToTrip={tripIdeas.includes(selectedPoi.id)}
             onClose={() => setSelectedMapPoiId(null)}
-            onToggleFavorite={handleToggleIdea}
+            onToggleFavorite={handleOpenSavedCollections}
             onToggleAddTrip={handleToggleIdea}
             onViewOnMap={() => {
               setHoveredMapPoiId(selectedPoi.id);

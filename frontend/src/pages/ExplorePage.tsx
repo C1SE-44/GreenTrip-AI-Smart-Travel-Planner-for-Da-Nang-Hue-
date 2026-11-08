@@ -7,6 +7,8 @@ import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
+import SavedPlacesView from '@/components/saved/SavedPlacesView';
+import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
@@ -213,6 +215,7 @@ function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {
 
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'explore' | 'trips' | 'saved' }) {
   const navigate = useNavigate();
+  const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
   const [viewMode, setViewMode] = useState<'explore' | 'trips' | 'saved'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
@@ -222,6 +225,18 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   useEffect(() => {
     setViewMode(initialView);
   }, [initialView]);
+
+  useEffect(() => {
+    if (initialView !== 'saved') return;
+    const checkSavedPageAccess = () => {
+      if (!(localStorage.getItem('access_token') || sessionStorage.getItem('access_token'))) {
+        navigate('/login', { state: { returnTo: '/saved' }, replace: true });
+      }
+    };
+    checkSavedPageAccess();
+    window.addEventListener('auth-change', checkSavedPageAccess);
+    return () => window.removeEventListener('auth-change', checkSavedPageAccess);
+  }, [initialView, navigate]);
 
   const [userTrips, setUserTrips] = useState<UserTrip[]>(() => {
     try {
@@ -258,14 +273,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [activeTab, setActiveTab] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('greentrip_favorites');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
   const [addedTrips, setAddedTrips] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem('greentrip_added_trips');
@@ -277,20 +284,21 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
   useEffect(() => {
     try {
-      localStorage.setItem('greentrip_favorites', JSON.stringify(Array.from(favorites)));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [favorites]);
-
-  useEffect(() => {
-    try {
       localStorage.setItem('greentrip_added_trips', JSON.stringify(Array.from(addedTrips)));
     } catch (e) {
       console.error(e);
     }
   }, [addedTrips]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (initialView !== 'saved') return;
+    const media = window.matchMedia('(max-width: 767px)');
+    const updateSidebar = () => setIsSidebarCollapsed(media.matches);
+    updateSidebar();
+    media.addEventListener('change', updateSidebar);
+    return () => media.removeEventListener('change', updateSidebar);
+  }, [initialView]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => !prev);
@@ -490,9 +498,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
   const filteredPois = useMemo(() => {
     const matched = allPois.filter((poi) => {
-      if (viewMode === 'saved' && !favorites.has(poi.id)) {
-        return false;
-      }
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
       let matchCat = true;
       if (categoryFilter === 'di-tich') {
@@ -646,7 +651,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       }
       return a.name.localeCompare(b.name, 'vi');
     });
-  }, [allPois, search, cityFilter, categoryFilter, filterValues, viewMode, favorites]);
+  }, [allPois, search, cityFilter, categoryFilter, filterValues]);
 
   // Đếm số lượng filter đang active chuẩn Mindtrip
   const activeFilterCount = useMemo(() => {
@@ -678,15 +683,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     if (!selectedPoiId) return null;
     return allPois.find((poi) => poi.id === selectedPoiId) || null;
   }, [allPois, selectedPoiId]);
-
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
 
   const currentCityLabel = cityFilter === 'all' ? 'Tất cả địa điểm' : cityFilter;
 
@@ -774,11 +770,11 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               },
               { 
                 key: 'saved', 
-                onClick: () => setViewMode('saved'), 
+                onClick: () => navigate('/saved'),
                 icon: viewMode === 'saved' ? 'ph-fill ph-heart text-[#b45309]' : 'ph ph-heart', 
                 label: 'Đã lưu', 
                 active: viewMode === 'saved',
-                badge: favorites.size > 0 ? String(favorites.size) : undefined
+                badge: savedIds.size > 0 ? String(savedIds.size) : undefined
               },
               { to: '#', icon: 'ph ph-bell', label: 'Cập nhật' },
               { 
@@ -1193,6 +1189,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           </div>
         </main>
         )
+      ) : viewMode === 'saved' ? (
+        <SavedPlacesView addedTrips={addedTrips} onToggleAddTrip={toggleAddTrip} />
       ) : (
         <>
       {/* 2. MIDDLE LIST (EXPLORE): Khi thu gọn sidebar, phần giữa to rộng hơn (715px) có hiệu ứng chuyển động mượt mà, map chỉ nhích nhẹ */}
@@ -1438,11 +1436,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                     poi={poi}
                     index={idx}
                     active={poi.id === selectedPoiId}
-                    favorite={favorites.has(poi.id)}
+                    favorite={savedIds.has(poi.id)}
+                    favoritePending={pendingIds.has(poi.id)}
                     isAdded={addedTrips.has(poi.id)}
                     onClick={() => handleSelectPoi(poi.id)}
                     onHover={setHoveredPoiId}
-                    onToggleFavorite={toggleFavorite}
+                    onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
                     onToggleAddTrip={toggleAddTrip}
                   />
                 </div>
@@ -1493,8 +1492,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   window.dispatchEvent(new Event("resize"));
                 }, 200);
               }}
-              favorites={favorites}
-              onToggleFavorite={toggleFavorite}
+              favorites={savedIds}
+              pendingFavorites={pendingIds}
+              onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
               addedTrips={addedTrips}
               onToggleAddTrip={toggleAddTrip}
             />
@@ -1508,9 +1508,10 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           >
             <PoiDetailSection
               poi={selectedPoi}
-              isFavorite={favorites.has(selectedPoi.id)}
+              isFavorite={savedIds.has(selectedPoi.id)}
+              isFavoritePending={pendingIds.has(selectedPoi.id)}
               onClose={() => setSelectedPoiId(null)}
-              onToggleFavorite={toggleFavorite}
+              onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
               onViewOnMap={() => setSelectedPoiId(null)}
             />
           </div>
@@ -1618,6 +1619,7 @@ function PoiCard({
   poi,
   active = false,
   favorite = false,
+  favoritePending = false,
   isAdded = false,
   onClick,
   onHover,
@@ -1628,10 +1630,11 @@ function PoiCard({
   index?: number;
   active?: boolean;
   favorite?: boolean;
+  favoritePending?: boolean;
   isAdded?: boolean;
   onClick: () => void;
   onHover: (id: string | null) => void;
-  onToggleFavorite: (id: string) => void;
+  onToggleFavorite: (id: string, poi?: Poi) => void;
   onToggleAddTrip?: (id: string) => void;
 }) {
   const [imgIdx, setImgIdx] = useState(0);
@@ -1691,11 +1694,16 @@ function PoiCard({
         {/* Nút tim và "+" ở góc trên (giữ nguyên khi hover, chuyển trạng thái khi đã lưu / thêm) */}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
           <button
+            type="button"
+            aria-label={favorite ? `Bỏ lưu ${poi.name}` : `Lưu ${poi.name}`}
+            aria-pressed={favorite}
+            aria-busy={favoritePending}
+            disabled={favoritePending}
             onClick={(e) => {
               e.stopPropagation();
-              onToggleFavorite(poi.id);
+              onToggleFavorite(poi.id, poi);
             }}
-            className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
+            className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
               favorite ? 'bg-white text-[#b45309]' : 'bg-black/35 hover:bg-black/55 text-white'
             }`}
             title="Lưu yêu thích"

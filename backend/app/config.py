@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     NEO4J_USERNAME: str = ""
     NEO4J_PASSWORD: str = ""
     NEO4J_DATABASE: str = "neo4j"
-    JWT_SECRET_KEY: str = ""
+    JWT_SECRET_KEY: str = "greentrip-dev-secret-jwt-key-2026-very-secure"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, gt=0)
     FRONTEND_URL: str = "http://localhost:5173"

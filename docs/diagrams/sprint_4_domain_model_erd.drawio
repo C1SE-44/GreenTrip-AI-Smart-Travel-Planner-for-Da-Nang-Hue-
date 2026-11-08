@@ -1,0 +1,203 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="Electron" agent="Antigravity-IDE-Drawio" version="21.6.8" type="device">
+  <diagram id="s4_erd" name="Sprint 4 Domain Model Chen ERD">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageWidth="2000" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="banner" value="&lt;b&gt;GreenTrip AI — Sprint 4: Database Domain Model (Chen ERD)&lt;/b&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fontStyle=1;fontSize=16;strokeWidth=1.5;fillColor=#E8F5E9;strokeColor=#388E3C;fontColor=#1B5E20;shadow=1;align=center;html=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="20" width="1800" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_users" value="&lt;b&gt;users&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#E8EAF6;strokeColor=#1A237E;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="140" y="140" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_email_otps" value="&lt;b&gt;email_otps&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#E8EAF6;strokeColor=#1A237E;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="140" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_saved_places" value="&lt;b&gt;saved_places&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#E0F7FA;strokeColor=#00838F;shadow=1;shape=ext;double=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="360" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_trip_preferences" value="&lt;b&gt;trip_preferences&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#E3F2FD;strokeColor=#1565C0;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="140" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_interests" value="&lt;b&gt;interests&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#E0F2F1;strokeColor=#00897B;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="140" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_transport_modes" value="&lt;b&gt;transport_modes&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#E0F7FA;strokeColor=#006064;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="140" y="580" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_itineraries" value="&lt;b&gt;itineraries&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#F3E5F5;strokeColor=#6A1B9A;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="580" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_itinerary_scores" value="&lt;b&gt;itinerary_scores&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#EDE7F6;strokeColor=#4A148C;shadow=1;shape=ext;double=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="800" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_itinerary_days" value="&lt;b&gt;itinerary_days&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#F3E5F5;strokeColor=#7B1FA2;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="800" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_itinerary_stops" value="&lt;b&gt;itinerary_stops&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#F3E5F5;strokeColor=#8E24AA;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="580" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_cities" value="&lt;b&gt;cities&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#E0F2F1;strokeColor=#00695C;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="420" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_pois" value="&lt;b&gt;pois&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#E8F5E9;strokeColor=#2E7D32;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="580" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_poi_categories" value="&lt;b&gt;poi_categories&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#E8F5E9;strokeColor=#1B5E20;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="260" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_poi_hours" value="&lt;b&gt;poi_opening_hours&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#E8F5E9;strokeColor=#388E3C;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="820" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ent_poi_sources" value="&lt;b&gt;poi_sources&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fontSize=13;strokeWidth=2;fillColor=#E8F5E9;strokeColor=#43A047;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="820" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_has_otp" value="has_otp" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="310" y="140" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_has_pref" value="has_pref" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="550" y="80" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_has_interest" value="has_interest" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="980" y="140" width="100" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_saves_poi" value="saves_poi" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="310" y="260" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_creates" value="creates" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="310" y="580" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_used_in" value="used_in" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="700" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_has_scores" value="has_scores" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="490" y="700" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_has_days" value="has_days" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="700" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_has_stops" value="has_stops" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="950" y="700" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_visits" value="visits" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="580" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_targets" value="targets" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="280" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_for_city" value="for_city" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="520" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_contains" value="contains" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="420" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_has_cat" value="has_category" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="420" width="100" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_has_hours" value="has_hours" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="710" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_comes_from" value="comes_from" style="shape=rhombus;whiteSpace=wrap;html=1;fontStyle=1;fontSize=11;strokeWidth=2;fillColor=#FFF9C4;strokeColor=#F57F17;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="710" width="90" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_users" target="rel_has_otp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_has_otp" target="ent_email_otps">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_users" target="rel_has_pref">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_has_pref" target="ent_trip_preferences">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="M" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_trip_preferences" target="rel_has_interest">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="M" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_has_interest" target="ent_interests">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_users" target="rel_saves_poi">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_saves_poi" target="ent_saved_places">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_users" target="rel_creates">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_creates" target="ent_itineraries">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_transport_modes" target="rel_used_in">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_used_in" target="ent_itineraries">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_itineraries" target="rel_has_scores">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_has_scores" target="ent_itinerary_scores">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_itineraries" target="rel_has_days">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_has_days" target="ent_itinerary_days">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_itinerary_days" target="rel_has_stops">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_has_stops" target="ent_itinerary_stops">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_itinerary_stops" target="rel_visits">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_visits" target="ent_pois">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_trip_preferences" target="rel_targets">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e22" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_targets" target="ent_cities">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_itineraries" target="rel_for_city">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e24" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_for_city" target="ent_cities">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e25" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_cities" target="rel_contains">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e26" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_contains" target="ent_pois">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e27" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_pois" target="rel_has_cat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e28" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_has_cat" target="ent_poi_categories">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e29" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_pois" target="rel_has_hours">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e30" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_has_hours" target="ent_poi_hours">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e31" value="1" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ent_pois" target="rel_comes_from">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e32" value="N" style="endArrow=none;html=1;rounded=0;strokeWidth=1.5;strokeColor=#000000;fontSize=11;fontStyle=1;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rel_comes_from" target="ent_poi_sources">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

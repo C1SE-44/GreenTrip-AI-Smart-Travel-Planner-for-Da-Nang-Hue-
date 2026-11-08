@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Compass, CalendarCheck, MapPinned, LogIn, UserPlus, LogOut } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import LoginModal from '@/components/auth/LoginModal';
+import OnboardingModal from '@/components/auth/OnboardingModal';
 
 const navItems = [
   { to: '/explore', label: 'Khám Phá', icon: Compass },
@@ -24,6 +25,10 @@ export default function Navbar() {
     mode: location.pathname === '/register' ? 'register' : 'login',
   });
 
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(
+    () => location.pathname === '/onboarding'
+  );
+
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return !!(localStorage.getItem('access_token') || sessionStorage.getItem('access_token'));
   });
@@ -38,14 +43,20 @@ export default function Navbar() {
     setMobileOpen(false);
   }, [location.pathname]);
 
-  // Sync auth modal with URL routes /login and /register
+  // Sync auth modal and onboarding modal with URL routes
   useEffect(() => {
     if (location.pathname === '/login') {
       setAuthModal({ isOpen: true, mode: 'login' });
+      setIsOnboardingOpen(false);
     } else if (location.pathname === '/register') {
       setAuthModal({ isOpen: true, mode: 'register' });
+      setIsOnboardingOpen(false);
+    } else if (location.pathname === '/onboarding') {
+      setAuthModal((prev) => ({ ...prev, isOpen: false }));
+      setIsOnboardingOpen(true);
     } else if (location.pathname === '/') {
       setAuthModal((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev));
+      setIsOnboardingOpen(false);
     }
   }, [location.pathname]);
 
@@ -81,7 +92,25 @@ export default function Navbar() {
 
   const handleLoginSuccess = () => {
     setAuthModal((prev) => ({ ...prev, isOpen: false }));
-    navigate('/explore');
+    const hasCompleted = localStorage.getItem('greentrip_onboarding_completed') === 'true';
+    if (!hasCompleted) {
+      setIsOnboardingOpen(true);
+    } else {
+      navigate('/explore');
+    }
+  };
+
+  const handleRegisterSuccess = () => {
+    setAuthModal((prev) => ({ ...prev, isOpen: false }));
+    setIsOnboardingOpen(true);
+  };
+
+  const handleCloseOnboarding = () => {
+    setIsOnboardingOpen(false);
+    localStorage.setItem('greentrip_onboarding_completed', 'true');
+    if (location.pathname === '/onboarding' || location.pathname === '/register' || location.pathname === '/login') {
+      navigate('/explore');
+    }
   };
 
   return (
@@ -229,6 +258,13 @@ export default function Navbar() {
         initialMode={authModal.mode}
         onClose={handleCloseModal}
         onLoginSuccess={handleLoginSuccess}
+        onRegisterSuccess={handleRegisterSuccess}
+      />
+
+      {/* Onboarding Survey Flow Modal */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={handleCloseOnboarding}
       />
     </>
   );

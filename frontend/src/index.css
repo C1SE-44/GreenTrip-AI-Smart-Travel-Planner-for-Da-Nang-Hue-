@@ -16,23 +16,103 @@
 }
 
 @layer utilities {
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: #EFE6D6 transparent;
+  /* Hide scrollbar completely while maintaining scroll functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #EFE6D6;
+    background-color: rgba(43, 38, 34, 0.16);
     border-radius: 9999px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: #D7C9B0;
+    background-color: rgba(43, 38, 34, 0.32);
   }
+  @supports (-moz-appearance: none) {
+    .scrollbar-thin {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(43, 38, 34, 0.2) transparent;
+    }
+  }
+
+  /* Clean auto-hiding floating scrollbar (Mindtrip style) */
+  .auto-hide-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    background: transparent !important;
+  }
+  .auto-hide-scrollbar::-webkit-scrollbar-track,
+  .auto-hide-scrollbar::-webkit-scrollbar-track-piece {
+    background: transparent !important;
+    border: none !important;
+  }
+  .auto-hide-scrollbar::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  .auto-hide-scrollbar::-webkit-scrollbar-corner {
+    background: transparent !important;
+  }
+
+  .auto-hide-scrollbar::-webkit-scrollbar-thumb {
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 9999px;
+    transition: background-color 0.3s ease;
+  }
+  .auto-hide-scrollbar:hover::-webkit-scrollbar-thumb,
+  .auto-hide-scrollbar.is-scrolling::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.22) !important;
+  }
+  .auto-hide-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.45) !important;
+  }
+
+  @supports (-moz-appearance: none) {
+    .auto-hide-scrollbar {
+      scrollbar-width: none;
+    }
+    .auto-hide-scrollbar:hover,
+    .auto-hide-scrollbar.is-scrolling {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+    }
+  }
+}
+
+/* Slide in from right animation for detail panel */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0.85;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideInRight {
+  animation: slideInRight 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Leaflet overrides for warm tone */
@@ -87,6 +167,3 @@
 .gt-marker-selected {
   z-index: 1000 !important;
 }
-
-
-

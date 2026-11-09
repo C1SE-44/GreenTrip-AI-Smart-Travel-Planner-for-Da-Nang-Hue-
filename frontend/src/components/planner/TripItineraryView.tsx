@@ -22,18 +22,21 @@ import {
   Eye,
   SlidersHorizontal,
   Lightbulb,
+  Coffee,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import type { Poi } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
 import { MorphStatusBadge } from '@/components/ui/MorphButton';
 import { ThreeElevationWave } from '@/components/ui/ThreeElevationWave';
+import { getTripItinerary, saveTripItinerary, type TripItinerary } from '@/services/itineraryService';
 
 export interface ItineraryStop {
   id: string;
   poiId: string;
   name: string;
   category?: string;
+  isRest?: boolean;
   image?: string;
   address?: string;
   lat?: number;
@@ -55,6 +58,7 @@ export interface DaySchedule {
   dayNumber: number;
   dateStr?: string;
   themeTitle: string;
+  assistantTip?: string;
   stops: ItineraryStop[];
 }
 
@@ -66,14 +70,74 @@ export interface TripItineraryViewProps {
 }
 
 // ─────────────────────────────────────────────
-// Default Seed Days (Đà Nẵng & Huế)
+// Khoảng cách địa lý Haversine & Thuật toán PB11
+// ─────────────────────────────────────────────
+function distanceKm(lat1?: number, lng1?: number, lat2?: number, lng2?: number): number {
+  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return 2.0;
+  const radians = (v: number) => (v * Math.PI) / 180;
+  const dLat = radians(lat2 - lat1);
+  const dLng = radians(lng2 - lng1);
+  const oLat = radians(lat1);
+  const tLat = radians(lat2);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(oLat) * Math.cos(tLat) * Math.sin(dLng / 2) ** 2;
+  return Math.round(6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)) * 10) / 10;
+}
+
+function computeGreenTransit(fromLat?: number, fromLng?: number, toLat?: number, toLng?: number): {
+  mode: 'walk' | 'bike' | 'ev_bus' | 'electric_taxi';
+  durationMinutes: number;
+  distanceMeters: number;
+  co2SavedKg: number;
+} {
+  const km = distanceKm(fromLat, fromLng, toLat, toLng);
+  const meters = Math.max(300, Math.round(km * 1000));
+  if (km <= 1.0) {
+    const minutes = Math.max(5, Math.round(km * 12) || 8);
+    return { mode: 'walk', durationMinutes: minutes, distanceMeters: meters, co2SavedKg: Math.round(km * 0.18 * 100) / 100 };
+  } else if (km <= 3.0) {
+    const minutes = Math.max(8, Math.round(km * 5) || 12);
+    return { mode: 'bike', durationMinutes: minutes, distanceMeters: meters, co2SavedKg: Math.round(km * 0.22 * 100) / 100 };
+  } else if (km <= 8.0) {
+    const minutes = Math.max(12, Math.round(km * 3) || 18);
+    return { mode: 'ev_bus', durationMinutes: minutes, distanceMeters: meters, co2SavedKg: Math.round(km * 0.25 * 100) / 100 };
+  } else {
+    const minutes = Math.max(15, Math.round(km * 2.5) || 25);
+    return { mode: 'electric_taxi', durationMinutes: minutes, distanceMeters: meters, co2SavedKg: Math.round(km * 0.28 * 100) / 100 };
+  }
+}
+
+// Sắp xếp các điểm dừng theo đường đi gần nhất (Nearest Neighbor)
+function reorderNearPois(pois: Poi[]): Poi[] {
+  if (pois.length <= 2) return pois;
+  const remaining = [...pois];
+  const ordered: Poi[] = [remaining.shift()!];
+
+  while (remaining.length > 0) {
+    const current = ordered[ordered.length - 1];
+    let closestIdx = 0;
+    let minDistance = Number.POSITIVE_INFINITY;
+
+    remaining.forEach((candidate, idx) => {
+      const d = distanceKm(current.lat, current.lng, candidate.lat, candidate.lng);
+      if (d < minDistance) {
+        minDistance = d;
+        closestIdx = idx;
+      }
+    });
+
+    ordered.push(remaining.splice(closestIdx, 1)[0]);
+  }
+  return ordered;
+}
+
+// ─────────────────────────────────────────────
+// Khởi tạo Lịch trình mặc định tích hợp PB11 Rest Planning
 // ─────────────────────────────────────────────
 function generateDefaultDays(destination: string, count: number, allPois: Poi[]): DaySchedule[] {
   const isHue = /huế|hue/i.test(destination);
   const totalDays = Math.max(1, count || 3);
   const result: DaySchedule[] = [];
 
-  // Tìm POIs theo tên hoặc danh mục
   const findPoi = (keywords: string[]) => {
     return allPois.find((p) => {
       const n = p.name.toLowerCase();
@@ -83,19 +147,20 @@ function generateDefaultDays(destination: string, count: number, allPois: Poi[])
 
   for (let d = 1; d <= totalDays; d++) {
     let theme = `Ngày ${d} • Khám phá trải nghiệm`;
+    let tip = 'Sau buổi sáng khám phá di tích & văn hóa, dành 90 phút nghỉ trưa để giữ sức cho các hoạt động thiên nhiên buổi chiều.';
     const stops: ItineraryStop[] = [];
 
     if (isHue) {
       if (d === 1) {
         theme = 'Ngày 1 • Đại Nội & Cổ tự thanh tịnh bên sông Hương';
+        tip = 'Cố Đô Huế buổi trưa nắng dịu, nên ghé quán cơm niêu hoặc cà phê nhà vườn ven sông Hương để nghỉ ngơi thư thái.';
         const p1 = findPoi(['mụ rơi', 'bún bò']) || allPois[0];
         const p2 = findPoi(['đại nội', 'hoàng cung']) || allPois[1];
         const p3 = findPoi(['thiên mụ']) || allPois[2];
-        const p4 = findPoi(['không gian xưa', 'cơm niêu']) || allPois[3];
 
         if (p1) {
           stops.push({
-            id: `stop-d1-1`,
+            id: 'stop-d1-1',
             poiId: p1.id,
             name: p1.name,
             category: p1.category,
@@ -107,12 +172,12 @@ function generateDefaultDays(destination: string, count: number, allPois: Poi[])
             endTime: '09:15',
             status: 'visited',
             estimatedCost: p1.estimatedCost || 45000,
-            transitToNext: { mode: 'walk', durationMinutes: 12, distanceMeters: 850, co2SavedKg: 0.18 },
+            transitToNext: computeGreenTransit(p1.lat, p1.lng, p2?.lat, p2?.lng),
           });
         }
         if (p2) {
           stops.push({
-            id: `stop-d1-2`,
+            id: 'stop-d1-2',
             poiId: p2.id,
             name: p2.name,
             category: p2.category,
@@ -121,15 +186,32 @@ function generateDefaultDays(destination: string, count: number, allPois: Poi[])
             lat: p2.lat,
             lng: p2.lng,
             startTime: '09:30',
-            endTime: '12:00',
+            endTime: '11:45',
             status: 'in_progress',
             estimatedCost: p2.estimatedCost || 200000,
-            transitToNext: { mode: 'ev_bus', durationMinutes: 15, distanceMeters: 3200, co2SavedKg: 0.65 },
+            transitToNext: { mode: 'walk', durationMinutes: 10, distanceMeters: 600, co2SavedKg: 0.15 },
           });
         }
+
+        // Mốc Nghỉ Trưa Thông Minh (PB11 Rest Planning)
+        stops.push({
+          id: `rest-d1`,
+          poiId: `rest-poi-d1`,
+          name: 'Nghỉ trưa & nạp năng lượng',
+          category: 'rest',
+          isRest: true,
+          address: 'Nhà hàng đặc sản Cố Đô / Quán cà phê thanh tịnh bên sông Hương',
+          startTime: '12:00',
+          endTime: '13:30',
+          status: 'planned',
+          notes: 'Ăn trưa chậm rãi và nghỉ ngơi tại quán cà phê hoặc nơi lưu trú yên tĩnh để hồi phục năng lượng.',
+          estimatedCost: 75000,
+          transitToNext: { mode: 'bike', durationMinutes: 15, distanceMeters: 3200, co2SavedKg: 0.5 },
+        });
+
         if (p3) {
           stops.push({
-            id: `stop-d1-3`,
+            id: 'stop-d1-3',
             poiId: p3.id,
             name: p3.name,
             category: p3.category,
@@ -138,98 +220,83 @@ function generateDefaultDays(destination: string, count: number, allPois: Poi[])
             lat: p3.lat,
             lng: p3.lng,
             startTime: '14:30',
-            endTime: '16:00',
+            endTime: '16:30',
             status: 'planned',
             estimatedCost: p3.estimatedCost || 0,
-            transitToNext: { mode: 'bike', durationMinutes: 20, distanceMeters: 4100, co2SavedKg: 0.8 },
           });
         }
-        if (p4) {
-          stops.push({
-            id: `stop-d1-4`,
-            poiId: p4.id,
-            name: p4.name,
-            category: p4.category,
-            image: p4.image,
-            address: p4.address || 'Huế',
-            lat: p4.lat,
-            lng: p4.lng,
-            startTime: '18:30',
-            endTime: '20:30',
-            status: 'planned',
-            estimatedCost: p4.estimatedCost || 180000,
-          });
-        }
-      } else {
-        theme = `Ngày ${d} • Di sản lăng tẩm & Làng nghề truyền thống`;
-        const p1 = findPoi(['khải định']) || allPois[4];
-        const p2 = findPoi(['thủy xuân', 'làng hương']) || allPois[5];
-        const p3 = findPoi(['trường tiền', 'sông hương']) || allPois[6];
+      } else if (d === 2) {
+        theme = 'Ngày 2 • Lăng tẩm triều Nguyễn & Đồi thông lộng gió';
+        tip = 'Cung đường lăng tẩm có nhiều bóng cây râm mát, di chuyển bằng xe đạp hoặc taxi điện Xanh SM là lựa chọn lý tưởng.';
+        const p1 = findPoi(['khải định']) || allPois[3];
+        const p2 = findPoi(['tự đức']) || allPois[4];
 
         if (p1) {
           stops.push({
-            id: `stop-d${d}-1`,
+            id: 'stop-d2-1',
             poiId: p1.id,
             name: p1.name,
             category: p1.category,
             image: p1.image,
-            address: p1.address || 'Huế',
+            address: p1.address || 'Lăng Khải Định',
             lat: p1.lat,
             lng: p1.lng,
             startTime: '08:30',
-            endTime: '10:30',
+            endTime: '11:15',
             status: 'planned',
-            estimatedCost: p1.estimatedCost || 150000,
-            transitToNext: { mode: 'electric_taxi', durationMinutes: 10, distanceMeters: 2800, co2SavedKg: 0.4 },
+            estimatedCost: 150000,
+            transitToNext: { mode: 'electric_taxi', durationMinutes: 12, distanceMeters: 4500, co2SavedKg: 0.6 },
           });
         }
+
+        stops.push({
+          id: `rest-d2`,
+          poiId: `rest-poi-d2`,
+          name: 'Nghỉ trưa & nạp năng lượng',
+          category: 'rest',
+          isRest: true,
+          address: 'Nhà hàng cơm chay An Nhiên Garden / Không gian xưa',
+          startTime: '12:00',
+          endTime: '13:30',
+          status: 'planned',
+          notes: 'Thưởng thức ẩm thực chay thanh đạm và nghỉ ngơi trước khi tham quan buổi chiều.',
+          estimatedCost: 60000,
+          transitToNext: { mode: 'bike', durationMinutes: 10, distanceMeters: 2200, co2SavedKg: 0.35 },
+        });
+
         if (p2) {
           stops.push({
-            id: `stop-d${d}-2`,
+            id: 'stop-d2-2',
             poiId: p2.id,
             name: p2.name,
             category: p2.category,
             image: p2.image,
-            address: p2.address || 'Thủy Xuân',
+            address: p2.address || 'Lăng Tự Đức',
             lat: p2.lat,
             lng: p2.lng,
-            startTime: '11:00',
-            endTime: '13:00',
+            startTime: '14:00',
+            endTime: '16:30',
             status: 'planned',
-            estimatedCost: p2.estimatedCost || 50000,
-            transitToNext: { mode: 'walk', durationMinutes: 15, distanceMeters: 900, co2SavedKg: 0.2 },
+            estimatedCost: 150000,
           });
         }
-        if (p3) {
-          stops.push({
-            id: `stop-d${d}-3`,
-            poiId: p3.id,
-            name: p3.name,
-            category: p3.category,
-            image: p3.image,
-            address: p3.address || 'Cầu Trường Tiền',
-            lat: p3.lat,
-            lng: p3.lng,
-            startTime: '18:30',
-            endTime: '21:00',
-            status: 'planned',
-            estimatedCost: p3.estimatedCost || 0,
-          });
-        }
+      } else {
+        theme = `Ngày ${d} • Thư giãn sông Hương & Mua sắm quà lưu niệm`;
+        tip = 'Ngày cuối hành trình: hãy thư thả ngắm cảnh, sắp xếp hành lý và lưu ý ra ga/sân bay đúng giờ.';
       }
     } else {
       // Đà Nẵng
       if (d === 1) {
         theme = 'Ngày 1 • Ẩm thực trung tâm, Cầu Rồng & Biển Mỹ Khê';
-        const p1 = findPoi(['mì quảng 1a', 'mì quảng', 'bà mua']) || allPois[0];
+        tip = 'Buổi trưa Đà Nẵng nên thưởng thức ẩm thực đặc sản và nghỉ trưa 90 phút trước khi tắm biển Mỹ Khê vào buổi chiều mát.';
+        const p1 = findPoi(['mì quảng', 'bà mua']) || allPois[0];
         const p2 = findPoi(['điêu khắc chăm', 'chăm']) || allPois[1];
-        const p3 = findPoi(['madame lân']) || allPois[2];
-        const p4 = findPoi(['mỹ khê', 'biển']) || allPois[3];
-        const p5 = findPoi(['cầu rồng']) || allPois[4];
+        const p3 = findPoi(['mỹ khê', 'biển']) || allPois[2];
+        const p4 = findPoi(['cầu rồng']) || allPois[3];
 
         if (p1) {
           stops.push({
-            id: `stop-d1-1`,
+            id: 'stop-d1-1',
             poiId: p1.id,
             name: p1.name,
             category: p1.category,
@@ -238,15 +305,15 @@ function generateDefaultDays(destination: string, count: number, allPois: Poi[])
             lat: p1.lat,
             lng: p1.lng,
             startTime: '08:00',
-            endTime: '09:00',
+            endTime: '09:15',
             status: 'visited',
-            estimatedCost: p1.estimatedCost || 40000,
-            transitToNext: { mode: 'walk', durationMinutes: 10, distanceMeters: 750, co2SavedKg: 0.16 },
+            estimatedCost: 45000,
+            transitToNext: computeGreenTransit(p1.lat, p1.lng, p2?.lat, p2?.lng),
           });
         }
         if (p2) {
           stops.push({
-            id: `stop-d1-2`,
+            id: 'stop-d1-2',
             poiId: p2.id,
             name: p2.name,
             category: p2.category,
@@ -254,126 +321,129 @@ function generateDefaultDays(destination: string, count: number, allPois: Poi[])
             address: p2.address || 'Bảo tàng Điêu khắc Chăm',
             lat: p2.lat,
             lng: p2.lng,
-            startTime: '09:15',
-            endTime: '11:15',
+            startTime: '09:30',
+            endTime: '11:30',
             status: 'in_progress',
-            estimatedCost: p2.estimatedCost || 60000,
-            transitToNext: { mode: 'bike', durationMinutes: 12, distanceMeters: 1800, co2SavedKg: 0.38 },
+            estimatedCost: 60000,
+            transitToNext: { mode: 'walk', durationMinutes: 10, distanceMeters: 750, co2SavedKg: 0.15 },
           });
         }
+
+        // Mốc Nghỉ Trưa Thông Minh (PB11 Rest Planning)
+        stops.push({
+          id: `rest-d1`,
+          poiId: `rest-poi-d1`,
+          name: 'Nghỉ trưa & nạp năng lượng',
+          category: 'rest',
+          isRest: true,
+          address: 'Nhà hàng ẩm thực / Quán cà phê yên tĩnh trung tâm thành phố',
+          startTime: '12:00',
+          endTime: '13:30',
+          status: 'planned',
+          notes: 'Ăn trưa chậm rãi và nghỉ ngơi tại nơi lưu trú hoặc quán cà phê yên tĩnh để nạp lại năng lượng.',
+          estimatedCost: 70000,
+          transitToNext: { mode: 'ev_bus', durationMinutes: 16, distanceMeters: 3800, co2SavedKg: 0.65 },
+        });
+
         if (p3) {
           stops.push({
-            id: `stop-d1-3`,
+            id: 'stop-d1-3',
             poiId: p3.id,
             name: p3.name,
             category: p3.category,
             image: p3.image,
-            address: p3.address || 'Đà Nẵng',
+            address: p3.address || 'Bãi biển Mỹ Khê',
             lat: p3.lat,
             lng: p3.lng,
-            startTime: '11:30',
-            endTime: '13:00',
+            startTime: '15:30',
+            endTime: '18:00',
             status: 'planned',
-            estimatedCost: p3.estimatedCost || 150000,
-            transitToNext: { mode: 'ev_bus', durationMinutes: 16, distanceMeters: 3800, co2SavedKg: 0.72 },
+            estimatedCost: 0,
+            transitToNext: computeGreenTransit(p3.lat, p3.lng, p4?.lat, p4?.lng),
           });
         }
         if (p4) {
           stops.push({
-            id: `stop-d1-4`,
+            id: 'stop-d1-4',
             poiId: p4.id,
             name: p4.name,
             category: p4.category,
             image: p4.image,
-            address: p4.address || 'Bãi biển Mỹ Khê',
+            address: p4.address || 'Cầu Rồng Đà Nẵng',
             lat: p4.lat,
             lng: p4.lng,
-            startTime: '15:30',
-            endTime: '18:00',
+            startTime: '19:30',
+            endTime: '21:30',
             status: 'planned',
-            estimatedCost: p4.estimatedCost || 0,
-            transitToNext: { mode: 'bike', durationMinutes: 15, distanceMeters: 2500, co2SavedKg: 0.52 },
+            estimatedCost: 0,
           });
         }
-        if (p5) {
-          stops.push({
-            id: `stop-d1-5`,
-            poiId: p5.id,
-            name: p5.name,
-            category: p5.category,
-            image: p5.image,
-            address: p5.address || 'Cầu Rồng',
-            lat: p5.lat,
-            lng: p5.lng,
-            startTime: '18:30',
-            endTime: '21:00',
-            status: 'planned',
-            estimatedCost: p5.estimatedCost || 0,
-          });
-        }
-      } else {
-        theme = `Ngày ${d} • Bán đảo Sơn Trà & Thắng cảnh Ngũ Hành Sơn`;
-        const p1 = findPoi(['linh ứng', 'sơn trà']) || allPois[5];
-        const p2 = findPoi(['bé mặn', 'hải sản']) || allPois[6];
-        const p3 = findPoi(['ngũ hành sơn']) || allPois[7];
+      } else if (d === 2) {
+        theme = 'Ngày 2 • Bán đảo Sơn Trà, Linh Ứng & Hoàng hôn Ngũ Hành Sơn';
+        tip = 'Bán đảo Sơn Trà có nhiều cung đường uốn lượn; ưu tiên xe buýt điện hoặc đi xe cùng nhóm để bảo vệ rừng sinh thái.';
+        const p1 = findPoi(['linh ứng', 'sơn trà']) || allPois[4];
+        const p2 = findPoi(['ngũ hành sơn', 'non nước']) || allPois[5];
 
         if (p1) {
           stops.push({
-            id: `stop-d${d}-1`,
+            id: 'stop-d2-1',
             poiId: p1.id,
             name: p1.name,
             category: p1.category,
             image: p1.image,
-            address: p1.address || 'Bán đảo Sơn Trà',
+            address: p1.address || 'Chùa Linh Ứng - Bán đảo Sơn Trà',
             lat: p1.lat,
             lng: p1.lng,
             startTime: '08:30',
-            endTime: '11:00',
+            endTime: '11:15',
             status: 'planned',
-            estimatedCost: p1.estimatedCost || 0,
-            transitToNext: { mode: 'electric_taxi', durationMinutes: 15, distanceMeters: 6200, co2SavedKg: 0.9 },
+            estimatedCost: 0,
+            transitToNext: { mode: 'ev_bus', durationMinutes: 20, distanceMeters: 5500, co2SavedKg: 0.8 },
           });
         }
+
+        stops.push({
+          id: `rest-d2`,
+          poiId: `rest-poi-d2`,
+          name: 'Nghỉ trưa & nạp năng lượng',
+          category: 'rest',
+          isRest: true,
+          address: 'Quán ăn ven biển hoặc không gian nghỉ mát dưới chân bán đảo',
+          startTime: '12:00',
+          endTime: '13:30',
+          status: 'planned',
+          notes: 'Ăn trưa hải sản tươi sống và nghỉ ngơi tránh nắng gắt giữa ngày.',
+          estimatedCost: 95000,
+          transitToNext: { mode: 'electric_taxi', durationMinutes: 18, distanceMeters: 7200, co2SavedKg: 0.9 },
+        });
+
         if (p2) {
           stops.push({
-            id: `stop-d${d}-2`,
+            id: 'stop-d2-2',
             poiId: p2.id,
             name: p2.name,
             category: p2.category,
             image: p2.image,
-            address: p2.address || 'Đà Nẵng',
+            address: p2.address || 'Danh thắng Ngũ Hành Sơn',
             lat: p2.lat,
             lng: p2.lng,
-            startTime: '11:30',
-            endTime: '13:30',
-            status: 'planned',
-            estimatedCost: p2.estimatedCost || 250000,
-            transitToNext: { mode: 'ev_bus', durationMinutes: 20, distanceMeters: 7500, co2SavedKg: 1.1 },
-          });
-        }
-        if (p3) {
-          stops.push({
-            id: `stop-d${d}-3`,
-            poiId: p3.id,
-            name: p3.name,
-            category: p3.category,
-            image: p3.image,
-            address: p3.address || 'Ngũ Hành Sơn',
-            lat: p3.lat,
-            lng: p3.lng,
             startTime: '14:30',
-            endTime: '17:00',
+            endTime: '17:30',
             status: 'planned',
-            estimatedCost: p3.estimatedCost || 40000,
+            estimatedCost: 40000,
           });
         }
+      } else {
+        theme = `Ngày ${d} • Thư giãn sinh thái & Trải nghiệm địa phương`;
+        tip = 'Ngày cuối hành trình: hãy thong thả mua quà lưu niệm, đặc sản bánh khô mè và kiểm tra lại giờ bay/tàu.';
       }
     }
 
     result.push({
       dayNumber: d,
-      dateStr: `Ngày ${d}`,
+      dateStr: `Ngày ${d} • ${destination}`,
       themeTitle: theme,
+      assistantTip: tip,
       stops,
     });
   }
@@ -381,13 +451,13 @@ function generateDefaultDays(destination: string, count: number, allPois: Poi[])
   return result;
 }
 
-export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
+export default function TripItineraryView({
   trip,
   allPois = [],
   onBack,
   onUpdateTrip,
-}) => {
-  // Lấy hoặc sinh danh sách ngày
+}: TripItineraryViewProps) {
+  // Lịch trình theo ngày
   const [days, setDays] = useState<DaySchedule[]>(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (Array.isArray((trip as any).itineraryDays) && (trip as any).itineraryDays.length > 0) {
@@ -401,9 +471,60 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
   const [showIdeasDrawer, setShowIdeasDrawer] = useState<boolean>(false);
+  const [smartPackNotification, setSmartPackNotification] = useState<string | null>(null);
+
+  // Chỉnh sửa giờ điểm dừng
   const [editingStopId, setEditingStopId] = useState<string | null>(null);
   const [editStartTime, setEditStartTime] = useState<string>('09:00');
   const [editEndTime, setEditEndTime] = useState<string>('10:30');
+
+  // Tải dữ liệu thật từ Backend (PB11 ItineraryService)
+  useEffect(() => {
+    let isCancelled = false;
+    if (trip.id) {
+      getTripItinerary(trip.id)
+        .then((savedItin) => {
+          if (isCancelled || !savedItin || !savedItin.days || savedItin.days.length === 0) return;
+          const hasStops = savedItin.days.some((d) => d.stops && d.stops.length > 0);
+          if (hasStops) {
+            const mappedDays: DaySchedule[] = savedItin.days.map((d) => ({
+              dayNumber: d.day_number,
+              dateStr: d.date || `Ngày ${d.day_number}`,
+              themeTitle: d.title || `Ngày ${d.day_number} • Khám phá ${trip.destination}`,
+              assistantTip: 'Lịch trình đã được đồng bộ tự động từ tài khoản của bạn.',
+              stops: d.stops.map((s, idx) => {
+                const poi = allPois.find((p) => p.id === s.poi_id);
+                const isRest = s.stop_type === 'rest';
+                return {
+                  id: s.stop_id,
+                  poiId: s.poi_id || `stop-${idx}`,
+                  name: s.title,
+                  category: s.category || (isRest ? 'rest' : 'di-tich'),
+                  isRest,
+                  image: poi?.image || (isRest ? undefined : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
+                  address: s.address || poi?.address || trip.destination,
+                  lat: poi?.lat,
+                  lng: poi?.lng,
+                  startTime: s.start_time || (isRest ? '12:00' : '09:00'),
+                  endTime: s.end_time || (isRest ? '13:30' : '10:30'),
+                  status: 'planned',
+                  notes: s.comment || (isRest ? 'Ăn trưa chậm rãi và nghỉ ngơi tại quán cà phê hoặc nơi lưu trú yên tĩnh để nạp lại năng lượng.' : undefined),
+                  estimatedCost: isRest ? 65000 : (poi?.estimatedCost || 0),
+                  transitToNext: computeGreenTransit(poi?.lat, poi?.lng, poi?.lat, poi?.lng),
+                };
+              }),
+            }));
+            setDays(mappedDays);
+          }
+        })
+        .catch(() => {
+          // offline fallback
+        });
+    }
+    return () => {
+      isCancelled = true;
+    };
+  }, [trip.id]);
 
   // Lưu lịch trình mỗi khi thay đổi
   const saveDays = (newDays: DaySchedule[]) => {
@@ -412,6 +533,48 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onUpdateTrip({ ...trip, itineraryDays: newDays } as any);
     }
+  };
+
+  // Lưu lên Backend khi bấm Xong
+  const handleDone = async () => {
+    try {
+      if (trip.id) {
+        const payload: TripItinerary = {
+          trip_id: trip.id,
+          title: trip.title,
+          destination: trip.destination,
+          start_date: trip.startDate || null,
+          days_count: days.length,
+          days: days.map((d) => ({
+            day_id: `${trip.id}-day-${d.dayNumber}`,
+            day_number: d.dayNumber,
+            date: d.dateStr || null,
+            title: d.themeTitle,
+            stops: d.stops.map((s, sIdx) => ({
+              stop_id: s.id,
+              poi_id: s.isRest ? null : s.poiId,
+              title: s.name,
+              city: trip.destination,
+              address: s.address || null,
+              category: s.category || null,
+              stop_type: s.isRest ? 'rest' : 'poi',
+              source: 'assistant',
+              duration_minutes: 90,
+              start_time: s.startTime,
+              end_time: s.endTime,
+              latitude: s.lat || null,
+              longitude: s.lng || null,
+              comment: s.notes || null,
+              sequence: sIdx,
+            })),
+          })),
+        };
+        await saveTripItinerary(payload).catch(() => {});
+      }
+    } catch {
+      // safe fallback
+    }
+    onBack();
   };
 
   const currentDay = useMemo(() => {
@@ -432,6 +595,7 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
   const mapPoisForDay = useMemo(() => {
     if (!currentDay) return [];
     return currentDay.stops
+      .filter((stop) => !stop.isRest && stop.category !== 'rest')
       .map((stop) => {
         const found = allPois.find((p) => p.id === stop.poiId);
         if (found) return found;
@@ -448,6 +612,7 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
             rating: 4.8,
             visitDuration: '1.5 giờ',
             ecoScore: 85,
+            isGreen: true,
           } as Poi;
         }
         return null;
@@ -462,10 +627,14 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
     const targetIdx = direction === 'up' ? stopIndex - 1 : stopIndex + 1;
     if (targetIdx < 0 || targetIdx >= stops.length) return;
 
-    // Đổi chỗ
     const temp = stops[stopIndex];
     stops[stopIndex] = stops[targetIdx];
     stops[targetIdx] = temp;
+
+    // Tái tính toán transit xanh giữa các điểm
+    for (let i = 0; i < stops.length - 1; i++) {
+      stops[i].transitToNext = computeGreenTransit(stops[i].lat, stops[i].lng, stops[i + 1].lat, stops[i + 1].lng);
+    }
 
     const newDays = days.map((d) => (d.dayNumber === currentDay.dayNumber ? { ...d, stops } : d));
     saveDays(newDays);
@@ -486,6 +655,9 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
   const handleRemoveStop = (stopId: string) => {
     if (!currentDay) return;
     const stops = currentDay.stops.filter((s) => s.id !== stopId);
+    for (let i = 0; i < stops.length - 1; i++) {
+      stops[i].transitToNext = computeGreenTransit(stops[i].lat, stops[i].lng, stops[i + 1].lat, stops[i + 1].lng);
+    }
     const newDays = days.map((d) => (d.dayNumber === currentDay.dayNumber ? { ...d, stops } : d));
     saveDays(newDays);
   };
@@ -505,7 +677,7 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
     }
 
     const newStop: ItineraryStop = {
-      id: `stop-${Date.now()}`,
+      id: `stop-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       poiId: poi.id,
       name: poi.name,
       category: poi.category,
@@ -519,17 +691,11 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
       estimatedCost: poi.estimatedCost || 50000,
     };
 
-    // Nếu điểm trước đó chưa có transit, tạo transit xanh
     const stops = [...currentDay.stops];
     if (stops.length > 0) {
       stops[stops.length - 1] = {
         ...stops[stops.length - 1],
-        transitToNext: stops[stops.length - 1].transitToNext || {
-          mode: 'walk',
-          durationMinutes: 10,
-          distanceMeters: 800,
-          co2SavedKg: 0.2,
-        },
+        transitToNext: computeGreenTransit(stops[stops.length - 1].lat, stops[stops.length - 1].lng, newStop.lat, newStop.lng),
       };
     }
     stops.push(newStop);
@@ -588,46 +754,32 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
       dayNumber: nextNum,
       dateStr: `Ngày ${nextNum}`,
       themeTitle: `Ngày ${nextNum} • Trải nghiệm mở rộng`,
-      stops: [],
+      assistantTip: 'Hãy chừa thời gian nghỉ ngơi thư thái giữa các điểm tham quan.',
+      stops: [
+        {
+          id: `rest-d${nextNum}`,
+          poiId: `rest-poi-d${nextNum}`,
+          name: 'Nghỉ trưa & nạp năng lượng',
+          category: 'rest',
+          isRest: true,
+          address: 'Quán cà phê / Không gian nghỉ ngơi yên tĩnh',
+          startTime: '12:00',
+          endTime: '13:30',
+          status: 'planned',
+          notes: 'Ăn trưa chậm rãi và nghỉ ngơi để nạp lại năng lượng.',
+          estimatedCost: 60000,
+        },
+      ],
     };
     const updated = [...days, newDay];
     saveDays(updated);
     setSelectedDayNumber(nextNum);
   };
 
-  // Helper render icon phương tiện di chuyển
-  const renderTransitIcon = (mode: string) => {
-    switch (mode) {
-      case 'walk':
-        return <Footprints size={13} className="text-emerald-700" />;
-      case 'bike':
-        return <Bike size={13} className="text-emerald-700" />;
-      case 'ev_bus':
-        return <Bus size={13} className="text-blue-600" />;
-      case 'electric_taxi':
-      default:
-        return <Car size={13} className="text-indigo-600" />;
-    }
-  };
-
-  const getTransitModeLabel = (mode: string) => {
-    switch (mode) {
-      case 'walk':
-        return 'Đi bộ';
-      case 'bike':
-        return 'Xe đạp';
-      case 'ev_bus':
-        return 'Buýt điện Danabus';
-      case 'electric_taxi':
-      default:
-        return 'Taxi điện xanh';
-    }
-  };
-
-  
-  // ─── AI SMART PACK (Agent Skills Autonomous Scheduling) ───
-  const [smartPackNotification, setSmartPackNotification] = useState<string | null>(null);
-
+  // ─────────────────────────────────────────────
+  // Cỗ máy PB11 Tối ưu hóa: AI Smart Pack
+  // Áp dụng thuật toán Haversine TSP + Cân bằng Nghỉ trưa
+  // ─────────────────────────────────────────────
   const handleAiSmartPack = () => {
     const ideasList = trip.ideas || [];
     if (ideasList.length === 0) {
@@ -638,7 +790,7 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
 
     const allIdeaPois = ideasList
       .map((id) => allPois.find((p) => p.id === id || p.name.toLowerCase() === id.toLowerCase()))
-      .filter((p): p is Poi => p !== undefined);
+      .filter((p): p is Poi => Boolean(p));
 
     if (allIdeaPois.length === 0) {
       setSmartPackNotification('Không tìm thấy dữ liệu địa điểm trong Ý tưởng.');
@@ -646,58 +798,151 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
       return;
     }
 
-    const updatedDays = days.map((day, dIdx) => {
-      const assignedPois = allIdeaPois.filter((_, idx) => idx % days.length === dIdx);
-      if (assignedPois.length === 0) return day;
+    // 1. Sắp xếp chuỗi điểm dừng theo khoảng cách gần nhau (Nearest Neighbor)
+    const orderedPois = reorderNearPois(allIdeaPois);
 
-      const newStops: ItineraryStop[] = assignedPois.map((poi, sIdx) => {
-        const startHours = [9, 11, 14, 17, 19];
-        const h = startHours[Math.min(sIdx, startHours.length - 1)];
-        const modes: ('walk' | 'bike' | 'ev_bus' | 'electric_taxi')[] = ['walk', 'bike', 'ev_bus', 'electric_taxi'];
-        const transitMode = modes[sIdx % modes.length];
+    // 2. Phân bổ đều vào các ngày
+    const totalDays = Math.max(1, days.length);
+    const capacityPerDay = Math.max(2, Math.ceil(orderedPois.length / totalDays));
 
-        return {
-          id: `smart-stop-${day.dayNumber}-${poi.id}-${Date.now()}`,
-          poiId: poi.id,
-          name: poi.name,
-          category: poi.category,
-          image: poi.image,
-          address: poi.address || poi.city,
-          lat: poi.lat,
-          lng: poi.lng,
-          startTime: `${String(h).padStart(2, '0')}:00`,
-          endTime: `${String(h + 1).padStart(2, '0')}:30`,
-          status: 'planned' as const,
-          estimatedCost: poi.estimatedCost || 50000,
-          transitToNext: {
-            mode: transitMode,
-            durationMinutes: 12 + sIdx * 3,
-            distanceMeters: 800 + sIdx * 500,
-            co2SavedKg: Math.round((0.25 + sIdx * 0.15) * 100) / 100,
-          },
-        };
+    const newDays: DaySchedule[] = days.map((day, dIdx) => {
+      const sliceStart = dIdx * capacityPerDay;
+      const dayPois = orderedPois.slice(sliceStart, sliceStart + capacityPerDay);
+      const stops: ItineraryStop[] = [];
+
+      let morningTime = '08:30';
+      let morningEndTime = '10:30';
+
+      // Điểm sáng
+      if (dayPois.length > 0) {
+        const p1 = dayPois[0];
+        stops.push({
+          id: `pack-${day.dayNumber}-1`,
+          poiId: p1.id,
+          name: p1.name,
+          category: p1.category,
+          image: p1.image,
+          address: p1.address || p1.city,
+          lat: p1.lat,
+          lng: p1.lng,
+          startTime: morningTime,
+          endTime: morningEndTime,
+          status: 'planned',
+          estimatedCost: p1.estimatedCost || 50000,
+          transitToNext: { mode: 'walk', durationMinutes: 12, distanceMeters: 750, co2SavedKg: 0.15 },
+        });
+      }
+
+      // Điểm thứ 2 sáng (nếu có nhiều)
+      if (dayPois.length >= 3) {
+        const p2 = dayPois[1];
+        stops.push({
+          id: `pack-${day.dayNumber}-2`,
+          poiId: p2.id,
+          name: p2.name,
+          category: p2.category,
+          image: p2.image,
+          address: p2.address || p2.city,
+          lat: p2.lat,
+          lng: p2.lng,
+          startTime: '10:45',
+          endTime: '11:45',
+          status: 'planned',
+          estimatedCost: p2.estimatedCost || 40000,
+          transitToNext: { mode: 'walk', durationMinutes: 10, distanceMeters: 600, co2SavedKg: 0.12 },
+        });
+      }
+
+      // Mốc Nghỉ Trưa Thông Minh chuẩn PB11
+      stops.push({
+        id: `pack-rest-${day.dayNumber}`,
+        poiId: `rest-poi-${day.dayNumber}`,
+        name: 'Nghỉ trưa & nạp năng lượng',
+        category: 'rest',
+        isRest: true,
+        address: 'Quán cà phê / Nhà hàng địa phương yên tĩnh',
+        startTime: '12:00',
+        endTime: '13:30',
+        status: 'planned',
+        notes: 'Ăn trưa chậm rãi và nghỉ ngơi tại quán cà phê hoặc nơi lưu trú yên tĩnh để nạp lại năng lượng.',
+        estimatedCost: 70000,
       });
+
+      // Điểm chiều
+      const afternoonPois = dayPois.length >= 3 ? dayPois.slice(2) : dayPois.slice(1);
+      afternoonPois.forEach((p, pIdx) => {
+        const startH = 14 + pIdx * 2;
+        stops.push({
+          id: `pack-${day.dayNumber}-afternoon-${pIdx}`,
+          poiId: p.id,
+          name: p.name,
+          category: p.category,
+          image: p.image,
+          address: p.address || p.city,
+          lat: p.lat,
+          lng: p.lng,
+          startTime: `${String(startH).padStart(2, '0')}:00`,
+          endTime: `${String(startH + 2).padStart(2, '0')}:00`,
+          status: 'planned',
+          estimatedCost: p.estimatedCost || 45000,
+        });
+      });
+
+      // Tái tính toán phương tiện xanh giữa các điểm
+      for (let i = 0; i < stops.length - 1; i++) {
+        stops[i].transitToNext = computeGreenTransit(stops[i].lat, stops[i].lng, stops[i + 1].lat, stops[i + 1].lng);
+      }
 
       return {
         ...day,
-        stops: newStops,
+        assistantTip: `Cung đường Ngày ${day.dayNumber} đã được tối ưu theo cự ly gần nhất (${dayPois.length} điểm), kèm mốc nghỉ trưa 90 phút hồi phục sức khỏe.`,
+        stops,
       };
     });
 
-    saveDays(updatedDays);
-    setSmartPackNotification(`✨ AI Smart Pack đã tự động phân bổ và tối ưu lộ trình cho ${allIdeaPois.length} địa điểm trong ${days.length} ngày!`);
+    saveDays(newDays);
+    setSmartPackNotification(`✨ AI Smart Pack đã áp dụng thuật toán tối ưu khoảng cách & bố trí khoảng nghỉ trưa cho ${allIdeaPois.length} địa điểm!`);
     setTimeout(() => setSmartPackNotification(null), 4500);
   };
 
+  const renderTransitIcon = (mode: string) => {
+    switch (mode) {
+      case 'bike':
+        return <Bike size={14} className="text-emerald-700" />;
+      case 'ev_bus':
+        return <Bus size={14} className="text-emerald-700" />;
+      case 'electric_taxi':
+        return <Car size={14} className="text-emerald-700" />;
+      case 'walk':
+      default:
+        return <Footprints size={14} className="text-emerald-700" />;
+    }
+  };
+
+  const getTransitModeLabel = (mode: string) => {
+    switch (mode) {
+      case 'bike':
+        return 'Xe đạp xanh';
+      case 'ev_bus':
+        return 'Xe buýt điện';
+      case 'electric_taxi':
+        return 'Taxi điện Xanh SM';
+      case 'walk':
+      default:
+        return 'Đi bộ';
+    }
+  };
+
   const totalDayCo2 = useMemo(() => {
-    if (!currentDay) return 2.4;
-    const sum = currentDay.stops.reduce((acc, s) => acc + (s.transitToNext?.co2SavedKg || 0.25), 0);
-    return Math.round(sum * 10) / 10;
+    if (!currentDay) return 0;
+    return Math.round(
+      currentDay.stops.reduce((acc, s) => acc + (s.transitToNext?.co2SavedKg || 0), 0) * 100
+    ) / 100;
   }, [currentDay]);
 
   return (
     <div className="flex-1 h-full bg-[#FCFAF5] flex flex-col overflow-hidden select-none animate-fadeIn">
-            {/* Smart Pack Toast Notification */}
+      {/* Smart Pack Toast Notification */}
       {smartPackNotification && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-neutral-900/95 text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-xl border border-white/10 backdrop-blur-md flex items-center gap-2 animate-bounce">
           <Sparkles size={14} className="text-amber-400 shrink-0" />
@@ -732,17 +977,18 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
           </div>
         </div>
 
-        {/* Nút hành động phải: Thêm từ Ý tưởng & Đóng */}
+        {/* Nút hành động phải: AI Smart Pack, Ý tưởng & Xong */}
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleAiSmartPack}
-            className="h-9 px-3.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-            title="Tự động gom và xếp lịch trình tối ưu theo cự ly ngắn nhất"
+            className="h-9 px-4 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+            title="Tự động sắp xếp và tối ưu lộ trình theo cự ly gần nhất kèm mốc nghỉ trưa"
           >
             <Sparkles size={13} className="text-amber-200" />
             <span className="hidden sm:inline">AI Smart Pack</span>
           </button>
+
           {trip.ideas && trip.ideas.length > 0 && (
             <button
               type="button"
@@ -757,9 +1003,10 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
               <span>Ý tưởng ({trip.ideas.length})</span>
             </button>
           )}
+
           <button
             type="button"
-            onClick={onBack}
+            onClick={handleDone}
             className="h-9 px-4 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs"
           >
             Xong
@@ -799,7 +1046,6 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
             );
           })}
 
-          {/* Nút + Thêm ngày */}
           <button
             type="button"
             onClick={handleAddNewDay}
@@ -838,6 +1084,24 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
               </div>
             </div>
           </div>
+
+          {/* BANNER TRỢ LÝ GREENTRIP GỢI Ý (PB11) */}
+          {currentDay.assistantTip && (
+            <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 text-emerald-950 text-xs flex items-start gap-2.5 shadow-2xs animate-fadeIn">
+              <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5 text-emerald-700">
+                <Sparkles size={12} />
+              </div>
+              <div className="flex-1 leading-relaxed">
+                <span className="font-bold mr-1">Trợ lý GreenTrip gợi ý:</span>
+                <span>{currentDay.assistantTip}</span>
+              </div>
+              {trip.pacingLabel && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-200/60 text-emerald-900 font-bold text-[10.5px] shrink-0">
+                  {trip.pacingLabel}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* DRAWER NHỎ: CHỌN TỪ Ý TƯỞNG CỦA CHUYẾN ĐI (NẾU MỞ) */}
           {showIdeasDrawer && (
@@ -925,158 +1189,188 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
                 const isHovered = hoveredStopId === stop.poiId;
                 const isFirst = idx === 0;
                 const isLast = idx === currentDay.stops.length - 1;
+                const isRest = stop.isRest || stop.category === 'rest';
 
                 return (
                   <React.Fragment key={stop.id}>
-                    {/* CARD ĐIỂM DỪNG */}
-                    <div
-                      onMouseEnter={() => setHoveredStopId(stop.poiId)}
-                      onMouseLeave={() => setHoveredStopId(null)}
-                      onClick={() => setSelectedStopId(stop.poiId)}
-                      className={`relative p-4 rounded-2xl bg-white border transition-all cursor-pointer ${
-                        isSelected || isHovered
-                          ? 'border-black shadow-md ring-1 ring-black/10'
-                          : 'border-gray-200/90 shadow-2xs hover:border-gray-400'
-                      } ${stop.status === 'skipped' ? 'opacity-50' : ''}`}
-                    >
-                      <div className="flex items-start gap-3.5">
-                        {/* Cột 1: Bước số + Mốc giờ */}
-                        <div className="flex flex-col items-center shrink-0">
-                          <span className="w-7 h-7 rounded-full bg-black text-white font-black text-xs flex items-center justify-center shadow-xs">
-                            {idx + 1}
-                          </span>
-                          <span className="text-[11.5px] font-bold text-gray-700 mt-1.5 whitespace-nowrap">
-                            {stop.startTime}
-                          </span>
-                          <span className="text-[10px] text-gray-400">
-                            {stop.endTime}
-                          </span>
-                        </div>
-
-                        {/* Cột 2: Thumbnail ảnh */}
-                        <img
-                          src={stop.image}
-                          alt={stop.name}
-                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover shrink-0 border border-gray-100"
-                          onError={(e) => {
-                            e.currentTarget.src =
-                              'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
-                          }}
-                        />
-
-                        {/* Cột 3: Chi tiết địa điểm */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-baseline justify-between gap-1.5">
-                            <h4
-                              className={`font-bold text-[15px] sm:text-[16px] text-gray-950 truncate ${
-                                stop.status === 'visited' ? 'line-through text-gray-500' : ''
-                              }`}
-                              title={stop.name}
-                            >
-                              {stop.name}
-                            </h4>
-
-                            {/* Badge trạng thái Morphicons với spring physics */}
-                            <div className="shrink-0 flex items-center gap-1">
-                              <MorphStatusBadge
-                                status={stop.status}
-                                onCycleStatus={() => {
-                                  const nextMap: Record<string, 'planned' | 'in_progress' | 'visited' | 'skipped'> = {
-                                    planned: 'in_progress',
-                                    in_progress: 'visited',
-                                    visited: 'planned',
-                                    skipped: 'planned',
-                                  };
-                                  handleStatusChange(stop.id, nextMap[stop.status] || 'planned');
-                                }}
-                              />
-                            </div>
+                    {/* THẺ ĐIỂM DỪNG */}
+                    {isRest ? (
+                      /* ─── THẺ MỐC NGHỈ TRƯA & PHỤC HỒI (PB11) ─── */
+                      <div
+                        className="relative p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 shadow-2xs transition-all hover:border-amber-300"
+                      >
+                        <div className="flex items-start gap-3.5">
+                          {/* Icon Cà phê & Giờ */}
+                          <div className="flex flex-col items-center shrink-0">
+                            <span className="w-7 h-7 rounded-full bg-amber-500 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                              <Coffee size={14} />
+                            </span>
+                            <span className="text-[11.5px] font-bold text-amber-900 mt-1.5 whitespace-nowrap">
+                              {stop.startTime}
+                            </span>
+                            <span className="text-[10px] text-amber-700 font-medium">
+                              {stop.endTime}
+                            </span>
                           </div>
 
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
-                            <MapPin size={12} className="text-gray-400 shrink-0" />
-                            <span className="truncate">{stop.address || 'Đà Nẵng & Huế'}</span>
-                          </div>
-
-                          {/* Hàng hành động: Sắp xếp (↑ / ↓) & Bỏ qua & Xóa */}
-                          <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100 text-xs">
-                            <div className="flex items-center gap-1">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-bold text-[15px] text-amber-950 leading-snug">
+                                    {stop.name}
+                                  </h3>
+                                  <span className="px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900 text-[10.5px] font-bold">
+                                    Khoảng nghỉ gợi ý
+                                  </span>
+                                </div>
+                                <p className="text-xs text-amber-900/80 mt-1 leading-relaxed">
+                                  {stop.notes || 'Ăn trưa chậm rãi và nghỉ ngơi tại nơi lưu trú hoặc quán cà phê yên tĩnh để nạp lại năng lượng.'}
+                                </p>
+                              </div>
                               <button
                                 type="button"
-                                disabled={isFirst}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleReorder(idx, 'up');
-                                }}
-                                className={`w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center transition ${
-                                  isFirst
-                                    ? 'text-gray-300 cursor-not-allowed'
-                                    : 'text-gray-700 hover:bg-gray-100 cursor-pointer'
-                                }`}
-                                title="Đưa lên trước"
+                                onClick={() => handleRemoveStop(stop.id)}
+                                className="text-gray-400 hover:text-rose-600 transition p-1 cursor-pointer"
+                                title="Bỏ qua mốc nghỉ này"
                               >
-                                <ArrowUp size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                disabled={isLast}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleReorder(idx, 'down');
-                                }}
-                                className={`w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center transition ${
-                                  isLast
-                                    ? 'text-gray-300 cursor-not-allowed'
-                                    : 'text-gray-700 hover:bg-gray-100 cursor-pointer'
-                                }`}
-                                title="Đưa xuống sau"
-                              >
-                                <ArrowDown size={13} />
-                              </button>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {stop.status !== 'skipped' ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(stop.id, 'skipped');
-                                  }}
-                                  className="text-gray-500 hover:text-black font-medium transition cursor-pointer"
-                                >
-                                  Bỏ qua
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(stop.id, 'planned');
-                                  }}
-                                  className="text-emerald-700 hover:text-emerald-900 font-bold transition cursor-pointer"
-                                >
-                                  Khôi phục
-                                </button>
-                              )}
-                              <span>•</span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveStop(stop.id);
-                                }}
-                                className="text-rose-600 hover:text-rose-800 transition cursor-pointer flex items-center gap-0.5"
-                                title="Xóa khỏi lịch trình ngày này"
-                              >
-                                <Trash2 size={12} />
-                                <span>Xóa</span>
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* ─── REGULAR POI STOP CARD ─── */
+                      <div
+                        onMouseEnter={() => setHoveredStopId(stop.poiId)}
+                        onMouseLeave={() => setHoveredStopId(null)}
+                        onClick={() => setSelectedStopId(stop.poiId)}
+                        className={`relative p-4 rounded-2xl bg-white border transition-all cursor-pointer ${
+                          isSelected || isHovered
+                            ? 'border-black shadow-md ring-1 ring-black/10'
+                            : 'border-gray-200/90 shadow-2xs hover:border-gray-400'
+                        } ${stop.status === 'skipped' ? 'opacity-50' : ''}`}
+                      >
+                        <div className="flex items-start gap-3.5">
+                          {/* Cột 1: Bước số + Mốc giờ */}
+                          <div className="flex flex-col items-center shrink-0">
+                            <span className="w-7 h-7 rounded-full bg-black text-white font-black text-xs flex items-center justify-center shadow-xs">
+                              {idx + 1}
+                            </span>
+                            <span className="text-[11.5px] font-bold text-gray-700 mt-1.5 whitespace-nowrap">
+                              {stop.startTime}
+                            </span>
+                            <span className="text-[10px] text-gray-400">
+                              {stop.endTime}
+                            </span>
+                          </div>
+
+                          {/* Cột 2: Thumbnail */}
+                          {stop.image && (
+                            <img
+                              src={stop.image}
+                              alt={stop.name}
+                              className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover shrink-0 border border-gray-100"
+                              onError={(e) => {
+                                e.currentTarget.src =
+                                  'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
+                              }}
+                            />
+                          )}
+
+                          {/* Cột 3: Tên, địa chỉ & hành động */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <h3 className="font-bold text-[15px] sm:text-[16px] text-gray-950 truncate leading-snug">
+                                  {stop.name}
+                                </h3>
+                                <p className="text-xs text-gray-500 truncate mt-0.5 flex items-center gap-1">
+                                  <MapPin size={11} className="shrink-0" />
+                                  <span>{stop.address}</span>
+                                </p>
+                              </div>
+
+                              {/* Trạng thái thực hiện */}
+                              <div className="shrink-0">
+                                <MorphStatusBadge
+                                  status={stop.status}
+                                  onCycleStatus={() => {
+                                    const order: ('planned' | 'in_progress' | 'visited' | 'skipped')[] = [
+                                      'planned',
+                                      'in_progress',
+                                      'visited',
+                                      'skipped',
+                                    ];
+                                    const next = order[(order.indexOf(stop.status) + 1) % order.length];
+                                    handleStatusChange(stop.id, next);
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Hàng hành động dưới: Sắp xếp thứ tự, chỉnh giờ, xóa */}
+                            <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-gray-100 text-xs">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  disabled={isFirst}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReorder(idx, 'up');
+                                  }}
+                                  className="w-6 h-6 rounded-md hover:bg-gray-100 flex items-center justify-center text-gray-500 disabled:opacity-30 cursor-pointer"
+                                  title="Di chuyển lên trước"
+                                >
+                                  <ArrowUp size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isLast}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReorder(idx, 'down');
+                                  }}
+                                  className="w-6 h-6 rounded-md hover:bg-gray-100 flex items-center justify-center text-gray-500 disabled:opacity-30 cursor-pointer"
+                                  title="Di chuyển xuống sau"
+                                >
+                                  <ArrowDown size={13} />
+                                </button>
+                              </div>
+
+                              <div className="flex items-center gap-2.5 text-xs text-gray-500">
+                                {stop.status === 'skipped' && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStatusChange(stop.id, 'planned');
+                                    }}
+                                    className="text-emerald-700 hover:text-emerald-900 font-bold transition cursor-pointer"
+                                  >
+                                    Khôi phục
+                                  </button>
+                                )}
+                                <span>•</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveStop(stop.id);
+                                  }}
+                                  className="text-rose-600 hover:text-rose-800 transition cursor-pointer flex items-center gap-0.5"
+                                  title="Xóa khỏi lịch trình ngày này"
+                                >
+                                  <Trash2 size={12} />
+                                  <span>Xóa</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* VẠCH NỐI & GỢI Ý DI CHUYỂN XANH (GREEN TRANSIT CHUẨN PB13) */}
                     {!isLast && (
@@ -1123,7 +1417,7 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
                   className="flex-1 py-3 rounded-2xl border-2 border-dashed border-gray-300 hover:border-black text-gray-700 hover:text-black font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 bg-white/60 hover:bg-white"
                 >
                   <Plus size={14} />
-                  <span>+ Thêm từ Ý tưởng hoặc Địa điểm mới</span>
+                  <span>+ Thêm địa điểm vào ngày này</span>
                 </button>
               </div>
             </div>
@@ -1162,6 +1456,4 @@ export const TripItineraryView: React.FC<TripItineraryViewProps> = ({
       </div>
     </div>
   );
-};
-
-export default TripItineraryView;
+}

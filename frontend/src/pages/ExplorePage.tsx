@@ -1,8 +1,9 @@
-import { Leaf } from 'lucide-react';
+import { Leaf, Compass } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
 import CreateTripMindtripModal from '@/components/planner/CreateTripMindtripModal';
+import ItineraryRouteMap from '@/components/planner/ItineraryRouteMap';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, categoryLabels, normalizePois, getGalleryImages, type PaginatedPoisResponse } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
@@ -210,6 +211,47 @@ function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {
   });
 }
 
+export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
+  {
+    id: 'sample-danang-hue-3d',
+    title: 'Hành trình Xanh Đà Nẵng - Huế (3 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 10 – 12 tháng 11',
+    peopleCount: 2,
+    daysCount: 3,
+    tags: ['Đà Nẵng & Huế', '3 Ngày', 'Lộ trình tối ưu OSRM', 'Xanh'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+    ideas: [
+      '029a28df-b091-49d9-a911-738572c72464',
+      'd58fe815-4aa1-45b2-831a-11b97e130918',
+      'bfed964e-ff10-44f4-8654-2136245ab062',
+    ],
+  },
+  {
+    id: 'sample-danang-hue-5d',
+    title: 'Đà Nẵng - Huế Trọn Vẹn (5 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 15 – 19 tháng 11',
+    peopleCount: 2,
+    daysCount: 5,
+    tags: ['Đà Nẵng & Huế', '5 Ngày', 'Di sản & Biển xanh'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'sample-central-vietnam-7d',
+    title: 'Khám phá Miền Trung Huyền Diệu (7 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 20 – 26 tháng 11',
+    peopleCount: 4,
+    daysCount: 7,
+    tags: ['Miền Trung', '7 Ngày', 'Tour gia đình'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800&auto=format&fit=crop&q=80',
+  },
+];
+
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'explore' | 'trips' | 'saved' }) {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'explore' | 'trips' | 'saved'>(initialView);
@@ -223,24 +265,17 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [initialView]);
 
   const [userTrips, setUserTrips] = useState<UserTrip[]>(() => {
+    let savedTrips: UserTrip[] = [];
     try {
       const raw = localStorage.getItem('greentrip_user_trips');
-      if (raw) return JSON.parse(raw);
+      if (raw) savedTrips = JSON.parse(raw);
     } catch (e) {
       console.error(e);
     }
-    return [
-      {
-        id: 'trip-danang-default',
-        title: 'Chuyến đi Đà Nẵng, tháng 11 năm 2026',
-        destination: 'Đà Nẵng',
-        startDate: 'Ngày 2 – 5 tháng 11',
-        peopleCount: 1,
-        tags: ['Đà Nẵng', 'Ngày 2 – 5 tháng 11', 'Ai', 'Ngân sách'],
-        createdAt: '2026-11-01',
-        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
-      },
-    ];
+
+    const savedIds = new Set(savedTrips.map((t) => t.id));
+    const missingSamples = SEEDED_SAMPLE_TRIPS.filter((s) => !savedIds.has(s.id));
+    return [...savedTrips, ...missingSamples];
   });
 
   useEffect(() => {
@@ -979,6 +1014,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         activeOverviewTrip ? (
           <TripOverviewView
             trip={activeOverviewTrip}
+            allPois={allPois}
             onBack={() => setActiveOverviewTrip(null)}
             onOpenItineraryDetails={() => setSelectedTripForDetails(activeOverviewTrip)}
             onUpdateTrip={(updatedTrip) => {
@@ -1607,6 +1643,52 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
             setIsCreateTripModalOpen(false);
           }}
         />
+      )}
+
+      {/* 6. Itinerary Route Map Details Modal with Numbered Markers */}
+      {selectedTripForDetails && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 lg:p-6 animate-fadeIn"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-3xl w-full max-w-7xl h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-neutral-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 bg-neutral-50/90">
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg shadow-xs">
+                  📍
+                </span>
+                <div>
+                  <h2 className="text-lg font-bold text-neutral-900 tracking-tight">
+                    {selectedTripForDetails.title || 'Lịch trình chi tiết & Lộ trình di chuyển'}
+                  </h2>
+                  <p className="text-xs text-neutral-500">
+                    Bản đồ điểm đến đánh số thứ tự (Numbered Markers) & Lộ trình tối ưu theo từng ngày
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTripForDetails(null)}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-neutral-200/80 text-neutral-600 transition cursor-pointer"
+                aria-label="Đóng bản đồ lộ trình"
+              >
+                <i className="ph ph-x text-lg"></i>
+              </button>
+            </div>
+
+            {/* Modal Body: ItineraryRouteMap */}
+            <div className="flex-1 overflow-hidden p-4 bg-neutral-100">
+              <ItineraryRouteMap
+                itineraryId={selectedTripForDetails.id}
+                totalDays={selectedTripForDetails.daysCount || selectedTripForDetails.flexibleDays || 3}
+                className="h-full"
+                showStopsList={true}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

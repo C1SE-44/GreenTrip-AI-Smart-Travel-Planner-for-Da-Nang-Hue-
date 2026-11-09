@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client';
 import ExplanationModal from '../src/components/poi/ExplanationModal';
 import PoiCard from '../src/components/poi/PoiCard';
 import TripParametersForm from '../src/components/planner/TripParametersForm';
+import ItineraryEditor from '../src/components/planner/ItineraryEditor';
+import type { UserTrip } from '../src/pages/ExplorePage';
 import { pois } from '../src/data/pois';
 import '../src/index.css';
 
@@ -12,12 +14,27 @@ const B = '22222222-2222-4222-8222-222222222222';
 const params = new URLSearchParams(location.search);
 const mode = params.get('mode') || 'success';
 const requests: string[] = [];
-Object.assign(window, { explanationRequests: requests, cardClicks: 0 });
+const itineraryRequests: Array<{ method: string; payload?: Record<string, unknown> }> = [];
+Object.assign(window, { explanationRequests: requests, itineraryRequests, cardClicks: 0 });
 let attempts = 0;
+let savedItinerary: Record<string, unknown> | null = null;
 
 // Browser fixtures exercise the real components without contacting production services.
-window.fetch = async (input) => {
+window.fetch = async (input, init) => {
   const url = String(input);
+  if (url.includes('/itinerary')) {
+    const method = init?.method || 'GET';
+    if (method === 'PUT') {
+      const payload = JSON.parse(String(init?.body || '{}')) as Record<string, unknown>;
+      itineraryRequests.push({ method, payload });
+      savedItinerary = payload;
+      return Response.json({ ...payload, updated_at: '2026-11-09T10:00:00Z' });
+    }
+    itineraryRequests.push({ method });
+    return savedItinerary
+      ? Response.json({ ...savedItinerary, updated_at: '2026-11-09T10:00:00Z' })
+      : Response.json({ detail: 'Chưa có lịch trình được lưu.' }, { status: 404 });
+  }
   requests.push(url);
   if (url.includes('explanation-facts')) {
     attempts++;
@@ -53,6 +70,25 @@ function Harness() {
   const [id, setId] = useState(A);
   const [open, setOpen] = useState(false);
   if (params.get('component') === 'planner') return <TripParametersForm />;
+  if (params.get('component') === 'itinerary') {
+    const trip: UserTrip = {
+      id: 'pb11-browser-trip', title: 'Kiểm thử trợ lý lịch trình', destination: 'Đà Nẵng & Huế',
+      daysCount: 1, peopleCount: 2, createdAt: '2026-11-09', pacingLevel: 'Fast', pacingLabel: '⚡ Dày đặc',
+      itineraryOutline: [{
+        day: 1, theme: 'Khám phá Đà Nẵng', focus_city: 'Đà Nẵng', suggested_activities: [],
+        rest_periods: [
+          { time_range: '09:30–10:00', activity: 'Dừng chân uống nước.', duration_minutes: 30 },
+          { time_range: '12:00–14:00', activity: 'Ăn trưa chậm rãi và nghỉ ngơi.', duration_minutes: 90 },
+        ],
+        assistant_tip: 'Giữ thời gian nghỉ để không phải di chuyển liên tục.',
+      }],
+    };
+    const customIdeas = [
+      { ...pois[0], id: 'custom-Cafe-Yen', name: 'Cà phê Yên', city: 'Đà Nẵng' as const, address: 'Đường Hải Phòng', lat: Number.NaN, lng: Number.NaN },
+      { ...pois[0], id: 'custom-Banh-Mi', name: 'Bánh mì Cô Ba', city: 'Đà Nẵng' as const, address: 'Đường Lê Duẩn', lat: Number.NaN, lng: Number.NaN },
+    ];
+    return <ItineraryEditor trip={trip} ideas={customIdeas} onClose={() => undefined} onAddIdea={() => undefined} />;
+  }
   if (params.get('component') === 'card') return <PoiCard
     poi={{ ...pois[0], id: A, name: 'POI A', image: '' }}
     onClick={() => Object.assign(window, { cardClicks: Number(Reflect.get(window, 'cardClicks')) + 1 })}

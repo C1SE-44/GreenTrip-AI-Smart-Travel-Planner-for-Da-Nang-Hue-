@@ -7,6 +7,9 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+import os
+import pytest
+
 from scripts.upsert_nature_heritage_phase2 import (
     PHASE2_JSON_PATH,
     compute_nature_heritage_green_score,
@@ -131,6 +134,10 @@ def test_matching_preserves_existing_poi_and_isolates_cities() -> None:
     assert match_existing_poi(cand_new, existing) is None
 
 
+@pytest.mark.skipif(
+    not os.getenv("DATABASE_URL"),
+    reason="Requires live PostgreSQL connection (DATABASE_URL)",
+)
 def test_dry_run_idempotency_against_db() -> None:
     """Verifies that running dry-run does not crash and processes all 97 items."""
     result = upsert_nature_heritage_phase2(live_commit=False)

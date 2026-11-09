@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -183,6 +183,12 @@ class MatchedPOI(BaseModel):
     image_url: str | None = Field(default=None, description="Ảnh đại diện địa điểm")
 
 
+class RestPeriod(BaseModel):
+    time_range: str = Field(..., description="Khung giờ nghỉ gợi ý, ví dụ 12:00–14:00")
+    activity: str = Field(..., description="Hoạt động nghỉ ngơi hoặc phục hồi sức khỏe")
+    duration_minutes: int = Field(..., ge=10, description="Thời lượng nghỉ gợi ý tính bằng phút")
+
+
 class DailyItineraryOutline(BaseModel):
     day: int = Field(..., description="Ngày thứ N trong lịch trình")
     theme: str = Field(..., description="Chủ đề hoạt động trong ngày")
@@ -191,6 +197,127 @@ class DailyItineraryOutline(BaseModel):
         default_factory=list,
         description="Các hoạt động tiêu biểu đề xuất cho ngày này"
     )
+    rest_periods: list[RestPeriod] = Field(
+        default_factory=list,
+        description="Các khoảng nghỉ gợi ý để tránh lịch trình quá dày"
+    )
+    assistant_tip: str = Field(
+        default="",
+        description="Lời khuyên cá nhân hóa giúp du khách cân bằng khám phá và nghỉ ngơi"
+    )
+
+
+class ItineraryStop(BaseModel):
+    stop_id: str = Field(min_length=1, max_length=100)
+    poi_id: str | None = Field(default=None, max_length=100)
+    title: str = Field(min_length=1, max_length=200)
+    city: str | None = None
+    address: str | None = Field(default=None, max_length=500)
+    category: str | None = None
+    stop_type: Literal["poi", "rest", "custom"] = "poi"
+    source: Literal["idea", "manual", "assistant"] = "idea"
+    sequence: int = Field(ge=0)
+    duration_minutes: int | None = Field(default=None, gt=0, le=1440)
+    start_time: str | None = None
+    end_time: str | None = None
+    comment: str | None = Field(default=None, max_length=2000)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+
+    @field_validator("start_time", "end_time")
+    @classmethod
+    def validate_time(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        try:
+            parsed = datetime.strptime(value, "%H:%M")
+        except ValueError as error:
+            raise ValueError("Giờ cần có định dạng HH:MM.") from error
+        if parsed.strftime("%H:%M") != value:
+            raise ValueError("Giờ cần có định dạng HH:MM.")
+        return value
+
+    @model_validator(mode="after")
+    def validate_time_order(self) -> "ItineraryStop":
+        if self.start_time and self.end_time and self.end_time <= self.start_time:
+            raise ValueError("Giờ kết thúc phải sau giờ bắt đầu.")
+        return self
+
+
+class ItineraryDay(BaseModel):
+    day_id: str = Field(min_length=1, max_length=100)
+    day_number: int = Field(ge=1, le=31)
+    date: str | None = None
+    title: str = Field(default="", max_length=200)
+    stops: list[ItineraryStop] = Field(default_factory=list)
+
+    @field_validator("date")
+    @classmethod
+    def validate_date(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            parsed = date.fromisoformat(value)
+        except ValueError as error:
+            raise ValueError("Ngày trong lịch trình cần có định dạng YYYY-MM-DD.") from error
+        if parsed.isoformat() != value:
+            raise ValueError("Ngày trong lịch trình cần có định dạng YYYY-MM-DD.")
+        return value
+
+
+class TripItinerarySyncRequest(BaseModel):
+    trip_id: str = Field(min_length=1, max_length=100)
+    title: str = Field(min_length=1, max_length=200)
+    destination: str = Field(min_length=1, max_length=200)
+    start_date: str | None = None
+    days_count: int = Field(ge=1, le=31)
+    days: list[ItineraryDay] = Field(max_length=31)
+
+    @field_validator("start_date")
+    @classmethod
+    def validate_start_date(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            parsed = date.fromisoformat(value)
+        except ValueError as error:
+            raise ValueError("Ngày bắt đầu cần có định dạng YYYY-MM-DD.") from error
+        if parsed.isoformat() != value:
+            raise ValueError("Ngày bắt đầu cần có định dạng YYYY-MM-DD.")
+        return value
+
+    @model_validator(mode="after")
+    def validate_days(self) -> "TripItinerarySyncRequest":
+        numbers = [day.day_number for day in self.days]
+        if len(numbers) != self.days_count or len(set(numbers)) != self.days_count:
+            raise ValueError("Lịch trình phải có đúng một bản ghi cho mỗi ngày của chuyến đi.")
+        if set(numbers) != set(range(1, self.days_count + 1)):
+            raise ValueError("Số thứ tự ngày phải liên tục từ ngày 1.")
+        day_ids = [day.day_id for day in self.days]
+        if len(day_ids) != len(set(day_ids)):
+            raise ValueError("Mã ngày trong lịch trình không được trùng nhau.")
+        stop_ids = [stop.stop_id for day in self.days for stop in day.stops]
+        if len(stop_ids) != len(set(stop_ids)):
+            raise ValueError("Mã hoạt động trong lịch trình không được trùng nhau.")
+        for day in self.days:
+            sequences = [stop.sequence for stop in day.stops]
+            if sorted(sequences) != list(range(len(day.stops))):
+                raise ValueError("Thứ tự hoạt động trong mỗi ngày phải liên tục từ 0.")
+            timed_stops = sorted(
+                (stop for stop in day.stops if stop.start_time and stop.end_time),
+                key=lambda stop: stop.start_time or "",
+            )
+            for previous, current in zip(timed_stops, timed_stops[1:]):
+                if current.start_time and previous.end_time and current.start_time < previous.end_time:
+                    raise ValueError(
+                        f"Ngày {day.day_number} có khung giờ bị trùng giữa "
+                        f"'{previous.title}' và '{current.title}'."
+                    )
+        return self
+
+
+class TripItineraryResponse(TripItinerarySyncRequest):
+    updated_at: datetime | None = None
 
 
 class ValidatedTripData(BaseModel):

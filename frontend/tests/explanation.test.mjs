@@ -16,7 +16,7 @@ const browserPath = process.env.CHROME_PATH || [
 ].find(existsSync);
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-test('POI explanations in a real Chromium browser', { timeout: 180000 }, async (t) => {
+test('GreenTrip planner flows in a real Chromium browser', { timeout: 180000 }, async (t) => {
   assert.ok(browserPath, 'Set CHROME_PATH to a local Chromium executable');
   const profile = await mkdtemp(path.join(tmpdir(), 'greentrip-explanation-'));
   const server = await createServer({
@@ -143,6 +143,45 @@ test('POI explanations in a real Chromium browser', { timeout: 180000 }, async (
       await waitFor('!!document.querySelector("[role=dialog]") && document.querySelector("[role=dialog]").innerText.includes("FACT B")');
       assert.ok(await evaluate('!document.querySelector("[role=dialog]").innerText.includes("SNIPPET A")'));
       assert.ok(await evaluate('window.explanationRequests.some(url => url.includes("22222222-2222-4222-8222-222222222222/explanation-facts"))'));
+    });
+    await t.test('PB11 preserves custom stops, independent rest periods and edits on repeat optimization', async () => {
+      await navigate('component=itinerary');
+      await waitFor('document.body.innerText.includes("Tối ưu lịch") && window.itineraryRequests.some(request => request.method === "GET")');
+      await waitFor('window.itineraryRequests.some(request => request.method === "PUT")');
+      assert.ok(await evaluate('document.body.innerText.includes("Nghỉ gợi ý 09:30–10:00") && document.body.innerText.includes("Nghỉ gợi ý 12:00–14:00")'));
+
+      await evaluate('[...document.querySelectorAll("button")].filter(button => button.textContent.includes("Thêm khoảng nghỉ vào lịch"))[1].click()');
+      await waitFor('window.itineraryRequests.some(request => request.payload?.days?.[0]?.stops?.some(stop => stop.start_time === "12:00"))');
+      assert.ok(await evaluate('[...document.querySelectorAll("button")].some(button => button.textContent.includes("Thêm khoảng nghỉ vào lịch"))'), 'Morning rest remains addable after lunch is scheduled');
+
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Tối ưu lịch")).click()');
+      await waitFor('document.body.innerText.includes("Đã bổ sung 2 địa điểm và 1 khoảng nghỉ")');
+      await waitFor('window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.filter(stop => stop.stop_type === "custom").length === 2 && window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.filter(stop => stop.stop_type === "rest").length === 2');
+
+      await evaluate(`(() => {
+        const city = [...document.querySelectorAll('label')].find(label => label.textContent.includes('Thành phố'))?.querySelector('select');
+        const address = document.querySelector('input[placeholder="Thêm địa chỉ"]');
+        const comment = document.querySelector('textarea[placeholder="Thêm ghi chú cho địa điểm này…"]');
+        const setValue = (element, value, constructor, eventName) => {
+          Object.getOwnPropertyDescriptor(constructor.prototype, 'value').set.call(element, value);
+          element.dispatchEvent(new Event(eventName, { bubbles: true }));
+        };
+        setValue(city, 'Huế', HTMLSelectElement, 'change');
+        setValue(address, 'Khu vực kiểm thử', HTMLInputElement, 'input');
+        setValue(comment, 'Ghé vào buổi sáng', HTMLTextAreaElement, 'input');
+      })()`);
+      await waitFor('window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.some(stop => stop.stop_type === "custom" && stop.city === "Huế" && stop.address === "Khu vực kiểm thử" && stop.comment === "Ghé vào buổi sáng")');
+
+      const previousWrites = await evaluate('window.itineraryRequests.filter(request => request.method === "PUT").length');
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Tối ưu lịch")).click()');
+      await waitFor(`window.itineraryRequests.filter(request => request.method === "PUT").length > ${previousWrites}`);
+      assert.equal(await evaluate('window.itineraryRequests.at(-1).payload.days[0].stops.filter(stop => stop.stop_type === "custom").length'), 2);
+      assert.equal(await evaluate('window.itineraryRequests.at(-1).payload.days[0].stops.filter(stop => stop.stop_type === "rest").length'), 2);
+      for (const width of [320, 1280]) {
+        await send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false });
+        assert.ok(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), `PB11 reflows without horizontal overflow at ${width}px`);
+      }
+      assert.deepEqual(errors, [], 'PB11 itinerary interactions have no uncaught browser errors');
     });
     await t.test('popup reflows at 320px and 1280px', async () => {
       await open('success');

@@ -12,6 +12,7 @@ from app.trips.schemas import (
     DailyItineraryOutline,
     DestinationType,
     MatchedPOI,
+    RestPeriod,
     TripParametersRequest,
     ValidatedTripData,
 )
@@ -279,6 +280,7 @@ def generate_daily_itinerary_outline(
     destination: str,
     days: int,
     preferences: list[str],
+    pacing_level: str = "Balanced",
 ) -> list[DailyItineraryOutline]:
     """Generates day-by-day outline matching user's exact duration and destination."""
     outlines: list[DailyItineraryOutline] = []
@@ -334,11 +336,46 @@ def generate_daily_itinerary_outline(
                 "Thu xếp hành lý, check-out và di chuyển ra sân bay / ga tàu.",
             ]
 
+        rest_periods = [
+            RestPeriod(
+                time_range="12:00–14:00",
+                activity="Ăn trưa chậm rãi và nghỉ tại nơi lưu trú hoặc quán cà phê yên tĩnh.",
+                duration_minutes=90,
+            )
+        ]
+        if pacing_level == "Fast":
+            rest_periods.insert(
+                0,
+                RestPeriod(
+                    time_range="09:30–10:00",
+                    activity="Dừng chân uống nước, tránh di chuyển liên tục giữa các điểm.",
+                    duration_minutes=30,
+                ),
+            )
+            assistant_tip = (
+                "Lịch trình của bạn có nhịp độ dày; hãy giữ khoảng nghỉ trưa và bỏ bớt một điểm nếu "
+                "thời gian di chuyển kéo dài."
+            )
+        elif pacing_level == "Relaxed" or "relaxation" in preferences:
+            assistant_tip = (
+                "Giữ buổi chiều linh hoạt để nghỉ tại nơi lưu trú hoặc thư giãn gần điểm tham quan; "
+                "không cần cố hoàn thành mọi gợi ý."
+            )
+        else:
+            assistant_tip = (
+                "Sau buổi sáng khám phá, dành thời gian nghỉ trưa trước khi tiếp tục hoạt động buổi chiều."
+            )
+
+        if d == days:
+            assistant_tip += " Ưu tiên thời gian thu xếp hành lý và ra ga hoặc sân bay đúng giờ."
+
         outlines.append(DailyItineraryOutline(
             day=d,
             theme=theme,
             focus_city=city,
             suggested_activities=activities,
+            rest_periods=rest_periods,
+            assistant_tip=assistant_tip,
         ))
 
     return outlines
@@ -349,6 +386,7 @@ def generate_smart_recommendations(
     days: int,
     budget_tier: BudgetTier,
     preferences: list[str],
+    pacing_level: str = "Balanced",
 ) -> list[str]:
     recs: list[str] = []
 
@@ -367,6 +405,22 @@ def generate_smart_recommendations(
         recs.append(f"Hành trình {days} ngày: Thời lượng lý tưởng để cân bằng giữa khám phá di sản và thư giãn.")
     else:
         recs.append(f"Hành trình {days} ngày: Rất thích hợp để kết hợp khám phá chiều sâu các làng nghề truyền thống và danh thắng sinh thái.")
+
+    if pacing_level == "Fast":
+        recs.append(
+            "Trợ lý GreenTrip khuyên bạn giữ ít nhất 90 phút nghỉ trưa mỗi ngày và để một khoảng đệm "
+            "giữa các điểm; có thể bỏ bớt điểm nếu thời gian di chuyển phát sinh."
+        )
+    elif pacing_level == "Relaxed" or "relaxation" in preferences:
+        recs.append(
+            "GreenTrip ưu tiên nhịp đi chậm: nghỉ trưa khoảng 90 phút và chừa buổi chiều linh hoạt "
+            "để thư giãn hoặc trải nghiệm sâu tại một khu vực."
+        )
+    else:
+        recs.append(
+            "GreenTrip gợi ý nghỉ trưa khoảng 90 phút mỗi ngày và dành thời gian di chuyển giữa các điểm "
+            "để lịch trình cân bằng hơn."
+        )
 
     # Budget tier advice
     if budget_tier == BudgetTier.BUDGET:
@@ -429,6 +483,7 @@ def validate_and_process_trip_parameters(params: TripParametersRequest) -> Valid
         days=params.days,
         budget_tier=budget_tier,
         preferences=params.preferences,
+        pacing_level=pacing_level,
     )
 
     matched_pois = match_real_pois_from_db(
@@ -441,6 +496,7 @@ def validate_and_process_trip_parameters(params: TripParametersRequest) -> Valid
         destination=params.destination,
         days=params.days,
         preferences=params.preferences,
+        pacing_level=pacing_level,
     )
 
     return ValidatedTripData(

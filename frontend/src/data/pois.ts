@@ -85,6 +85,7 @@ export interface Poi {
   gallery?: string[];
   description: string;
   rating: number;
+  matchScore?: number;
   visitDuration: string;
   ecoScore: number;
   openHours?: string | null;
@@ -482,7 +483,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any): Poi | null {
   const statusOpenHours = typeof item.opening_hours?.status_text === 'string' ? item.opening_hours.status_text.trim() : '';
 
   return {
-    id: String(item.id),
+    id: String(item.id ?? (item as any).poi_id ?? ''),
     name: rawName,
     cleanName,
     cleanTitle,

@@ -128,21 +128,26 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
     conn.commit()
 
 
+_POSTGRES_AVAILABLE: bool = True
+
+
 def get_connection() -> Any:
     """
     Kết nối đến CSDL PostgreSQL nếu được cấu hình DATABASE_URL và khả dụng.
     Nếu không có PostgreSQL (hoặc người dùng không bật Docker),
     hệ thống tự động sử dụng CSDL SQLite cục bộ giúp tính năng Đăng nhập/Đăng ký hoạt động mượt mà.
     """
+    global _POSTGRES_AVAILABLE
     settings = get_settings()
 
-    if settings.DATABASE_URL:
+    if settings.DATABASE_URL and _POSTGRES_AVAILABLE:
         try:
             return connect(
                 settings.DATABASE_URL,
                 connect_timeout=3,
             )
         except Exception as e:
+            _POSTGRES_AVAILABLE = False
             logger.warning(
                 "Không thể kết nối đến PostgreSQL từ DATABASE_URL (%s). Tự động chuyển sang CSDL SQLite cục bộ.",
                 e,

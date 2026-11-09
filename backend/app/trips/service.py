@@ -387,7 +387,10 @@ def generate_smart_recommendations(
 
 def validate_and_process_trip_parameters(params: TripParametersRequest) -> ValidatedTripData:
     daily_budget = round(params.total_budget / (params.days * params.num_people), 2)
-    budget_tier = determine_budget_tier(daily_budget)
+    budget_tier = params.budget_tier if params.budget_tier is not None else determine_budget_tier(daily_budget)
+    dining_tier = params.dining_tier or budget_tier
+    lodging_tier = params.lodging_tier or budget_tier
+    activities_tier = params.activities_tier or budget_tier
 
     points_per_day = len(params.preferences) / params.days
     if points_per_day <= 3:
@@ -450,6 +453,9 @@ def validate_and_process_trip_parameters(params: TripParametersRequest) -> Valid
         total_budget=params.total_budget,
         daily_budget_per_person=daily_budget,
         budget_tier=budget_tier,
+        dining_tier=dining_tier,
+        lodging_tier=lodging_tier,
+        activities_tier=activities_tier,
         pacing_level=pacing_level,
         pacing_label=pacing_label,
         pacing_desc=pacing_desc,
@@ -476,12 +482,17 @@ from app.trips.handlers.swap_meal_handler import handle_swap_meal
 from app.trips.handlers.rainy_day_handler import handle_rainy_day
 from app.trips.handlers.night_eco_handler import handle_night_eco
 from app.trips.handlers.late_adjust_handler import handle_late_adjust
+from app.trips.handlers.poi_advice_handler import handle_poi_advice
+from app.trips.handlers.culinary_guide_handler import handle_culinary_guide
+from app.trips.handlers.cafe_culture_handler import handle_cafe_culture
+from app.trips.handlers.travel_tips_handler import handle_travel_tips
+from app.trips.handlers.smart_concierge_handler import handle_smart_concierge
 
 
 def detect_copilot_intent(message: str) -> str:
     msg = message.strip().lower()
     
-    # Check late schedule / pacing adjustment intent (Live Trip Adjuster)
+    # 1. Late schedule / pacing adjustment intent (Live Trip Adjuster)
     late_keywords = [
         "trễ giờ", "muộn giờ", "chậm giờ", "không kịp", "cháy giáo án", 
         "lỡ giờ", "rút gọn", "tối ưu lại", "tối ưu chiều", "gọn hơn", 
@@ -490,16 +501,37 @@ def detect_copilot_intent(message: str) -> str:
     if any(k in msg for k in late_keywords):
         return "late_schedule_adjust"
 
-    # Check vegetarian meal swap intent
+    # 2. Vegetarian meal swap intent
     veg_keywords = [
-        "chay", "quán chay", "ăn chay", "đổi quán", "đổi món", "đổi trưa", 
-        "đổi tối", "đổi bữa", "thực dưỡng", "vegan", "vegetarian", "cơm chay",
-        "thanh đạm", "thanh tịnh", "đồ chay", "món chay"
+        "quán chay", "ăn chay", "cơm chay", "thực dưỡng", "vegan", 
+        "vegetarian", "đồ chay", "món chay", "thanh đạm", "thanh tịnh",
+        "đổi quán chay", "đổi sang quán chay"
     ]
     if any(k in msg for k in veg_keywords):
         return "swap_meal_vegetarian"
-        
-    # Check rainy day intent
+
+    # 3. Culinary & Local Dining Guide (Quán ăn, Đặc sản, Món ngon bản địa)
+    culinary_keywords = [
+        "quán ăn", "quán ngon", "ăn ngon", "đặc sản", "ăn gì", "món ngon",
+        "quán nhậu", "hải sản", "bún chả cá", "mì quảng", "bánh tráng cuốn",
+        "bánh xèo", "bò thui", "bún bò", "cơm hến", "bánh bèo", "bánh nậm",
+        "bánh lọc", "bánh ép", "nem lụi", "ăn trưa", "ăn tối", "ăn sáng",
+        "ẩm thực", "nhà hàng", "quán cơm", "điểm tâm", "món ăn", "chợ hải sản",
+        "chè sầu", "ăn vặt", "ốc"
+    ]
+    if any(k in msg for k in culinary_keywords):
+        return "culinary_guide"
+
+    # 4. Cafe, Coffee Culture & Chill Spaces
+    cafe_keywords = [
+        "quán cafe", "cà phê", "cafe", "coffee", "uống trà", "trà quán",
+        "specialty coffee", "cà phê muối", "uống nước", "chill", "sống ảo",
+        "view biển", "view sông hàn", "ngắm hoàng hôn", "làm việc", "workspace"
+    ]
+    if any(k in msg for k in cafe_keywords):
+        return "cafe_culture"
+
+    # 5. Rainy day / Indoor alternatives
     rain_keywords = [
         "mưa", "trời mưa", "mưa to", "mưa bão", "thời tiết xấu", 
         "trong nhà", "có mái che", "ướt", "bảo tàng", "rain", "rainy"
@@ -507,14 +539,42 @@ def detect_copilot_intent(message: str) -> str:
     if any(k in msg for k in rain_keywords):
         return "rainy_day_alternatives"
 
-    # Check night eco activities intent
+    # 6. POI advice / landmark feasibility inquiry intent
+    advice_keywords = [
+        "có nên đi", "có nên ghé", "có nên tham quan", "có gì hay", 
+        "có đáng đi", "có nên đến", "tôi có nên đi", "có nên chọn",
+        "đáng đi không", "có đẹp không", "chơi gì ở", "có gì đẹp",
+        "thế nào", "review", "kinh nghiệm đi"
+    ]
+    landmark_names = [
+        "sơn trà", "cầu rồng", "nam sơn", "linh ứng", "ngũ hành sơn",
+        "bàn cờ", "bà nà", "đại nội", "thiên mụ", "khải định",
+        "tự đức", "từ hiếu", "tam giang", "mỹ khê", "hải vân"
+    ]
+    if any(k in msg for k in advice_keywords):
+        return "poi_advice"
+    if any(lm in msg for lm in landmark_names) and any(q in msg for q in ["không", "sao", "nên", "thế nào", "?", "gì"]):
+        return "poi_advice"
+
+    # 7. Night eco activities intent
     night_keywords = [
         "buổi tối", "tối nay", "về đêm", "ban đêm", "đi chơi đêm", 
-        "hoạt động đêm", "trải nghiệm đêm", "ngắm cảnh đêm", "cầu rồng", 
+        "hoạt động đêm", "trải nghiệm đêm", "ngắm cảnh đêm", 
         "phun lửa", "sông hàn", "ca huế", "sông hương", "chợ đêm", "night"
     ]
     if any(k in msg for k in night_keywords):
         return "night_eco_activities"
+
+    # 8. Travel Tips, Budget, Transport & Souvenirs
+    tips_keywords = [
+        "chi phí", "ngân sách", "bao nhiêu tiền", "tiết kiệm", "kinh nghiệm",
+        "thời tiết", "mùa nào", "chuẩn bị gì", "hành lý", "mua quà", "làm quà",
+        "quà lưu niệm", "chợ hàn", "chợ cồn", "chợ đông ba", "phương tiện",
+        "di chuyển", "xe buýt", "xe bus", "taxi điện", "thuê xe", "xe máy",
+        "gia đình", "trẻ em", "em bé", "người già", "người lớn tuổi"
+    ]
+    if any(k in msg for k in tips_keywords):
+        return "travel_tips_budget"
         
     return "general_chat"
 
@@ -524,10 +584,98 @@ def process_copilot_chat(
     connection: Connection,
 ) -> CopilotChatResponse:
     """
-    Main entrypoint for In-Planner Copilot Chat (PB14).
+    Main entrypoint for In-Planner Copilot Chat (PB14 - MindTrip-grade Local Concierge).
     """
     intent = detect_copilot_intent(request.message)
     ctx = request.trip_context
+
+    if intent == "culinary_guide":
+        (
+            reply_text,
+            suggested_pois,
+            action_type,
+            next_prompts,
+            avoid_notice,
+            green_impact,
+            budget_impact,
+        ) = handle_culinary_guide(request.message, ctx, connection)
+        return CopilotChatResponse(
+            reply_text=reply_text,
+            intent=intent,
+            target_slot=ctx.current_slot or "lunch",
+            suggested_pois=suggested_pois,
+            action_type=action_type,
+            next_suggested_prompts=next_prompts,
+            avoid_notice=avoid_notice,
+            green_impact_summary=green_impact,
+            budget_impact_summary=budget_impact,
+        )
+
+    if intent == "cafe_culture":
+        (
+            reply_text,
+            suggested_pois,
+            action_type,
+            next_prompts,
+            avoid_notice,
+            green_impact,
+            budget_impact,
+        ) = handle_cafe_culture(request.message, ctx, connection)
+        return CopilotChatResponse(
+            reply_text=reply_text,
+            intent=intent,
+            target_slot=ctx.current_slot or "afternoon",
+            suggested_pois=suggested_pois,
+            action_type=action_type,
+            next_suggested_prompts=next_prompts,
+            avoid_notice=avoid_notice,
+            green_impact_summary=green_impact,
+            budget_impact_summary=budget_impact,
+        )
+
+    if intent == "travel_tips_budget":
+        (
+            reply_text,
+            suggested_pois,
+            action_type,
+            next_prompts,
+            avoid_notice,
+            green_impact,
+            budget_impact,
+        ) = handle_travel_tips(request.message, ctx, connection)
+        return CopilotChatResponse(
+            reply_text=reply_text,
+            intent=intent,
+            target_slot=ctx.current_slot or "morning",
+            suggested_pois=suggested_pois,
+            action_type=action_type,
+            next_suggested_prompts=next_prompts,
+            avoid_notice=avoid_notice,
+            green_impact_summary=green_impact,
+            budget_impact_summary=budget_impact,
+        )
+
+    if intent == "poi_advice":
+        (
+            reply_text,
+            suggested_pois,
+            action_type,
+            next_prompts,
+            avoid_notice,
+            green_impact,
+            budget_impact,
+        ) = handle_poi_advice(request.message, ctx, connection)
+        return CopilotChatResponse(
+            reply_text=reply_text,
+            intent=intent,
+            target_slot=ctx.current_slot or "morning",
+            suggested_pois=suggested_pois,
+            action_type=action_type,
+            next_suggested_prompts=next_prompts,
+            avoid_notice=avoid_notice,
+            green_impact_summary=green_impact,
+            budget_impact_summary=budget_impact,
+        )
 
     if intent == "late_schedule_adjust":
         reply_text, suggested_pois = handle_late_adjust(ctx, connection)
@@ -595,25 +743,25 @@ def process_copilot_chat(
             green_impact_summary="Khám phá phố đi bộ và phương tiện công cộng về đêm giúp giảm phát thải, tận hưởng không khí trong lành của thành phố.",
         )
 
-    # General Chat / Orientation
-    dest = ctx.destination or "Đà Nẵng - Huế"
-    days = ctx.days_count or 3
-    reply_text = (
-        f"Chào bạn! Mình là GreenTrip Copilot, đang theo sát hành trình {dest} {days} ngày của bạn. "
-        f"Bạn có thể nhắn cho mình bất cứ khi nào cần điều chỉnh lịch trình, ví dụ như: "
-        f"'Đổi quán ăn trưa sang quán chay' hoặc 'Trời mưa thì đi đâu chơi?'."
-    )
+    # Universal Smart Concierge: Warm, deeply grounded, no more dry boilerplate!
+    (
+        reply_text,
+        suggested_pois,
+        action_type,
+        next_prompts,
+        avoid_notice,
+        green_impact,
+        budget_impact,
+    ) = handle_smart_concierge(request.message, ctx, connection)
 
     return CopilotChatResponse(
         reply_text=reply_text,
         intent="general_chat",
         target_slot=None,
-        suggested_pois=[],
-        action_type="none",
-        next_suggested_prompts=[
-            "Đổi quán ăn trưa sang quán chay",
-            "Trời mưa thì đi đâu chơi?",
-            "Gợi ý trải nghiệm văn hóa đạt chuẩn xanh",
-            "Tìm quán cafe view đẹp",
-        ],
+        suggested_pois=suggested_pois,
+        action_type=action_type,
+        next_suggested_prompts=next_prompts,
+        avoid_notice=avoid_notice,
+        green_impact_summary=green_impact,
+        budget_impact_summary=budget_impact,
     )

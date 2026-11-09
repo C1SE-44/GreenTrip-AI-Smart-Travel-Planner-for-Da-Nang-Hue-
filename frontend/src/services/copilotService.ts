@@ -25,6 +25,7 @@ export interface CopilotSuggestedPoi {
   price_range_display?: string | null;
   budget_delta?: string | null;
   carbon_saved?: string | null;
+  gallery_urls?: string[] | null;
 }
 
 export interface CopilotChatRequest {

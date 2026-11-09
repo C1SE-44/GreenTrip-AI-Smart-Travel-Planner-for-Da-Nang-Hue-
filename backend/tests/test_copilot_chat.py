@@ -116,9 +116,69 @@ def test_copilot_chat_general_greeting(client: TestClient) -> None:
     data = response.json()
 
     assert data["intent"] == "general_chat"
-    assert data["action_type"] == "none"
     assert "Đà Nẵng" in data["reply_text"]
     assert "4" in data["reply_text"]
+    assert len(data["suggested_pois"]) > 0
+    assert len(data["next_suggested_prompts"]) > 0
+
+
+def test_copilot_chat_culinary_guide_danang(client: TestClient) -> None:
+    payload = {
+        "message": "hãy gợi ý cho tôi các quán ăn ngon ở Đà Nẵng",
+        "trip_context": {
+            "destination": "Đà Nẵng",
+            "days_count": 8,
+            "current_day": 1,
+        },
+    }
+    response = client.post("/trips/copilot/chat", json=payload)
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    assert data["intent"] == "culinary_guide"
+    assert data["action_type"] == "view_on_map"
+    assert "Mì Quảng" in data["reply_text"] or "Bún Chả Cá" in data["reply_text"]
+    assert "Mẹo thưởng thức" in data["reply_text"]
+    assert len(data["suggested_pois"]) > 0
+    assert len(data["next_suggested_prompts"]) >= 3
+
+
+def test_copilot_chat_cafe_culture(client: TestClient) -> None:
+    payload = {
+        "message": "quán cafe view đẹp ngắm cảnh ở Đà Nẵng",
+        "trip_context": {
+            "destination": "Đà Nẵng",
+            "days_count": 3,
+            "current_day": 2,
+        },
+    }
+    response = client.post("/trips/copilot/chat", json=payload)
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    assert data["intent"] == "cafe_culture"
+    assert data["action_type"] == "view_on_map"
+    assert len(data["suggested_pois"]) > 0
+    assert len(data["next_suggested_prompts"]) > 0
+
+
+def test_copilot_chat_travel_tips_budget(client: TestClient) -> None:
+    payload = {
+        "message": "kinh nghiệm chi phí du lịch và phương tiện xe buýt",
+        "trip_context": {
+            "destination": "Đà Nẵng",
+            "days_count": 3,
+            "current_day": 1,
+        },
+    }
+    response = client.post("/trips/copilot/chat", json=payload)
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    assert data["intent"] == "travel_tips_budget"
+    assert data["action_type"] == "view_on_map"
+    assert len(data["suggested_pois"]) > 0
+    assert "ngân sách" in data["reply_text"].lower() or "tiết kiệm" in data["reply_text"].lower()
 
 
 def test_copilot_chat_validation_error(client: TestClient) -> None:
@@ -202,3 +262,32 @@ def test_copilot_chat_late_schedule_adjust(client: TestClient) -> None:
         assert poi["name"]
         assert poi["budget_delta"] is not None
         assert poi["carbon_saved"] is not None
+
+
+def test_copilot_chat_poi_advice_son_tra(client: TestClient) -> None:
+    payload = {
+        "message": "tôi có nên đi bán đảo sơn trà không",
+        "trip_context": {
+            "destination": "Đà Nẵng",
+            "days_count": 3,
+            "current_day": 1,
+            "current_slot": "morning",
+        },
+    }
+    response = client.post("/trips/copilot/chat", json=payload)
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    assert data["intent"] == "poi_advice"
+    assert data["action_type"] == "view_on_map"
+    assert "Sơn Trà" in data["reply_text"]
+    assert "Điểm mạnh" in data["reply_text"]
+    assert "cân nhắc" in data["reply_text"].lower() or "không nên" in data["reply_text"].lower()
+    assert len(data["suggested_pois"]) == 1
+    poi = data["suggested_pois"][0]
+    assert "Sơn Trà" in poi["name"]
+    assert poi["gallery_urls"] is not None
+    assert len(poi["gallery_urls"]) == 5
+    assert len(set(poi["gallery_urls"])) == 5
+    assert len(data["next_suggested_prompts"]) > 0
+

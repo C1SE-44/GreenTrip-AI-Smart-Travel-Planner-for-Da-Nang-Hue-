@@ -62,12 +62,32 @@ class TripParametersRequest(BaseModel):
         description="Số ngày của chuyến đi (1 - 14 ngày)",
         examples=[3]
     )
-    total_budget: float = Field(
-        ...,
+    total_budget: float | None = Field(
+        default=None,
         gt=0,
         le=1_000_000_000,
-        description="Tổng ngân sách chuyến đi tính bằng VNĐ",
+        description="Tổng ngân sách chuyến đi tính bằng VNĐ (tùy chọn nếu chọn budget_tier)",
         examples=[5000000.0]
+    )
+    budget_tier: BudgetTier | None = Field(
+        default=None,
+        description="Mức chi tiêu mong muốn (budget: tiết kiệm, standard: tiêu chuẩn, luxury: cao cấp)",
+        examples=[BudgetTier.STANDARD]
+    )
+    dining_tier: BudgetTier | None = Field(
+        default=None,
+        description="Mức chi tiêu ẩm thực riêng (budget, standard, luxury)",
+        examples=[BudgetTier.STANDARD]
+    )
+    lodging_tier: BudgetTier | None = Field(
+        default=None,
+        description="Mức chi tiêu lưu trú riêng (budget, standard, luxury)",
+        examples=[BudgetTier.STANDARD]
+    )
+    activities_tier: BudgetTier | None = Field(
+        default=None,
+        description="Mức chi tiêu hoạt động trải nghiệm riêng (budget, standard, luxury)",
+        examples=[BudgetTier.STANDARD]
     )
     num_people: int = Field(
         default=1,
@@ -140,14 +160,24 @@ class TripParametersRequest(BaseModel):
     @model_validator(mode="after")
     def validate_business_rules(self) -> "TripParametersRequest":
         # Business rule 1: Minimum budget per person per day
-        # In Da Nang / Hue, basic daily budget requires at least 200,000 VND / person / day
-        min_budget_required = 200_000.0 * self.days * self.num_people
-        if self.total_budget < min_budget_required:
-            formatted_min = f"{int(min_budget_required):,}".replace(",", ".")
-            raise ValueError(
-                f"Ngân sách không đủ cho chuyến đi {self.days} ngày ({self.num_people} người). "
-                f"Mức chi tiêu tối thiểu ước tính là {formatted_min} VNĐ (tối thiểu 200.000 VNĐ/người/ngày)."
-            )
+        if self.total_budget is not None:
+            min_budget_required = 200_000.0 * self.days * self.num_people
+            if self.total_budget < min_budget_required:
+                formatted_min = f"{int(min_budget_required):,}".replace(",", ".")
+                raise ValueError(
+                    f"Ngân sách không đủ cho chuyến đi {self.days} ngày ({self.num_people} người). "
+                    f"Mức chi tiêu tối thiểu ước tính là {formatted_min} VNĐ (tối thiểu 200.000 VNĐ/người/ngày)."
+                )
+        else:
+            tier = self.budget_tier or BudgetTier.STANDARD
+            self.budget_tier = tier
+            if tier == BudgetTier.BUDGET:
+                daily_estimate = 500_000.0
+            elif tier == BudgetTier.LUXURY:
+                daily_estimate = 3_000_000.0
+            else:
+                daily_estimate = 1_200_000.0
+            self.total_budget = daily_estimate * self.days * self.num_people
 
         # Business rule 2: Multi-city itinerary duration check
         if self.destination == DestinationType.BOTH.value and self.days < 2:
@@ -200,6 +230,9 @@ class ValidatedTripData(BaseModel):
     total_budget: float
     daily_budget_per_person: float
     budget_tier: BudgetTier
+    dining_tier: BudgetTier | None = None
+    lodging_tier: BudgetTier | None = None
+    activities_tier: BudgetTier | None = None
     pacing_level: str
     pacing_label: str
     pacing_desc: str
@@ -264,6 +297,7 @@ class CopilotSuggestedPoiItem(BaseModel):
     price_range_display: str | None = None
     budget_delta: str | None = None
     carbon_saved: str | None = None
+    gallery_urls: list[str] | None = None
 
 
 class CopilotChatResponse(BaseModel):

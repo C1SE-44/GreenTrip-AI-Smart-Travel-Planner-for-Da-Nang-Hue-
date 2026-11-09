@@ -2,7 +2,7 @@ import { Leaf } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
-import CreateTripMindtripModal from '@/components/planner/CreateTripMindtripModal';
+import CreateTripCopilotModal from '@/components/planner/CreateTripCopilotModal';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
@@ -976,6 +976,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           <TripOverviewView
             trip={activeOverviewTrip}
             onBack={() => setActiveOverviewTrip(null)}
+            allPois={allPois}
             onOpenItineraryDetails={() => setSelectedTripForDetails(activeOverviewTrip)}
             onUpdateTrip={(updatedTrip) => {
               setActiveOverviewTrip(updatedTrip);
@@ -1548,7 +1549,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
       {/* 5. Create Trip Modal */}
       {isCreateTripModalOpen && (
-        <CreateTripMindtripModal
+        <CreateTripCopilotModal
           isOpen={isCreateTripModalOpen}
           onClose={() => setIsCreateTripModalOpen(false)}
           onCreateTrip={(newTrip) => {

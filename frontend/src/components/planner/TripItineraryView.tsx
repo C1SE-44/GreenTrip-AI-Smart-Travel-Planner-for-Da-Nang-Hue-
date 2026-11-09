@@ -5,7 +5,6 @@ import {
   ChevronUp,
   Clock,
   MapPin,
-  Sparkles,
   Plus,
   ArrowUp,
   ArrowDown,
@@ -25,6 +24,7 @@ import {
   Pencil,
   GripVertical,
   Lightbulb,
+  ExternalLink,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import {
@@ -36,17 +36,13 @@ import {
   normalizeCity,
 } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
-import { ThreeElevationWave } from '@/components/ui/ThreeElevationWave';
 import {
   createEmptyItinerary,
   getTripItinerary,
   saveTripItinerary,
   stopFromPoi,
-  optimizeDays,
   alignItineraryToTrip,
   normalizeLegacyLunchBreaks,
-  pacingForTrip,
-  dailyVisitCapacity,
   distanceKm,
   minutesFromTime,
   type TripItinerary,
@@ -62,7 +58,7 @@ export interface TripItineraryViewProps {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Danh mục cho Modal Thêm địa điểm (chuẩn Explore & Mindtrip)
+// Danh mục cho Modal Thêm địa điểm (chuẩn tiếng Việt Explore & Mindtrip)
 // ─────────────────────────────────────────────────────────────
 const MODAL_CATEGORY_TABS: { id: string; label: string }[] = [
   { id: 'all', label: 'Tất cả' },
@@ -74,7 +70,7 @@ const MODAL_CATEGORY_TABS: { id: string; label: string }[] = [
 ];
 
 function formatCategoryLabel(cat?: string | null): string {
-  if (!cat) return 'Địa điểm';
+  if (!cat) return 'Điểm đến';
   const c = cat.toLowerCase().replace(/[-_]/g, ' ');
   if (c.includes('quan an') || c.includes('quán ăn') || c.includes('ẩm thực') || c.includes('food') || c.includes('restaurant')) return 'Quán ăn';
   if (c.includes('di tich') || c.includes('di tích') || c.includes('lăng') || c.includes('đại nội')) return 'Di tích';
@@ -94,24 +90,46 @@ function getPoiImage(poi?: Poi | null): string {
 function getCategoryIcon(cat?: string | null) {
   const c = (cat || '').toLowerCase();
   if (c.includes('ăn') || c.includes('ẩm thực') || c.includes('food') || c.includes('restaurant') || c.includes('culinary')) {
-    return <Utensils size={13} className="text-amber-700 shrink-0" />;
+    return <Utensils size={13} className="text-amber-300 shrink-0" />;
   }
   if (c.includes('di tích') || c.includes('lăng') || c.includes('đại nội') || c.includes('attraction')) {
-    return <Landmark size={13} className="text-emerald-800 shrink-0" />;
+    return <Landmark size={13} className="text-emerald-300 shrink-0" />;
   }
   if (c.includes('rest') || c.includes('nghỉ')) {
-    return <Coffee size={13} className="text-amber-800 shrink-0" />;
+    return <Coffee size={13} className="text-amber-300 shrink-0" />;
   }
-  return <Compass size={13} className="text-emerald-700 shrink-0" />;
+  return <Compass size={13} className="text-emerald-300 shrink-0" />;
 }
 
-function getDefaultDurationMinutes(category?: string | null): number {
-  const c = (category || '').toLowerCase();
-  if (c.includes('ăn') || c.includes('ẩm thực') || c.includes('quán') || c.includes('restaurant')) return 90;
-  if (c.includes('di tích') || c.includes('lăng') || c.includes('đại nội') || c.includes('bảo tàng')) return 120;
-  if (c.includes('bà nà') || c.includes('ngũ hành sơn') || c.includes('sơn trà')) return 180;
-  if (c.includes('cà phê') || c.includes('cầu rồng') || c.includes('cầu quay')) return 60;
-  return 90;
+// Thời lượng gợi ý mặc định: Lấy từ dữ liệu địa điểm, thiếu thì 1 giờ (60 phút)
+function getPoiVisitDurationMinutes(poi?: Poi | null): number {
+  if (!poi) return 60;
+  if (poi.average_visit_minutes && poi.average_visit_minutes > 0) return poi.average_visit_minutes;
+  const durText = poi.visitDuration || '';
+  const match = durText.match(/(\d+(?:\.\d+)?)/);
+  if (match) {
+    const num = parseFloat(match[1]);
+    if (durText.includes('giờ') || durText.includes('hour') || durText.includes('h')) {
+      return Math.round(num * 60);
+    }
+    if (durText.includes('phút') || durText.includes('min')) {
+      return Math.round(num);
+    }
+  }
+  return 60;
+}
+
+// Link chỉ đường Google Maps thực tế
+function getGoogleMapsDirectionsUrl(
+  originLat?: number | null,
+  originLng?: number | null,
+  destLat?: number | null,
+  destLng?: number | null
+): string {
+  if (originLat != null && originLng != null && destLat != null && destLng != null) {
+    return `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destLat},${destLng}&travelmode=driving`;
+  }
+  return 'https://www.google.com/maps';
 }
 
 function displayDateVi(dateStr?: string | null): string {
@@ -141,7 +159,6 @@ export default function TripItineraryView({
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [insightMessage, setInsightMessage] = useState<string | null>(null);
 
   // Tham chiếu tự động lưu
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -166,7 +183,6 @@ export default function TripItineraryView({
   const [selectedDayTab, setSelectedDayTab] = useState<number | 'all'>('all');
   const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set());
   const [showDistances, setShowDistances] = useState(true);
-  const [distanceUnit, setDistanceUnit] = useState<'km' | 'mi'>('km');
   const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
 
@@ -176,12 +192,11 @@ export default function TripItineraryView({
   const [showItinerarySettingsMenu, setShowItinerarySettingsMenu] = useState(false);
   const [activeDayAddModal, setActiveDayAddModal] = useState<number | null>(null);
   const [dayAddModalSearch, setDayAddModalSearch] = useState('');
-  const [dragOverDayNumber, setDragOverDayNumber] = useState<number | null>(null);
 
-  // Chỉnh sửa giờ & Ghi chú (Notes)
+  // Chỉnh sửa giờ & Ghi chú (Notes / Comments)
   const [editingStopId, setEditingStopId] = useState<string | null>(null);
-  const [editStartTime, setEditStartTime] = useState('09:00');
-  const [editEndTime, setEditEndTime] = useState('10:30');
+  const [editStartTime, setEditStartTime] = useState('08:00');
+  const [editEndTime, setEditEndTime] = useState('09:30');
   const [editingNoteStopId, setEditingNoteStopId] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState('');
 
@@ -193,15 +208,20 @@ export default function TripItineraryView({
   );
   const [modalCategory, setModalCategory] = useState<string>('all');
   const [customIdeaInput, setCustomIdeaInput] = useState('');
-  const [customIdeaAddress, setCustomIdeaAddress] = useState('');
 
-  // Tiêu đề chuyến đi chuẩn, tránh hiển thị chữ 'a' đơn lẻ
+  // Tiêu đề chuyến đi rõ ràng, tránh hiển thị chữ 'a' đơn lẻ
   const displayTitle = useMemo(() => {
     if (trip.title && trip.title.trim().length > 2 && trip.title.trim().toLowerCase() !== 'a') {
       return trip.title;
     }
     return `Chuyến đi ${trip.destination}`;
   }, [trip.title, trip.destination]);
+
+  // Phụ đề gọn, không lặp lại 3 lần chữ ngày
+  const displaySubtitle = useMemo(() => {
+    const dates = trip.startDate || 'Tháng 11/2026';
+    return `${trip.destination} • ${dates} (${plan.days.length} ngày)`;
+  }, [trip.destination, trip.startDate, plan.days.length]);
 
   // ─── 3. Đồng bộ danh sách POI từ `tripIdeas` ───
   const ideaPois = useMemo(() => {
@@ -245,7 +265,7 @@ export default function TripItineraryView({
     [plan.days]
   );
 
-  // Lọc thẻ ý tưởng theo dropdown All ▾
+  // Lọc thẻ ý tưởng theo dropdown Tất cả ⌄
   const filteredIdeaPois = useMemo(() => {
     return ideaPois.filter((p) => {
       const dayNum = getDayNumberForPoi(p.id);
@@ -262,7 +282,7 @@ export default function TripItineraryView({
     });
   }, [ideaPois, ideasFilter, getDayNumberForPoi]);
 
-  // Gợi ý thông minh cho Modal (Suggested Places)
+  // Gợi ý thông minh cho Modal (Suggested Places khi Ideas ít hoặc rỗng)
   const suggestedPois = useMemo(() => {
     const isHue = /hue|huế/i.test(trip.destination);
     const targetCity: PoiCity = isHue ? 'Huế' : 'Đà Nẵng';
@@ -338,9 +358,9 @@ export default function TripItineraryView({
     }
   }, [trip.ideas]);
 
-  // ─── 5. Thao tác THỦ CÔNG & KÉO THẢ (Manual & Drag and Drop) ───
+  // ─── 5. Thao tác THỦ CÔNG (Manual Planning First) ───
 
-  // Thêm ý tưởng vào ngày cụ thể
+  // Thêm ý tưởng vào ngày cụ thể: Thời lượng lấy từ dữ liệu địa điểm, giờ bắt đầu nối tiếp
   const handleAddIdeaToDay = (dayNumber: number, poi: Poi, targetIndex?: number) => {
     const nextDays = plan.days.map((day) => {
       if (day.day_number !== dayNumber) return day;
@@ -348,22 +368,22 @@ export default function TripItineraryView({
       const stops = [...day.stops];
       const newStop = stopFromPoi(poi, 'manual');
 
-      // Tự động tính thời lượng thông minh & khung giờ nối tiếp
-      const dur = getDefaultDurationMinutes(poi.category);
+      // Thời lượng gợi ý thực tế từ dữ liệu
+      const dur = getPoiVisitDurationMinutes(poi);
       newStop.duration_minutes = dur;
 
-      let startH = 9;
-      let startM = 0;
+      // Giờ bắt đầu: Điểm đầu lúc 08:00; các điểm sau nối tiếp giờ kết thúc + 15-30p di chuyển
+      let startMinutes = 8 * 60; // 08:00 sáng mặc định
       const prevStop = stops.length > 0 ? stops[stops.length - 1] : null;
 
       if (prevStop && prevStop.end_time) {
         const [h, m] = prevStop.end_time.split(':').map(Number);
-        const nextStartMinutes = (h || 9) * 60 + (m || 0) + 15;
-        startH = Math.min(21, Math.floor(nextStartMinutes / 60));
-        startM = nextStartMinutes % 60;
+        startMinutes = (h || 8) * 60 + (m || 0) + 15;
       }
 
-      const endTotalM = startH * 60 + startM + dur;
+      const startH = Math.min(22, Math.floor(startMinutes / 60));
+      const startM = startMinutes % 60;
+      const endTotalM = startMinutes + dur;
       const endH = Math.min(23, Math.floor(endTotalM / 60));
       const endM = endTotalM % 60;
 
@@ -389,8 +409,7 @@ export default function TripItineraryView({
   const handleMoveStopBetweenDays = (
     stopId: string,
     fromDayNumber: number,
-    toDayNumber: number,
-    targetIndex?: number
+    toDayNumber: number
   ) => {
     let movingStop: ItineraryStop | undefined;
 
@@ -408,12 +427,7 @@ export default function TripItineraryView({
 
     const nextDays = cleanedDays.map((day) => {
       if (day.day_number !== toDayNumber) return day;
-      const stops = [...day.stops];
-      if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= stops.length) {
-        stops.splice(targetIndex, 0, movingStop!);
-      } else {
-        stops.push(movingStop!);
-      }
+      const stops = [...day.stops, movingStop!];
       return { ...day, stops: stops.map((s, idx) => ({ ...s, sequence: idx })) };
     });
 
@@ -421,7 +435,7 @@ export default function TripItineraryView({
     setActiveMenuStopId(null);
   };
 
-  // Bỏ địa điểm khỏi ngày (đưa về lại kho ý tưởng tự do)
+  // Bỏ địa điểm khỏi ngày (vẫn giữ trong kho Ideas)
   const handleRemovePoiFromDay = (poiId: string) => {
     const nextDays = plan.days.map((day) => ({
       ...day,
@@ -460,7 +474,7 @@ export default function TripItineraryView({
     persistPlan({ ...plan, days: nextDays });
   };
 
-  // Thêm mốc Nghỉ trưa thủ công (PB11 Rest Planning)
+  // Thêm mốc Nghỉ trưa thủ công
   const handleAddLunchBreak = (dayNumber: number) => {
     const nextDays = plan.days.map((day) => {
       if (day.day_number !== dayNumber) return day;
@@ -470,7 +484,7 @@ export default function TripItineraryView({
       const lunchStop: ItineraryStop = {
         stop_id: `rest-${day.day_id}-${Date.now()}`,
         poi_id: null,
-        title: 'Nghỉ trưa & phục hồi',
+        title: 'Nghỉ trưa & nạp năng lượng',
         city: trip.destination,
         address: 'Quán ăn đặc sản hoặc quán cà phê thanh tịnh',
         category: 'rest',
@@ -480,7 +494,7 @@ export default function TripItineraryView({
         duration_minutes: 90,
         start_time: '12:00',
         end_time: '13:30',
-        comment: 'Ăn trưa chậm rãi, nạp lại năng lượng tại quán cà phê hoặc nơi lưu trú.',
+        comment: 'Ăn trưa chậm rãi và nghỉ ngơi để nạp lại năng lượng.',
         latitude: null,
         longitude: null,
       };
@@ -514,7 +528,7 @@ export default function TripItineraryView({
     setEditingStopId(null);
   };
 
-  // Lưu Ghi chú (Note) cho điểm dừng
+  // Lưu Ghi chú (Add a comment)
   const handleSaveNote = (dayNumber: number, stopId: string) => {
     const nextDays = plan.days.map((day) => {
       if (day.day_number !== dayNumber) return day;
@@ -547,39 +561,12 @@ export default function TripItineraryView({
         day_id: `${plan.trip_id}-day-${nextNumber}`,
         day_number: nextNumber,
         date: null,
-        title: `Ngày ${nextNumber} • Trải nghiệm mở rộng`,
+        title: `Ngày ${nextNumber}`,
         stops: [],
       },
     ];
     persistPlan({ ...plan, days_count: nextDays.length, days: nextDays });
     setSelectedDayTab(nextNumber);
-    setShowItinerarySettingsMenu(false);
-  };
-
-  // ─── 6. TRỢ LÝ TỰ ĐỘNG LÊN KẾ HOẠCH (AI Assistant Optimization) ───
-  const handleAssistantOptimize = () => {
-    const pacing = pacingForTrip(trip);
-    const capacity = dailyVisitCapacity(pacing);
-
-    const result = optimizeDays(plan.days, ideaPois, capacity, trip.itineraryOutline);
-    persistPlan({ ...plan, days: result.days });
-
-    const parts = [
-      result.assignedCount ? `${result.assignedCount} địa điểm` : '',
-      result.restCount ? `${result.restCount} khoảng nghỉ trưa` : '',
-    ].filter(Boolean);
-
-    if (parts.length > 0) {
-      setInsightMessage(
-        `✨ Trợ lý đã tự động xếp ${parts.join(' và ')} vào lịch trình theo thứ tự địa lý gần nhau và nhịp đi ${pacing}.`
-      );
-    } else if (result.unassignedCount) {
-      setInsightMessage(
-        `Các ngày hiện tại đã kín lịch theo nhịp đi ${pacing}. Bạn có thể thêm ngày mới hoặc tự gán thêm điểm.`
-      );
-    } else {
-      setInsightMessage('Tất cả ý tưởng đều đã được xếp vào lịch trình tối ưu!');
-    }
     setShowItinerarySettingsMenu(false);
   };
 
@@ -601,7 +588,6 @@ export default function TripItineraryView({
     const customId = `custom-${name}`;
     handleToggleIdeaInTrip(customId);
     setCustomIdeaInput('');
-    setCustomIdeaAddress('');
     setShowAddIdeasModal(false);
   };
 
@@ -614,7 +600,8 @@ export default function TripItineraryView({
     onBack();
   };
 
-  // ─── 7. Lọc POI hiển thị trên Bản đồ tương tác ───
+  // ─── 6. Lọc POI hiển thị trên Bản đồ tương tác ───
+  // Khi chọn "Tất cả các ngày" thì hiển thị các điểm, khi chọn 1 ngày thì chỉ hiển thị điểm ngày đó
   const mapPois = useMemo(() => {
     const displayedDays =
       selectedDayTab === 'all'
@@ -686,31 +673,15 @@ export default function TripItineraryView({
             <h1 className="font-extrabold text-[17px] sm:text-[19px] text-gray-950 truncate leading-snug">
               {displayTitle}
             </h1>
-            <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5 font-medium">
-              <span>{trip.destination}</span>
-              <span>•</span>
-              <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
-                {plan.days.length} ngày lịch trình
-              </span>
-              <span>•</span>
-              <span>{trip.startDate || 'Tháng 11/2026'}</span>
-            </div>
+            <p className="text-xs text-gray-500 mt-0.5 font-medium truncate">
+              {displaySubtitle}
+            </p>
           </div>
         </div>
 
-        {/* Nút hành động phải: AI Assistant & Xong */}
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleAssistantOptimize}
-            className="h-9 px-4 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-            title="Trợ lý tự xếp các ý tưởng còn lại và chèn mốc nghỉ trưa"
-          >
-            <Sparkles size={14} className="text-amber-200" />
-            <span>AI Tự lên lịch</span>
-          </button>
-
-          <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium mr-1">
+        {/* Nút hành động phải: Trạng thái lưu & Nút Xong */}
+        <div className="flex items-center gap-3">
+          <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium">
             {isSaving ? (
               <span className="flex items-center gap-1 text-amber-700">
                 <RefreshCw size={12} className="animate-spin" /> Đang lưu...
@@ -728,40 +699,24 @@ export default function TripItineraryView({
             type="button"
             onClick={handleDone}
             className="h-9 px-5 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95"
+            title="Lưu lịch trình và quay lại tổng quan"
           >
             Xong
           </button>
         </div>
       </header>
 
-      {/* Thông báo Insight Trợ lý AI */}
-      {insightMessage && (
-        <div className="bg-emerald-50/90 border-b border-emerald-200 px-6 py-2.5 flex items-center justify-between text-xs text-emerald-950 font-medium animate-fadeIn">
-          <div className="flex items-center gap-2">
-            <Sparkles size={14} className="text-emerald-700 shrink-0" />
-            <span>{insightMessage}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setInsightMessage(null)}
-            className="text-emerald-800 hover:text-black text-xs font-bold ml-4 cursor-pointer"
-          >
-            Đóng
-          </button>
-        </div>
-      )}
-
       {/* ─── NỘI DUNG CHÍNH (2 CỘT CHUẨN MINDTRIP) ─── */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
         {/* ════════════════════════════════════════════════════════
-            CỘT TRÁI: Ý TƯỞNG + LỊCH THEO NGÀY (THỦ CÔNG TRƯỚC)
+            CỘT TRÁI: Ý TƯỞNG + LỊCH THEO NGÀY (THỦ CÔNG CHUẨN)
         ════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-6 xl:col-span-6 border-r border-gray-100 flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-5 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-track]:bg-transparent">
+        <div className="lg:col-span-6 xl:col-span-6 border-r border-gray-100 flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-track]:bg-transparent">
           {/* ────────────────────────────────────────────────────────
-              1. PHẦN Ý TƯỞNG (IDEAS CAROUSEL - CHUẨN MINDTRIP)
+              1. PHẦN Ý TƯỞNG (IDEAS - KHO CHỜ ĐÚNG KÍCH THƯỚC 270x255)
           ──────────────────────────────────────────────────────── */}
-          <section className="shrink-0 mb-6">
-            <div className="flex items-center justify-between mb-3">
+          <section className="shrink-0 mb-4">
+            <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -769,26 +724,26 @@ export default function TripItineraryView({
                   className="flex items-center gap-2 group cursor-pointer text-left"
                 >
                   {expandIdeas ? (
-                    <ChevronDown size={18} className="text-gray-600 group-hover:text-black transition" />
+                    <ChevronDown size={17} className="text-gray-600 group-hover:text-black transition" />
                   ) : (
-                    <ChevronUp size={18} className="text-gray-600 group-hover:text-black transition" />
+                    <ChevronUp size={17} className="text-gray-600 group-hover:text-black transition" />
                   )}
-                  <h2 className="font-extrabold text-[16px] text-gray-950 flex items-center gap-2">
-                    <span>Ideas</span>
+                  <h2 className="font-extrabold text-[15.5px] text-gray-950 flex items-center gap-2">
+                    <span>Ý tưởng</span>
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
                       {ideaPois.length} địa điểm
                     </span>
                   </h2>
                 </button>
 
-                {/* Dropdown lọc nhanh All ▾ */}
+                {/* Bộ lọc Tất cả ⌄ */}
                 <div className="relative">
                   <select
                     value={ideasFilter}
                     onChange={(e) => setIdeasFilter(e.target.value as any)}
                     className="text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border-none rounded-full px-2.5 py-1 appearance-none pr-6 cursor-pointer focus:outline-none"
                   >
-                    <option value="all">Tất cả (All)</option>
+                    <option value="all">Tất cả</option>
                     <option value="unplaced">Chưa xếp lịch</option>
                     <option value="food">Ẩm thực</option>
                     <option value="attraction">Điểm tham quan</option>
@@ -803,30 +758,30 @@ export default function TripItineraryView({
                 className="flex items-center gap-1.5 text-xs font-bold text-gray-800 hover:text-black bg-gray-100 hover:bg-gray-200/90 px-3 py-1.5 rounded-full transition cursor-pointer"
               >
                 <Plus size={13} />
-                <span>+ Add</span>
+                <span>Thêm địa điểm</span>
               </button>
             </div>
 
             {expandIdeas && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {filteredIdeaPois.length === 0 ? (
-                  <div className="p-6 rounded-2xl border border-dashed border-gray-300 text-center bg-gray-50/50">
-                    <Lightbulb size={24} className="mx-auto text-amber-500 mb-2" />
-                    <p className="text-xs text-gray-600 mb-3">
+                  <div className="h-[72px] px-4 rounded-[20px] border border-dashed border-gray-300 text-center bg-gray-50/50 flex items-center justify-between">
+                    <p className="text-xs text-gray-600">
                       {ideaPois.length === 0
-                        ? 'Chưa có địa điểm nào trong Ideas của chuyến đi.'
-                        : 'Không có địa điểm phù hợp với bộ lọc hiện tại.'}
+                        ? 'Chưa có địa điểm nào trong Ý tưởng.'
+                        : 'Không có địa điểm phù hợp với bộ lọc.'}
                     </p>
                     <button
                       type="button"
                       onClick={() => setShowAddIdeasModal(true)}
-                      className="px-4 py-2 rounded-full bg-black text-white text-xs font-bold hover:bg-neutral-800 transition cursor-pointer"
+                      className="px-3 py-1.5 rounded-full bg-black text-white text-xs font-bold hover:bg-neutral-800 transition cursor-pointer"
                     >
-                      + Khám phá thêm địa điểm
+                      + Khám phá thêm
                     </button>
                   </div>
                 ) : (
-                  <div className="flex gap-3 overflow-x-auto pb-3 pt-1 no-scrollbar -mx-1 px-1">
+                  /* Dải thẻ ý tưởng cuộn ngang: Rộng 270px, Cao 255px, Bo góc 24px, Khoảng cách 16px */
+                  <div className="flex gap-4 overflow-x-auto pb-2 pt-1 no-scrollbar -mx-1 px-1">
                     {filteredIdeaPois.map((poi) => {
                       const dayNumber = getDayNumberForPoi(poi.id);
                       const isPlaced = dayNumber !== null;
@@ -835,98 +790,92 @@ export default function TripItineraryView({
                       return (
                         <div
                           key={poi.id}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData('text/plain', poi.id);
-                            e.dataTransfer.effectAllowed = 'copyMove';
-                          }}
-                          className={`w-[205px] shrink-0 rounded-2xl border transition-all flex flex-col bg-white cursor-grab active:cursor-grabbing ${
-                            isPlaced
-                              ? 'border-emerald-300/80 shadow-2xs bg-emerald-50/10'
-                              : 'border-gray-200 hover:border-gray-400 hover:shadow-sm'
+                          className={`w-[270px] h-[255px] shrink-0 rounded-[24px] border border-[#e6e6e6] bg-white flex flex-col overflow-hidden shadow-2xs hover:shadow-md transition-all relative select-none ${
+                            isPlaced ? 'border-emerald-300/80 bg-emerald-50/10' : ''
                           }`}
                         >
-                          {/* Ảnh bìa */}
-                          <div className="h-[110px] w-full relative overflow-hidden rounded-t-2xl bg-gray-100">
+                          {/* Ảnh thẻ: Rộng 270px x Cao 196px, Tên và Loại đè lên ảnh trên lớp gradient tối dần */}
+                          <div className="w-[270px] h-[196px] relative overflow-hidden bg-gray-100 group">
                             <img
                               src={getPoiImage(poi)}
                               alt={poi.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
                               loading="lazy"
                             />
-                            {/* Tag danh mục tiếng Việt chuẩn */}
-                            <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/65 backdrop-blur-xs text-white text-[11px] font-semibold flex items-center gap-1 shadow-xs">
+
+                            {/* Tag danh mục góc trên trái */}
+                            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-medium flex items-center gap-1.5 shadow-xs">
                               {getCategoryIcon(poi.category)}
                               <span>{formatCategoryLabel(poi.category)}</span>
                             </div>
 
-                            {/* Nút yêu thích / bỏ khỏi Ideas */}
+                            {/* Nút yêu thích góc trên phải */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleToggleIdeaInTrip(poi.id);
                               }}
-                              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-rose-600 transition shadow-xs cursor-pointer"
-                              title="Bỏ khỏi Ideas"
+                              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-rose-600 transition shadow-xs cursor-pointer"
+                              title="Bỏ khỏi Ý tưởng"
                             >
-                              <Heart size={12} className="fill-rose-600" />
+                              <Heart size={14} className="fill-rose-600" />
                             </button>
-                          </div>
 
-                          {/* Thông tin thẻ */}
-                          <div className="p-3 flex flex-col flex-1 justify-between gap-2">
-                            <div>
+                            {/* Lớp gradient tối dần với Tên và Thành phố đè lên ảnh */}
+                            <div className="absolute inset-x-0 bottom-0 pt-10 pb-3 px-3.5 bg-gradient-to-t from-black/85 via-black/45 to-transparent flex flex-col justify-end pointer-events-none">
                               <h3
-                                className="font-extrabold text-[13.5px] text-gray-950 truncate leading-snug"
+                                className="text-white font-extrabold text-[15px] leading-tight truncate drop-shadow-sm"
                                 title={poi.name}
                               >
                                 {poi.name}
                               </h3>
-                              <p className="text-[11px] text-gray-500 mt-0.5 truncate">
-                                {poi.city} • {poi.visitDuration || 'Khoảng 1.5 giờ'}
+                              <p className="text-gray-200 text-xs mt-0.5 truncate drop-shadow-xs">
+                                {poi.city} • {poi.visitDuration || '1,0 giờ'}
                               </p>
                             </div>
+                          </div>
 
-                            {/* Nút hành động trực quan THÊM VÀO NGÀY */}
-                            <div className="pt-1">
-                              {isPlaced ? (
-                                <div className="flex items-center justify-between bg-emerald-50 text-emerald-800 text-[11px] font-bold px-2.5 py-1.5 rounded-xl border border-emerald-200">
-                                  <span className="flex items-center gap-1">
-                                    <Check size={12} className="text-emerald-700" /> Ngày {dayNumber}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemovePoiFromDay(poi.id)}
-                                    className="text-emerald-700 hover:text-rose-700 ml-1 cursor-pointer font-extrabold text-xs"
-                                    title="Gỡ khỏi ngày này (vẫn giữ trong Ideas)"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ) : (
-                                <div>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setExpandingDayPickerIdeaId(isExpanding ? null : poi.id)
-                                    }
-                                    className="w-full py-1.5 px-2.5 rounded-xl bg-gray-100 hover:bg-black hover:text-white text-gray-900 text-[11.5px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                                  >
-                                    <Plus size={12} />
-                                    <span>Thêm vào ngày</span>
-                                    <ChevronDown
-                                      size={11}
-                                      className={isExpanding ? 'rotate-180 transition-transform' : 'transition-transform'}
-                                    />
-                                  </button>
+                          {/* Nút hành động "Thêm vào ngày": Cao 44px, nằm dưới ảnh */}
+                          <div className="h-[59px] px-3 flex items-center justify-between bg-white border-t border-gray-100 relative">
+                            {isPlaced ? (
+                              <div className="w-full h-[44px] px-3.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center justify-between border border-emerald-200">
+                                <span className="flex items-center gap-1">
+                                  <Check size={13} className="text-emerald-700" /> Đã xếp Ngày {dayNumber}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemovePoiFromDay(poi.id)}
+                                  className="text-emerald-700 hover:text-rose-700 ml-1 cursor-pointer font-extrabold text-xs"
+                                  title="Gỡ khỏi ngày này (vẫn giữ trong Ý tưởng)"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="w-full">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setExpandingDayPickerIdeaId(isExpanding ? null : poi.id)
+                                  }
+                                  className="w-full h-[44px] rounded-full bg-gray-100 hover:bg-black hover:text-white text-gray-900 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <Plus size={13} />
+                                  <span>Thêm vào ngày</span>
+                                  <ChevronDown
+                                    size={13}
+                                    className={isExpanding ? 'rotate-180 transition-transform' : 'transition-transform'}
+                                  />
+                                </button>
 
-                                  {/* Khung chọn ngày trực quan mở ngay dưới nút, 100% hiển thị rõ ràng */}
-                                  {isExpanding && (
-                                    <div className="mt-2 p-2 bg-gray-50 rounded-xl border border-gray-200 space-y-1 animate-fadeIn">
-                                      <div className="text-[10px] font-bold text-gray-400 uppercase px-1">
-                                        Chọn ngày muốn xếp:
-                                      </div>
+                                {/* Dropdown chọn ngày mở ngay trên nút, không bị che khuất */}
+                                {isExpanding && (
+                                  <div className="absolute bottom-[52px] inset-x-2 bg-white rounded-2xl shadow-2xl border border-gray-200 p-2 z-50 animate-fadeIn">
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase px-1 mb-1">
+                                      Chọn ngày muốn thêm:
+                                    </div>
+                                    <div className="max-h-36 overflow-y-auto space-y-1 no-scrollbar">
                                       {plan.days.map((day) => (
                                         <button
                                           key={day.day_number}
@@ -935,7 +884,7 @@ export default function TripItineraryView({
                                             handleAddIdeaToDay(day.day_number, poi);
                                             setExpandingDayPickerIdeaId(null);
                                           }}
-                                          className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-gray-800 hover:bg-black hover:text-white transition flex items-center justify-between cursor-pointer"
+                                          className="w-full text-left px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-800 hover:bg-black hover:text-white transition flex items-center justify-between cursor-pointer"
                                         >
                                           <span>Ngày {day.day_number}</span>
                                           <span className="text-[10px] opacity-70">
@@ -944,10 +893,10 @@ export default function TripItineraryView({
                                         </button>
                                       ))}
                                     </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -958,25 +907,26 @@ export default function TripItineraryView({
             )}
           </section>
 
-          <hr className="border-gray-100 mb-5" />
+          {/* Khoảng cách từ dải ý tưởng đến "Lịch trình" khoảng 40px */}
+          <div className="h-[20px]" />
 
           {/* ────────────────────────────────────────────────────────
               2. PHẦN LỊCH TRÌNH THEO NGÀY (ITINERARY TIMELINE)
           ──────────────────────────────────────────────────────── */}
           <section className="flex-1 flex flex-col min-h-0">
             {/* Header Lịch trình & Distances Toggle */}
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-3">
                 <h2 className="font-extrabold text-[16px] text-gray-950 flex items-center gap-2">
-                  <span>Itinerary</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                    {plan.days.length} days
+                  <span>Lịch trình</span>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                    {plan.days.length} ngày
                   </span>
                 </h2>
 
-                {/* Nút gạt Distances (Khoảng cách) */}
+                {/* Nút gạt Khoảng cách (Distances Toggle) */}
                 <div className="flex items-center gap-2 ml-2 pl-3 border-l border-gray-200">
-                  <span className="text-xs font-semibold text-gray-600">Distances</span>
+                  <span className="text-xs font-semibold text-gray-600">Khoảng cách</span>
                   <button
                     type="button"
                     onClick={() => setShowDistances(!showDistances)}
@@ -996,7 +946,7 @@ export default function TripItineraryView({
                 </div>
               </div>
 
-              {/* Menu ba chấm ... cạnh tiêu đề Itinerary */}
+              {/* Menu ba chấm ... cạnh tiêu đề Lịch trình */}
               <div className="relative">
                 <button
                   type="button"
@@ -1009,7 +959,7 @@ export default function TripItineraryView({
 
                 {showItinerarySettingsMenu && (
                   <div
-                    className="absolute right-0 top-9 w-48 bg-white rounded-2xl shadow-xl border border-gray-200 p-1.5 z-40 text-xs animate-fadeIn"
+                    className="absolute right-0 top-9 w-44 bg-white rounded-2xl shadow-xl border border-gray-200 p-1.5 z-40 text-xs animate-fadeIn"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
@@ -1019,38 +969,17 @@ export default function TripItineraryView({
                     >
                       <Plus size={14} /> Thêm ngày mới
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDistanceUnit((prev) => (prev === 'km' ? 'mi' : 'km'));
-                        setShowItinerarySettingsMenu(false);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-semibold text-gray-900 flex items-center justify-between cursor-pointer"
-                    >
-                      <span>Đơn vị đo:</span>
-                      <span className="font-bold uppercase text-emerald-800">
-                        {distanceUnit === 'km' ? 'Kilomet (km)' : 'Dặm (mi)'}
-                      </span>
-                    </button>
-                    <div className="border-t border-gray-100 my-1"></div>
-                    <button
-                      type="button"
-                      onClick={handleAssistantOptimize}
-                      className="w-full text-left px-3 py-2 rounded-xl hover:bg-emerald-50 text-emerald-800 font-semibold flex items-center gap-2 cursor-pointer"
-                    >
-                      <Sparkles size={14} /> AI Tự lên lịch
-                    </button>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Thanh chọn ngày (Pill Bar) - Đã căn chỉnh đệm pt-1 pb-3 để KHÔNG BAO GIỜ BỊ CẮT CHỮ */}
-            <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-3 mb-3 no-scrollbar shrink-0">
+            {/* Thanh chọn ngày (Pill Bar) - Cao 44px, Tab chọn nền đen, KHÔNG HIỆN SỐ 0 */}
+            <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-3 mb-4 no-scrollbar shrink-0">
               <button
                 type="button"
                 onClick={() => setSelectedDayTab('all')}
-                className={`h-8 px-4 rounded-full text-xs font-bold transition cursor-pointer shrink-0 flex items-center justify-center ${
+                className={`h-[44px] px-5 rounded-full text-xs font-bold transition cursor-pointer shrink-0 flex items-center justify-center ${
                   selectedDayTab === 'all'
                     ? 'bg-black text-white shadow-xs'
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
@@ -1066,34 +995,34 @@ export default function TripItineraryView({
                     key={day.day_number}
                     type="button"
                     onClick={() => setSelectedDayTab(day.day_number)}
-                    className={`h-8 px-4 rounded-full text-xs font-bold transition cursor-pointer shrink-0 flex items-center gap-1.5 justify-center ${
+                    className={`h-[44px] px-5 rounded-full text-xs font-bold transition cursor-pointer shrink-0 flex items-center justify-center gap-1.5 ${
                       isActive
                         ? 'bg-black text-white shadow-xs'
                         : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                     }`}
                   >
                     <span>Ngày {day.day_number}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
-                      }`}
-                    >
-                      {day.stops.length}
-                    </span>
+                    {day.stops.length > 0 && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+                          isActive ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+                        }`}
+                      >
+                        {day.stops.length}
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </div>
 
             {/* Danh sách các ngày và điểm dừng */}
-            <div className="space-y-5">
+            <div className="space-y-4">
               {renderedDays.map((day) => {
                 const hasStops = day.stops.length > 0;
                 const hasLunchBreak = day.stops.some((s) => s.stop_type === 'rest');
                 const isCollapsed = collapsedDays.has(day.day_number);
-                const isDraggingOver = dragOverDayNumber === day.day_number;
 
-                // Các ý tưởng chưa được gán vào ngày này
                 const unplacedIdeasForDay = ideaPois.filter(
                   (poi) => !day.stops.some((s) => s.poi_id === poi.id)
                 );
@@ -1101,33 +1030,12 @@ export default function TripItineraryView({
                 return (
                   <div
                     key={day.day_id}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setDragOverDayNumber(day.day_number);
-                      e.dataTransfer.dropEffect = 'copy';
-                    }}
-                    onDragLeave={() => setDragOverDayNumber(null)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setDragOverDayNumber(null);
-                      const poiId = e.dataTransfer.getData('text/plain');
-                      if (poiId) {
-                        const poi =
-                          allPois.find((p) => p.id === poiId) ||
-                          ideaPois.find((p) => p.id === poiId);
-                        if (poi) handleAddIdeaToDay(day.day_number, poi);
-                      }
-                    }}
-                    className={`rounded-2xl border transition-all ${
-                      isDraggingOver
-                        ? 'border-2 border-dashed border-emerald-600 bg-emerald-50/40 shadow-md'
-                        : 'border-gray-200/90 bg-white shadow-2xs'
-                    }`}
+                    className="rounded-[24px] border border-gray-200/90 bg-white shadow-2xs transition-all overflow-hidden"
                   >
                     {/* Header Ngày với nút thu gọn / mở rộng v */}
                     <div
                       onClick={() => toggleDayCollapse(day.day_number)}
-                      className="bg-gray-50/90 px-4 py-3 flex items-center justify-between border-b border-gray-100 cursor-pointer hover:bg-gray-100/70 transition rounded-t-2xl"
+                      className="bg-gray-50/90 px-4 py-3 flex items-center justify-between border-b border-gray-100 cursor-pointer hover:bg-gray-100/70 transition"
                     >
                       <div className="flex items-center gap-2.5">
                         <button
@@ -1138,7 +1046,7 @@ export default function TripItineraryView({
                           {isCollapsed ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
                         </button>
                         <h3 className="font-extrabold text-[14.5px] text-gray-950 flex items-center gap-2">
-                          <span>Day {day.day_number}</span>
+                          <span>Ngày {day.day_number}</span>
                           {day.date && (
                             <span className="font-normal text-xs text-gray-500">
                               • {displayDateVi(day.date)}
@@ -1154,39 +1062,29 @@ export default function TripItineraryView({
                       </div>
                     </div>
 
-                    {/* Vùng thả nổi bật khi kéo thả */}
-                    {isDraggingOver && (
-                      <div className="p-3 text-center text-xs font-bold text-emerald-800 bg-emerald-100/60 border-b border-emerald-200">
-                        👉 Thả địa điểm vào đây để thêm vào Day {day.day_number}!
-                      </div>
-                    )}
-
-                    {/* Nội dung ngày (chỉ hiện khi chưa thu gọn) */}
+                    {/* Nội dung ngày */}
                     {!isCollapsed && (
                       <div className="p-4 space-y-3">
                         {!hasStops ? (
-                          /* Trạng thái rỗng: 1 nút hành động duy nhất, trực quan */
+                          /* Khung trạng thái trống của ngày: Đúng 1 dòng cao khoảng 72px */
                           <div
                             onClick={() => setActiveDayAddModal(day.day_number)}
-                            className="py-7 px-4 text-center rounded-2xl bg-gray-50/80 border border-dashed border-gray-300 hover:border-black transition cursor-pointer group"
+                            className="h-[72px] px-4 rounded-[20px] bg-gray-50/80 border border-dashed border-gray-300 hover:border-black transition flex items-center justify-between cursor-pointer group"
                           >
-                            <Compass size={22} className="mx-auto text-gray-400 group-hover:text-black mb-2 transition" />
-                            <p className="text-xs font-semibold text-gray-700 mb-2.5">
-                              Chưa có địa điểm nào trong Day {day.day_number}.
-                            </p>
+                            <div className="flex items-center gap-2.5 text-xs text-gray-600">
+                              <Compass size={17} className="text-gray-400 group-hover:text-black transition" />
+                              <span>Chưa có địa điểm nào trong Ngày {day.day_number}. Hãy bấm "+ Thêm vào ngày" ở dải ý tưởng phía trên.</span>
+                            </div>
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveDayAddModal(day.day_number);
                               }}
-                              className="px-4 py-2 rounded-full bg-black text-white text-xs font-bold hover:bg-neutral-800 transition cursor-pointer shadow-xs"
+                              className="px-3.5 py-1.5 rounded-full bg-black text-white text-xs font-bold hover:bg-neutral-800 transition shrink-0 shadow-xs cursor-pointer"
                             >
-                              + Thêm điểm vào Day {day.day_number}
+                              + Thêm điểm
                             </button>
-                            <p className="text-[11px] text-gray-400 mt-2">
-                              hoặc kéo thẻ từ mục Ideas ở trên xuống đây
-                            </p>
                           </div>
                         ) : (
                           day.stops.map((stop, sIdx) => {
@@ -1196,7 +1094,7 @@ export default function TripItineraryView({
                             const isEditingNote = editingNoteStopId === stop.stop_id;
                             const isMenuOpen = activeMenuStopId === stop.stop_id;
 
-                            // Khoảng cách tới điểm kế tiếp
+                            // Khoảng cách chim bay thực tế tới điểm kế tiếp
                             const nextStop = day.stops[sIdx + 1];
                             let transitDistKm: number | null = null;
                             if (nextStop && !isRest && nextStop.stop_type !== 'rest') {
@@ -1205,46 +1103,35 @@ export default function TripItineraryView({
 
                             return (
                               <React.Fragment key={stop.stop_id}>
-                                {/* Thẻ Timeline Card */}
+                                {/* Thẻ lịch trình trong ngày: Cao khoảng 116px, bo góc 24px, viền 1px #e6e6e6, padding 14px */}
                                 <div
-                                  draggable
-                                  onDragStart={(e) => {
-                                    e.dataTransfer.setData('text/plain', stop.poi_id || stop.stop_id);
-                                  }}
                                   onMouseEnter={() => setHoveredStopId(stop.poi_id || stop.stop_id)}
                                   onMouseLeave={() => setHoveredStopId(null)}
-                                  className={`rounded-2xl p-3 border transition-all relative group cursor-grab active:cursor-grabbing ${
-                                    isRest
-                                      ? 'bg-amber-50/70 border-amber-200'
-                                      : 'bg-white border-gray-200 hover:border-gray-400 shadow-2xs'
+                                  className={`min-h-[116px] rounded-[24px] border border-[#e6e6e6] p-3.5 flex items-start gap-3.5 transition-all relative group ${
+                                    isRest ? 'bg-amber-50/70 border-amber-200' : 'bg-white hover:border-gray-400 shadow-2xs'
                                   }`}
                                 >
-                                  <div className="flex items-start gap-3">
-                                    {/* Grip icon */}
-                                    <div className="text-gray-300 group-hover:text-gray-500 pt-3 shrink-0 cursor-grab">
-                                      <GripVertical size={14} />
+                                  {/* Ảnh nhỏ trong thẻ lịch trình: 88 x 88px, bo góc 14px */}
+                                  {isRest ? (
+                                    <div className="w-[88px] h-[88px] rounded-[14px] bg-amber-100 flex items-center justify-center text-amber-800 shrink-0">
+                                      <Coffee size={32} />
                                     </div>
+                                  ) : (
+                                    <div className="w-[88px] h-[88px] rounded-[14px] overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                                      <img
+                                        src={getPoiImage(matchedPoi)}
+                                        alt={stop.title}
+                                        className="w-full h-full object-cover pointer-events-none"
+                                        loading="lazy"
+                                      />
+                                    </div>
+                                  )}
 
-                                    {/* Thumbnail vuông chuẩn Mindtrip */}
-                                    {isRest ? (
-                                      <div className="w-14 h-14 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 shrink-0">
-                                        <Coffee size={24} />
-                                      </div>
-                                    ) : (
-                                      <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-                                        <img
-                                          src={getPoiImage(matchedPoi)}
-                                          alt={stop.title}
-                                          className="w-full h-full object-cover pointer-events-none"
-                                          loading="lazy"
-                                        />
-                                      </div>
-                                    )}
-
-                                    {/* Nội dung điểm */}
-                                    <div className="flex-1 min-w-0">
+                                  {/* Nội dung điểm dừng */}
+                                  <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+                                    <div>
                                       <div className="flex items-center gap-1.5 mb-1">
-                                        <h4 className="font-extrabold text-[14.5px] text-gray-950 truncate">
+                                        <h4 className="font-extrabold text-[15px] text-gray-950 truncate">
                                           {stop.title}
                                         </h4>
                                       </div>
@@ -1287,194 +1174,200 @@ export default function TripItineraryView({
                                           type="button"
                                           onClick={() => {
                                             setEditingStopId(stop.stop_id);
-                                            setEditStartTime(stop.start_time || '09:00');
-                                            setEditEndTime(stop.end_time || '10:30');
+                                            setEditStartTime(stop.start_time || '08:00');
+                                            setEditEndTime(stop.end_time || '09:30');
                                           }}
                                           className="flex items-center gap-1 text-xs text-gray-600 hover:text-black font-medium mt-0.5 cursor-pointer group/time"
                                           title="Bấm để sửa khung giờ"
                                         >
                                           <Clock size={12} className="text-gray-400 group-hover/time:text-black" />
                                           <span>
-                                            {stop.start_time || '09:00'} – {stop.end_time || '10:30'}
+                                            {stop.start_time || '08:00'} – {stop.end_time || '09:30'}
                                           </span>
                                           <Pencil size={10} className="text-gray-300 group-hover/time:text-gray-600 ml-0.5 opacity-0 group-hover/time:opacity-100" />
                                         </button>
                                       )}
 
-                                      {/* Ghi chú Note nếu có */}
-                                      {stop.comment && !isEditingNote && (
-                                        <div
+                                      <p className="text-[11.5px] text-gray-500 mt-1 truncate">
+                                        {stop.address || stop.city || trip.destination}
+                                      </p>
+                                    </div>
+
+                                    {/* Ghi chú Note (Add a comment) */}
+                                    {stop.comment && !isEditingNote && (
+                                      <div
+                                        onClick={() => {
+                                          setEditingNoteStopId(stop.stop_id);
+                                          setNoteInput(stop.comment || '');
+                                        }}
+                                        className="mt-1.5 p-2 rounded-xl bg-amber-50/80 border border-amber-200/70 text-amber-950 text-xs flex items-start gap-1.5 cursor-pointer hover:bg-amber-100/80 transition"
+                                        title="Bấm để sửa bình luận"
+                                      >
+                                        <FileText size={13} className="text-amber-700 shrink-0 mt-0.5" />
+                                        <span className="leading-snug">{stop.comment}</span>
+                                      </div>
+                                    )}
+
+                                    {/* Ô nhập ghi chú */}
+                                    {isEditingNote && (
+                                      <div className="mt-2 space-y-1.5">
+                                        <textarea
+                                          value={noteInput}
+                                          onChange={(e) => setNoteInput(e.target.value)}
+                                          placeholder="Nhập ghi chú cho điểm này (ví dụ: đặt bàn trước, mang áo khoác...)"
+                                          rows={2}
+                                          className="w-full text-xs p-2 rounded-xl border border-gray-300 focus:border-black focus:outline-none"
+                                        />
+                                        <div className="flex justify-end gap-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => setEditingNoteStopId(null)}
+                                            className="text-[11px] px-2.5 py-1 rounded-lg text-gray-600 hover:bg-gray-100 cursor-pointer"
+                                          >
+                                            Hủy
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleSaveNote(day.day_number, stop.stop_id)}
+                                            className="text-[11px] px-3 py-1 rounded-lg bg-black text-white font-bold cursor-pointer"
+                                          >
+                                            Lưu ghi chú
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Thao tác góc phải thẻ */}
+                                  <div className="relative shrink-0 flex items-center gap-1 self-start">
+                                    <button
+                                      type="button"
+                                      disabled={sIdx === 0}
+                                      onClick={() => handleMoveStop(day.day_number, sIdx, 'up')}
+                                      className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-gray-500 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                                      title="Lên trên"
+                                    >
+                                      <ArrowUp size={13} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={sIdx === day.stops.length - 1}
+                                      onClick={() => handleMoveStop(day.day_number, sIdx, 'down')}
+                                      className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-gray-500 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                                      title="Xuống dưới"
+                                    >
+                                      <ArrowDown size={13} />
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveMenuStopId(isMenuOpen ? null : stop.stop_id);
+                                      }}
+                                      className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-black cursor-pointer"
+                                      title="Tùy chọn khác"
+                                    >
+                                      <MoreHorizontal size={14} />
+                                    </button>
+
+                                    {/* Dropdown Menu ... */}
+                                    {isMenuOpen && (
+                                      <div
+                                        className="absolute right-0 top-8 w-48 bg-white rounded-2xl shadow-xl border border-gray-200 p-1.5 z-40 text-xs animate-fadeIn"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <button
+                                          type="button"
                                           onClick={() => {
                                             setEditingNoteStopId(stop.stop_id);
                                             setNoteInput(stop.comment || '');
+                                            setActiveMenuStopId(null);
                                           }}
-                                          className="mt-2 p-2 rounded-xl bg-amber-50/80 border border-amber-200/70 text-amber-950 text-xs flex items-start gap-1.5 cursor-pointer hover:bg-amber-100/80 transition"
-                                          title="Bấm để chỉnh sửa ghi chú"
+                                          className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-gray-100 font-medium text-gray-800 flex items-center gap-2 cursor-pointer"
                                         >
-                                          <FileText size={13} className="text-amber-700 shrink-0 mt-0.5" />
-                                          <span className="leading-snug">{stop.comment}</span>
-                                        </div>
-                                      )}
-
-                                      {/* Ô nhập ghi chú khi đang mở */}
-                                      {isEditingNote && (
-                                        <div className="mt-2 space-y-1.5">
-                                          <textarea
-                                            value={noteInput}
-                                            onChange={(e) => setNoteInput(e.target.value)}
-                                            placeholder="Nhập ghi chú cho điểm này (ví dụ: đặt bàn trước, mang áo khoác...)"
-                                            rows={2}
-                                            className="w-full text-xs p-2 rounded-xl border border-gray-300 focus:border-black focus:outline-none"
-                                          />
-                                          <div className="flex justify-end gap-1.5">
-                                            <button
-                                              type="button"
-                                              onClick={() => setEditingNoteStopId(null)}
-                                              className="text-[11px] px-2.5 py-1 rounded-lg text-gray-600 hover:bg-gray-100 cursor-pointer"
-                                            >
-                                              Hủy
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => handleSaveNote(day.day_number, stop.stop_id)}
-                                              className="text-[11px] px-3 py-1 rounded-lg bg-black text-white font-bold cursor-pointer"
-                                            >
-                                              Lưu ghi chú
-                                            </button>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Nút thao tác nhanh trên thẻ */}
-                                    <div className="relative shrink-0 flex items-center gap-1">
-                                      <button
-                                        type="button"
-                                        disabled={sIdx === 0}
-                                        onClick={() => handleMoveStop(day.day_number, sIdx, 'up')}
-                                        className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-gray-500 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
-                                        title="Lên trên"
-                                      >
-                                        <ArrowUp size={13} />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        disabled={sIdx === day.stops.length - 1}
-                                        onClick={() => handleMoveStop(day.day_number, sIdx, 'down')}
-                                        className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-gray-500 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
-                                        title="Xuống dưới"
-                                      >
-                                        <ArrowDown size={13} />
-                                      </button>
-
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setActiveMenuStopId(isMenuOpen ? null : stop.stop_id);
-                                        }}
-                                        className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-black cursor-pointer"
-                                        title="Tùy chọn khác"
-                                      >
-                                        <MoreHorizontal size={14} />
-                                      </button>
-
-                                      {/* Dropdown Menu ... */}
-                                      {isMenuOpen && (
-                                        <div
-                                          className="absolute right-0 top-8 w-48 bg-white rounded-2xl shadow-xl border border-gray-200 p-1.5 z-40 text-xs animate-fadeIn"
-                                          onClick={(e) => e.stopPropagation()}
+                                          <FileText size={13} /> {stop.comment ? 'Sửa bình luận' : 'Thêm bình luận'}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingStopId(stop.stop_id);
+                                            setEditStartTime(stop.start_time || '08:00');
+                                            setEditEndTime(stop.end_time || '09:30');
+                                            setActiveMenuStopId(null);
+                                          }}
+                                          className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-gray-100 font-medium text-gray-800 flex items-center gap-2 cursor-pointer"
                                         >
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setEditingNoteStopId(stop.stop_id);
-                                              setNoteInput(stop.comment || '');
-                                              setActiveMenuStopId(null);
-                                            }}
-                                            className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-gray-100 font-medium text-gray-800 flex items-center gap-2 cursor-pointer"
-                                          >
-                                            <FileText size={13} /> {stop.comment ? 'Sửa ghi chú' : 'Thêm ghi chú'}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setEditingStopId(stop.stop_id);
-                                              setEditStartTime(stop.start_time || '09:00');
-                                              setEditEndTime(stop.end_time || '10:30');
-                                              setActiveMenuStopId(null);
-                                            }}
-                                            className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-gray-100 font-medium text-gray-800 flex items-center gap-2 cursor-pointer"
-                                          >
-                                            <Clock size={13} /> Chỉnh sửa thời gian
-                                          </button>
-                                          <div className="border-t border-gray-100 my-1"></div>
-                                          <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase">
-                                            Chuyển sang ngày khác:
-                                          </div>
-                                          {plan.days
-                                            .filter((d) => d.day_number !== day.day_number)
-                                            .map((otherDay) => (
-                                              <button
-                                                key={otherDay.day_number}
-                                                type="button"
-                                                onClick={() =>
-                                                  handleMoveStopBetweenDays(
-                                                    stop.stop_id,
-                                                    day.day_number,
-                                                    otherDay.day_number
-                                                  )
-                                                }
-                                                className="w-full text-left px-3 py-1 rounded-xl hover:bg-emerald-50 text-gray-700 font-medium cursor-pointer"
-                                              >
-                                                Ngày {otherDay.day_number}
-                                              </button>
-                                            ))}
-                                          <div className="border-t border-gray-100 my-1"></div>
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              handleRemovePoiFromDay(stop.poi_id || stop.stop_id);
-                                              setActiveMenuStopId(null);
-                                            }}
-                                            className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-amber-50 text-amber-800 font-medium flex items-center gap-2 cursor-pointer"
-                                          >
-                                            <Lightbulb size={13} /> Đưa ngược về Ideas
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              handleDeleteStop(day.day_number, stop.stop_id);
-                                              setActiveMenuStopId(null);
-                                            }}
-                                            className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-rose-50 text-rose-600 font-medium flex items-center gap-2 cursor-pointer"
-                                          >
-                                            <Trash2 size={13} /> Xóa bỏ điểm này
-                                          </button>
+                                          <Clock size={13} /> Chỉnh sửa thời gian
+                                        </button>
+                                        <div className="border-t border-gray-100 my-1"></div>
+                                        <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase">
+                                          Chuyển sang ngày khác:
                                         </div>
-                                      )}
-                                    </div>
+                                        {plan.days
+                                          .filter((d) => d.day_number !== day.day_number)
+                                          .map((otherDay) => (
+                                            <button
+                                              key={otherDay.day_number}
+                                              type="button"
+                                              onClick={() =>
+                                                handleMoveStopBetweenDays(
+                                                  stop.stop_id,
+                                                  day.day_number,
+                                                  otherDay.day_number
+                                                )
+                                              }
+                                              className="w-full text-left px-3 py-1 rounded-xl hover:bg-emerald-50 text-gray-700 font-medium cursor-pointer"
+                                            >
+                                              Ngày {otherDay.day_number}
+                                            </button>
+                                          ))}
+                                        <div className="border-t border-gray-100 my-1"></div>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleRemovePoiFromDay(stop.poi_id || stop.stop_id);
+                                            setActiveMenuStopId(null);
+                                          }}
+                                          className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-amber-50 text-amber-800 font-medium flex items-center gap-2 cursor-pointer"
+                                        >
+                                          <Lightbulb size={13} /> Chuyển về Ý tưởng
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleDeleteStop(day.day_number, stop.stop_id);
+                                            setActiveMenuStopId(null);
+                                          }}
+                                          className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-rose-50 text-rose-600 font-medium flex items-center gap-2 cursor-pointer"
+                                        >
+                                          <Trash2 size={13} /> Xóa khỏi ngày
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
 
-                                {/* Đường nối khoảng cách giữa 2 điểm (Distances Connector) */}
+                                {/* Dòng khoảng cách giữa 2 thẻ: Cao 44px, thụt trái 28px, vạch dọc 2px #ddd */}
                                 {showDistances && transitDistKm !== null && (
-                                  <div className="ml-7 pl-4 py-2 border-l-2 border-dashed border-gray-300 flex items-center gap-2 text-[11.5px] text-gray-600 font-semibold animate-fadeIn">
+                                  <div className="h-[44px] ml-7 pl-6 border-l-2 border-[#ddd] flex items-center gap-3 text-xs text-gray-600 font-semibold animate-fadeIn">
                                     <Car size={13} className="text-gray-400 shrink-0" />
-                                    <span>
-                                      {distanceUnit === 'km'
-                                        ? transitDistKm < 1
-                                          ? `${Math.round(transitDistKm * 1000)}m`
-                                          : `${transitDistKm.toFixed(1)} km`
-                                        : `${(transitDistKm * 0.621371).toFixed(2)} mi`}
-                                    </span>
-                                    <span className="text-gray-400">•</span>
-                                    <span className="text-gray-500 font-normal">
-                                      ~{Math.max(5, Math.round(transitDistKm * 3.5))} phút xe điện
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10.5px] font-bold">
-                                      Giảm ~0.2kg CO2
-                                    </span>
+                                    <span>~{transitDistKm.toFixed(1)} km (chim bay)</span>
+                                    <a
+                                      href={getGoogleMapsDirectionsUrl(
+                                        stop.latitude,
+                                        stop.longitude,
+                                        nextStop.latitude,
+                                        nextStop.longitude
+                                      )}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1 font-bold ml-1"
+                                      title="Mở chỉ đường trên Google Maps"
+                                    >
+                                      <span>Chỉ đường</span>
+                                      <ExternalLink size={11} />
+                                    </a>
                                   </div>
                                 )}
                               </React.Fragment>
@@ -1492,17 +1385,17 @@ export default function TripItineraryView({
                                   activeDayAddModal === day.day_number ? null : day.day_number
                                 )
                               }
-                              className="px-4 py-1.5 rounded-full bg-gray-100 hover:bg-black hover:text-white text-xs font-bold text-gray-900 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                              className="px-4 py-2 rounded-full bg-gray-100 hover:bg-black hover:text-white text-xs font-bold text-gray-900 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                             >
                               <Plus size={13} />
-                              <span>Thêm điểm vào Day {day.day_number}</span>
+                              <span>Thêm điểm vào Ngày {day.day_number}</span>
                             </button>
 
                             {!hasLunchBreak && (
                               <button
                                 type="button"
                                 onClick={() => handleAddLunchBreak(day.day_number)}
-                                className="px-3.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                                className="px-3.5 py-2 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
                               >
                                 <Coffee size={13} className="text-amber-700" />
                                 <span>+ Nghỉ trưa (12:00 – 13:30)</span>
@@ -1516,7 +1409,7 @@ export default function TripItineraryView({
                           <div className="mt-3 p-3.5 rounded-2xl bg-gray-50 border border-gray-200 space-y-3 animate-fadeIn">
                             <div className="flex items-center justify-between">
                               <h4 className="text-xs font-extrabold text-gray-900">
-                                Thêm điểm vào Day {day.day_number}:
+                                Thêm điểm vào Ngày {day.day_number}:
                               </h4>
                               <button
                                 type="button"
@@ -1532,22 +1425,22 @@ export default function TripItineraryView({
                               <Search size={13} className="absolute left-2.5 top-2 text-gray-400" />
                               <input
                                 type="text"
-                                placeholder="Tìm địa điểm mới hoặc chọn từ Ideas bên dưới..."
+                                placeholder="Tìm địa điểm mới hoặc chọn từ Ý tưởng bên dưới..."
                                 value={dayAddModalSearch}
                                 onChange={(e) => setDayAddModalSearch(e.target.value)}
                                 className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-gray-300 text-xs focus:border-black focus:outline-none bg-white"
                               />
                             </div>
 
-                            {/* Danh sách ưu tiên các địa điểm từ Ideas */}
+                            {/* Danh sách ưu tiên các địa điểm từ Ý tưởng */}
                             {!dayAddModalSearch.trim() ? (
                               <div className="space-y-1">
                                 <div className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider">
-                                  Từ kho Ideas ({unplacedIdeasForDay.length}):
+                                  Từ kho Ý tưởng ({unplacedIdeasForDay.length}):
                                 </div>
                                 {unplacedIdeasForDay.length === 0 ? (
                                   <p className="text-xs text-gray-500 py-1">
-                                    Tất cả địa điểm trong Ideas đã được đưa vào ngày này.
+                                    Tất cả địa điểm trong Ý tưởng đã được đưa vào ngày này.
                                   </p>
                                 ) : (
                                   <div className="max-h-40 overflow-y-auto space-y-1 no-scrollbar">
@@ -1607,10 +1500,10 @@ export default function TripItineraryView({
         </div>
 
         {/* ════════════════════════════════════════════════════════
-            CỘT PHẢI: BẢN ĐỒ LỘ TRÌNH ĐỒNG BỘ (POI MAP & ELEVATION)
+            CỘT PHẢI: BẢN ĐỒ LỘ TRÌNH ĐỒNG BỘ (POI MAP SẠCH SẼ)
         ════════════════════════════════════════════════════════ */}
         <div className="lg:col-span-6 xl:col-span-6 h-full relative bg-gray-100 flex flex-col">
-          {/* Bản đồ Leaflet đồng bộ */}
+          {/* Bản đồ Leaflet sạch sẽ, không có widget đè che nút zoom hay chip thời tiết */}
           <div className="flex-1 w-full h-full relative">
             <PoiMap
               pois={mapPois.length > 0 ? mapPois : allPois.slice(0, 10)}
@@ -1619,16 +1512,6 @@ export default function TripItineraryView({
               onSelectPoi={(id) => setSelectedMapPoiId(id)}
               onHoverPoi={(id) => setHoveredStopId(id)}
             />
-
-            {/* Widget cao độ & Hành trình xanh nổi trên bản đồ - KHÔNG BỊ TRÙNG LẶP */}
-            <div className="absolute bottom-6 left-5 right-5 z-[500] pointer-events-none max-w-lg mx-auto">
-              <div className="pointer-events-auto shadow-2xl rounded-2xl overflow-hidden border border-emerald-500/30">
-                <ThreeElevationWave
-                  className="w-full"
-                  co2SavedKg={0.8}
-                />
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -1646,7 +1529,7 @@ export default function TripItineraryView({
             {/* Header Modal */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
               <h3 className="font-extrabold text-[17px] text-gray-950">
-                Thêm địa điểm vào Ideas
+                Thêm địa điểm vào Ý tưởng
               </h3>
               <button
                 type="button"
@@ -1708,11 +1591,11 @@ export default function TripItineraryView({
 
             {/* Danh sách địa điểm */}
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
-              {/* Mục Gợi ý thông minh (Suggested Places khi chưa gõ tìm kiếm) */}
+              {/* Mục Gợi ý thông minh */}
               {!modalSearch.trim() && suggestedPois.length > 0 && (
                 <div className="mb-4">
                   <h4 className="font-extrabold text-xs text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <Sparkles size={13} className="text-amber-500" />
+                    <Compass size={13} className="text-emerald-700" />
                     <span>Gợi ý tiêu biểu tại {trip.destination}</span>
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1738,7 +1621,7 @@ export default function TripItineraryView({
                             onClick={() => handleToggleIdeaInTrip(poi.id)}
                             className="mt-1 py-1 px-2.5 rounded-lg text-xs font-bold bg-black text-white hover:bg-neutral-800 transition flex items-center justify-center gap-1 w-fit cursor-pointer"
                           >
-                            <Plus size={11} /> Thêm vào Ideas
+                            <Plus size={11} /> Thêm vào Ý tưởng
                           </button>
                         </div>
                       </div>
@@ -1774,7 +1657,7 @@ export default function TripItineraryView({
                               {poi.name}
                             </h4>
                             <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                              {poi.city} • {poi.category}
+                              {poi.city} • {formatCategoryLabel(poi.category)}
                             </p>
                           </div>
                           <button
@@ -1788,11 +1671,11 @@ export default function TripItineraryView({
                           >
                             {isAdded ? (
                               <>
-                                <Check size={12} /> Đã có trong Ideas
+                                <Check size={12} /> Đã có trong Ý tưởng
                               </>
                             ) : (
                               <>
-                                <Plus size={12} /> Thêm vào Ideas
+                                <Plus size={12} /> Thêm vào Ý tưởng
                               </>
                             )}
                           </button>

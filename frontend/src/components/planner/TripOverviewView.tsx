@@ -214,6 +214,7 @@ export default function TripOverviewView({
   const [activeQuickTip, setActiveQuickTip] = useState<string | null>(null);
 
   // Chat message state
+  const chatInputRef = useRef<HTMLInputElement | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<Array<{ sender: 'user' | 'ai'; text: string }>>([
     {
@@ -820,362 +821,232 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             </div>
           </div>
 
-          {/* 2. Khối Gợi ý địa điểm / Hỗ trợ chuyến đi */}
-          <div>
-            {/* Header: Tiêu đề gọn gàng bên trái + Nút chuyển đổi chức năng bên phải */}
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[17px] font-bold text-gray-950 tracking-tight">
-                {currentSlide === 1 ? 'Gợi ý cho bạn' : 'Hỗ trợ chuyến đi'}
-              </h3>
+          {/* 2. KHỐI AI BRIEFING / INSIGHT CHUẨN MINDTRIP (SPARKLE + PAGINATION + QUICK CHIPS) */}
+          <div className="bg-neutral-50/80 rounded-[22px] border border-gray-200/80 p-4.5 space-y-3.5 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center shadow-xs">
+                <Sparkles size={16} className="fill-white" />
+              </div>
 
-              {/* Segmented Pill rõ ràng, thay thế hoàn toàn cụm < Hỗ trợ chat > khó hiểu */}
-              <div className="flex items-center p-0.5 bg-gray-100 rounded-full border border-gray-200/60 shadow-2xs">
+              {/* Phân trang lời khuyên < 1 trên 2 > */}
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
                 <button
                   type="button"
-                  onClick={() => setCurrentSlide(1)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    currentSlide === 1
-                      ? 'bg-white text-gray-950 shadow-xs ring-1 ring-black/5'
-                      : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                  title="Xem danh sách địa điểm gợi ý theo gu chuyến đi"
+                  onClick={() => setCurrentSlide((prev) => (prev > 1 ? prev - 1 : totalSlides))}
+                  className="w-6 h-6 rounded-full hover:bg-gray-200 flex items-center justify-center transition cursor-pointer"
+                  title="Lời khuyên trước"
                 >
-                  <Sparkles size={12} className={currentSlide === 1 ? 'text-amber-500' : 'text-gray-400'} />
-                  <span>Gợi ý</span>
+                  <ChevronLeft size={14} />
                 </button>
+                <span>{currentSlide} trên {totalSlides}</span>
                 <button
                   type="button"
-                  onClick={() => setCurrentSlide(2)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    currentSlide === 2
-                      ? 'bg-white text-emerald-800 shadow-xs ring-1 ring-black/5'
-                      : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                  title="Trò chuyện và nhận tư vấn chi tiết về chuyến đi"
+                  onClick={() => setCurrentSlide((prev) => (prev < totalSlides ? prev + 1 : 1))}
+                  className="w-6 h-6 rounded-full hover:bg-gray-200 flex items-center justify-center transition cursor-pointer"
+                  title="Lời khuyên tiếp theo"
                 >
-                  <MessageSquare size={12} className={currentSlide === 2 ? 'text-emerald-600' : 'text-gray-400'} />
-                  <span>Tư vấn chuyến đi</span>
+                  <ChevronRight size={14} />
                 </button>
               </div>
             </div>
 
-            {/* ─── SLIDE 1: GỢI Ý ĐỊA ĐIỂM ─── */}
-            {currentSlide === 1 ? (
-              <div>
-                {/* Thanh chip lọc nhanh danh mục theo phong cách Mindtrip tối giản */}
-                <div className="flex items-center gap-1.5 mb-3 overflow-x-auto py-0.5 auto-hide-scrollbar">
-                  {[
-                    { id: 'all', label: 'Tất cả' },
-                    { id: 'quan-an', label: 'Ẩm thực & Cafe' },
-                    { id: 'di-tich', label: 'Di tích & Văn hóa' },
-                    { id: 'canh-quan', label: 'Cảnh quan & Thiên nhiên' },
-                  ].map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setRecCategoryFilter(cat.id as any)}
-                      className={`px-3 py-1 rounded-full text-[12px] font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                        recCategoryFilter === cat.id
-                          ? 'bg-black text-white shadow-xs'
-                          : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200/80 hover:text-black'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
+            {/* Nội dung insight hành trình */}
+            <div>
+              <p className="text-[14px] text-gray-900 leading-relaxed font-normal">
+                {currentSlide === 1
+                  ? `Chuyến đi ${trip.destination} sắp tới rồi, ngày đầu tiên của bạn đã có thể sắp xếp các điểm đến đặc trưng. Thông tin dự báo thời tiết và hành lý đã sẵn sàng ở đây.`
+                  : `Tối ưu hóa hành trình xanh: Hãy nhóm các điểm đến tại ${trip.destination} theo từng cụm bán kính 2km để tiết kiệm thời gian di chuyển và giảm phát thải CO₂.`}
+              </p>
+            </div>
+
+            {/* Các nút thao tác nhanh (Weather forecast, Packing help, Transit, Food) */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              {[
+                { id: 'weather', label: 'Dự báo thời tiết' },
+                { id: 'packing', label: 'Gợi ý hành lý' },
+                { id: 'transit', label: 'Di chuyển xanh' },
+                { id: 'food', label: 'Ẩm thực bản địa' },
+              ].map((chip) => {
+                const isActive = activeQuickTip === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setActiveQuickTip(isActive ? null : chip.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+                      isActive
+                        ? 'bg-black text-white shadow-xs'
+                        : 'bg-white hover:bg-gray-100 text-gray-800 border border-gray-200/80 shadow-2xs'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => setActiveQuickTip(null)}
+                className="px-2.5 py-1 text-xs text-gray-400 hover:text-gray-700 transition cursor-pointer ml-auto"
+              >
+                Bỏ qua
+              </button>
+            </div>
+
+            {/* Hộp thông tin popover khi bấm vào chip nhanh */}
+            {activeQuickTip && (
+              <div className="p-3 rounded-xl bg-white border border-gray-200 text-xs text-gray-700 leading-relaxed flex items-start justify-between shadow-2xs animate-fadeIn">
+                <div className="flex items-start gap-2">
+                  <Info size={15} className="text-emerald-700 shrink-0 mt-0.5" />
+                  <span>
+                    {activeQuickTip === 'weather' && `Thời tiết tại ${trip.destination}: Nhiệt độ 25°C - 29°C, mát mẻ, nắng nhẹ, rất thuận lợi cho các hoạt động ngoài trời.`}
+                    {activeQuickTip === 'packing' && 'Hành lý đề xuất: Giày đi bộ êm, áo khoác mỏng, nón/mũ, kem chống nắng, bình nước cá nhân bảo vệ môi trường.'}
+                    {activeQuickTip === 'transit' && `Di chuyển tại ${trip.destination}: Ưu tiên sử dụng xe buýt điện hoặc taxi điện Xanh SM để giảm phát thải.`}
+                    {activeQuickTip === 'food' && `Đặc sản nhất định phải thử: Mì Quảng, bánh xèo, bún bò, chè cung đình tại các quán địa phương uy tín.`}
+                  </span>
                 </div>
-
-                {/* Vertical List of Recommended POIs (Card cao thoáng, thoải mái mắt người nhìn) */}
-                <div className="space-y-3.5 max-h-[calc(100vh-270px)] min-h-[440px] overflow-y-auto pr-1.5 auto-hide-scrollbar overscroll-y-contain">
-                  {displayedRecommendedPois.map((poi) => {
-                    const isAdded = tripIdeas.includes(poi.id);
-                    const reason = getRecommendationReason(poi);
-                    const isHovered = hoveredMapPoiId === poi.id;
-
-                    return (
-                      <div
-                        key={poi.id}
-                        onMouseEnter={() => handleDebouncedHover(poi.id)}
-                        onMouseLeave={() => handleDebouncedHover(null)}
-                        onClick={() => {
-                          setSelectedMapPoiId(poi.id);
-                          setHoveredMapPoiId(null);
-                        }}
-                        className={`p-3.5 rounded-[22px] border transition-all flex flex-col sm:flex-row gap-4 items-start sm:items-stretch group cursor-pointer ${
-                          isHovered || selectedMapPoiId === poi.id
-                            ? 'border-black bg-zinc-50/70 shadow-sm ring-1 ring-black/10'
-                            : 'border-gray-200/90 bg-white hover:border-neutral-400 hover:shadow-2xs'
-                        }`}
-                      >
-                        {/* Thumbnail ảnh: Có huy hiệu Điểm Xanh (EcoScore) & Độ phù hợp */}
-                        <div className="relative w-full sm:w-[172px] min-h-[168px] sm:self-stretch rounded-[16px] overflow-hidden bg-gray-100 shrink-0">
-                          <img
-                            src={poi.image}
-                            alt={poi.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                              e.currentTarget.src = (poi.name.includes('Cầu') || poi.id.includes('cau-rong'))
-                                ? 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=800&q=80'
-                                : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
-                            }}
-                          />
-                          {/* Huy hiệu Điểm Xanh Frosted Glass & Độ Phù Hợp */}
-                          <div className="absolute top-2.5 left-2.5 flex flex-wrap items-center gap-1.5 z-10 pointer-events-none">
-                            {poi.isGreen && (
-                              <span
-                                className="backdrop-blur-md text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1.5 border bg-emerald-950/80 border-emerald-400/40 text-emerald-200 shadow-emerald-900/30"
-                                title="Địa điểm du lịch xanh"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                                <span>🌱 Địa điểm xanh</span>
-                              </span>
-                            )}
-                            {tripIdeas.length > 0 && typeof poi.matchScore === 'number' && (
-                              <span 
-                                className="bg-black/75 backdrop-blur-md text-white text-[10.5px] font-semibold px-2 py-0.5 rounded-full shadow-xs border border-white/10 flex items-center gap-1"
-                                title={`Độ tương thích ${poi.matchScore}% dựa trên điểm đến, ngân sách và sở thích trải nghiệm của bạn`}
-                              >
-                                <Sparkles size={10} className="text-amber-400 shrink-0" />
-                                <span>{poi.matchScore}% Phù hợp gu</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Thông tin POI: Tên, Đánh giá, Trải nghiệm & Nút lưu rộng rãi, thoải mái */}
-                        <div className="flex-1 flex flex-col justify-between min-w-0 py-1">
-                          <div>
-                            {/* Hàng 1: Tên địa điểm rõ ràng, thoáng mắt */}
-                            <h4 className="font-bold text-[16px] sm:text-[16.5px] text-gray-950 truncate leading-snug group-hover:text-black mb-1.5" title={poi.name}>
-                              {poi.name.replace(/\s*\([^)]*(?:Cây Cầu|Phun Lửa|Độc Nhất|Vô Nhị|Công Viên Biển)[^)]*\)/gi, '')}
-                            </h4>
-
-                            {/* Hàng 2: Đánh giá sao, Danh mục, Thành phố */}
-                            <div className="flex flex-wrap items-center gap-1.5 text-[12.5px] text-gray-500 mb-2.5">
-                              {typeof poi.rating === 'number' && poi.rating > 0 && (
-                                <>
-                                  <span className="flex items-center text-amber-500 font-bold">
-                                    <Star size={12} className="fill-amber-500 mr-0.5" />
-                                    {poi.rating}
-                                  </span>
-                                  <span>•</span>
-                                </>
-                              )}
-                              <span>
-                                {poi.category === 'quan-an' ? 'Ẩm thực' : poi.category === 'di-tich' ? 'Di tích' : poi.category === 'canh-quan' ? 'Cảnh quan' : 'Tâm linh'} • {poi.city}
-                              </span>
-                            </div>
-
-                            {/* Hàng 3: Điểm nhấn trải nghiệm */}
-                            <p className="text-[13px] text-gray-600 line-clamp-2 leading-relaxed">
-                              {reason}
-                            </p>
-                          </div>
-
-                          {/* Hàng 4: Nút trạng thái hành động rõ ràng (Tránh hiểu lầm) */}
-                          <div className="flex items-center justify-end mt-3 pt-1">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleToggleIdea(poi.id);
-                              }}
-                              className={`h-8 px-3.5 rounded-full text-[12px] font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-2xs ${
-                                isAdded
-                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/90 hover:bg-red-50 hover:text-red-700 hover:border-red-200 group/btn'
-                                  : 'bg-black text-white hover:bg-neutral-800'
-                              }`}
-                              title={isAdded ? 'Bấm để xóa khỏi Ý tưởng chuyến đi' : 'Lưu địa điểm này vào Ý tưởng chuyến đi'}
-                            >
-                              {isAdded ? (
-                                <>
-                                  <Check size={13} strokeWidth={2.5} className="text-emerald-700 group-hover/btn:hidden" />
-                                  <span className="group-hover/btn:hidden">Đã lưu ý tưởng</span>
-                                  <span className="hidden group-hover/btn:inline text-red-600 font-medium">Bỏ lưu</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Plus size={13} strokeWidth={2.5} />
-                                  <span>Lưu vào ý tưởng</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-/* ─── SLIDE 2: HỖ TRỢ LẬP KẾ HOẠCH CHI TIẾT CHO CHUYẾN ĐI (CHUẨN TỰ NHIÊN, BỎ TEM NHÃN AI) ─── */
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-[19px] sm:text-[21px] font-extrabold text-gray-950 leading-snug tracking-tight mb-2">
-                    {`Hỗ trợ lên kế hoạch chi tiết cho chuyến đi ${trip.destination}`}
-                  </h3>
-                  <p className="text-[13px] sm:text-[13.5px] text-gray-600 leading-relaxed font-normal">
-                    Tại đây bạn có thể trao đổi để nhận hướng dẫn sắp xếp lịch trình từng ngày, tối ưu cung đường di chuyển, cân đối ngân sách và gợi ý các trải nghiệm phù hợp nhất với sở thích của mình.
-                  </p>
-                </div>
-
-                {/* Các hướng hỗ trợ lập kế hoạch chuyến đi (Pills thực tế, không dịch máy) */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {[
-                    { 
-                      id: 'itinerary', 
-                      label: 'Lộ trình từng ngày',
-                      tip: `Lộ trình tham khảo tại ${trip.destination}: Ngày 1 tham quan cụm điểm biểu tượng trung tâm; Ngày 2 khám phá văn hóa di sản & ẩm thực đặc sản; Ngày 3 thư giãn thiên nhiên và mua sắm quà lưu niệm.`
-                    },
-                    { 
-                      id: 'route', 
-                      label: 'Tối ưu di chuyển',
-                      tip: `Gợi ý di chuyển tại ${trip.destination}: Nhóm các điểm đến gần nhau trong bán kính 2km để tránh quay đầu xe nhiều lần và tiết kiệm thời gian.`
-                    },
-                    { 
-                      id: 'food', 
-                      label: 'Kinh nghiệm ăn uống',
-                      tip: `Ẩm thực ${trip.destination}: Nên thưởng thức các món đặc sản vào bữa trưa và tối tại các quán chuẩn vị bản địa gần tuyến đường tham quan.`
-                    },
-                    { 
-                      id: 'budget', 
-                      label: 'Cân đối ngân sách',
-                      tip: 'Kế hoạch chi tiêu cho chuyến đi: Ước lượng hợp lý giữa vé tham quan, ăn uống và phương tiện di chuyển theo mức ngân sách bạn đã chọn.'
-                    },
-                  ].map((pill) => {
-                    const isActive = activeQuickTip === pill.id;
-                    return (
-                      <button
-                        key={pill.id}
-                        type="button"
-                        onClick={() => setActiveQuickTip(isActive ? null : pill.id)}
-                        className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-medium transition cursor-pointer ${
-                          isActive 
-                            ? 'bg-black text-white shadow-xs' 
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                        }`}
-                      >
-                        {pill.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Gợi ý câu hỏi thực tế cho kế hoạch chuyến đi */}
-                <div className="pt-1">
-                  <p className="text-xs font-semibold text-gray-500 mb-2">Gợi ý câu hỏi nhanh:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      `Gợi ý cách phân bổ thời gian tham quan ${trip.destination} hợp lý?`,
-                      `Những quán ăn đặc sản ngon chuẩn vị gần các điểm tham quan?`,
-                      `Thứ tự ghé thăm các điểm để không bị ngược đường?`,
-                    ].map((q, qIdx) => (
-                      <button
-                        key={qIdx}
-                        type="button"
-                        onClick={() => setChatInput(q)}
-                        className="text-left text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200/80 rounded-full px-3.5 py-1.5 text-gray-700 transition cursor-pointer"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Hộp thông tin popover khi bấm vào các nút thao tác nhanh */}
-                {activeQuickTip && (
-                  <div className="mt-3 p-3.5 rounded-2xl bg-gray-50 border border-gray-200 text-[13px] text-gray-800 leading-relaxed flex items-start justify-between animate-fadeIn">
-                    <div className="flex items-start gap-2">
-                      <Info size={16} className="text-emerald-700 shrink-0 mt-0.5" />
-                      <span>
-                        {activeQuickTip === 'weather' && `Thời tiết tại ${trip.destination}: 24°C - 28°C, gió mát, thích hợp du ngoạn ngoài trời.`}
-                        {activeQuickTip === 'packing' && 'Gợi ý hành lý: Trang phục nhẹ nhàng, giày đi bộ, kem chống nắng, sạc dự phòng, bình nước cá nhân.'}
-                        {activeQuickTip === 'airport' && `Di chuyển từ sân bay đến trung tâm ${trip.destination}: Ưu tiên sử dụng xe buýt điện hoặc taxi điện Xanh SM.`}
-                        {activeQuickTip === 'explore' && 'Kế hoạch đã được tối ưu bảo đảm ngân sách và thời gian di chuyển hợp lý.'}
-                      </span>
-                    </div>
-                    <button 
-                      onClick={() => setActiveQuickTip(null)}
-                      className="text-gray-400 hover:text-black cursor-pointer ml-2"
-                    >
-                      <X size={15} />
-                    </button>
-                  </div>
-                )}
-
-                {/* Khung Trò chuyện chuyến đi (Chat Box nằm trong Slide 2 chuẩn Mindtrip) */}
-                <div className="pt-2">
-                  <div className="rounded-[24px] border border-gray-200/90 p-4 shadow-sm bg-white hover:border-gray-300 transition-all flex flex-col justify-between min-h-[110px]">
-                    {/* Input text */}
-                    <input
-                      type="text"
-                      placeholder="Bắt đầu một cuộc trò chuyện mới cho chuyến đi này"
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSendChatMessage();
-                      }}
-                      className="w-full text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none bg-transparent pt-1"
-                    />
-
-                    {/* Hàng nút dưới cùng của ô chat: (+) bên trái, (xe, mic, gửi) bên phải */}
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-100/70 mt-3">
-                      <button
-                        type="button"
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                        title="Thêm tệp hoặc địa điểm"
-                      >
-                        <Plus size={18} />
-                      </button>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                          title="Phương tiện di chuyển xanh"
-                        >
-                          <Car size={17} />
-                        </button>
-
-                        <button
-                          type="button"
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                          title="Ghi chú giọng nói"
-                        >
-                          <Mic size={17} />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleSendChatMessage}
-                          className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs"
-                          title="Gửi"
-                        >
-                          <Send size={14} className="ml-0.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Lịch sử tin nhắn trao đổi nhanh */}
-                  {chatMessages.length > 1 && (
-                    <div className="mt-3 space-y-2 max-h-48 overflow-y-auto pr-1">
-                      {chatMessages.slice(-3).map((msg, idx) => (
-                        <div
-                          key={idx}
-                          className={`p-3 rounded-2xl text-[13px] leading-relaxed ${
-                            msg.sender === 'user'
-                              ? 'bg-neutral-900 text-white ml-auto max-w-[80%]'
-                              : 'bg-gray-50 text-gray-800 mr-auto max-w-[90%] border border-gray-100'
-                          }`}
-                        >
-                          {msg.text}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveQuickTip(null)}
+                  className="text-gray-400 hover:text-black cursor-pointer ml-2"
+                >
+                  <X size={13} />
+                </button>
               </div>
             )}
+          </div>
+
+          {/* 3. KHỐI TRÒ CHUYỆN / CHATS CHUẨN MINDTRIP (DÀNH TOÀN BỘ KHÔNG GIAN CHO PHẦN CHAT) */}
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[17px] font-bold text-gray-950 tracking-tight">
+                Đoạn chat (1)
+              </h3>
+            </div>
+
+            {/* Thẻ phiên trò chuyện chuyến đi */}
+            <div
+              onClick={() => {
+                chatInputRef.current?.focus();
+              }}
+              className="p-3.5 rounded-2xl border border-gray-200/90 hover:border-black bg-white shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 flex items-center justify-center font-bold text-base shrink-0 group-hover:scale-105 transition-transform">
+                  <MessageSquare size={18} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-[14px] text-gray-950 group-hover:text-black leading-snug">
+                    Lên kế hoạch chuyến đi {trip.destination}
+                  </h4>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Trợ lý GreenTrip AI • Vừa cập nhật
+                  </p>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-gray-400 group-hover:text-black group-hover:translate-x-0.5 transition-all" />
+            </div>
+
+            {/* Gợi ý câu hỏi nhanh cho chuyến đi */}
+            <div className="space-y-1.5 pt-1">
+              <p className="text-[11.5px] font-semibold text-gray-400">Gợi ý câu hỏi nhanh:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  `Phân bổ lịch trình ${trip.daysCount || 4} ngày hợp lý?`,
+                  `Quán ăn đặc sản ngon gần tuyến tham quan?`,
+                  `Cung đường di chuyển không bị ngược xe?`,
+                ].map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setChatInput(q);
+                      chatInputRef.current?.focus();
+                    }}
+                    className="text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200/80 rounded-full px-3 py-1.5 text-gray-700 transition cursor-pointer active:scale-95"
+                  >
+                    💡 {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Luồng tin nhắn trò chuyện với Trợ lý AI */}
+            <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1 auto-hide-scrollbar">
+              {chatMessages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`p-3 rounded-2xl text-[13px] leading-relaxed shadow-2xs ${
+                    msg.sender === 'user'
+                      ? 'bg-neutral-900 text-white ml-auto max-w-[85%]'
+                      : 'bg-white text-gray-800 mr-auto max-w-[90%] border border-gray-200/80'
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              ))}
+            </div>
+
+            {/* Khung nhập tin nhắn chat chuẩn Mindtrip */}
+            <div className="rounded-[24px] border border-gray-200/90 p-3.5 shadow-sm bg-white hover:border-gray-300 focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all flex flex-col justify-between">
+              <input
+                ref={chatInputRef}
+                type="text"
+                placeholder="Bắt đầu một cuộc trò chuyện mới cho chuyến đi này..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSendChatMessage();
+                }}
+                className="w-full text-[13.5px] text-gray-900 placeholder:text-gray-400 focus:outline-none bg-transparent pt-0.5"
+              />
+
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100/70 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddIdeasModal(true)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
+                  title="Thêm địa điểm vào ý tưởng chuyến đi"
+                >
+                  <Plus size={18} />
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChatInput('Gợi ý phương tiện xanh tiết kiệm CO2 cho chuyến đi');
+                      chatInputRef.current?.focus();
+                    }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                    title="Phương tiện di chuyển xanh"
+                  >
+                    <Car size={17} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChatInput('Ghi chú giọng nói: Khám phá ẩm thực bản địa');
+                      chatInputRef.current?.focus();
+                    }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
+                    title="Ghi chú giọng nói"
+                  >
+                    <Mic size={17} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSendChatMessage}
+                    className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs"
+                    title="Gửi"
+                  >
+                    <Send size={14} className="ml-0.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2453,23 +2324,16 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10 transition-opacity" />
 
-                    {/* Nút hành động góc trên: Vì sao nơi này? & Xóa khỏi ý tưởng */}
+                    {/* Huy hiệu Địa điểm xanh góc trên bên trái */}
+                    {poi.isGreen && (
+                      <div className="absolute top-3 left-3 z-10 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md backdrop-blur-md flex items-center gap-1 pointer-events-none">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>🌱 Địa điểm xanh</span>
+                      </div>
+                    )}
+
+                    {/* Nút hành động góc trên: Xóa khỏi ý tưởng */}
                     <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setExplanationPoi({ 
-                            id: poi.id, 
-                            name: poi.name, 
-                            snippet: getRecommendationReason(poi) 
-                          });
-                        }}
-                        className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md flex items-center justify-center text-white/90 hover:text-white transition cursor-pointer"
-                        title="Vì sao nơi này?"
-                      >
-                        <Sparkles size={14} />
-                      </button>
                       <button
                         type="button"
                         onClick={(e) => {

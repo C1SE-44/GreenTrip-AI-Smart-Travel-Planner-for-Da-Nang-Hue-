@@ -41,6 +41,7 @@ export interface PoiCardProps {
   onHover: (id: string | null) => void;
   onToggleFavorite: (id: string, poi?: Poi) => void;
   onToggleAddTrip?: (id: string) => void;
+  showExplanation?: boolean;
   recommendation?: {
     matchScore: number;
     greenScore: number | null;
@@ -63,6 +64,7 @@ export default function PoiCard({
   onToggleFavorite,
   onToggleAddTrip,
   recommendation,
+  showExplanation = false,
 }: PoiCardProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [isCardHovered, setIsCardHovered] = useState(false);
@@ -224,7 +226,7 @@ export default function PoiCard({
           </div>
         )}
 
-        {recommendation && (
+        {showExplanation && recommendation && (
           <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-6rem)] flex-col items-start gap-1.5">
             <span 
               className="rounded-full bg-emerald-800 px-2.5 py-1 text-xs font-bold text-white shadow-md cursor-help"
@@ -291,7 +293,7 @@ export default function PoiCard({
           </p>
         )}
 
-        {recommendation && (
+        {showExplanation && recommendation && (
           <div className="pt-1.5" onClick={(event) => event.stopPropagation()}>
             <button
               type="button"
@@ -318,7 +320,7 @@ export default function PoiCard({
             </button>
           </div>
         )}
-        {!recommendation && (
+        {showExplanation && !recommendation && (
           <button
             type="button"
             aria-haspopup="dialog"

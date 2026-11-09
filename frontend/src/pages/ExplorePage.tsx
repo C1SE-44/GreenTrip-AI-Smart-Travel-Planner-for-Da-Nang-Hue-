@@ -67,8 +67,9 @@ export interface UserTrip {
 }
 
 
-const TABS: { id: 'all' | 'quan-an' | 'di-tich' | 'canh-quan'; label: string }[] = [
+const TABS: { id: 'all' | 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan'; label: string }[] = [
   { id: 'all', label: 'Tất cả' },
+  { id: 'for-you', label: 'Dành cho bạn' },
   { id: 'quan-an', label: 'Ẩm thực & Cafe' },
   { id: 'di-tich', label: 'Di tích & Văn hóa' },
   { id: 'canh-quan', label: 'Cảnh quan & Thiên nhiên' },
@@ -248,7 +249,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
-  const [activeTab, setActiveTab] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
   // 1. POI hiển thị ô cơ bản trên bản đồ khi người dùng bấm vào
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   // 2. POI hiển thị bảng chi tiết sâu toàn màn hình (PoiDetailSection)
@@ -481,8 +482,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     };
   }, [cityFilter, categoryFilter, filterValues]);
 
-  const handleTabChange = (tabId: 'all' | 'quan-an' | 'di-tich' | 'canh-quan') => {
+  const handleTabChange = (tabId: 'all' | 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan') => {
     setActiveTab(tabId);
+    if (tabId === 'for-you') {
+      setCategoryFilter('all');
+      return;
+    }
     setCategoryFilter(tabId);
     if (tabId === 'all') {
       setFilterValues((prev) => ({ ...prev, vibes: [], subCategories: [], features: [], minRating: null }));
@@ -624,6 +629,28 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       filterValues.budgetWeight !== 50 ||
       filterValues.ecoPriority !== 'all';
 
+    if (activeTab === 'for-you') {
+      return [...matched].sort((a, b) => {
+        // Thuật toán gợi ý cá nhân hóa chạy ẩn:
+        // 1. Điểm xanh (ưu tiên du lịch bền vững)
+        const greenA = a.isGreen ? 35 : 0;
+        const greenB = b.isGreen ? 35 : 0;
+        // 2. Điểm đánh giá thực tế
+        const ratingA = (a.rating || 4.0) * 10;
+        const ratingB = (b.rating || 4.0) * 10;
+        // 3. Địa điểm yêu thích / đã lưu của người dùng
+        const savedA = savedIds.has(a.id) ? 20 : 0;
+        const savedB = savedIds.has(b.id) ? 20 : 0;
+        // 4. Địa điểm biểu tượng / curated highlights
+        const highlightA = isCuratedHighlight(a) ? 25 : 0;
+        const highlightB = isCuratedHighlight(b) ? 25 : 0;
+
+        const scoreA = greenA + ratingA + savedA + highlightA;
+        const scoreB = greenB + ratingB + savedB + highlightB;
+        return scoreB - scoreA;
+      });
+    }
+
     if (!isCustomWeights) {
       return matched;
     }
@@ -643,7 +670,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       }
       return a.name.localeCompare(b.name, 'vi');
     });
-  }, [allPois, search, cityFilter, categoryFilter, filterValues]);
+  }, [allPois, search, cityFilter, categoryFilter, filterValues, activeTab, savedIds]);
 
   // Đếm số lượng filter đang active chuẩn Mindtrip
   const activeFilterCount = useMemo(() => {
@@ -672,11 +699,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const isCuratedOverview = useMemo(() => {
     return (
       categoryFilter === 'all' &&
+      activeTab === 'all' &&
       !search.trim() &&
       viewMode !== 'saved' &&
       activeFilterCount === 0
     );
-  }, [categoryFilter, search, viewMode, activeFilterCount]);
+  }, [categoryFilter, activeTab, search, viewMode, activeFilterCount]);
 
   // Nhóm các danh mục tuyển chọn đặc biệt cho chế độ xem tổng quan:
   const curatedSections = useMemo(() => {
@@ -1476,6 +1504,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                   ? 'Khám phá nổi bật'
                   : search.trim()
                   ? `Kết quả tìm kiếm cho "${search.trim()}"`
+                  : activeTab === 'for-you'
+                  ? 'Gợi ý dành riêng cho bạn'
                   : activeTab !== 'all'
                   ? (TABS.find((t) => t.id === activeTab)?.label || 'Địa điểm')
                   : 'Tất cả địa điểm'}
@@ -1826,7 +1856,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         isOpen={isFilterPopoverOpen}
         allPois={allPois}
         onClose={() => setIsFilterPopoverOpen(false)}
-        activeTab={activeTab}
+        activeTab={activeTab === 'for-you' ? 'all' : activeTab}
         values={filterValues}
         onApply={(newValues) => {
           setFilterValues(newValues);

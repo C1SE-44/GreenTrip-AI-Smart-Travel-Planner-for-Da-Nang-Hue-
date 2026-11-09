@@ -27,6 +27,8 @@ import {
   SlidersHorizontal,
   Star,
   LayoutGrid,
+  MapPin,
+  Info,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import {
@@ -69,6 +71,15 @@ const GREEN_CATEGORY_TABS: { id: string; label: string }[] = [
   { id: 'di-tich', label: 'Di tích' },
   { id: 'canh-quan', label: 'Cảnh quan' },
   { id: 'chua', label: 'Chùa' },
+];
+
+const MODAL_CATEGORY_TABS: { id: string; label: string }[] = [
+  { id: 'for-you', label: 'Dành cho bạn' },
+  { id: 'all', label: 'Tất cả' },
+  { id: 'di-tich', label: 'Di tích' },
+  { id: 'canh-quan', label: 'Cảnh quan' },
+  { id: 'chua', label: 'Chùa' },
+  { id: 'quan-an', label: 'Quán ăn' },
 ];
 
 function formatCategoryLabel(cat?: string | null): string {
@@ -210,14 +221,13 @@ export default function TripItineraryView({
   const [editingNoteStopId, setEditingNoteStopId] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState('');
 
-  // Modal Thêm địa điểm vào Ý tưởng / Ngày
+  // Modal Thêm địa điểm vào Ý tưởng / Ngày (Chuẩn 1:1 TripOverviewView & Mindtrip)
   const [showAddIdeasModal, setShowAddIdeasModal] = useState(false);
-  const [modalMainTab, setModalMainTab] = useState<'ideas' | 'explore' | 'custom'>('ideas');
+  const [modalTab, setModalTab] = useState<'search' | 'ideas' | 'saved' | 'custom'>('search');
   const [modalSearch, setModalSearch] = useState('');
-  const [modalCity, setModalCity] = useState<'all' | 'Đà Nẵng' | 'Huế'>(
-    /hue|huế/i.test(trip.destination) ? 'Huế' : 'Đà Nẵng'
-  );
-  const [modalCategory, setModalCategory] = useState<string>('all');
+  const [modalCity, setModalCity] = useState<'all' | 'Đà Nẵng' | 'Huế'>('all');
+  const [showModalCityDropdown, setShowModalCityDropdown] = useState(false);
+  const [modalCategory, setModalCategory] = useState<string>('for-you');
   const [customIdeaInput, setCustomIdeaInput] = useState('');
 
   // Tiêu đề chuyến đi rõ ràng
@@ -677,60 +687,59 @@ export default function TripItineraryView({
     return stopsPois;
   }, [plan.days, mapDayFilter, allPois]);
 
-  // Bộ lọc POI trong Modal "Thêm vào chuyến đi" theo 4 danh mục chuẩn GreenTrip
-  const modalFilteredPois = useMemo(() => {
-    return allPois.filter((p) => {
-      if (modalCity !== 'all' && normalizeCity(p.city) !== modalCity) return false;
-      if (modalCategory !== 'all') {
-        const norm = normalizeCategory(p.category);
-        if (modalCategory === 'quan-an') {
-          const c = (p.category || '').toLowerCase();
-          if (norm !== 'quan-an' && !c.includes('ăn') && !c.includes('quán') && !c.includes('ẩm thực') && !c.includes('cafe')) return false;
-        } else if (modalCategory === 'di-tich') {
-          const c = (p.category || '').toLowerCase();
-          if (norm !== 'di-tich' && !c.includes('di tích') && !c.includes('lăng') && !c.includes('đại nội')) return false;
-        } else if (modalCategory === 'canh-quan') {
-          const c = (p.category || '').toLowerCase();
-          if (norm !== 'canh-quan' && !c.includes('cảnh quan') && !c.includes('biển') && !c.includes('cầu') && !c.includes('sơn trà') && !c.includes('bà nà')) return false;
-        } else if (modalCategory === 'chua') {
-          const c = (p.category || '').toLowerCase();
-          if (norm !== 'chua' && !c.includes('chùa')) return false;
-        }
-      }
-      if (modalSearch.trim()) {
-        const q = modalSearch.toLowerCase();
-        return p.name.toLowerCase().includes(q) || (p.address || '').toLowerCase().includes(q);
-      }
-      return true;
-    });
-  }, [allPois, modalCity, modalCategory, modalSearch]);
+  const isDaNang = useCallback((c?: string) => /da\s*nang|đà\s*nẵng/i.test(c || ''), []);
+  const isHue = useCallback((c?: string) => /hue|huế/i.test(c || ''), []);
 
-  // Bộ lọc POI từ kho Ý tưởng cho Modal Thêm vào ngày
-  const modalFilteredIdeas = useMemo(() => {
-    return ideaPois.filter((p) => {
-      if (modalCategory !== 'all') {
-        const norm = normalizeCategory(p.category);
-        if (modalCategory === 'quan-an') {
-          const c = (p.category || '').toLowerCase();
-          if (norm !== 'quan-an' && !c.includes('ăn') && !c.includes('quán') && !c.includes('ẩm thực') && !c.includes('cafe')) return false;
-        } else if (modalCategory === 'di-tich') {
-          const c = (p.category || '').toLowerCase();
-          if (norm !== 'di-tich' && !c.includes('di tích') && !c.includes('lăng') && !c.includes('đại nội')) return false;
-        } else if (modalCategory === 'canh-quan') {
-          const c = (p.category || '').toLowerCase();
-          if (norm !== 'canh-quan' && !c.includes('cảnh quan') && !c.includes('biển') && !c.includes('cầu') && !c.includes('sơn trà') && !c.includes('bà nà')) return false;
-        } else if (modalCategory === 'chua') {
-          const c = (p.category || '').toLowerCase();
-          if (norm !== 'chua' && !c.includes('chùa')) return false;
-        }
+  // Lọc danh sách POI cho Modal "Thêm vào chuyến đi" chuẩn 1:1 TripOverviewView
+  const modalFilteredPois = useMemo(() => {
+    let list = modalTab === 'ideas' ? ideaPois : allPois;
+
+    // 1. Lọc theo Thành phố
+    if (modalCity === 'Đà Nẵng') {
+      list = list.filter((p) => isDaNang(p.city));
+    } else if (modalCity === 'Huế') {
+      list = list.filter((p) => isHue(p.city));
+    }
+
+    // 2. Lọc theo Danh mục chuẩn Explore & Mindtrip
+    if (modalCategory === 'for-you') {
+      list = [...list].sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
+    } else if (modalCategory === 'di-tich') {
+      list = list.filter((p) => p.category === 'di-tich');
+    } else if (modalCategory === 'canh-quan' || modalCategory === 'scenic') {
+      list = list.filter((p) => p.category === 'canh-quan');
+    } else if (modalCategory === 'chua') {
+      list = list.filter((p) => p.category === 'chua');
+    } else if (modalCategory === 'quan-an' || modalCategory === 'restaurants') {
+      list = list.filter((p) => p.category === 'quan-an');
+    }
+
+    // 3. Lọc theo từ khóa tìm kiếm
+    if (modalSearch.trim()) {
+      const q = modalSearch.trim().toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          (p.address || '').toLowerCase().includes(q) ||
+          p.city.toLowerCase().includes(q)
+      );
+    }
+
+    // 4. Tab "Đã thích" (Favorites từ trang Explore)
+    if (modalTab === 'saved') {
+      let favSet = new Set<string>();
+      try {
+        const rawFav = localStorage.getItem('greentrip_favorites');
+        if (rawFav) favSet = new Set<string>(JSON.parse(rawFav));
+      } catch (e) {
+        console.error(e);
       }
-      if (modalSearch.trim()) {
-        const q = modalSearch.toLowerCase();
-        return p.name.toLowerCase().includes(q) || (p.address || '').toLowerCase().includes(q);
-      }
-      return true;
-    });
-  }, [ideaPois, modalCategory, modalSearch]);
+      list = list.filter((p) => favSet.has(p.id) || favSet.has(p.name));
+    }
+
+    return list;
+  }, [allPois, ideaPois, modalCity, modalCategory, modalSearch, modalTab, isDaNang, isHue]);
 
   return (
     <div
@@ -940,7 +949,7 @@ export default function TripItineraryView({
                       type="button"
                       onClick={() => {
                         setActiveDayAddModal(null);
-                        setModalMainTab('explore');
+                        setModalTab('search');
                         setShowAddIdeasModal(true);
                       }}
                       className="px-3 py-1.5 rounded-full bg-black text-white text-xs font-bold hover:bg-neutral-800 transition cursor-pointer"
@@ -1095,7 +1104,7 @@ export default function TripItineraryView({
                     type="button"
                     onClick={() => {
                       setActiveDayAddModal(null);
-                      setModalMainTab('explore');
+                      setModalTab('search');
                       setShowAddIdeasModal(true);
                     }}
                     className="inline-flex items-center gap-1.5 h-8 px-4 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-800 transition cursor-pointer shadow-2xs"
@@ -1221,8 +1230,8 @@ export default function TripItineraryView({
                               type="button"
                               onClick={() => {
                                 setActiveDayAddModal(day.day_number);
-                                setModalMainTab('ideas');
-                                setModalCategory('all');
+                                setModalTab(ideaPois.length > 0 ? 'ideas' : 'search');
+                                setModalCategory('for-you');
                                 setModalSearch('');
                                 setShowAddIdeasModal(true);
                               }}
@@ -1522,8 +1531,8 @@ export default function TripItineraryView({
                                 type="button"
                                 onClick={() => {
                                   setActiveDayAddModal(day.day_number);
-                                  setModalMainTab('ideas');
-                                  setModalCategory('all');
+                                  setModalTab(ideaPois.length > 0 ? 'ideas' : 'search');
+                                  setModalCategory('for-you');
                                   setModalSearch('');
                                   setShowAddIdeasModal(true);
                                 }}
@@ -1610,7 +1619,7 @@ export default function TripItineraryView({
         </div>
       </div>
 
-      {/* ─── MODAL TÌM KIẾM & THÊM VÀO CHUYẾN ĐI (CHIA THEO 4 DANH MỤC GREENTRIP) ─── */}
+      {/* ─── MODAL TÌM KIẾM & THÊM VÀO CHUYẾN ĐI (CHUẨN 1:1 TRIPOVERVIEWVIEW & MINDTRIP) ─── */}
       {showAddIdeasModal && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs py-6 px-4 animate-fadeIn"
@@ -1620,326 +1629,405 @@ export default function TripItineraryView({
           }}
         >
           <div
-            className="relative bg-white w-[760px] max-w-[calc(100vw-32px)] h-[calc(100vh-80px)] max-h-[760px] rounded-3xl shadow-2xl flex flex-col border border-gray-100 overflow-hidden"
+            className="relative bg-white w-[750px] max-w-[calc(100vw-32px)] h-[calc(100vh-80px)] max-h-[820px] rounded-[24px] shadow-2xl flex flex-col border border-gray-100 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header Modal */}
-            <div className="px-6 py-3.5 border-b border-gray-100 flex items-center justify-between shrink-0">
+            {/* Phần cố định: Tiêu đề + tab (có đường kẻ ngang dưới #eee, cao ~72px) */}
+            <div className="relative h-[72px] shrink-0 border-b border-gray-200 bg-white rounded-t-[24px] flex flex-col justify-between">
+              {/* Nút đóng × */}
               <button
                 type="button"
                 onClick={() => {
                   setShowAddIdeasModal(false);
                   setActiveDayAddModal(null);
                 }}
-                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-black cursor-pointer transition"
+                className="absolute top-3.5 left-4 w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer z-20"
+                title="Đóng"
               >
-                <X size={18} />
+                <X size={17} />
               </button>
-              <h3 className="font-extrabold text-[16px] text-gray-950">
-                {activeDayAddModal ? `Thêm vào Ngày ${activeDayAddModal}` : 'Thêm địa điểm vào Ý tưởng'}
-              </h3>
-              <div className="w-8" />
-            </div>
 
-            {/* Thanh Tab điều hướng: Nếu bấm ở Ngày thì ưu tiên "Từ kho Ý tưởng" */}
-            <div className="px-6 pt-2 border-b border-gray-100 flex items-center gap-6 text-sm font-semibold text-gray-500 shrink-0 bg-white">
-              {activeDayAddModal !== null && (
+              {/* Tiêu đề căn giữa */}
+              <div className="pt-3 text-center">
+                <h3 className="font-bold text-[15px] text-gray-950">
+                  {activeDayAddModal ? `Thêm vào Ngày ${activeDayAddModal}` : 'Thêm vào chuyến đi'}
+                </h3>
+              </div>
+
+              {/* Tabs: Tìm kiếm, (Từ Ý tưởng nếu có), Đã thích, Tùy chỉnh */}
+              <div className="px-6 flex items-center gap-6 text-[13.5px]">
                 <button
                   type="button"
-                  onClick={() => setModalMainTab('ideas')}
-                  className={`pb-2.5 transition cursor-pointer relative ${
-                    modalMainTab === 'ideas' ? 'text-black font-bold' : 'hover:text-black'
+                  onClick={() => setModalTab('search')}
+                  className={`pb-2.5 border-b-2 transition font-semibold cursor-pointer -mb-[1px] ${
+                    modalTab === 'search'
+                      ? 'border-black text-black font-bold'
+                      : 'border-transparent text-gray-500 hover:text-gray-900'
                   }`}
                 >
-                  Từ kho Ý tưởng ({ideaPois.length})
-                  {modalMainTab === 'ideas' && (
-                    <span className="absolute bottom-0 inset-x-0 h-0.5 bg-black rounded-full" />
-                  )}
+                  Tìm kiếm
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setModalMainTab('explore')}
-                className={`pb-2.5 transition cursor-pointer relative ${
-                  modalMainTab === 'explore' ? 'text-black font-bold' : 'hover:text-black'
-                }`}
-              >
-                {activeDayAddModal !== null ? 'Khám phá thêm' : 'Khám phá địa điểm'}
-                {modalMainTab === 'explore' && (
-                  <span className="absolute bottom-0 inset-x-0 h-0.5 bg-black rounded-full" />
+                {activeDayAddModal !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('ideas')}
+                    className={`pb-2.5 border-b-2 transition font-semibold cursor-pointer flex items-center gap-1.5 -mb-[1px] ${
+                      modalTab === 'ideas'
+                        ? 'border-black text-black font-bold'
+                        : 'border-transparent text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    <span>Từ Ý tưởng ({ideaPois.length})</span>
+                  </button>
                 )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setModalMainTab('custom')}
-                className={`pb-2.5 transition cursor-pointer relative ${
-                  modalMainTab === 'custom' ? 'text-black font-bold' : 'hover:text-black'
-                }`}
-              >
-                Tự tạo
-                {modalMainTab === 'custom' && (
-                  <span className="absolute bottom-0 inset-x-0 h-0.5 bg-black rounded-full" />
-                )}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('saved')}
+                  className={`pb-2.5 border-b-2 transition font-semibold cursor-pointer flex items-center gap-1.5 -mb-[1px] ${
+                    modalTab === 'saved'
+                      ? 'border-black text-black font-bold'
+                      : 'border-transparent text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  <Heart size={14} className={modalTab === 'saved' ? 'fill-red-500 text-red-500' : 'text-gray-400'} />
+                  <span>Đã thích</span>
+                  {(() => {
+                    try {
+                      const rawFav = localStorage.getItem('greentrip_favorites');
+                      const count = rawFav ? (JSON.parse(rawFav) as string[]).length : 0;
+                      return count > 0 ? (
+                        <span className="w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                          {count}
+                        </span>
+                      ) : null;
+                    } catch {
+                      return null;
+                    }
+                  })()}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('custom')}
+                  className={`pb-2.5 border-b-2 transition font-semibold cursor-pointer -mb-[1px] ${
+                    modalTab === 'custom'
+                      ? 'border-black text-black font-bold'
+                      : 'border-transparent text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  Tùy chỉnh
+                </button>
+              </div>
             </div>
 
-            {/* Thanh tìm kiếm & Hàng chọn 4 Danh mục chuẩn GreenTrip */}
-            {(modalMainTab === 'ideas' || modalMainTab === 'explore') && (
-              <div className="p-5 border-b border-gray-100 space-y-3.5 shrink-0 bg-white">
-                <div className="relative flex items-center">
-                  <Search size={16} className="absolute left-3.5 text-gray-400 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder={
-                      modalMainTab === 'ideas'
-                        ? 'Tìm nhanh trong kho Ý tưởng của bạn...'
-                        : `Tìm địa điểm tại ${trip.destination}...`
-                    }
-                    value={modalSearch}
-                    onChange={(e) => setModalSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-full border border-gray-300 text-sm focus:border-black focus:outline-none bg-white shadow-2xs"
-                  />
-                </div>
+            {/* Vùng cuộn: Tên khu vực → Tìm kiếm → Lọc → Lưới thẻ */}
+            <div className="flex-1 overflow-y-auto px-6 pb-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-track]:bg-transparent">
+              {modalTab !== 'custom' ? (
+                <>
+                  {/* Tên khu vực */}
+                  <div className="pt-4 shrink-0">
+                    <div className="relative inline-block">
+                      <div
+                        onClick={() => setShowModalCityDropdown((prev) => !prev)}
+                        className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
+                      >
+                        <h2 className="text-[22px] font-bold text-gray-950 tracking-tight leading-tight group-hover:text-black">
+                          {modalCity === 'all' ? 'Đà Nẵng & Huế' : modalCity}
+                        </h2>
+                        <ChevronDown size={18} className="text-gray-950 group-hover:translate-y-0.5 transition-transform" />
+                      </div>
 
-                {/* Hàng chọn 4 Danh mục chuẩn GreenTrip (Quán ăn, Di tích, Cảnh quan, Chùa) */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                  {GREEN_CATEGORY_TABS.map((cat) => (
+                      {showModalCityDropdown && (
+                        <div className="absolute top-10 left-0 bg-white shadow-xl border border-gray-100 rounded-xl py-1.5 w-48 z-50 animate-fadeIn">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModalCity('all');
+                              setShowModalCityDropdown(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-[13.5px] hover:bg-gray-50 flex items-center justify-between cursor-pointer ${
+                              modalCity === 'all' ? 'font-bold text-black' : 'text-gray-700'
+                            }`}
+                          >
+                            <span>Tất cả khu vực (Đà Nẵng & Huế)</span>
+                            {modalCity === 'all' && <Check size={14} className="font-bold" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModalCity('Đà Nẵng');
+                              setShowModalCityDropdown(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-[13.5px] hover:bg-gray-50 flex items-center justify-between cursor-pointer ${
+                              modalCity === 'Đà Nẵng' ? 'font-bold text-black' : 'text-gray-700'
+                            }`}
+                          >
+                            <span>Đà Nẵng</span>
+                            {modalCity === 'Đà Nẵng' && <Check size={14} className="font-bold" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModalCity('Huế');
+                              setShowModalCityDropdown(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-[13.5px] hover:bg-gray-50 flex items-center justify-between cursor-pointer ${
+                              modalCity === 'Huế' ? 'font-bold text-black' : 'text-gray-700'
+                            }`}
+                          >
+                            <span>Huế</span>
+                            {modalCity === 'Huế' && <Check size={14} className="font-bold" />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Ô tìm kiếm & Nút bộ lọc */}
+                  <div className="mt-3 flex items-center gap-2.5 shrink-0">
+                    <div className="flex-1 relative flex items-center min-w-0">
+                      <Search size={16} className="text-gray-400 absolute left-4 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={modalSearch}
+                        onChange={(e) => setModalSearch(e.target.value)}
+                        placeholder="Tìm kiếm địa điểm, di tích, ẩm thực..."
+                        className="w-full h-[42px] pl-10 pr-9 bg-white text-[13.5px] placeholder-gray-400 text-gray-900 rounded-full border border-gray-300 focus:border-black focus:outline-none shadow-2xs transition"
+                      />
+                      {modalSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setModalSearch('')}
+                          className="absolute right-3.5 text-gray-400 hover:text-gray-600 cursor-pointer"
+                        >
+                          <X size={15} />
+                        </button>
+                      )}
+                    </div>
+
                     <button
-                      key={cat.id}
                       type="button"
-                      onClick={() => setModalCategory(cat.id)}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition cursor-pointer ${
-                        modalCategory === cat.id
-                          ? 'bg-black text-white shadow-xs'
-                          : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                      }`}
+                      onClick={() => {
+                        setModalCategory('for-you');
+                        setModalSearch('');
+                        setModalCity('all');
+                      }}
+                      className="h-[42px] px-4 rounded-full border border-gray-300 hover:border-black hover:bg-gray-50 text-[13px] font-medium text-gray-800 transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-2xs"
                     >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 1. Tab "Từ kho Ý tưởng" (khi bấm thêm ở xem lịch trình theo ngày) */}
-            {modalMainTab === 'ideas' && activeDayAddModal !== null && (
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-extrabold text-sm text-gray-950">
-                    Chọn từ Ý tưởng đã lưu ({modalFilteredIdeas.length}):
-                  </h4>
-                  <span className="text-xs text-gray-400">
-                    Bấm để đưa trực tiếp vào Ngày {activeDayAddModal}
-                  </span>
-                </div>
-
-                {modalFilteredIdeas.length === 0 ? (
-                  <div className="text-center py-10 space-y-3">
-                    <p className="text-xs text-gray-500">
-                      Chưa có địa điểm nào trong kho Ý tưởng phù hợp với bộ lọc.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setModalMainTab('explore')}
-                      className="px-4 py-2 rounded-full bg-black text-white text-xs font-bold hover:bg-neutral-800 transition cursor-pointer"
-                    >
-                      Khám phá thêm địa điểm mới
+                      <SlidersHorizontal size={15} />
+                      <span>Bộ lọc</span>
                     </button>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {modalFilteredIdeas.map((poi) => {
-                      const isAddedToThisDay = plan.days
-                        .find((d) => d.day_number === activeDayAddModal)
-                        ?.stops.some((s) => s.poi_id === poi.id);
 
-                      const placedDay = getDayNumberForPoi(poi.id);
-
+                  {/* Hàng danh mục tabs (6 danh mục chuẩn) */}
+                  <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar shrink-0">
+                    {MODAL_CATEGORY_TABS.map((tab) => {
+                      const isActive = modalCategory === tab.id;
                       return (
-                        <div
-                          key={poi.id}
-                          className="flex flex-col rounded-2xl bg-white border border-gray-100 hover:border-gray-300 transition shadow-2xs overflow-hidden group select-none"
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setModalCategory(tab.id)}
+                          className={`whitespace-nowrap h-[32px] px-3.5 text-[12.5px] rounded-full transition-all cursor-pointer shrink-0 flex items-center justify-center ${
+                            isActive
+                              ? 'bg-black text-white font-medium shadow-xs'
+                              : 'text-gray-700 hover:text-black hover:bg-gray-100 font-medium'
+                          }`}
                         >
-                          <div className="h-32 relative overflow-hidden bg-gray-100">
-                            <img
-                              src={getPoiImage(poi)}
-                              alt={poi.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
-                              loading="lazy"
-                            />
-                            {placedDay !== null && (
-                              <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-semibold">
-                                Đã ở Ngày {placedDay}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="p-3 flex-1 flex flex-col justify-between">
-                            <div>
-                              <div className="flex items-center justify-between gap-1">
-                                <h5 className="font-bold text-[13.5px] text-gray-950 truncate" title={poi.name}>
-                                  {poi.name}
-                                </h5>
-                                <div className="flex items-center gap-0.5 text-xs font-bold text-gray-900 shrink-0">
-                                  <Star size={11} className="fill-amber-400 text-amber-400" />
-                                  <span>{poi.rating || 4.5}</span>
-                                </div>
-                              </div>
-                              <p className="text-[11px] text-gray-500 font-medium mt-0.5 truncate">
-                                {formatCategoryLabel(poi.category)}
-                              </p>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => handleAddIdeaToDay(activeDayAddModal, poi)}
-                              className={`mt-2.5 w-full py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
-                                isAddedToThisDay
-                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
-                                  : 'bg-black text-white hover:bg-neutral-800'
-                              }`}
-                            >
-                              {isAddedToThisDay ? (
-                                <>
-                                  <Check size={12} /> Đã có trong Ngày {activeDayAddModal}
-                                </>
-                              ) : (
-                                <>
-                                  <Plus size={12} /> Thêm vào Ngày {activeDayAddModal}
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
+                          {tab.label}
+                        </button>
                       );
                     })}
                   </div>
-                )}
-              </div>
-            )}
 
-            {/* 2. Tab "Khám phá địa điểm" */}
-            {modalMainTab === 'explore' && (
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-extrabold text-sm text-gray-950">
-                    {modalCategory === 'all'
-                      ? 'Gợi ý nổi bật tại ' + trip.destination
-                      : GREEN_CATEGORY_TABS.find((c) => c.id === modalCategory)?.label}
-                  </h4>
-                  <span className="text-xs text-gray-400">
-                    {activeDayAddModal ? `Thêm vào Ngày ${activeDayAddModal}` : 'Thêm vào Ý tưởng'}
-                  </span>
-                </div>
+                  {/* Tiêu đề nhóm */}
+                  <div className="mt-4 shrink-0">
+                    <h4 className="font-bold text-[16px] text-gray-950 tracking-tight">
+                      {modalTab === 'ideas'
+                        ? `Ý tưởng trong chuyến đi (${ideaPois.length})`
+                        : modalTab === 'saved'
+                        ? 'Địa điểm đã thích ở trang Khám phá'
+                        : modalCategory === 'quan-an' || modalCategory === 'restaurants'
+                        ? 'Ẩm thực & Cafe'
+                        : modalCategory === 'di-tich' || modalCategory === 'experiences'
+                        ? 'Trải nghiệm'
+                        : modalCategory === 'canh-quan' || modalCategory === 'scenic'
+                        ? 'Địa điểm'
+                        : modalCategory === 'chua'
+                        ? 'Tâm linh'
+                        : modalCategory === 'all'
+                        ? 'Tất cả địa điểm'
+                        : 'Trải nghiệm đề xuất'}
+                    </h4>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {modalFilteredPois.slice(0, 30).map((poi) => {
-                    const isAddedToIdeas = tripIdeas.includes(poi.id);
-                    const isAddedToCurrentDay =
-                      activeDayAddModal !== null &&
-                      plan.days
-                        .find((d) => d.day_number === activeDayAddModal)
-                        ?.stops.some((s) => s.poi_id === poi.id);
+                  {/* Lưới thẻ 3 cột chuẩn 1:1 TripOverviewView & Mindtrip */}
+                  <div className="mt-3 grid grid-cols-3 gap-x-3.5 gap-y-5">
+                    {modalFilteredPois.length === 0 ? (
+                      <div className="col-span-full py-16 text-center text-gray-500 text-sm">
+                        {modalTab === 'ideas'
+                          ? 'Kho Ý tưởng hiện chưa có địa điểm nào phù hợp với bộ lọc.'
+                          : modalTab === 'saved'
+                          ? 'Bạn chưa thích địa điểm nào ở trang Khám phá. Hãy bấm thả tim ❤️ tại trang Explore để chọn nhanh vào Ý tưởng tại đây!'
+                          : 'Không tìm thấy địa điểm phù hợp với bộ lọc hiện tại.'}
+                      </div>
+                    ) : (
+                      modalFilteredPois.map((poi) => {
+                        const isAddedToCurrentDay = activeDayAddModal !== null
+                          ? plan.days.find((d) => d.day_number === activeDayAddModal)?.stops.some((s) => s.poi_id === poi.id)
+                          : false;
+                        const isAddedToIdeas = tripIdeas.includes(poi.id);
+                        const isAdded = activeDayAddModal !== null ? isAddedToCurrentDay : isAddedToIdeas;
+                        const ratingVal = (typeof poi.rating === 'number' ? poi.rating : Number(poi.rating || 4.5)).toFixed(1);
 
-                    return (
-                      <div
-                        key={poi.id}
-                        className="flex flex-col rounded-2xl bg-white border border-gray-100 hover:border-gray-300 transition shadow-2xs overflow-hidden group select-none"
-                      >
-                        <div className="h-32 relative overflow-hidden bg-gray-100">
-                          <img
-                            src={getPoiImage(poi)}
-                            alt={poi.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
-                            loading="lazy"
-                          />
-                          <div className="absolute top-2.5 right-2.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (activeDayAddModal) {
-                                  handleAddIdeaToDay(activeDayAddModal, poi);
-                                } else {
-                                  handleToggleIdeaInTrip(poi.id);
-                                }
-                              }}
-                              className={`h-7 px-3 rounded-full text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer ${
-                                (activeDayAddModal ? isAddedToCurrentDay : isAddedToIdeas)
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-white/95 hover:bg-white text-gray-900'
-                              }`}
-                            >
-                              {(activeDayAddModal ? isAddedToCurrentDay : isAddedToIdeas) ? (
-                                <>
-                                  <Check size={12} /> Đã thêm
-                                </>
-                              ) : (
-                                <>
-                                  <Plus size={12} /> Thêm
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
+                        return (
+                          <div
+                            key={poi.id}
+                            onClick={() => {
+                              setSelectedMapPoiId(poi.id);
+                              setShowAddIdeasModal(false);
+                              setActiveDayAddModal(null);
+                            }}
+                            className="flex flex-col group cursor-pointer text-left select-none"
+                          >
+                            {/* Ảnh thẻ tỉ lệ 1.05 : 1, bo góc 16px */}
+                            <div className="relative aspect-[1.05/1] w-full rounded-[16px] overflow-hidden bg-gray-100 shadow-2xs">
+                              <img
+                                src={getPoiImage(poi)}
+                                alt={poi.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                onError={(e) => {
+                                  e.currentTarget.src = 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
+                                }}
+                              />
 
-                        <div className="p-3 flex-1 flex flex-col justify-between">
-                          <div>
-                            <div className="flex items-center justify-between gap-1">
-                              <h5 className="font-bold text-[13.5px] text-gray-950 truncate" title={poi.name}>
-                                {poi.name}
-                              </h5>
-                              <div className="flex items-center gap-0.5 text-xs font-bold text-gray-900 shrink-0">
-                                <Star size={11} className="fill-amber-400 text-amber-400" />
-                                <span>{poi.rating || 4.5}</span>
+                              {/* Nút “+ Thêm” trên thẻ */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (activeDayAddModal !== null) {
+                                    handleAddIdeaToDay(activeDayAddModal, poi);
+                                  } else {
+                                    handleToggleIdeaInTrip(poi.id);
+                                  }
+                                }}
+                                className={`absolute top-2.5 right-2.5 h-[28px] px-2.5 rounded-full font-semibold text-[12px] transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1 z-10 ${
+                                  isAdded
+                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                    : 'bg-white text-gray-900 hover:bg-black hover:text-white'
+                                }`}
+                              >
+                                {isAdded ? (
+                                  <>
+                                    <Check size={13} strokeWidth={2.5} />
+                                    <span>Đã thêm</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus size={13} strokeWidth={2.5} />
+                                    <span>Thêm</span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* 5 chấm phân trang dưới đáy ảnh chuẩn Mindtrip */}
+                              <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1 pointer-events-none z-10">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white shadow-xs" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+                              </div>
+
+                              {/* Icon ⓘ ở góc dưới bên phải */}
+                              <div className="absolute bottom-2.5 right-2.5 pointer-events-none z-10 text-white/90 drop-shadow-xs">
+                                <Info size={13} />
                               </div>
                             </div>
-                            <p className="text-[11px] text-gray-500 font-medium mt-0.5 truncate">
-                              {formatCategoryLabel(poi.category)}
-                            </p>
-                          </div>
-                          <p className="text-[11px] text-gray-400 truncate mt-1">
-                            {poi.city}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
-            {/* 3. Tab "Tự tạo" */}
-            {modalMainTab === 'custom' && (
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <h4 className="font-extrabold text-sm text-gray-950">
-                  {activeDayAddModal
-                    ? `Tự thêm địa điểm mới vào Ngày ${activeDayAddModal}:`
-                    : 'Tự thêm địa điểm mới vào kho Ý tưởng:'}
-                </h4>
-                <div className="space-y-3 max-w-md">
-                  <div>
-                    <label className="text-xs font-bold text-gray-700 block mb-1">
-                      Tên địa điểm / Quán ăn:
-                    </label>
+                            {/* Dưới ảnh thẻ */}
+                            <div className="mt-2 flex items-baseline justify-between gap-1.5 min-w-0">
+                              <h4 className="font-bold text-[13px] text-gray-950 truncate leading-snug group-hover:text-black" title={poi.name}>
+                                {poi.name}
+                              </h4>
+                              {Number(poi.rating) > 0 && (
+                                <span className="text-[12px] font-bold text-gray-950 shrink-0 flex items-center gap-0.5">
+                                  <Star size={11} className="fill-black text-black" />
+                                  <span>{ratingVal}</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-gray-500 font-normal">
+                              <MapPin size={11} className="text-gray-400 shrink-0" />
+                              <span className="truncate">
+                                {(() => {
+                                  const isCafe = Boolean(
+                                    poi.sub_category?.includes('cafe') || 
+                                    poi.sub_category?.includes('coffee') || 
+                                    /coffee|cafe|cà phê|tiệm trà|workspace/i.test(poi.name)
+                                  );
+                                  if (isCafe) return '☕ Quán cà phê';
+                                  if (poi.category === 'quan-an') return '🍽️ Ẩm thực';
+                                  if (poi.category === 'di-tich') return '🏛️ Di tích lịch sử';
+                                  if (poi.category === 'canh-quan') return '🌿 Cảnh quan & Thắng cảnh';
+                                  return '⛩️ Chùa & Tâm linh';
+                                })()}
+                              </span>
+                            </div>
+
+                            <div className="mt-0.5 text-[11.5px] text-gray-400 font-normal truncate">
+                              {poi.address || `${poi.city}, Việt Nam`}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              ) : (
+                /* Tab Tùy chỉnh (Custom) */
+                <div className="pt-4 flex flex-col space-y-4 max-w-lg">
+                  <p className="text-[13.5px] text-gray-700 leading-relaxed">
+                    Bạn có một địa điểm riêng muốn lưu vào chuyến đi này? Nhập tên bên dưới để thêm ngay vào Ý tưởng:
+                  </p>
+                  <div className="space-y-3">
                     <input
                       type="text"
-                      placeholder="Ví dụ: Bún chả cá Bà Phiến, Cafe Góc Phố..."
                       value={customIdeaInput}
                       onChange={(e) => setCustomIdeaInput(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm focus:border-black focus:outline-none"
+                      placeholder="Ví dụ: Quán cà phê Yên, Tiệm bánh mì..."
+                      className="w-full h-[42px] px-4 rounded-xl border border-gray-300 focus:border-black focus:outline-none text-[13.5px] shadow-2xs"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && customIdeaInput.trim()) {
+                          handleAddCustomIdea();
+                        }
+                      }}
                     />
+                    <div className="flex justify-end gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomIdeaInput('');
+                          setShowAddIdeasModal(false);
+                          setActiveDayAddModal(null);
+                        }}
+                        className="h-[38px] px-5 rounded-full border border-gray-200 text-gray-600 text-[13px] font-medium hover:bg-gray-50 transition cursor-pointer"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddCustomIdea}
+                        className="h-[38px] px-6 rounded-full bg-black text-white font-bold text-[13px] hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-2xs"
+                      >
+                        {activeDayAddModal ? `+ Thêm vào Ngày ${activeDayAddModal}` : '+ Thêm vào ý tưởng'}
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddCustomIdea}
-                    disabled={!customIdeaInput.trim()}
-                    className="px-5 py-2.5 rounded-full bg-black text-white text-xs font-bold disabled:opacity-40 cursor-pointer shadow-xs"
-                  >
-                    {activeDayAddModal ? `+ Thêm vào Ngày ${activeDayAddModal}` : '+ Lưu vào Ý tưởng'}
-                  </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

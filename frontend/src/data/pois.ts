@@ -86,6 +86,7 @@ export interface Poi {
   description: string;
   rating: number;
   visitDuration: string;
+  average_visit_minutes?: number | null;
   isGreen: boolean;
   ecoScore: number;
   matchScore?: number;

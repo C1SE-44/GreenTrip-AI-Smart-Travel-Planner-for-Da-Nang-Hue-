@@ -61,6 +61,7 @@ export interface UserTrip {
   matchedPois?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   costBreakdown?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   pacingLabel?: string;
+  pacingLevel?: string;
   ideas?: string[];
 }
 

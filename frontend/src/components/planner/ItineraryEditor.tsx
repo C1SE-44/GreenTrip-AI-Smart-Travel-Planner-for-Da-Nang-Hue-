@@ -17,7 +17,7 @@ function minutesFor(stop: ItineraryStop): number {
 }
 
 function pacingForTrip(trip: UserTrip): 'Relaxed' | 'Balanced' | 'Fast' {
-  if (trip.pacingLevel) return trip.pacingLevel;
+  if (trip.pacingLevel === 'Relaxed' || trip.pacingLevel === 'Balanced' || trip.pacingLevel === 'Fast') return trip.pacingLevel;
   if (trip.pacingLabel?.includes('Thong thả')) return 'Relaxed';
   if (trip.pacingLabel?.includes('Dày đặc')) return 'Fast';
   return 'Balanced';
@@ -622,7 +622,7 @@ export default function ItineraryEditor({ trip, ideas, onClose, onAddIdea }: Iti
                 <aside className="border-b border-emerald-100 bg-emerald-50/60 px-4 py-3">
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-950"><Sparkles size={14} aria-hidden="true" />Trợ lý GreenTrip gợi ý</p>
                   {dayOutline.assistant_tip && <p className="mt-1 text-sm leading-relaxed text-emerald-950">{dayOutline.assistant_tip}</p>}
-                  {dayOutline.rest_periods?.map((period, index) => {
+                  {dayOutline.rest_periods?.map((period: any, index: number) => {
                     const isScheduled = restExistsInPeriod(day, period.time_range);
                     return (
                       <div key={`${day.day_id}-rest-tip-${index}`} className="mt-2 rounded-lg border border-emerald-200 bg-white/80 px-3 py-2">

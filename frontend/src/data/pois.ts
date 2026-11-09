@@ -105,7 +105,6 @@ export interface Poi {
   social_links?: Record<string, string> | null;
   opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
-  matchScore?: number;
 }
 
 export interface BackendPoiItem {
@@ -139,7 +138,6 @@ export interface BackendPoiItem {
   social_links?: Record<string, string> | null;
   opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
-  matchScore?: number;
 }
 
 export interface PaginationMetadata {

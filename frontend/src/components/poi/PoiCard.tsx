@@ -61,9 +61,21 @@ export default function PoiCard({
 
   const gallery = useMemo(() => getGalleryImages(poi), [poi]);
 
+  const isCafe = Boolean(
+    poi.sub_category?.includes('cafe') || 
+    poi.sub_category?.includes('coffee') || 
+    /coffee|cafe|cà phê|tiệm trà|workspace/i.test(poi.name)
+  );
+
   const categoryLabel = poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category]
     ? SUB_CATEGORY_LABELS[poi.sub_category]
-    : CATEGORY_META[poi.category]?.label || categoryLabels[poi.category] || 'Điểm tham quan';
+    : isCafe
+      ? 'Quán cà phê'
+      : CATEGORY_META[poi.category]?.label || categoryLabels[poi.category] || 'Điểm tham quan';
+
+  const categoryIcon = isCafe
+    ? 'ph-coffee'
+    : (CATEGORY_META[poi.category]?.icon || 'ph-map-pin');
 
   const isEcoLocal = Boolean(
     recommendation &&
@@ -93,7 +105,11 @@ export default function PoiCard({
     >
       {/* 1. Card Image Box */}
       <div className={`relative w-full aspect-[1.05/1] rounded-[20px] overflow-hidden bg-neutral-100 shadow-sm transition-all duration-200 isolate ${
-        active ? 'ring-2 ring-emerald-900' : ''
+        active 
+          ? (poi.isGreen ? 'ring-2 ring-emerald-600 shadow-md' : 'ring-2 ring-neutral-900') 
+          : poi.isGreen && isCardHovered
+            ? 'ring-2 ring-emerald-500/50 shadow-md'
+            : ''
       }`}>
         <img
           src={gallery[imgIdx] || poi.image}
@@ -187,17 +203,23 @@ export default function PoiCard({
           </div>
         )}
 
-        {!poi.isMichelin && !recommendation && poi.ecoScore >= 80 && (
-          <div className="absolute top-3 left-3 z-10 bg-emerald-950/85 text-emerald-50 text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm backdrop-blur-xs flex items-center gap-1">
-            <span aria-hidden="true">🌿</span>
-            <span>{poi.ecoScore} Điểm Xanh</span>
+        {!poi.isMichelin && !recommendation && poi.isGreen && (
+          <div 
+            className="absolute top-3 left-3 z-10 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-xs font-bold px-3 py-1 rounded-full shadow-md backdrop-blur-md flex items-center gap-1.5 cursor-help"
+            title="Địa điểm du lịch xanh: Thân thiện môi trường, tiết kiệm năng lượng và bảo tồn văn hóa địa phương"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>🌱 Địa điểm xanh</span>
           </div>
         )}
 
         {recommendation && (
           <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-6rem)] flex-col items-start gap-1.5">
-            <span className="rounded-full bg-emerald-800 px-2.5 py-1 text-xs font-bold text-white shadow-md">
-              {Math.round(recommendation.matchScore)}% Phù hợp
+            <span 
+              className="rounded-full bg-emerald-800 px-2.5 py-1 text-xs font-bold text-white shadow-md cursor-help"
+              title={`Độ tương thích ${Math.round(recommendation.matchScore)}% dựa trên điểm đến, ngân sách và sở thích của bạn`}
+            >
+              {Math.round(recommendation.matchScore)}% Phù hợp gu
             </span>
             {isEcoLocal && (
               <span className="rounded-full border border-emerald-100/70 bg-emerald-950/85 px-2.5 py-1 text-xs font-semibold text-emerald-50 shadow-md backdrop-blur-sm">
@@ -238,7 +260,7 @@ export default function PoiCard({
         </div>
 
         <div className="flex items-center gap-1.5 text-[13px] text-neutral-600 font-normal min-w-0">
-          <i className={`ph ${CATEGORY_META[poi.category]?.icon || 'ph-map-pin'} text-neutral-600 text-[14px] shrink-0`} aria-hidden="true"></i>
+          <i className={`ph ${categoryIcon} text-neutral-600 text-[14px] shrink-0`} aria-hidden="true"></i>
           <span className="truncate">{categoryLabel}</span>
           <span className="text-neutral-400" aria-hidden="true">·</span>
           <span className="truncate">{locationLabel}</span>
@@ -273,8 +295,8 @@ export default function PoiCard({
               onClick={() => setIsExplanationModalOpen(true)}
               className="mt-1 flex min-h-[40px] w-full items-center justify-center gap-1 rounded-full text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-50 hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
             >
-              <i className="ph ph-sparkle" aria-hidden="true"></i>
-              Lý do AI gợi ý · Vì sao nơi này?
+              <i className="ph ph-sparkle text-emerald-700" aria-hidden="true"></i>
+              Vì sao nơi này phù hợp với bạn?
             </button>
           </div>
         )}

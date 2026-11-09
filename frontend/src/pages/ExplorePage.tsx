@@ -2,22 +2,27 @@ import { Leaf } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
+import TripItineraryView from '@/components/planner/TripItineraryView';
+import { MorphFavoriteButton, MorphAddButton } from '@/components/ui/MorphButton';
 import CreateTripMindtripModal from '@/components/planner/CreateTripMindtripModal';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
-import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse } from '@/data/pois';
+import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse, isCuratedHighlight } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
 import { getMe, type UserProfile } from '@/services/auth';
-import { getPois } from '@/services/poi';
+import { getPois, getAllPois } from '@/services/poi';
 import ExploreFilterModal, {
   type ExploreFilterValues,
   type PoiCategoryFilter,
   type TimeOfDay,
   DEFAULT_FILTER_VALUES,
-  VIBES_BY_CATEGORY,
+  SPECIFIC_FACETS_BY_CATEGORY,
+  FEATURES_BY_CATEGORY,
+  matchesPoiSubCategory,
+  matchesPoiFeature,
 } from '@/components/poi/ExploreFilterModal';
 import QuickFilterBar from '@/components/poi/QuickFilterBar';
 import {
@@ -65,35 +70,6 @@ const TABS: { id: 'all' | 'quan-an' | 'di-tich' | 'canh-quan'; label: string }[]
   { id: 'canh-quan', label: 'Cảnh quan & Thiên nhiên' },
 ];
 
-const SUB_CHIPS_CONFIG: Record<string, { id: string; label: string }[]> = {
-  'di-tich': [
-    { id: 'all', label: 'Tất cả di tích' },
-    { id: 'chua', label: 'Chùa & Tâm linh' },
-    { id: 'dai-noi', label: 'Đại Nội & Hoàng cung' },
-    { id: 'lang-tam', label: 'Lăng tẩm Hoàng gia' },
-    { id: 'bao-tang', label: 'Bảo tàng & Di sản' },
-    { id: 'cau', label: 'Cầu biểu tượng' },
-    { id: 'lang-nghe', label: 'Làng nghề truyền thống' },
-  ],
-  'quan-an': [
-    { id: 'all', label: 'Tất cả ẩm thực' },
-    { id: 'dac-san', label: 'Mì & Bún đặc sản' },
-    { id: 'hai-san', label: 'Hải sản tươi sống' },
-    { id: 'chay', label: 'Quán chay & Thực dưỡng' },
-    { id: 'mon-cuon', label: 'Bánh bèo, Nậm, Lọc' },
-    { id: 'cafe-view', label: 'Cafe view đẹp & Sống ảo' },
-    { id: 'cafe-work', label: 'Cafe làm việc 24/7' },
-    { id: 'che', label: 'Chè & Ăn vặt' },
-  ],
-  'canh-quan': [
-    { id: 'all', label: 'Tất cả cảnh quan' },
-    { id: 'bien', label: 'Bãi biển & Vịnh' },
-    { id: 'deo-ban-dao', label: 'Đèo Hải Vân & Sơn Trà' },
-    { id: 'song-dam-pha', label: 'Sông Hương & Đầm phá' },
-    { id: 'doi-thong', label: 'Đồi thông & Công viên' },
-    { id: 'thac-suoi', label: 'Thác nước & Suối khoáng' },
-  ],
-};
 
 const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
   'quan-an': { icon: 'ph-fork-knife', label: 'Quán ăn' },
@@ -256,8 +232,28 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [activeTab, setActiveTab] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
-  const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
+  // 1. POI hiển thị ô cơ bản trên bản đồ khi người dùng bấm vào
+  const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
+  // 2. POI hiển thị bảng chi tiết sâu toàn màn hình (PoiDetailSection)
+  const [fullDetailPoiId, setFullDetailPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const handleDebouncedHover = useCallback((id: string | null) => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    if (!id) {
+      // Đệm trễ 120ms khi rời chuột khỏi thẻ: tránh rớt null tức thì khi lướt giữa 2 thẻ liền kề
+      hoverTimerRef.current = setTimeout(() => {
+        setHoveredPoiId(null);
+      }, 120);
+      return;
+    }
+    hoverTimerRef.current = setTimeout(() => {
+      setHoveredPoiId(id);
+    }, 150);
+  }, []);
   const [favorites, setFavorites] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem('greentrip_favorites');
@@ -447,9 +443,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         setLoading(true);
         setError(null);
 
-        const response = await getPois({
-          limit: 100,
-          page: 1,
+        const response = await getAllPois({
           city: cityFilter !== 'all' ? cityFilter : undefined,
           category: categoryFilter !== 'all' ? categoryFilter : undefined,
           eco_priority: filterValues.ecoPriority,
@@ -484,7 +478,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     setActiveTab(tabId);
     setCategoryFilter(tabId);
     if (tabId === 'all') {
-      setFilterValues((prev) => ({ ...prev, vibes: [], subCategories: [] }));
+      setFilterValues((prev) => ({ ...prev, vibes: [], subCategories: [], features: [], minRating: null }));
     }
   };
 
@@ -519,18 +513,33 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
       // Budget
       let matchBudget = true;
-      if (filterValues.budget === '$') {
-        matchBudget = poi.budget_tier === '$' || poi.budget_tier === 'free' || (poi.estimatedCost ?? 0) <= 100000;
+      const cost = poi.estimatedCost ?? 0;
+      if (filterValues.freeTicketOnly || filterValues.budget === 'free') {
+        matchBudget = poi.budget_tier === 'free' || cost === 0;
+      } else if (filterValues.budget === '$') {
+        if (categoryFilter === 'quan-an') {
+          matchBudget = poi.budget_tier === '$' || cost <= 50000;
+        } else {
+          matchBudget = poi.budget_tier === '$' || cost <= 50000;
+        }
       } else if (filterValues.budget === '$$') {
-        matchBudget = poi.budget_tier === '$$' || ((poi.estimatedCost ?? 0) > 100000 && (poi.estimatedCost ?? 0) <= 400000);
+        if (categoryFilter === 'quan-an') {
+          matchBudget = poi.budget_tier === '$$' || (cost > 50000 && cost <= 150000);
+        } else {
+          matchBudget = poi.budget_tier === '$$' || (cost > 50000 && cost <= 200000);
+        }
       } else if (filterValues.budget === '$$$') {
-        matchBudget = poi.budget_tier === '$$$' || ((poi.estimatedCost ?? 0) > 400000 && (poi.estimatedCost ?? 0) <= 1000000);
+        if (categoryFilter === 'quan-an') {
+          matchBudget = poi.budget_tier === '$$$' || cost > 150000;
+        } else {
+          matchBudget = poi.budget_tier === '$$$' || cost > 200000;
+        }
       } else if (filterValues.budget === '$$$$') {
-        matchBudget = poi.budget_tier === '$$$$' || (poi.estimatedCost ?? 0) > 1000000;
+        matchBudget = poi.budget_tier === '$$$$' || cost > 500000;
       }
 
-      // Rating filter
-      if (filterValues.minRating !== null && (poi.rating === null || poi.rating < filterValues.minRating)) {
+      // Rating filter (chỉ khi không phải tab all)
+      if (categoryFilter !== 'all' && filterValues.minRating !== null && (poi.rating === null || poi.rating < filterValues.minRating)) {
         return false;
       }
 
@@ -566,36 +575,20 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         if (!matchCuisine) return false;
       }
 
-      // Sub-categories filter
-      if (categoryFilter !== 'all' && filterValues.subCategories.length > 0) {
-        const matchSub = filterValues.subCategories.some((sc) => {
-          const scLower = sc.toLowerCase();
-          const pSub = (poi.sub_category || '').toLowerCase();
-          const pName = poi.name.toLowerCase();
-          if (scLower === 'chua') {
-            return (
-              poi.category === 'chua' ||
-              pSub.includes('temple') ||
-              pSub.includes('monaster') ||
-              pName.includes('chùa') ||
-              pName.includes('thiền viện')
-            );
-          }
-          return pSub === scLower || (poi.cuisine && poi.cuisine.toLowerCase() === scLower) || pName.includes(scLower);
-        });
+      // Sub-categories filter (Loại hình chuyên sâu theo nhóm)
+      if (categoryFilter !== 'all' && filterValues.subCategories && filterValues.subCategories.length > 0) {
+        const matchSub = filterValues.subCategories.some((scId) =>
+          matchesPoiSubCategory(poi, scId, categoryFilter)
+        );
         if (!matchSub) return false;
       }
 
-      // Vibes filter (Khớp theo keywords ngữ nghĩa trong database)
-      if (categoryFilter !== 'all' && filterValues.vibes.length > 0) {
-        const pVibes = (poi.vibes || []).map((v) => v.toLowerCase());
-        const allVibesList = Object.values(VIBES_BY_CATEGORY).flat();
-        const matchVibe = filterValues.vibes.some((vId) => {
-          const item = allVibesList.find((v) => v.id === vId);
-          const keywords = (item?.keywords || [vId]).map((k) => k.toLowerCase());
-          return keywords.some((kw) => pVibes.some((pv) => pv.includes(kw) || kw.includes(pv)));
-        });
-        if (!matchVibe) return false;
+      // Features filter (Đặc trưng trải nghiệm chuẩn Mindtrip)
+      if (categoryFilter !== 'all' && filterValues.features && filterValues.features.length > 0) {
+        const matchFeatures = filterValues.features.every((fId) =>
+          matchesPoiFeature(poi, fId, categoryFilter)
+        );
+        if (!matchFeatures) return false;
       }
 
       // Category multi-select filter
@@ -663,21 +656,117 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     if (filterValues.openNowOnly) count++;
     if (categoryFilter !== 'all' && filterValues.vibes.length > 0) count += filterValues.vibes.length;
     if (categoryFilter !== 'all' && filterValues.subCategories.length > 0) count += filterValues.subCategories.length;
+    if (categoryFilter !== 'all' && filterValues.features && filterValues.features.length > 0) count += filterValues.features.length;
     if (filterValues.rainyDayFriendly) count++;
     if (filterValues.freeTicketOnly) count++;
     if (filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50) count++;
     return count;
   }, [filterValues]);
 
+  // Xác định chế độ xem tuyển chọn theo từng chuyên mục (Curated Sections Overview - Chuẩn Mindtrip):
+  // Kích hoạt khi ở tab "Tất cả", không tìm kiếm từ khóa, không ở mục 'đã lưu' và không chọn bộ lọc chuyên sâu
+  const isCuratedOverview = useMemo(() => {
+    return (
+      categoryFilter === 'all' &&
+      !search.trim() &&
+      viewMode !== 'saved' &&
+      activeFilterCount === 0
+    );
+  }, [categoryFilter, search, viewMode, activeFilterCount]);
+
+  // Nhóm các danh mục tuyển chọn đặc biệt cho chế độ xem tổng quan:
+  const curatedSections = useMemo(() => {
+    if (!isCuratedOverview) return null;
+
+    const sortHighlights = (list: Poi[]) => {
+      return [...list].sort((a, b) => {
+        const aH = isCuratedHighlight(a) ? 1 : 0;
+        const bH = isCuratedHighlight(b) ? 1 : 0;
+        if (aH !== bH) return bH - aH;
+        return (b.rating || 4.5) - (a.rating || 4.5);
+      });
+    };
+
+    // 1. Di tích & Biểu tượng văn hóa (Heritage & Iconic Landmarks)
+    const allHeritage = filteredPois.filter(
+      (p) => p.category === 'di-tich' || p.category === 'chua'
+    );
+    const topHeritage = sortHighlights(allHeritage).slice(0, 6);
+
+    // 2. Ẩm thực & Quán ăn trứ danh (Dining & Local Culinary)
+    const allFood = filteredPois.filter(
+      (p) =>
+        p.category === 'quan-an' &&
+        !p.name.toLowerCase().includes('cafe') &&
+        !p.name.toLowerCase().includes('cà phê') &&
+        !p.name.toLowerCase().includes('coffee') &&
+        !p.sub_category?.includes('cafe')
+    );
+    const topFood = sortHighlights(allFood).slice(0, 6);
+
+    // 3. Cảnh quan & Thiên nhiên xanh (Nature & Eco Escapes)
+    const allNature = filteredPois.filter((p) => p.category === 'canh-quan');
+    const topNature = sortHighlights(allNature).slice(0, 6);
+
+    // 4. Cà phê & Không gian Chill (Specialty Coffee & Chill Spots)
+    const allCafes = filteredPois.filter(
+      (p) =>
+        (p.category === 'quan-an' || (p as any).cat_name?.includes('cafe')) &&
+        (p.name.toLowerCase().includes('cafe') ||
+          p.name.toLowerCase().includes('cà phê') ||
+          p.name.toLowerCase().includes('coffee') ||
+          p.name.toLowerCase().includes('roastery') ||
+          p.sub_category?.includes('cafe') ||
+          p.name.toLowerCase().includes('trà'))
+    );
+    const topCafes = sortHighlights(allCafes).slice(0, 6);
+
+    return {
+      heritage: {
+        title: 'Điểm đến biểu tượng & Di tích lịch sử',
+        subtitle: 'Khám phá những di sản, danh thắng và công trình kiến trúc vượt thời gian',
+        total: allHeritage.length,
+        items: topHeritage,
+        categoryKey: 'di-tich' as PoiCategoryFilter,
+      },
+      food: {
+        title: 'Ẩm thực & Quán ăn trứ danh',
+        subtitle: 'Hương vị bản địa xứ Quảng - Đà Thành và Cố đô Huế đạt chuẩn Michelin',
+        total: allFood.length,
+        items: topFood,
+        categoryKey: 'quan-an' as PoiCategoryFilter,
+      },
+      nature: {
+        title: 'Trải nghiệm Xanh & Cảnh quan thiên nhiên',
+        subtitle: 'Những bãi biển cát trắng, đỉnh núi mây ngàn và sinh thái nguyên sơ',
+        total: allNature.length,
+        items: topNature,
+        categoryKey: 'canh-quan' as PoiCategoryFilter,
+      },
+      cafes: {
+        title: 'Cà phê & Không gian thư giãn',
+        subtitle: 'Tận hưởng nhịp sống chậm với hương cà phê rang mộc và view tuyệt đẹp',
+        total: allCafes.length,
+        items: topCafes,
+        categoryKey: 'quan-an' as PoiCategoryFilter,
+        subCategoryKey: 'cafe',
+      },
+    };
+  }, [isCuratedOverview, filteredPois]);
+
 
   const handleSelectPoi = (id: string | null) => {
-    setSelectedPoiId((prev) => (prev === id ? null : id));
+    setSelectedMapPoiId((prev) => (prev === id ? null : id));
   };
 
-  const selectedPoi = useMemo(() => {
-    if (!selectedPoiId) return null;
-    return allPois.find((poi) => poi.id === selectedPoiId) || null;
-  }, [allPois, selectedPoiId]);
+  const handleOpenFullDetail = (id: string) => {
+    setFullDetailPoiId(id);
+  };
+
+  const fullDetailPoi = useMemo(() => {
+    if (!fullDetailPoiId) return null;
+    return allPois.find((poi) => poi.id === fullDetailPoiId) || null;
+  }, [allPois, fullDetailPoiId]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -688,7 +777,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     });
   };
 
-  const currentCityLabel = cityFilter === 'all' ? 'Tất cả địa điểm' : cityFilter;
+  const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilter;
 
   return (
     <div className="flex h-screen overflow-hidden font-sans bg-white select-none">
@@ -775,29 +864,23 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               { 
                 key: 'saved', 
                 onClick: () => setViewMode('saved'), 
-                icon: viewMode === 'saved' ? 'ph-fill ph-heart text-[#b45309]' : 'ph ph-heart', 
+                icon: viewMode === 'saved' ? 'ph-fill ph-heart text-rose-600' : 'ph ph-heart', 
                 label: 'Đã lưu', 
                 active: viewMode === 'saved',
                 badge: favorites.size > 0 ? String(favorites.size) : undefined
               },
-              { to: '#', icon: 'ph ph-bell', label: 'Cập nhật' },
-              { 
+                            { 
                 key: 'trips', 
                 onClick: () => { 
                   setViewMode('trips'); 
                   setActiveOverviewTrip(null);
+                  setSelectedTripForDetails(null);
                   navigate('/planner'); 
                 }, 
                 icon: viewMode === 'trips' ? 'ph-fill ph-calendar-plus' : 'ph ph-calendar-plus', 
                 label: 'Lịch trình', 
                 active: viewMode === 'trips',
                 badge: userTrips.length > 0 ? String(userTrips.length) : undefined
-              },
-              { 
-                key: 'create',
-                onClick: () => setIsCreateTripModalOpen(true),
-                icon: 'ph ph-plus-square', 
-                label: 'Tạo chuyến đi' 
               },
             ].map((item) => {
               const itemContent = (
@@ -806,7 +889,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   <div className="w-9 h-9 flex items-center justify-center shrink-0 relative">
                     <i className={`${item.icon} text-[23px] text-black ${item.active ? '' : 'group-hover/item:opacity-75'} transition-opacity`}></i>
                     {item.badge && (
-                      <span className="absolute -top-1 -right-1 bg-[#b45309] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                      <span className="absolute -top-1 -right-1 bg-neutral-900 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
                         {item.badge}
                       </span>
                     )}
@@ -831,7 +914,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 </div>
               );
 
-              return 'onClick' in item ? (
+              return (
                 <button
                   key={item.label}
                   onClick={item.onClick}
@@ -839,31 +922,33 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 >
                   {itemContent}
                 </button>
-              ) : item.to === '#' ? (
-                <a key={item.label} href="#">{itemContent}</a>
-              ) : (
-                <Link key={item.label} to={item.to}>{itemContent}</Link>
               );
             })}
           </nav>
 
-          {/* Button Trò chuyện mới - Cố định tọa độ */}
+          {/* Button Tạo chuyến đi - Nút hành động chính chuẩn Mindtrip */}
           <div className="pt-6">
             {isSidebarCollapsed ? (
               <div className="w-9 h-9 flex items-center justify-center shrink-0">
                 <button
-                  className="w-9 h-9 bg-[#F0F2F5] hover:bg-[#E4E6EB] text-gray-950 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 group/newchat relative"
-                  title="Trò chuyện mới"
+                  onClick={() => setIsCreateTripModalOpen(true)}
+                  className="w-9 h-9 bg-black hover:bg-neutral-800 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 group/newchat relative"
+                  title="Tạo chuyến đi"
                 >
-                  <i className="ph ph-chat-circle-dots text-[19px] text-black"></i>
+                  <i className="ph ph-plus text-[18px] text-white font-bold"></i>
                   <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 bg-black text-white text-[11.5px] font-medium px-2.5 py-1 rounded-md shadow-md whitespace-nowrap pointer-events-none opacity-0 group-hover/newchat:opacity-100 transition-opacity z-50">
-                    Trò chuyện mới
+                    Tạo chuyến đi
                   </div>
                 </button>
               </div>
             ) : (
-              <button className="w-full py-2.5 px-4 bg-[#F0F2F5] hover:bg-[#E4E6EB] text-gray-950 font-semibold text-[13.5px] rounded-full transition-all text-center border-0 shadow-none cursor-pointer whitespace-nowrap overflow-hidden">
-                Trò chuyện mới
+              <button 
+                onClick={() => setIsCreateTripModalOpen(true)}
+                className="w-full py-2.5 px-3 bg-black hover:bg-neutral-800 text-white font-semibold text-[13px] rounded-full transition-all text-center border border-black shadow-xs cursor-pointer flex items-center justify-center gap-2 active:scale-98 group/create-btn"
+                title="Tạo chuyến đi mới đến Đà Nẵng hoặc Huế"
+              >
+                <i className="ph ph-plus text-white text-[15px] font-bold"></i>
+                <span className="truncate">Tạo chuyến đi</span>
               </button>
             )}
           </div>
@@ -939,18 +1024,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           {/* Legal footer */}
           <div className="overflow-hidden transition-all duration-300">
             {!isSidebarCollapsed ? (
-              <div className="px-0 text-[11.5px] text-gray-500/80 leading-relaxed font-normal mt-1 animate-fadeIn">
-                <p className="space-x-1">
-                  <span>Công ty</span><span>•</span><span>Liên hệ</span><span>•</span><span>Giúp đỡ</span>
-                </p>
-                <p className="space-x-1">
-                  <span>Điều khoản</span><span>•</span><span>Sự riêng tư</span>
-                </p>
-                <p className="mt-1.5 text-gray-500/80 text-[11px]">© 2026 GreenTrip, Inc.</p>
+              <div className="px-0 text-[11px] text-gray-400 leading-relaxed font-normal mt-1 animate-fadeIn">
+                <p>© 2026 GreenTrip • Du lịch thông minh & Bền vững</p>
               </div>
             ) : (
               <div className="w-9 h-9 flex items-center justify-center shrink-0">
-                <div className="flex justify-center text-gray-400 hover:text-black transition cursor-pointer text-xs" title="© 2026 GreenTrip, Inc.">
+                <div className="flex justify-center text-gray-400 hover:text-black transition cursor-pointer text-xs" title="© 2026 GreenTrip • Du lịch thông minh & Bền vững">
                   <i className="ph ph-info text-[16px]"></i>
                 </div>
               </div>
@@ -960,7 +1039,28 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       </aside>
 
       {viewMode === 'trips' ? (
-        activeOverviewTrip ? (
+        selectedTripForDetails ? (
+          <TripItineraryView
+            trip={selectedTripForDetails}
+            allPois={allPois}
+            onBack={() => setSelectedTripForDetails(null)}
+            onUpdateTrip={(updatedTrip) => {
+              setSelectedTripForDetails(updatedTrip);
+              setActiveOverviewTrip(updatedTrip);
+              setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
+              try {
+                const raw = localStorage.getItem('greentrip_user_trips');
+                if (raw) {
+                  const trips: UserTrip[] = JSON.parse(raw);
+                  const updatedList = trips.map((t) => (t.id === updatedTrip.id ? updatedTrip : t));
+                  localStorage.setItem('greentrip_user_trips', JSON.stringify(updatedList));
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+          />
+        ) : activeOverviewTrip ? (
           <TripOverviewView
             trip={activeOverviewTrip}
             onBack={() => setActiveOverviewTrip(null)}
@@ -1173,22 +1273,43 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   </div>
                 </div>
               )            ) : (
-              /* Calendar SubTab View */
-              <div className="py-24 flex flex-col items-center justify-center text-center">
-                <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 text-2xl mb-4">
-                  <i className="ph ph-calendar"></i>
+              /* Calendar SubTab View: Render Prototype Lịch trình chi tiết */
+              userTrips.length > 0 ? (
+                <div className="h-[calc(100vh-140px)] flex flex-col -mx-[64px] sm:-mx-[74px] -my-4 overflow-hidden">
+                  <TripItineraryView
+                    trip={userTrips[0]}
+                    allPois={allPois}
+                    onBack={() => setTripsSubTab('trips')}
+                    onUpdateTrip={(updatedTrip) => {
+                      setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
+                      try {
+                        localStorage.setItem(
+                          'greentrip_user_trips',
+                          JSON.stringify(userTrips.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)))
+                        );
+                      } catch (e) {
+                        console.error(e);
+                      }
+                    }}
+                  />
                 </div>
-                <h3 className="text-base font-bold text-gray-900 mb-1">Xem theo lịch trình</h3>
-                <p className="text-xs text-gray-500 max-w-sm mb-5 leading-relaxed">
-                  Các mốc thời gian, ngày di chuyển và địa điểm tham quan sẽ được biểu diễn theo dòng thời gian trực quan.
-                </p>
-                <button
-                  onClick={() => setTripsSubTab('trips')}
-                  className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-full text-xs font-semibold transition cursor-pointer"
-                >
-                  Quay lại danh sách chuyến đi
-                </button>
-              </div>
+              ) : (
+                <div className="py-24 flex flex-col items-center justify-center text-center">
+                  <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 text-2xl mb-4">
+                    <i className="ph ph-calendar"></i>
+                  </div>
+                  <h3 className="text-base font-bold text-gray-900 mb-1">Xem theo lịch trình</h3>
+                  <p className="text-xs text-gray-500 max-w-sm mb-5 leading-relaxed">
+                    Bạn chưa có chuyến đi nào. Hãy tạo chuyến đi mới để tự do sắp xếp lịch trình nhé!
+                  </p>
+                  <button
+                    onClick={() => setIsCreateTripModalOpen(true)}
+                    className="px-5 py-2 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-semibold transition cursor-pointer"
+                  >
+                    + Tạo chuyến đi ngay
+                  </button>
+                </div>
+              )
             )}
           </div>
         </main>
@@ -1234,7 +1355,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   onClick={() => { setCityFilter('all'); setShowCityDropdown(false); }}
                   className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${cityFilter === 'all' ? 'font-bold text-black' : 'text-gray-700'}`}
                 >
-                  <span>Tất cả địa điểm</span>
+                  <span>Tất cả khu vực (Đà Nẵng & Huế)</span>
                   {cityFilter === 'all' && <i className="ph ph-check font-bold"></i>}
                 </button>
                 <button
@@ -1302,10 +1423,10 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`whitespace-nowrap transition-all cursor-pointer ${
+                  className={`whitespace-nowrap transition-all duration-150 cursor-pointer ${
                     isActive
-                      ? 'px-3.5 py-1.5 bg-black text-white rounded-full font-bold shadow-xs text-[13px]'
-                      : 'px-3 py-1.5 text-gray-700 hover:text-black hover:bg-gray-100/60 rounded-full font-medium text-[13.5px]'
+                      ? 'px-4 py-2 bg-neutral-950 text-white rounded-full font-semibold shadow-xs text-[13px] border border-neutral-950'
+                      : 'px-4 py-2 bg-neutral-100/90 hover:bg-neutral-200/90 text-neutral-700 hover:text-neutral-950 rounded-full font-medium text-[13px] border border-neutral-200/60'
                   }`}
                 >
                   {tab.label}
@@ -1313,142 +1434,290 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               );
             })}
           </div>
+
+
         </header>
 
         {/* Cards Scrollable Area */}
         <div className="px-6 py-1">
-          {/* Section Subheading & Active Filter Badges */}
-          <div className="mb-3 mt-4 flex items-center justify-between">
-            <h2 className="text-[17px] font-bold text-gray-950 tracking-tight">
-              Địa điểm ({filteredPois.length})
-            </h2>
-            {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || filterValues.subCategories.length > 0 || filterValues.vibes.length > 0) && (
+          {/* Section Subheading & Active Filter Reset (Quiet Luxury & Mindtrip Style) */}
+          <div className="mb-3.5 mt-5 flex items-center justify-between">
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-[17px] font-bold text-neutral-950 tracking-tight font-heading">
+                {isCuratedOverview
+                  ? 'Khám phá nổi bật'
+                  : search.trim()
+                  ? `Kết quả tìm kiếm cho "${search.trim()}"`
+                  : activeTab !== 'all'
+                  ? (TABS.find((t) => t.id === activeTab)?.label || 'Địa điểm')
+                  : 'Tất cả địa điểm'}
+              </h2>
+              <span className="text-[13.5px] font-semibold text-neutral-400">
+                ({filteredPois.length})
+              </span>
+            </div>
+            {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || filterValues.subCategories.length > 0 || (filterValues.features && filterValues.features.length > 0) || filterValues.timeOfDay.length > 0) && (
               <button
                 type="button"
                 onClick={() => setFilterValues(DEFAULT_FILTER_VALUES)}
-                className="text-xs font-semibold text-rose-600 hover:text-rose-800 underline cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-500 hover:text-black transition-colors cursor-pointer group select-none active:scale-95"
+                title="Đặt lại toàn bộ bộ lọc"
               >
-                Xóa tất cả bộ lọc
+                <i className="ph ph-arrow-counter-clockwise text-[13px] text-neutral-400 group-hover:text-black group-hover:-rotate-45 transition-transform duration-200"></i>
+                <span>Đặt lại</span>
               </button>
             )}
           </div>
 
-          {/* Active Filter Chips Bar */}
-          {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || filterValues.subCategories.length > 0 || filterValues.vibes.length > 0 || filterValues.timeOfDay.length > 0) && (
-            <div className="flex items-center gap-1.5 flex-wrap mb-4 py-1.5 px-3 bg-neutral-50 rounded-xl border border-neutral-200/60">
-              <span className="text-[11px] font-bold text-neutral-500 uppercase">Đang lọc:</span>
+          {/* Active Filter Chips Bar - Minimal Floating Pills */}
+          {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || filterValues.subCategories.length > 0 || (filterValues.features && filterValues.features.length > 0) || filterValues.timeOfDay.length > 0) && (
+            <div className="flex items-center gap-2 flex-wrap mb-4 animate-fadeIn">
               {filterValues.minRating !== null && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
-                  <span>★ {filterValues.minRating}+</span>
-                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, minRating: null }))} className="hover:text-black font-bold">×</button>
+                <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-white border border-neutral-200/90 text-neutral-800 text-[12px] font-medium shadow-2xs hover:border-neutral-300 transition-all">
+                  <span className="text-amber-500 text-[11px]">★</span>
+                  <span>{filterValues.minRating}+ sao</span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterValues(p => ({ ...p, minRating: null }))}
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors ml-0.5 cursor-pointer"
+                    title="Gỡ lọc đánh giá"
+                    aria-label="Gỡ lọc đánh giá"
+                  >
+                    <i className="ph ph-x text-[10px] font-bold"></i>
+                  </button>
                 </span>
               )}
               {filterValues.budget !== 'all' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
-                  <span>Giá: {filterValues.budget}</span>
-                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, budget: 'all' }))} className="hover:text-black font-bold">×</button>
+                <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-white border border-neutral-200/90 text-neutral-800 text-[12px] font-medium shadow-2xs hover:border-neutral-300 transition-all">
+                  <span className="text-neutral-400 text-[11px]">🏷️</span>
+                  <span>Giá: {filterValues.budget === 'free' ? 'Miễn phí' : filterValues.budget}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterValues(p => ({ ...p, budget: 'all' }))}
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors ml-0.5 cursor-pointer"
+                    title="Gỡ lọc ngân sách"
+                    aria-label="Gỡ lọc ngân sách"
+                  >
+                    <i className="ph ph-x text-[10px] font-bold"></i>
+                  </button>
                 </span>
               )}
               {filterValues.radiusKm !== null && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
+                <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-white border border-neutral-200/90 text-neutral-800 text-[12px] font-medium shadow-2xs hover:border-neutral-300 transition-all">
+                  <span className="text-neutral-400 text-[11px]">📍</span>
                   <span>Trong {filterValues.radiusKm} km</span>
-                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, radiusKm: null }))} className="hover:text-black font-bold">×</button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterValues(p => ({ ...p, radiusKm: null }))}
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors ml-0.5 cursor-pointer"
+                    title="Gỡ lọc khoảng cách"
+                    aria-label="Gỡ lọc khoảng cách"
+                  >
+                    <i className="ph ph-x text-[10px] font-bold"></i>
+                  </button>
                 </span>
               )}
               {filterValues.ecoCertifiedOnly && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold">
-                  <span>🍃 Chuẩn Xanh</span>
-                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, ecoCertifiedOnly: false }))} className="hover:text-emerald-950 font-bold">×</button>
+                <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-emerald-50/90 border border-emerald-200 text-emerald-900 text-[12px] font-medium shadow-2xs hover:border-emerald-300 transition-all">
+                  <span className="text-[12px]">🌱</span>
+                  <span>Địa điểm xanh</span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterValues(p => ({ ...p, ecoCertifiedOnly: false }))}
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-emerald-600 hover:text-emerald-950 hover:bg-emerald-100/70 transition-colors ml-0.5 cursor-pointer"
+                    title="Gỡ lọc địa điểm xanh"
+                    aria-label="Gỡ lọc địa điểm xanh"
+                  >
+                    <i className="ph ph-x text-[10px] font-bold"></i>
+                  </button>
                 </span>
               )}
               {filterValues.timeOfDay.length > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
-                  <span>{filterValues.timeOfDay.includes('evening') ? 'Buổi tối' : 'Ban ngày'}</span>
-                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, timeOfDay: [] }))} className="hover:text-black font-bold">×</button>
+                <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-white border border-neutral-200/90 text-neutral-800 text-[12px] font-medium shadow-2xs hover:border-neutral-300 transition-all">
+                  <span className="text-neutral-400 text-[11px]">
+                    {filterValues.timeOfDay.includes('evening') ? '🌙' : '☀️'}
+                  </span>
+                  <span>
+                    {filterValues.timeOfDay.includes('morning')
+                      ? 'Buổi sáng'
+                      : filterValues.timeOfDay.includes('afternoon')
+                      ? 'Buổi chiều'
+                      : 'Buổi tối'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterValues(p => ({ ...p, timeOfDay: [] }))}
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors ml-0.5 cursor-pointer"
+                    title="Gỡ lọc thời điểm"
+                    aria-label="Gỡ lọc thời điểm"
+                  >
+                    <i className="ph ph-x text-[10px] font-bold"></i>
+                  </button>
                 </span>
               )}
-              {activeTab !== 'all' && filterValues.vibes.map((v) => {
-                const allVibes = Object.values(VIBES_BY_CATEGORY).flat();
-                const label = allVibes.find((item) => item.id === v)?.label || v;
+              {activeTab !== 'all' && filterValues.subCategories.map((sc) => {
+                const facets = SPECIFIC_FACETS_BY_CATEGORY[activeTab] || [];
+                const label = facets.find((f) => f.id === sc)?.label || SUB_CATEGORY_LABELS[sc] || sc;
                 return (
-                  <span key={v} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
-                    <span>Vibe: {label}</span>
-                    <button type="button" onClick={() => setFilterValues(p => ({ ...p, vibes: p.vibes.filter(item => item !== v) }))} className="hover:text-black font-bold">×</button>
+                  <span
+                    key={sc}
+                    className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-white border border-neutral-200/90 text-neutral-800 text-[12px] font-medium shadow-2xs hover:border-neutral-300 transition-all"
+                  >
+                    <span>{label}</span>
+                    <button
+                      type="button"
+                      onClick={() => setFilterValues(p => ({ ...p, subCategories: p.subCategories.filter(item => item !== sc) }))}
+                      className="w-4 h-4 rounded-full flex items-center justify-center text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors ml-0.5 cursor-pointer"
+                      title={'Gỡ lọc ' + label}
+                      aria-label={'Gỡ lọc ' + label}
+                    >
+                      <i className="ph ph-x text-[10px] font-bold"></i>
+                    </button>
                   </span>
                 );
               })}
-              {activeTab !== 'all' && filterValues.subCategories.map((sc) => (
-                <span key={sc} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-neutral-200 text-neutral-800 text-[11px] font-semibold">
-                  <span>{SUB_CATEGORY_LABELS[sc] || (sc === 'chua' ? 'Chùa & Điểm tâm linh' : sc)}</span>
-                  <button type="button" onClick={() => setFilterValues(p => ({ ...p, subCategories: p.subCategories.filter(item => item !== sc) }))} className="hover:text-black font-bold">×</button>
-                </span>
-              ))}
-              <button
-                type="button"
-                onClick={() => setFilterValues(DEFAULT_FILTER_VALUES)}
-                className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 underline ml-auto cursor-pointer"
-              >
-                Xóa tất cả
-              </button>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-7 pb-12">
-            {loading ? (
-              Array.from({ length: 6 }).map((_, i) => <PoiCardSkeleton key={i} />)
-            ) : filteredPois.length === 0 ? (
-              error ? (
-                <ErrorState message={error} />
-              ) : (
-                <div className="col-span-2 py-12 px-6 text-center bg-neutral-50/80 rounded-3xl border border-neutral-200/80 my-2">
-                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto mb-3">
-                    <i className="ph ph-compass text-3xl text-emerald-800"></i>
-                  </div>
-                  <h4 className="text-base font-bold text-neutral-900 mb-1">
-                    Không tìm thấy địa điểm phù hợp
-                  </h4>
-                  <p className="text-xs text-neutral-500 max-w-md mx-auto mb-4">
-                    {filterValues.radiusKm
-                      ? `Không có địa điểm nào trong bán kính ${filterValues.radiusKm} km. Bạn có muốn nới rộng bán kính để xem thêm gợi ý?`
-                      : 'Thử điều chỉnh hoặc xóa bớt tiêu chí lọc để khám phá thêm nhiều địa điểm hấp dẫn.'}
-                  </p>
-                  <div className="flex items-center justify-center gap-2">
-                    {filterValues.radiusKm && (
-                      <button
-                        type="button"
-                        onClick={() => setFilterValues(prev => ({ ...prev, radiusKm: null }))}
-                        className="px-4 py-2 rounded-full bg-black text-white text-xs font-bold hover:bg-neutral-800 transition cursor-pointer"
-                      >
-                        Mở rộng toàn thành phố
-                      </button>
-                    )}
+              {activeTab !== 'all' && filterValues.features && filterValues.features.map((fId) => {
+                const feats = FEATURES_BY_CATEGORY[activeTab] || [];
+                const label = feats.find((f) => f.id === fId)?.label || fId;
+                return (
+                  <span
+                    key={fId}
+                    className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-white border border-neutral-200/90 text-neutral-800 text-[12px] font-medium shadow-2xs hover:border-neutral-300 transition-all"
+                  >
+                    <span className="text-neutral-400 text-[11px]">✨</span>
+                    <span>{label}</span>
                     <button
                       type="button"
-                      onClick={() => setFilterValues(DEFAULT_FILTER_VALUES)}
-                      className="px-4 py-2 rounded-full border border-neutral-300 text-neutral-800 text-xs font-bold hover:bg-neutral-100 transition cursor-pointer"
+                      onClick={() => setFilterValues(p => ({ ...p, features: (p.features || []).filter(item => item !== fId) }))}
+                      className="w-4 h-4 rounded-full flex items-center justify-center text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors ml-0.5 cursor-pointer"
+                      title={'Gỡ lọc ' + label}
+                      aria-label={'Gỡ lọc ' + label}
                     >
-                      Xem tất cả địa điểm
+                      <i className="ph ph-x text-[10px] font-bold"></i>
                     </button>
-                  </div>
-                </div>
-              )
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          {loading ? (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-7 pb-12">
+              {Array.from({ length: 6 }).map((_, i) => <PoiCardSkeleton key={i} />)}
+            </div>
+          ) : isCuratedOverview && curatedSections ? (
+            <div className="space-y-10 pb-16">
+              {Object.entries(curatedSections).map(([secKey, sec]) => {
+                if (sec.items.length === 0) return null;
+                return (
+                  <section key={secKey} className="space-y-4">
+                    <div className="flex items-end justify-between border-b border-zinc-100 pb-2.5">
+                      <div>
+                        <h3 className="text-[16.5px] font-bold text-neutral-950 tracking-tight font-heading">
+                          {sec.title}
+                        </h3>
+                        <p className="text-[12px] text-neutral-500 font-normal mt-0.5">
+                          {sec.subtitle}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+                      {sec.items.map((poi, idx) => (
+                        <div key={poi.id} data-poi-id={poi.id}>
+                          <PoiCard
+                            poi={poi}
+                            index={idx}
+                            active={poi.id === selectedMapPoiId}
+                            favorite={favorites.has(poi.id)}
+                            isAdded={addedTrips.has(poi.id)}
+                            onClick={() => {
+                              handleSelectPoi(poi.id);
+                              handleOpenFullDetail(poi.id);
+                            }}
+                            onHover={handleDebouncedHover}
+                            onToggleFavorite={toggleFavorite}
+                            onToggleAddTrip={toggleAddTrip}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetTab = sec.categoryKey === 'chua' ? 'di-tich' : (sec.categoryKey as 'quan-an' | 'di-tich' | 'canh-quan');
+                        handleTabChange(targetTab);
+                        if ('subCategoryKey' in sec && sec.subCategoryKey) {
+                          setFilterValues((prev) => ({ ...prev, subCategories: [sec.subCategoryKey!] }));
+                        }
+                      }}
+                      className="w-full py-2.5 px-4 rounded-xl border border-zinc-200/90 hover:border-zinc-400 bg-white hover:bg-zinc-50 text-zinc-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer group active:scale-[0.99]"
+                    >
+                      <span>Xem thêm {sec.title.split('&')[0].trim()} ({sec.total})</span>
+                      <i className="ph-bold ph-arrow-right text-[13px] group-hover:translate-x-0.5 transition-transform"></i>
+                    </button>
+                  </section>
+                );
+              })}
+            </div>
+          ) : filteredPois.length === 0 ? (
+            error ? (
+              <ErrorState message={error} />
             ) : (
-              filteredPois.map((poi, idx) => (
+              <div className="col-span-2 py-12 px-6 text-center bg-neutral-50/80 rounded-3xl border border-neutral-200/80 my-2">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto mb-3">
+                  <i className="ph ph-compass text-3xl text-emerald-800"></i>
+                </div>
+                <h4 className="text-base font-bold text-neutral-900 mb-1">
+                  Không tìm thấy địa điểm phù hợp
+                </h4>
+                <p className="text-xs text-neutral-500 max-w-md mx-auto mb-4">
+                  {filterValues.radiusKm
+                    ? `Không có địa điểm nào trong bán kính ${filterValues.radiusKm} km. Bạn có muốn nới rộng bán kính để xem thêm gợi ý?`
+                    : 'Thử điều chỉnh hoặc xóa bớt tiêu chí lọc để khám phá thêm nhiều địa điểm hấp dẫn.'}
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  {filterValues.radiusKm && (
+                    <button
+                      type="button"
+                      onClick={() => setFilterValues(prev => ({ ...prev, radiusKm: null }))}
+                      className="px-4 py-2 rounded-full bg-black text-white text-xs font-bold hover:bg-neutral-800 transition cursor-pointer"
+                    >
+                      Mở rộng toàn thành phố
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setFilterValues(DEFAULT_FILTER_VALUES)}
+                    className="px-4 py-2 rounded-full border border-neutral-300 text-neutral-800 text-xs font-bold hover:bg-neutral-100 transition cursor-pointer"
+                  >
+                    Xem tất cả địa điểm
+                  </button>
+                </div>
+              </div>
+            )
+          ) : (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-7 pb-12">
+              {filteredPois.map((poi, idx) => (
                 <div key={poi.id} data-poi-id={poi.id}>
                   <PoiCard
                     poi={poi}
                     index={idx}
-                    active={poi.id === selectedPoiId}
+                    active={poi.id === selectedMapPoiId}
                     favorite={favorites.has(poi.id)}
                     isAdded={addedTrips.has(poi.id)}
-                    onClick={() => handleSelectPoi(poi.id)}
-                    onHover={setHoveredPoiId}
+                    onClick={() => {
+                      handleSelectPoi(poi.id);
+                      handleOpenFullDetail(poi.id);
+                    }}
+                    onHover={handleDebouncedHover}
                     onToggleFavorite={toggleFavorite}
                     onToggleAddTrip={toggleAddTrip}
                   />
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
         </div>
 
@@ -1474,18 +1743,19 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
       {/* 3. RIGHT SECTION: Map giữ khoảng cách p-6 bo góc 22px. Khi xem chi tiết: Card trượt từ bên phải qua, bo cong 24px mép trái chuẩn Mindtrip, đổ bóng mờ khuếch tán sang trái */}
       <section 
-        className={`flex-1 h-full relative bg-white ${selectedPoi ? 'overflow-visible z-30' : 'overflow-hidden'}`} 
+        className={`flex-1 h-full relative bg-white ${fullDetailPoi ? 'overflow-visible z-30' : 'overflow-hidden'}`} 
         data-purpose="right-panel-container"
       >
-        {/* Interactive Map (giữ nguyên khoảng cách p-6 và card bo góc 22px như cũ, ẩn khi mở chi tiết để ko lộ màu) */}
-        <div className={`w-full h-full p-6 ${selectedPoi ? "invisible pointer-events-none" : "visible"}`}>
+        {/* Interactive Map: Luôn hiển thị trừ khi người dùng chủ động mở bảng chi tiết sâu */}
+        <div className={`w-full h-full p-6 ${fullDetailPoi ? "invisible pointer-events-none" : "visible"}`}>
           <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
             <PoiMap
               pois={filteredPois}
-              selectedPoiId={selectedPoiId}
+              selectedPoiId={selectedMapPoiId}
               hoveredPoiId={hoveredPoiId}
               onSelectPoi={handleSelectPoi}
               onHoverPoi={setHoveredPoiId}
+              onOpenDetails={handleOpenFullDetail}
               isExpanded={isMapExpanded}
               onToggleExpand={() => {
                 setIsMapExpanded((prev) => !prev);
@@ -1501,17 +1771,17 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           </div>
         </div>
 
-        {/* Right Detail Section: Card trượt từ bên phải qua, bo cong 24px ở mép trái chuẩn Mindtrip, bóng mờ khuếch tán sang trái */}
-        {selectedPoi && (
+        {/* Right Detail Section: Card trượt từ bên phải qua khi bấm "Chi tiết ->" */}
+        {fullDetailPoi && (
           <div 
             className="absolute inset-y-0 right-0 w-full z-40 bg-white rounded-l-[24px] border-l border-t border-b border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.08),-4px_0_12px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden animate-slideInRight"
           >
             <PoiDetailSection
-              poi={selectedPoi}
-              isFavorite={favorites.has(selectedPoi.id)}
-              onClose={() => setSelectedPoiId(null)}
+              poi={fullDetailPoi}
+              isFavorite={favorites.has(fullDetailPoi.id)}
+              onClose={() => setFullDetailPoiId(null)}
               onToggleFavorite={toggleFavorite}
-              onViewOnMap={() => setSelectedPoiId(null)}
+              onViewOnMap={() => setFullDetailPoiId(null)}
             />
           </div>
         )}
@@ -1522,6 +1792,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       {/* 4. Explore Filter Modal (Đa Tab chuẩn Quiet Luxury & Mindtrip) */}
       <ExploreFilterModal
         isOpen={isFilterPopoverOpen}
+        allPois={allPois}
         onClose={() => setIsFilterPopoverOpen(false)}
         activeTab={activeTab}
         values={filterValues}
@@ -1531,7 +1802,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         }}
         onClearAll={() => setFilterValues(DEFAULT_FILTER_VALUES)}
         matchingCount={filteredPois.length}
-        allPois={allPois}
       />
 
       {/* 5. Create Trip Modal */}
@@ -1667,7 +1937,7 @@ function PoiCard({
               e.stopPropagation();
               setImgIdx((prev) => Math.max(0, prev - 1));
             }}
-            className="absolute left-3.5 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white text-zinc-900 shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-10 cursor-pointer"
+            className="absolute left-3.5 top-[45%] -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 hover:bg-black/75 backdrop-blur-md text-white shadow-sm flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-10 cursor-pointer"
             title="Ảnh trước"
           >
             <i className="ph ph-caret-left text-lg font-bold"></i>
@@ -1681,39 +1951,43 @@ function PoiCard({
               e.stopPropagation();
               setImgIdx((prev) => Math.min(gallery.length - 1, prev + 1));
             }}
-            className="absolute right-3.5 top-[45%] -translate-y-1/2 w-10 h-10 rounded-full bg-white text-zinc-900 shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-10 cursor-pointer"
+            className="absolute right-3.5 top-[45%] -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 hover:bg-black/75 backdrop-blur-md text-white shadow-sm flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-10 cursor-pointer"
             title="Ảnh kế tiếp"
           >
             <i className="ph ph-caret-right text-lg font-bold"></i>
           </button>
         )}
 
-        {/* Nút tim và "+" ở góc trên (giữ nguyên khi hover, chuyển trạng thái khi đã lưu / thêm) */}
+        {/* Gradient bóng râm bảo vệ tương phản cho nút bấm */}
+        <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/35 via-black/10 to-transparent pointer-events-none z-[5]" />
+
+        {/* Huy hiệu Điểm Xanh (EcoScore) chuẩn Quiet Luxury 3 Tầng */}
+        {poi.isGreen && (
+          <div 
+            className="absolute top-3 left-3 z-10 pointer-events-auto cursor-help"
+            title="Địa điểm du lịch xanh: Thân thiện môi trường, tiết kiệm năng lượng và bảo tồn văn hóa địa phương"
+          >
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-400/40 text-[11px] font-bold tracking-tight shadow-md">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+              </span>
+              <Leaf size={11} className="text-emerald-400 shrink-0" />
+              <span>Địa điểm xanh</span>
+            </span>
+          </div>
+        )}
+
+        {/* Nút tim và "+" với Morphicons spring physics */}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFavorite(poi.id);
-            }}
-            className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
-              favorite ? 'bg-white text-[#b45309]' : 'bg-black/35 hover:bg-black/55 text-white'
-            }`}
-            title="Lưu yêu thích"
-          >
-            <i className={`ph ${favorite ? 'ph-fill ph-heart text-[18px] text-[#b45309]' : 'ph-heart text-[18px]'}`}></i>
-          </button>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleAddTrip?.(poi.id);
-            }}
-            className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
-              isAdded ? 'bg-emerald-600 text-white' : 'bg-black/35 hover:bg-black/55 text-white'
-            }`}
-            title="Thêm vào chuyến đi"
-          >
-            <i className={`ph ${isAdded ? 'ph-check text-[18px] font-bold' : 'ph-plus text-[18px]'}`}></i>
-          </button>
+          <MorphFavoriteButton
+            isFavorited={favorite}
+            onToggle={() => onToggleFavorite(poi.id)}
+          />
+          <MorphAddButton
+            isAdded={isAdded}
+            onToggle={() => onToggleAddTrip?.(poi.id)}
+          />
         </div>
 
         {/* Chấm phân trang bên dưới đổi theo ảnh đang xem */}
@@ -1728,24 +2002,45 @@ function PoiCard({
           ))}
         </div>
 
-        {/* Icon ⓘ ở góc phải đáy */}
-        <div className="absolute bottom-2.5 right-2.5 pointer-events-none z-10">
-          <i className="ph ph-info text-white/80 hover:text-white text-[15px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"></i>
-        </div>
+
       </div>
 
-      {/* 2. Card Details: Tên, loại hình, địa chỉ */}
+      {/* 2. Card Details: Tên, Rating, loại hình, địa chỉ chuẩn Quiet Luxury */}
       <div className="mt-2.5 space-y-1">
-        <div className="flex items-center justify-between gap-1.5 min-w-0">
-          <h3 className="font-bold text-[15px] text-gray-950 tracking-tight truncate leading-tight group-hover:text-black">
+        <div className="flex items-baseline justify-between gap-2 min-w-0">
+          <h3 className="font-bold text-[15px] text-gray-950 tracking-tight truncate leading-tight group-hover:text-emerald-800 transition-colors">
             {poi.name}
           </h3>
+          {Number(poi.rating) > 0 && (
+            <span className="flex items-center gap-1 text-[13px] font-bold text-gray-900 shrink-0">
+              <i className="ph ph-fill ph-star text-[12px] text-amber-500"></i>
+              <span>{(typeof poi.rating === 'number' ? poi.rating : Number(poi.rating || 4.5)).toFixed(1)}</span>
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-normal">
-          <i className={`ph ${CATEGORY_META[poi.category]?.icon || 'ph-map-pin'} text-gray-400 text-[14px] shrink-0`}></i>
-          <span className="truncate">{CATEGORY_META[poi.category]?.label || 'Điểm tham quan'}</span>
-        </div>
+        {(() => {
+          const isCafe = Boolean(
+            poi.sub_category?.includes('cafe') || 
+            poi.sub_category?.includes('coffee') || 
+            /coffee|cafe|cà phê|tiệm trà|workspace/i.test(poi.name)
+          );
+          const resolvedCategoryLabel = poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category]
+            ? SUB_CATEGORY_LABELS[poi.sub_category]
+            : isCafe
+              ? 'Quán cà phê'
+              : CATEGORY_META[poi.category]?.label || 'Điểm tham quan';
+          const resolvedCategoryIcon = isCafe
+            ? 'ph-coffee'
+            : (CATEGORY_META[poi.category]?.icon || 'ph-map-pin');
+
+          return (
+            <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-normal">
+              <i className={`ph ${resolvedCategoryIcon} text-gray-400 text-[14px] shrink-0`}></i>
+              <span className="truncate">{resolvedCategoryLabel}</span>
+            </div>
+          );
+        })()}
 
         <div className="text-[12.5px] text-gray-400 font-normal truncate">
           <span>{poi.address || `${poi.city === 'Đà Nẵng' ? 'Hải Châu, Đà Nẵng' : `${poi.city}, Việt Nam`}`}</span>

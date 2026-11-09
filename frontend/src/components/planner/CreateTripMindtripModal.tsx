@@ -374,7 +374,7 @@ export default function CreateTripMindtripModal({
             {isSubmitting ? (
               <>
                 <Loader2 size={16} className="animate-spin text-gray-500" />
-                <span>Đang xử lý qua AI...</span>
+                <span>Đang tạo lịch trình...</span>
               </>
             ) : (
               <span>Tạo chuyến đi</span>

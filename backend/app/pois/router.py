@@ -23,7 +23,7 @@ def get_parsed_weights(
 @router.get("", response_model=PaginatedPOIResponse)
 def get_pois(
     page: int = Query(default=1, ge=1, description="1-based page number"),
-    limit: int = Query(default=10, ge=1, le=100, description="Items per page (maximum 100)"),
+    limit: int = Query(default=10, ge=1, le=1000, description="Items per page (maximum 1000)"),
     category: str | None = Query(default=None, description="Filter by category name"),
     city: str | None = Query(default=None, description="Filter by city name"),
     sub_category: str | None = Query(default=None, description="Filter by sub_category (e.g. western_international, traditional_noodles)"),

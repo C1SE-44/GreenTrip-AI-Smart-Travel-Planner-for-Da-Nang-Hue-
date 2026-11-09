@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import type { Poi } from '@/data/pois';
-import { categoryLabels, getGalleryImages } from '@/data/pois';
+import { categoryLabels, getGalleryImages, cleanPoiName, getSpecificPoiIconClass, isCuratedHighlight } from '@/data/pois';
+export { cleanPoiName, getSpecificPoiIconClass, isCuratedHighlight };
 
 interface PoiMapProps {
   pois: Poi[];
@@ -10,6 +11,7 @@ interface PoiMapProps {
   hoveredPoiId: string | null;
   onSelectPoi: (id: string | null) => void;
   onHoverPoi: (id: string | null) => void;
+  onOpenDetails?: (id: string) => void;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   favorites?: Set<string>;
@@ -17,34 +19,15 @@ interface PoiMapProps {
   addedTrips?: Set<string>;
   onToggleAddTrip?: (id: string) => void;
   hideTopControls?: boolean;
+  showMapLoader?: boolean;
 }
 
 interface MarkerOffset {
   position: 'right' | 'left' | 'top';
-  yOffset: number;
+  xOffset?: number;
+  yOffset?: number;
 }
 
-// 1. Rút gọn tên hiển thị trên marker (bỏ ngoặc đơn nếu có)
-function cleanPoiName(name: string): string {
-  if (!name) return '';
-  return name.replace(/\s*\([^)]*\)/g, '').trim();
-}
-
-// 2. Icon danh mục hiển thị trong pin
-function getCategoryIconSvg(category: string, isHighlighted: boolean): string {
-  const color = isHighlighted ? '#ffffff' : '#18181b';
-  switch (category) {
-    case 'quan-an':
-      return `<svg width="15" height="15" viewBox="0 0 24 24" fill="${color}"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>`;
-    case 'di-tich':
-      return `<svg width="15" height="15" viewBox="0 0 24 24" fill="${color}"><path d="M12 2L2 7v3h20V7L12 2zm-7 9v8H3v-8h2zm5 0v8H8v-8h2zm5 0v8h-2v-8h2zm5 0v8h-2v-8h2zm3 10H1v2h22v-2z"/></svg>`;
-    case 'chua':
-      return `<svg width="15" height="15" viewBox="0 0 24 24" fill="${color}"><path d="M12 2c1.5 2.5 3.5 5 3.5 8 0 3-1.8 5.5-3.5 6-1.7-.5-3.5-3-3.5-6 0-3 2-5.5 3.5-8zm6.5 7.5c-.3 2.5-1.5 4.8-3 6.5 1.5 1 3.5 1.5 5 1.5-1-2.5-1.5-5.5-2-8zm-13 0c-.5 2.5-1 5.5-2 8 1.5 0 3.5-.5 5-1.5-1.5-1.7-2.7-4-3-6.5zM12 18c-3 0-6.5 1.2-8 3h16c-1.5-1.8-5-3-8-3z"/></svg>`;
-    case 'canh-quan':
-    default:
-      return `<svg width="15" height="15" viewBox="0 0 24 24" fill="${color}"><path d="M14 6l-4.5 7.5 2 3.5h7L14 6zm-7 5L1 21h22l-6-10-3 5-7-5z"/></svg>`;
-  }
-}
 
 // 3. Tạo icon DivIcon cho Marker
 // Ghim đang chọn: Nền đen dạng viên thuốc, icon trắng + ảnh tròn thu nhỏ
@@ -53,41 +36,59 @@ function createMindtripMarkerIcon(
   isHovered: boolean,
   poi: Poi,
   offset: MarkerOffset = { position: 'right', yOffset: 0 },
-  showLabel: boolean = true
+  showLabel: boolean = true,
+  isNewEntrance: boolean = false,
+  entranceDelayMs: number = 0
 ): L.DivIcon {
   const isHighlighted = isSelected || isHovered;
   const displayName = cleanPoiName(poi.name);
-  const iconSvg = getCategoryIconSvg(poi.category, isHighlighted);
+  const iconClass = getSpecificPoiIconClass(poi);
 
   let pinHtml = '';
   let labelHtml = '';
 
   if (isSelected) {
-    // Ghim đang chọn trên bản đồ: Nền đen dạng viên thuốc, icon trắng + ảnh tròn thu nhỏ (Mindtrip Image 1 & 2)
+    // Ghim đang chọn trên bản đồ:
+    // Nếu là Địa điểm xanh -> Nền xanh lục ngọc bích sang trọng (Emerald Luxury)
+    // Nếu là địa điểm tiêu chuẩn -> Nền đen chuẩn Mindtrip
+    const isEco = Boolean(poi.isGreen);
     pinHtml = `
-      <div class="map-marker-pin absolute -left-[16px] -top-[16px] h-[32px] px-2.5 bg-black text-white rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.35)] ring-2 ring-black/20 flex items-center gap-1.5 z-[9999] pointer-events-auto transition-transform scale-105">
-        ${iconSvg}
+      <div class="map-marker-pin absolute -left-[16px] -top-[16px] h-[32px] px-2.5 ${
+        isEco
+          ? 'bg-emerald-700 text-white shadow-[0_4px_16px_rgba(4,120,87,0.45)] ring-2 ring-emerald-500/50'
+          : 'bg-black text-white shadow-[0_4px_16px_rgba(0,0,0,0.35)] ring-2 ring-black/20'
+      } rounded-full flex items-center gap-1.5 z-[9999] pointer-events-auto transition-transform scale-105">
+        <i class="${iconClass} text-[16px] text-white"></i>
         <img src="${poi.image}" referrerpolicy="no-referrer" class="w-5 h-5 rounded-full object-cover ring-1 ring-white/60" alt="" />
         <span class="text-[12px] font-bold text-white whitespace-nowrap leading-none pl-0.5">${displayName}</span>
       </div>
     `;
     labelHtml = '';
   } else {
-    // Ghim bình thường / hover: Ghim tròn 28px + Khung chữ thường nền trắng
+    // Ghim chuẩn Tối Giản Trắng - Đen (Quiet Luxury):
+    // - Trạng thái bình thường: Nền trắng tinh khiết, viền mỏng xám thanh lịch, đổ bóng mềm Mindtrip
+    // - Khi trỏ tới (hover):
+    //   + Địa điểm xanh (isGreen) -> Chuyển từ TRẮNG SANG XANH LỤC (Emerald) nổi bật, tươi mát, khác biệt
+    //   + Địa điểm tiêu chuẩn -> Chuyển sang NỀN ĐEN icon trắng nổi bật
+    const isEcoHigh = Boolean(poi.isGreen);
     pinHtml = `
-      <div class="map-marker-pin absolute -left-[14px] -top-[14px] w-[28px] h-[28px] rounded-full ${
+      <div class="map-marker-pin absolute -left-[15px] -top-[15px] w-[30px] h-[30px] rounded-full ${
         isHovered
-          ? 'bg-black text-white shadow-xl scale-110 ring-2 ring-black/20'
-          : 'bg-white text-zinc-900 shadow-[0_2px_6px_rgba(0,0,0,0.18)] border border-zinc-200/90'
-      } flex items-center justify-center shrink-0 transition-transform duration-150 pointer-events-auto">
-        ${iconSvg}
+          ? isEcoHigh
+            ? 'bg-emerald-600 text-white shadow-[0_6px_20px_rgba(5,150,105,0.45)] scale-115 ring-2 ring-emerald-400/60'
+            : 'bg-black text-white shadow-xl scale-115 ring-2 ring-black/25'
+          : isEcoHigh
+            ? 'bg-white text-zinc-950 shadow-[0_2px_8px_rgba(0,0,0,0.14)] border border-zinc-200/90 ring-1 ring-emerald-500/30'
+            : 'bg-white text-zinc-950 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-200/90'
+      } flex items-center justify-center shrink-0 transition-all duration-150 pointer-events-auto">
+        <i class="${iconClass} text-[16px] ${isHovered ? 'text-white' : 'text-zinc-950'}"></i>
       </div>
     `;
 
     // Chỉ hiển thị nhãn chữ khi showLabel=true hoặc khi đang được trỏ/hover chuột
     if (showLabel || isHovered) {
       // Vị trí nhãn chữ: 'top' (trên ghim), 'left' (bên trái), 'right' (bên phải)
-      let labelClass = 'map-marker-label absolute pointer-events-auto max-w-[160px] ';
+      let labelClass = 'map-marker-label absolute pointer-events-auto max-w-[170px] ';
       if (offset.position === 'top') {
         labelClass += 'bottom-[18px] left-1/2 -translate-x-1/2 text-center';
       } else if (offset.position === 'left') {
@@ -96,31 +97,45 @@ function createMindtripMarkerIcon(
         labelClass += 'left-[18px] top-1/2 -translate-y-1/2 text-left';
       }
 
-      // Nhãn chữ thường có khung nền trắng chứa, bo góc 5px thanh lịch
+      // Nhãn chữ: Khi hover địa điểm xanh -> Chuyển sang nền xanh lục (Emerald); điểm thường -> Nền đen
       labelHtml = `
         <div class="${labelClass} ${
           isHovered
-            ? 'bg-black text-white border-black shadow-lg font-medium z-50'
+            ? isEcoHigh
+              ? 'bg-emerald-600 text-white border-emerald-500 shadow-[0_4px_16px_rgba(5,150,105,0.35)] font-medium z-50'
+              : 'bg-black text-white border-black shadow-lg font-medium z-50'
             : 'bg-white/95 text-zinc-800 border-zinc-200/90 font-medium'
-        } backdrop-blur-[2px] px-2 py-0.5 rounded-[5px] shadow-[0_1px_3px_rgba(0,0,0,0.12)] border transition-all duration-150">
-          <span class="text-[11.5px] leading-tight whitespace-nowrap truncate block ${
+        } backdrop-blur-[2px] px-2 py-0.5 rounded-[5px] shadow-[0_1px_4px_rgba(0,0,0,0.12)] border transition-all duration-150">
+          <span class="text-[11.5px] leading-tight whitespace-nowrap truncate inline-flex items-center ${
             isHovered ? 'text-white' : 'text-zinc-800'
           }">
-            ${displayName}
+            <span>${displayName}</span>
           </span>
         </div>
       `;
     }
   }
 
-  const transformStyle = offset.yOffset !== 0 ? `transform: translateY(${offset.yOffset}px);` : '';
+  const transformParts: string[] = [];
+  if (offset.xOffset) transformParts.push(`translateX(${offset.xOffset}px)`);
+  if (offset.yOffset) transformParts.push(`translateY(${offset.yOffset}px)`);
+  const transformStyle = transformParts.length > 0 ? `transform: ${transformParts.join(' ')};` : '';
+
+  const animDelayStyle = !isHighlighted && isNewEntrance && entranceDelayMs > 0
+    ? `animation-delay: ${entranceDelayMs}ms;`
+    : '';
 
   const contentHtml = `
     <div class="relative cursor-pointer select-none ${
       isHighlighted ? 'z-[9999]' : 'z-20'
     }" style="${transformStyle}">
-      ${pinHtml}
-      ${labelHtml}
+      <div 
+        class="${isHighlighted ? 'scale-105' : isNewEntrance ? 'gt-ball-drop' : ''} transition-transform duration-150"
+        style="${animDelayStyle}"
+      >
+        ${pinHtml}
+        ${labelHtml}
+      </div>
     </div>
   `;
 
@@ -134,19 +149,23 @@ function createMindtripMarkerIcon(
 
 interface FloatingDetailCardProps {
   poi: Poi;
-  onClick?: () => void;
-  onHoverPoi?: (id: string | null) => void;
+  onClose?: () => void;
+  onOpenDetails?: () => void;
+  onPointerEnter?: () => void;
+  onPointerLeave?: () => void;
   isFavorite?: boolean;
   onToggleFavorite?: (id: string) => void;
   isAdded?: boolean;
   onToggleAddTrip?: (id: string) => void;
 }
 
-// 4. Card xem trước khi trỏ/chọn ghim trên bản đồ (nhỏ gọn chuẩn Mindtrip: rộng ~308px, ảnh cao 180px)
+// 4. Ô cơ bản trên map: hiển thị khi người dùng BẤM VÀO địa điểm trên bản đồ
 function FloatingDetailCard({ 
   poi, 
-  onClick,
-  onHoverPoi,
+  onClose,
+  onOpenDetails,
+  onPointerEnter,
+  onPointerLeave,
   isFavorite = false,
   onToggleFavorite,
   isAdded = false,
@@ -159,6 +178,13 @@ function FloatingDetailCard({
   const [isHovered, setIsHovered] = useState(false);
 
   const gallery = useMemo(() => getGalleryImages(poi), [poi]);
+
+  useEffect(() => {
+    if (cardRef.current) {
+      L.DomEvent.disableClickPropagation(cardRef.current);
+      L.DomEvent.disableScrollPropagation(cardRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     setImgIdx(0);
@@ -272,21 +298,25 @@ function FloatingDetailCard({
   return (
     <div 
       ref={cardRef}
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenDetails?.();
+      }}
       onMouseEnter={() => {
         setIsHovered(true);
-        onHoverPoi?.(poi.id);
+        onPointerEnter?.();
       }}
       onMouseLeave={() => {
         setIsHovered(false);
-        onHoverPoi?.(null);
+        onPointerLeave?.();
       }}
-      className="absolute z-[1000] w-[308px] max-w-[calc(100%-24px)] bg-white rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.18)] border border-gray-100 overflow-hidden pointer-events-auto cursor-pointer animate-fadeIn"
+      className="floating-detail-card absolute z-[1000] w-[308px] max-w-[calc(100%-24px)] bg-white rounded-[20px] shadow-[0_8px_30px_rgba(0,0,0,0.18)] border border-gray-100 overflow-hidden pointer-events-auto cursor-pointer animate-fadeIn"
       style={{ 
         left: `${coords.left}px`, 
         top: `${coords.top}px`,
         transition: 'left 150ms ease-out, top 150ms ease-out'
       }}
+      title="Bấm để xem chi tiết địa điểm"
     >
       {/* 1. Ảnh tỉ lệ chuẩn Mindtrip: cao 180px, bo góc trên */}
       <div className="relative w-full h-[180px] bg-neutral-900 overflow-hidden group">
@@ -296,6 +326,19 @@ function FloatingDetailCard({
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
           src={gallery[imgIdx] || poi.image}
         />
+
+        {/* Nút đóng ô cơ bản (×) chuẩn Mindtrip */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose?.();
+          }}
+          className="absolute top-2.5 left-2.5 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 text-white backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 z-20"
+          title="Đóng ô thông tin"
+          aria-label="Đóng"
+        >
+          <i className="ph ph-x text-[14px] font-bold"></i>
+        </button>
 
         {/* Nút tròn chuyển ảnh ‹ (chỉ hiện khi hover và từ ảnh thứ 2 trở đi) */}
         {isHovered && imgIdx > 0 && (
@@ -393,12 +436,25 @@ function FloatingDetailCard({
           {poi.description}
         </p>
 
-        {/* Footer */}
-        <div className="text-[11px] text-gray-400 mt-2.5 pt-2 border-t border-gray-100 font-medium flex items-center justify-between">
-          <span>Nhấn để xem chi tiết</span>
-          <span className="text-xs font-semibold text-black hover:underline flex items-center gap-0.5">
-            Chi tiết <span>→</span>
+        {/* Footer: Rating & Nút Xem chi tiết */}
+        <div className="text-[12px] text-gray-500 mt-2.5 pt-2 border-t border-gray-100 font-medium flex items-center justify-between">
+          <span className="text-amber-500 font-bold flex items-center gap-1">
+            ★ {poi.rating ? poi.rating.toFixed(1) : '4.5'}
+            {poi.ai_metadata?.review_count ? (
+              <span className="text-gray-400 font-normal text-[11px]">({poi.ai_metadata.review_count})</span>
+            ) : null}
           </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetails?.();
+            }}
+            className="text-xs font-bold text-black hover:text-emerald-700 flex items-center gap-1 cursor-pointer py-1 px-3 bg-neutral-100 hover:bg-neutral-200 rounded-full transition active:scale-95"
+          >
+            <span>Chi tiết</span>
+            <i className="ph ph-arrow-right text-[11px] font-bold"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -441,27 +497,42 @@ function MapAutoFitter({ pois }: { pois: Poi[] }) {
     const timer = setTimeout(() => {
       try {
         map.invalidateSize();
-        const bounds = L.latLngBounds(pois.map((p) => [p.lat, p.lng] as [number, number]));
+        const validPois = pois.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+        if (validPois.length === 0) return;
+
+        // Ưu tiên hiển thị cụm đông nhất (Trung tâm Đà Nẵng / sông Hàn / biển Mỹ Khê)
+        const dnCenter = validPois.filter((p) => p.lat >= 16.02 && p.lat <= 16.12 && p.lng >= 108.18 && p.lng <= 108.27);
+        const hueCenter = validPois.filter((p) => p.lat >= 16.42 && p.lat <= 16.50 && p.lng >= 107.54 && p.lng <= 107.62);
+
+        let targetPois = validPois;
+        if (dnCenter.length >= 3) {
+          targetPois = dnCenter;
+        } else if (hueCenter.length >= 3) {
+          targetPois = hueCenter;
+        }
+
+        const bounds = L.latLngBounds(targetPois.map((p) => [p.lat, p.lng] as [number, number]));
         if (bounds.isValid()) {
           if (prevIdsRef.current !== '') {
+            // Khi lọc địa điểm: Lướt camera êm ái đến cụm đông
             map.flyToBounds(bounds, {
-              padding: [40, 40],
+              padding: [45, 45],
               maxZoom: 14,
-              duration: 0.8,
+              duration: 0.75,
               easeLinearity: 0.25,
             });
           } else {
-            // Lần đầu mount: Tự động zoom vừa vặn toàn bộ các điểm đến (Đà Nẵng & Huế)
+            // Lần đầu mở: Tự động ở khoảng nhìn thoải mái thấy trung tâm trước
             map.fitBounds(bounds, {
-              padding: [36, 36],
-              maxZoom: 13,
+              padding: [40, 40],
+              maxZoom: 13.5,
             });
           }
         }
       } catch {
         // safe fallback
       }
-    }, 120);
+    }, 150);
 
     prevIdsRef.current = currentIds;
     return () => clearTimeout(timer);
@@ -479,6 +550,7 @@ function MapControlsLayer({
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   hideTopControls?: boolean;
+  showMapLoader?: boolean;
 }) {
   const map = useMap();
 
@@ -497,12 +569,12 @@ function MapControlsLayer({
               className="map-floating-btn w-10 h-10 bg-white rounded-full flex items-center justify-center text-zinc-700 hover:text-black transition cursor-pointer shadow-md active:scale-95"
             >
               {isExpanded ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 19l7-7-7-7M18 5v14" />
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
                 </svg>
               ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 19l-7-7 7-7M6 5v14" />
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
                 </svg>
               )}
             </button>
@@ -597,24 +669,282 @@ function MapControlsLayer({
   );
 }
 
+interface LabelBox {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Thuật toán chọn lọc POI "Must Try" trong khung nhìn bản đồ (Dynamic Viewport Must-Try Selection)
+// Chuẩn Mindtrip:
+// 1. Giới hạn nghiêm ngặt số lượng ghim trên màn hình: tối đa ~20 địa điểm đổ lại
+// 2. Ưu tiên các điểm "Must Try": Di tích/biểu tượng nổi tiếng, Michelin, Địa điểm xanh, Rating cao
+// 3. Phân bổ đều theo lưới không gian 4x4 (Spatial Grid) để không bị dồn cục vào 1 góc phố
+// 4. Luôn luôn bảo đảm các điểm đang chọn (Selected) hoặc đang trỏ (Hovered) được hiển thị
+// 5. Khi di chuyển bản đồ đến khu vực mới (Sơn Trà, Huế, Hòa Vang...), tự động nạp Top ~20 Must-Try của khu vực đó
+// ─────────────────────────────────────────────────────────────
+export function selectMustTryViewportPois(
+  candidates: Poi[],
+  bounds: L.LatLngBounds | null,
+  allPois: Poi[],
+  selectedPoiId: string | null,
+  hoveredPoiId: string | null,
+  maxCount: number = 20
+): Poi[] {
+  const activeIds = new Set<string>();
+  if (selectedPoiId) activeIds.add(selectedPoiId);
+  if (hoveredPoiId) activeIds.add(hoveredPoiId);
+
+  // Nếu số lượng ứng viên trong tầm nhìn đã <= maxCount, hiển thị toàn bộ
+  if (candidates.length <= maxCount) {
+    const res = [...candidates];
+    activeIds.forEach((id) => {
+      if (!res.some((p) => p.id === id)) {
+        const found = allPois.find((p) => p.id === id);
+        if (found) res.push(found);
+      }
+    });
+    return res;
+  }
+
+  // 1. Chấm điểm Must-Try cho từng điểm (Độ hấp dẫn, biểu tượng, uy tín & điểm xanh)
+  const getMustTryScore = (p: Poi): number => {
+    if (activeIds.has(p.id)) return 100000;
+    let score = 0;
+    if (isCuratedHighlight(p)) score += 150;
+    if (p.isMichelin) score += 80;
+    if (p.isGreen) score += 60;
+    score += (p.rating || 4.5) * 15;
+    if (p.category === 'di-tich' || p.category === 'chua') score += 30;
+    if (p.category === 'canh-quan') score += 25;
+    if (p.budget_tier && p.budget_tier !== 'free') score += 10;
+    return score;
+  };
+
+  const selectedMap = new Map<string, Poi>();
+
+  // Thêm ngay các active POIs (đang chọn hoặc hover)
+  activeIds.forEach((id) => {
+    const found = allPois.find((p) => p.id === id);
+    if (found) selectedMap.set(found.id, found);
+  });
+
+  // 2. Phân bổ không gian lưới 4x4 (Spatial Grid Bucket Selection)
+  if (bounds && typeof bounds.isValid === 'function' && bounds.isValid()) {
+    const south = bounds.getSouth();
+    const north = bounds.getNorth();
+    const west = bounds.getWest();
+    const east = bounds.getEast();
+    const latSpan = Math.max(0.0001, north - south);
+    const lngSpan = Math.max(0.0001, east - west);
+
+    const GRID_SIZE = 4;
+    const cells: Poi[][] = Array.from({ length: GRID_SIZE * GRID_SIZE }, () => []);
+
+    candidates.forEach((poi) => {
+      const row = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor(((poi.lat - south) / latSpan) * GRID_SIZE)));
+      const col = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor(((poi.lng - west) / lngSpan) * GRID_SIZE)));
+      cells[row * GRID_SIZE + col].push(poi);
+    });
+
+    // Chọn điểm xuất sắc nhất trong mỗi ô lưới
+    cells.forEach((cell) => {
+      if (cell.length > 0 && selectedMap.size < maxCount) {
+        cell.sort((a, b) => getMustTryScore(b) - getMustTryScore(a));
+        const best = cell[0];
+        if (!selectedMap.has(best.id)) {
+          selectedMap.set(best.id, best);
+        }
+      }
+    });
+  }
+
+  // 3. Nếu còn chỗ trống (< maxCount):
+  //    Lấy thêm các điểm có điểm Must-Try cao nhất còn lại,
+  //    ưu tiên các điểm không quá gần (khoảng cách tọa độ > 0.003 độ ≈ 300m)
+  if (selectedMap.size < maxCount) {
+    const remaining = candidates
+      .filter((p) => !selectedMap.has(p.id))
+      .sort((a, b) => getMustTryScore(b) - getMustTryScore(a));
+
+    for (const poi of remaining) {
+      if (selectedMap.size >= maxCount) break;
+
+      const isTooClose = Array.from(selectedMap.values()).some((existing) => {
+        const dLat = existing.lat - poi.lat;
+        const dLng = existing.lng - poi.lng;
+        return Math.hypot(dLat, dLng) < 0.003;
+      });
+
+      if (!isTooClose) {
+        selectedMap.set(poi.id, poi);
+      }
+    }
+
+    // Nếu vẫn chưa đủ maxCount, lấy tiếp các điểm có điểm cao nhất còn lại
+    if (selectedMap.size < maxCount) {
+      for (const poi of remaining) {
+        if (selectedMap.size >= maxCount) break;
+        if (!selectedMap.has(poi.id)) {
+          selectedMap.set(poi.id, poi);
+        }
+      }
+    }
+  }
+
+  return Array.from(selectedMap.values());
+}
+
 function DynamicMarkersLayer({
   pois,
   selectedPoiId,
   hoveredPoiId,
   onSelectPoi,
   onHoverMapPin,
+  onMarkerHover,
+  isDistantExpanded,
+  setIsDistantExpanded,
+  coreCluster,
+  coreBounds,
+  setIsMapLoading,
 }: {
   pois: Poi[];
   selectedPoiId: string | null;
   hoveredPoiId: string | null;
   onSelectPoi: (id: string) => void;
   onHoverMapPin: (id: string | null) => void;
+  onMarkerHover?: (id: string, isEnter: boolean) => void;
+  isDistantExpanded: boolean;
+  setIsDistantExpanded: (val: boolean) => void;
+  coreCluster: Poi[];
+  coreBounds: L.LatLngBounds | null;
+  setIsMapLoading?: (loading: boolean) => void;
 }) {
   const map = useMap();
-  const [currentZoom, setCurrentZoom] = useState<number>(() => map.getZoom());
+  const [viewportBounds, setViewportBounds] = useState<L.LatLngBounds | null>(() => {
+    try {
+      return map.getBounds();
+    } catch {
+      return null;
+    }
+  });
+  const [currentZoom, setCurrentZoom] = useState<number>(() => {
+    try {
+      return map.getZoom();
+    } catch {
+      return 13.5;
+    }
+  });
   const [offsets, setOffsets] = useState<Record<string, MarkerOffset>>({});
   const [hiddenLabelIds, setHiddenLabelIds] = useState<Set<string>>(new Set());
 
+  // Ref theo dõi các POI đã từng được vẽ trên màn hình hiện tại
+  // Giúp các ghim ĐÃ CÓ MẶT giữ nguyên tĩnh lặng, TUYỆT ĐỐI không nảy/đổ lại khi rê chuột (hover)
+  const renderedPoiIdsRef = useRef<Set<string>>(new Set());
+
+  // Lắng nghe sự kiện di chuyển và thay đổi khung nhìn của bản đồ:
+  // Khi bắt đầu kéo (movestart): hiện viên thuốc 3 chấm loading
+  // Khi kết thúc kéo (moveend): debounce 220ms nạp vùng mới, cho ghim mới rơi nhẹ xuống, ẩn viên thuốc
+  useEffect(() => {
+    if (!map) return;
+    let debounceTimer: NodeJS.Timeout | null = null;
+    let hidePillTimer: NodeJS.Timeout | null = null;
+
+    const handleMoveStart = () => {
+      if (setIsMapLoading) setIsMapLoading(true);
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
+      if (hidePillTimer) {
+        clearTimeout(hidePillTimer);
+        hidePillTimer = null;
+      }
+    };
+
+    const handleMoveEnd = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        try {
+          setViewportBounds(map.getBounds());
+          setCurrentZoom(map.getZoom());
+        } catch {
+          // safe fallback
+        }
+        hidePillTimer = setTimeout(() => {
+          if (setIsMapLoading) setIsMapLoading(false);
+        }, 160);
+      }, 220);
+    };
+
+    map.on('movestart', handleMoveStart);
+    map.on('zoomstart', handleMoveStart);
+    map.on('moveend', handleMoveEnd);
+    map.on('zoomend', handleMoveEnd);
+    map.on('resize', handleMoveEnd);
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (hidePillTimer) clearTimeout(hidePillTimer);
+      map.off('movestart', handleMoveStart);
+      map.off('zoomstart', handleMoveStart);
+      map.off('moveend', handleMoveEnd);
+      map.off('zoomend', handleMoveEnd);
+      map.off('resize', handleMoveEnd);
+    };
+  }, [map, setIsMapLoading]);
+
+  // Lọc thông minh danh sách POI cần vẽ marker (Dynamic Viewport Must-Try Selection - Chuẩn Mindtrip):
+  // 1. Giới hạn tối đa ~20 địa điểm "Must Try" đổ lại trên bản đồ ở bất kỳ thời điểm nào.
+  // 2. KHÔNG phụ thuộc vào hoveredPoiId để danh sách 20 điểm không bị xáo trộn hay giật cục khi lướt chuột.
+  const visiblePois = useMemo(() => {
+    if (pois.length <= 20) {
+      return pois;
+    }
+
+    const currentBounds = viewportBounds || (map ? map.getBounds() : null);
+    const paddedBounds = currentBounds && typeof currentBounds.pad === 'function'
+      ? currentBounds.pad(0.08)
+      : currentBounds;
+
+    const inViewCandidates = paddedBounds
+      ? pois.filter((p) => paddedBounds.contains([p.lat, p.lng]))
+      : pois;
+
+    return selectMustTryViewportPois(
+      inViewCandidates,
+      paddedBounds,
+      pois,
+      selectedPoiId,
+      null, // Không cho hoveredPoiId làm thay đổi danh sách 20 điểm Must-Try!
+      20
+    );
+  }, [pois, viewportBounds, map, selectedPoiId]);
+
+  // Danh sách POI hiển thị: Nếu điểm đang hover nằm ngoài Top 20, chỉ bổ sung riêng điểm đó mà không làm xáo trộn 20 điểm sẵn có
+  const displayedPois = useMemo(() => {
+    if (!hoveredPoiId) return visiblePois;
+    if (visiblePois.some((p) => p.id === hoveredPoiId)) return visiblePois;
+    const hoveredPoi = pois.find((p) => p.id === hoveredPoiId);
+    return hoveredPoi ? [...visiblePois, hoveredPoi] : visiblePois;
+  }, [visiblePois, hoveredPoiId, pois]);
+
+  // Ghi nhận các POI hiện tại đã được render sau khi hiệu ứng rơi bóng kết thúc (600ms)
+  // Giúp các ghim đã hạ cánh không bao giờ bị rơi lại khi rê chuột (hover)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      renderedPoiIdsRef.current = new Set(displayedPois.map((p) => p.id));
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [displayedPois]);
+
+  // Thuật toán chống đè chữ / chống va chạm nhãn bản đồ thông minh (Cartographic Greedy Placement):
+  // 1. Chấm điểm ưu tiên: Điểm đang chọn/hover > Địa điểm xanh (isGreen) > Rating > Di tích/thắng cảnh > Mức giá
+  // 2. Điểm ưu tiên cao hơn được cấp nhãn trước
+  // 3. Nếu nhãn bên phải hoặc bên trái va chạm với nhãn khác đã hiện: Tự động ẩn nhãn của điểm thấp hơn
+  // 4. Khi người dùng phóng to (zoom in), khoảng cách pixel giãn nở, nhãn ẩn sẽ tự động hiển thị ra
   const computeOffsets = useCallback(() => {
     if (!map) return;
     try {
@@ -626,61 +956,152 @@ function DynamicMarkersLayer({
       const result: Record<string, MarkerOffset> = {};
       const hidden = new Set<string>();
 
-      pois.forEach((p) => {
-        if (p.id === 'con-market' || p.id === 'madame-lan' || p.id === 'quang-truong-bach-dang') {
-          result[p.id] = { position: 'top', yOffset: 0 };
-        } else {
-          result[p.id] = { position: 'right', yOffset: 0 };
-        }
+      // 1. Phát hiện các điểm trùng tọa độ hoặc quá sát nhau (co-located POIs)
+      // Tạo micro-offset để ghim không bị đè tuyệt đối lên nhau
+      const coordGroups: Record<string, Poi[]> = {};
+      displayedPois.forEach((p) => {
+        const key = `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
+        if (!coordGroups[key]) coordGroups[key] = [];
+        coordGroups[key].push(p);
       });
 
-      const screenPoints = pois.map((poi) => {
-        const pt = map.latLngToContainerPoint([poi.lat, poi.lng]);
-        return { poi, x: pt.x, y: pt.y };
-      });
-
-      // Kiểm tra mép phải màn hình: Giữ nhãn trong khung, lật sang bên trái nếu nhãn chạm mép
-      screenPoints.forEach((p) => {
-        if (p.x > mapSize.x - 175) {
-          result[p.poi.id] = { position: 'left', yOffset: 0 };
-        }
-      });
-
-      // Kiểm tra va chạm gần nhau khi zoom >= 14
-      for (let i = 0; i < screenPoints.length; i++) {
-        for (let j = i + 1; j < screenPoints.length; j++) {
-          const p1 = screenPoints[i];
-          const p2 = screenPoints[j];
-          const dx = Math.abs(p1.x - p2.x);
-          const dy = Math.abs(p1.y - p2.y);
-
-          // Nếu hai điểm quá sát nhau (< 36px trên màn hình), ẩn bớt nhãn của điểm không được chọn/hover
-          if (dx < 36 && dy < 36) {
-            if (p1.poi.id !== selectedPoiId && p1.poi.id !== hoveredPoiId) {
-              hidden.add(p1.poi.id);
-            } else if (p2.poi.id !== selectedPoiId && p2.poi.id !== hoveredPoiId) {
-              hidden.add(p2.poi.id);
-            }
-          } else if (dx < 140 && dy < 30) {
-            if (p1.x < p2.x) {
-              result[p1.poi.id] = { position: 'left', yOffset: 0 };
-              result[p2.poi.id] = { position: 'right', yOffset: 0 };
+      const microOffsets: Record<string, { x: number; y: number }> = {};
+      Object.values(coordGroups).forEach((group) => {
+        if (group.length > 1) {
+          group.forEach((p, idx) => {
+            if (idx === 0) {
+              microOffsets[p.id] = { x: 0, y: 0 };
             } else {
-              result[p1.poi.id] = { position: 'right', yOffset: 0 };
-              result[p2.poi.id] = { position: 'left', yOffset: 0 };
+              // Phân tán nhẹ các điểm tiếp theo xung quanh bán kính 14px để click được riêng biệt
+              const angle = ((2 * Math.PI) / group.length) * idx;
+              microOffsets[p.id] = {
+                x: Math.round(14 * Math.cos(angle)),
+                y: Math.round(14 * Math.sin(angle)),
+              };
             }
-
-            if (dx < 45) {
-              if (p1.y < p2.y) {
-                result[p1.poi.id].yOffset = -12;
-                result[p2.poi.id].yOffset = 12;
-              } else {
-                result[p1.poi.id].yOffset = 12;
-                result[p2.poi.id].yOffset = -12;
-              }
-            }
-          }
+          });
         }
+      });
+
+      const screenPoints = displayedPois.map((poi) => {
+        const pt = map.latLngToContainerPoint([poi.lat, poi.lng]);
+        const mo = microOffsets[poi.id] || { x: 0, y: 0 };
+        return { poi, x: pt.x + mo.x, y: pt.y + mo.y, mo };
+      });
+
+      // Hàm chấm điểm độ ưu tiên hiển thị nhãn:
+      const getPoiScore = (p: Poi) => {
+        let score = 0;
+        if (p.id === selectedPoiId || p.id === hoveredPoiId) score += 10000;
+        if (p.isGreen) score += 60;
+        if (p.rating) score += p.rating * 10;
+        if (p.category === 'canh-quan' || p.category === 'di-tich') score += 15;
+        if (p.budget_tier && p.budget_tier !== 'free') score += 10;
+        return score;
+      };
+
+      // Ngưỡng đệm an toàn theo mức zoom (phóng to thì đệm nhỏ hơn, cho phép hiện dày hơn)
+      const padX = zoom >= 15 ? 4 : zoom >= 14 ? 6 : 8;
+      const padY = zoom >= 15 ? 3 : 5;
+
+      const boxesOverlap = (b1: LabelBox, b2: LabelBox): boolean => {
+        return !(
+          b1.x2 + padX < b2.x1 ||
+          b1.x1 - padX > b2.x2 ||
+          b1.y2 + padY < b2.y1 ||
+          b1.y1 - padY > b2.y2
+        );
+      };
+
+      // Sắp xếp các điểm theo điểm ưu tiên giảm dần
+      const sortedPoints = [...screenPoints].sort((a, b) => getPoiScore(b.poi) - getPoiScore(a.poi));
+      const acceptedBoxes: LabelBox[] = [];
+      const acceptedCenterPoints: { x: number; y: number }[] = [];
+
+      for (const item of sortedPoints) {
+        const { poi, x, y, mo } = item;
+        const isTarget = poi.id === selectedPoiId || poi.id === hoveredPoiId;
+
+        const cleanName = cleanPoiName(poi.name);
+        const hasTier = Boolean(poi.budget_tier && poi.budget_tier !== 'free');
+        const labelWidth = Math.min(150, Math.max(48, cleanName.length * 7.2 + (hasTier ? 20 : 0) + 16));
+
+        // Hộp nhãn bên phải (mặc định)
+        const boxRight: LabelBox = {
+          x1: x + 16,
+          y1: y - 13,
+          x2: x + 16 + labelWidth,
+          y2: y + 13,
+        };
+
+        // Hộp nhãn bên trái (khi gần mép phải hoặc bên phải bị che)
+        const boxLeft: LabelBox = {
+          x1: x - 16 - labelWidth,
+          y1: y - 13,
+          x2: x - 16,
+          y2: y + 13,
+        };
+
+        // 1. Điểm đang được chọn hoặc trỏ chuột -> Bắt buộc luôn hiện nhãn
+        if (isTarget) {
+          if (boxRight.x2 < mapSize.x - 10) {
+            result[poi.id] = { position: 'right', xOffset: mo.x, yOffset: mo.y };
+            acceptedBoxes.push(boxRight);
+            acceptedCenterPoints.push({ x, y });
+          } else {
+            result[poi.id] = { position: 'left', xOffset: mo.x, yOffset: mo.y };
+            acceptedBoxes.push(boxLeft);
+            acceptedCenterPoints.push({ x, y });
+          }
+          continue;
+        }
+
+        // 2. Khi thu nhỏ xa (zoom < 11.5) -> Chỉ hiện ghim tròn icon tối giản
+        if (zoom < 11.5) {
+          hidden.add(poi.id);
+          result[poi.id] = { position: 'right', xOffset: mo.x, yOffset: mo.y };
+          continue;
+        }
+
+        // 3. Quy tắc CHỐNG DÍNH CHÙM / CHỐNG PHÂN THÂN HAI ĐẦU (Co-located Anti-split Rule):
+        // Nếu điểm này nằm quá gần một điểm ưu tiên cao hơn đã được hiển thị nhãn (khoảng cách tâm pin < 24px):
+        // Tuyệt đối không cho phép tạo 2 nhãn mọc ra 2 bên của cùng 1 vị trí pin!
+        // Điểm này sẽ chỉ hiển thị ghim icon tối giản, không hiện thêm nhãn để bản đồ không bị rối/trùng lặp.
+        const isTooCloseToAcceptedPin = acceptedCenterPoints.some(
+          (cp) => Math.hypot(cp.x - x, cp.y - y) < 24
+        );
+        if (isTooCloseToAcceptedPin) {
+          hidden.add(poi.id);
+          result[poi.id] = { position: 'right', xOffset: mo.x, yOffset: mo.y };
+          continue;
+        }
+
+        // 4. Thử đặt nhãn bên PHẢI
+        const fitsRight = boxRight.x2 < mapSize.x - 12;
+        const collidesRight = acceptedBoxes.some((b) => boxesOverlap(boxRight, b));
+
+        if (fitsRight && !collidesRight) {
+          result[poi.id] = { position: 'right', xOffset: mo.x, yOffset: mo.y };
+          acceptedBoxes.push(boxRight);
+          acceptedCenterPoints.push({ x, y });
+          continue;
+        }
+
+        // 5. Thử đặt nhãn bên TRÁI
+        const fitsLeft = boxLeft.x1 > 12;
+        const collidesLeft = acceptedBoxes.some((b) => boxesOverlap(boxLeft, b));
+
+        if (fitsLeft && !collidesLeft) {
+          result[poi.id] = { position: 'left', xOffset: mo.x, yOffset: mo.y };
+          acceptedBoxes.push(boxLeft);
+          acceptedCenterPoints.push({ x, y });
+          continue;
+        }
+
+        // 6. Cả 2 phía đều va chạm -> Ẩn nhãn chữ, chỉ hiện ghim tròn biểu tượng sạch đẹp
+        // Phóng to bản đồ (zoom in) sẽ tự động hiện thêm nhãn của điểm này!
+        hidden.add(poi.id);
+        result[poi.id] = { position: 'right', xOffset: mo.x, yOffset: mo.y };
       }
 
       setOffsets(result);
@@ -688,7 +1109,7 @@ function DynamicMarkersLayer({
     } catch {
       // safe fallback
     }
-  }, [pois, map, selectedPoiId, hoveredPoiId]);
+  }, [displayedPois, map, selectedPoiId, hoveredPoiId]);
 
   useEffect(() => {
     computeOffsets();
@@ -706,62 +1127,123 @@ function DynamicMarkersLayer({
     };
   }, [map, computeOffsets]);
 
-  // Tự động lướt mượt mà (flyTo) đến đúng địa điểm đang xem (hover)
-  useEffect(() => {
-    if (!hoveredPoiId) return;
-    const target = pois.find((p) => p.id === hoveredPoiId);
-    if (!target || !Number.isFinite(target.lat) || !Number.isFinite(target.lng)) return;
-    try {
-      map.flyTo([target.lat, target.lng], Math.max(map.getZoom(), 14), {
-        animate: true,
-        duration: 0.65,
-        easeLinearity: 0.25,
-      });
-    } catch {
-      // safe fallback
-    }
-  }, [hoveredPoiId, pois, map]);
+  // coreCluster và coreBounds được truyền từ PoiMap để dùng chung đồng nhất với nút Floating Return Control
 
-  // Tự động lướt và zoom cận cảnh khi click chọn địa điểm (select)
+  // Ref theo dõi việc bản đồ đang mở rộng để bao quát địa điểm ở xa
+  const isDistantExpandedRef = useRef<boolean>(isDistantExpanded);
   useEffect(() => {
-    if (!selectedPoiId) return;
-    const target = pois.find((p) => p.id === selectedPoiId);
-    if (!target || !Number.isFinite(target.lat) || !Number.isFinite(target.lng)) return;
-    try {
-      map.flyTo([target.lat, target.lng], 15, {
-        animate: true,
-        duration: 0.8,
-        easeLinearity: 0.25,
-      });
-    } catch {
-      // safe fallback
+    isDistantExpandedRef.current = isDistantExpanded;
+  }, [isDistantExpanded]);
+
+  const prevActivePoiIdRef = useRef<string | null>(null);
+
+  // Địa điểm đang được người dùng tương tác (chọn thẻ hoặc rê chuột debounced)
+  const activePoiId = selectedPoiId || hoveredPoiId;
+
+  // Xử lý camera thông minh theo hành vi người dùng (Chuẩn Mindtrip / GreenTrip UX):
+  // 1. Mặc định: Tập trung vào "chỗ đông đúc" (cụm trung tâm zoom 13.5)
+  // 2. Khi di chuyển tới ô địa điểm ở xa: Mở rộng mượt mà (flyToBounds) bao trọn [Chỗ đông đúc + Điểm ở xa]
+  // 3. Khi di chuyển giữa các điểm ở xa cạnh nhau:
+  //    - TUYỆT ĐỐI KHÔNG tự động co nhỏ về trung tâm khi chuột tạm thời rời thẻ (chấm dứt hiện tượng giật co vào rồi lại phóng to ra)
+  //    - Nếu điểm ở xa tiếp theo đã nằm trong tầm mắt hiện tại: Giữ bản đồ HOÀN TOÀN TĨNH LẶNG, chỉ highlight ghim
+  //    - Nếu điểm ở xa tiếp theo chưa hiển thị trọn vẹn: Mở rộng trực tiếp từ khung nhìn hiện tại tới điểm đó, không bao giờ nhảy về trung tâm trước
+  // 4. Khi quay lại chọn/rê chuột vào địa điểm ở khu trung tâm: Bản đồ êm ái thu nhỏ mượt mà trở về cụm đông đúc
+  useEffect(() => {
+    if (!map || pois.length === 0) return;
+
+    // Khi chuột rời khỏi thẻ (activePoiId === null):
+    // GIỮ NGUYÊN tầm nhìn camera hiện tại! KHÔNG tự động nhảy về trung tâm gây giật hình hay cảm giác "bị cứng"!
+    if (!activePoiId) {
+      prevActivePoiIdRef.current = null;
+      return;
     }
-  }, [selectedPoiId, pois, map]);
+
+    if (prevActivePoiIdRef.current === activePoiId) return;
+    prevActivePoiIdRef.current = activePoiId;
+
+    const target = pois.find((p) => p.id === activePoiId);
+    if (!target || !Number.isFinite(target.lat) || !Number.isFinite(target.lng)) return;
+
+    try {
+      const currentBounds = map.getBounds();
+      const targetLatLng = L.latLng(target.lat, target.lng);
+      // Kiểm tra xem target đã nằm trong khung hình hiện tại chưa (với lề đệm 10%)
+      const isVisibleInCurrentView = currentBounds.pad(-0.1).contains(targetLatLng);
+
+      // 1. Xác định thành phố của địa điểm đang tương tác (Đà Nẵng vs Huế)
+      const isHueTarget = target.city === 'Huế' || (target.city as string) === 'hue' || target.lat >= 16.3;
+      
+      // 2. Xác định vị trí hiện tại của camera trên bản đồ
+      const currentMapCenter = map.getCenter();
+      const isMapInHue = currentMapCenter.lat >= 16.3;
+      const isSameCity = isHueTarget === isMapInHue;
+
+      if (!isSameCity) {
+        // NGƯỜI DÙNG QUAN TÂM ĐẾN THÀNH PHỐ KHÁC (Đà Nẵng <-> Huế):
+        // Bay trực tiếp tới thành phố đó với góc nhìn to, rõ ràng, chi tiết (zoom 13.5)!
+        // TUYỆT ĐỐI KHÔNG thu nhỏ 100km để nối 2 thành phố gây nhỏ xíu!
+        map.stop();
+        map.flyTo([target.lat, target.lng], 13.5, {
+          duration: 0.9,
+          easeLinearity: 0.25,
+        });
+        setIsDistantExpanded(isHueTarget); // Hiện nút "Về trung tâm Đà Nẵng" khi đang ở Huế
+        return;
+      }
+
+      // NẾU CAMERA ĐÃ Ở CÙNG THÀNH PHỐ VỚI ĐỊA ĐIỂM:
+      if (isVisibleInCurrentView) {
+        // Đã nằm trong tầm mắt: Giữ nguyên góc nhìn to rõ, chỉ highlight ghim
+        return;
+      }
+
+      // Nếu địa điểm hơi lệch ra ngoài khung nhìn của thành phố đó:
+      // Trượt êm ái (panTo) tới điểm đó mà vẫn giữ nguyên zoom 13.5 to rõ!
+      map.stop();
+      map.panTo([target.lat, target.lng], {
+        animate: true,
+        duration: 0.45,
+      });
+    } catch (e) {
+      console.warn('Map camera transition error:', e);
+    }
+  }, [activePoiId, selectedPoiId, hoveredPoiId, pois, map, isDistantExpanded, setIsDistantExpanded]);
 
   return (
     <>
-      {pois.map((poi) => {
+      {displayedPois.map((poi, idx) => {
         const isSelected = poi.id === selectedPoiId;
         const isHovered = poi.id === hoveredPoiId;
         const isHighlighted = isSelected || isHovered;
         const offset = offsets[poi.id] || { position: 'right', yOffset: 0 };
         
         // Tiêu chuẩn Mindtrip:
-        // - Zoom < 14: Ẩn nhãn chữ để tránh tắc nghẽn (chỉ hiện chấm pin danh mục gọn đẹp)
-        // - Zoom >= 14: Hiện nhãn chữ (đã qua lọc chống va chạm)
+        // - Zoom >= 12.0: Hiện nhãn cho các điểm tiêu biểu và các điểm ngoài rìa (đã qua thuật toán chấm điểm ưu tiên & chống va chạm)
+        // - Zoom >= 14.0: Hầu hết các điểm đều hiện nhãn rõ ràng kèm mức giá / biểu tượng
         // - Riêng ghim đang được Hover hoặc Đang chọn: LUÔN LUÔN hiện nhãn nổi bật
-        const showLabel = (currentZoom >= 14 && !hiddenLabelIds.has(poi.id)) || isHighlighted;
+        const showLabel = (currentZoom >= 12.0 && !hiddenLabelIds.has(poi.id)) || isHighlighted;
+
+        // Chỉ áp dụng hiệu ứng đổ xuống như trái bóng cho các POI MỚI chưa từng có mặt trên màn hình
+        // Tuyệt đối KHÔNG đổ lại khi rê chuột (hover)
+        const isNewEntrance = !renderedPoiIdsRef.current.has(poi.id);
+        const entranceDelayMs = isNewEntrance ? (idx % 12) * 35 : 0;
 
         return (
           <Marker
-            key={`${poi.id}-${isHighlighted ? 'active' : 'idle'}-${showLabel ? 'lbl' : 'nolbl'}-${offset.position}-${offset.yOffset}`}
+            key={poi.id}
             position={[poi.lat, poi.lng]}
             zIndexOffset={isSelected ? 9999 : isHovered ? 9000 : 50}
-            icon={createMindtripMarkerIcon(isSelected, isHovered, poi, offset, showLabel)}
+            icon={createMindtripMarkerIcon(isSelected, isHovered, poi, offset, showLabel, isNewEntrance, entranceDelayMs)}
             eventHandlers={{
               click: () => onSelectPoi(poi.id),
-              mouseover: () => onHoverMapPin(poi.id),
-              mouseout: () => onHoverMapPin(null),
+              mouseover: () => {
+                onHoverMapPin(poi.id);
+                onMarkerHover?.(poi.id, true);
+              },
+              mouseout: () => {
+                onHoverMapPin(null);
+                onMarkerHover?.(poi.id, false);
+              },
             }}
           />
         );
@@ -770,12 +1252,31 @@ function DynamicMarkersLayer({
   );
 }
 
+function MapClickHandler({ onDismiss }: { onDismiss: () => void }) {
+  useMapEvents({
+    click: (e) => {
+      const target = e.originalEvent?.target as HTMLElement | null;
+      if (
+        target?.closest('.map-marker-pin') || 
+        target?.closest('.map-marker-label') || 
+        target?.closest('.gt-map-marker') || 
+        target?.closest('.floating-detail-card')
+      ) {
+        return;
+      }
+      onDismiss();
+    },
+  });
+  return null;
+}
+
 export default function PoiMap({
   pois,
   selectedPoiId,
   hoveredPoiId,
   onSelectPoi,
   onHoverPoi,
+  onOpenDetails,
   isExpanded = false,
   onToggleExpand,
   favorites,
@@ -783,12 +1284,80 @@ export default function PoiMap({
   addedTrips,
   onToggleAddTrip,
   hideTopControls = false,
+  showMapLoader = true,
 }: PoiMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const [hoveredMapPinId, setHoveredMapPinId] = useState<string | null>(null);
+  const [isDistantExpanded, setIsDistantExpanded] = useState<boolean>(false);
+  const [isMapLoading, setIsMapLoading] = useState<boolean>(false);
 
-  // Chỉ hiện Card xem trước khi con chuột rê trực tiếp lên Marker trên bản đồ (hover)
-  const pinToPreview = pois.find((p) => p.id === hoveredMapPinId) || null;
+  // Bộ đếm thời gian tự động đóng ô cơ bản khi dời chuột ra ngoài (450ms, không tức thì để tránh giật)
+  const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startAutoCloseTimer = useCallback((delay = 450) => {
+    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+    autoCloseTimerRef.current = setTimeout(() => {
+      onSelectPoi(null);
+    }, delay);
+  }, [onSelectPoi]);
+
+  const cancelAutoCloseTimer = useCallback(() => {
+    if (autoCloseTimerRef.current) {
+      clearTimeout(autoCloseTimerRef.current);
+      autoCloseTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+    };
+  }, []);
+
+  const handleMarkerHover = useCallback((id: string, isEnter: boolean) => {
+    if (id === selectedPoiId) {
+      if (isEnter) {
+        cancelAutoCloseTimer();
+      } else {
+        startAutoCloseTimer(450);
+      }
+    }
+  }, [selectedPoiId, cancelAutoCloseTimer, startAutoCloseTimer]);
+
+  // Xác định cụm điểm trung tâm đông đúc (chỗ đông đúc - core cluster):
+  const coreCluster = useMemo(() => {
+    const valid = pois.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    if (valid.length === 0) return [];
+
+    // Cụm đô thị trung tâm Đà Nẵng (sông Hàn, Sơn Trà, Mỹ Khê, Hải Châu, Thanh Khê)
+    const dnCore = valid.filter((p) => p.lat >= 16.01 && p.lat <= 16.12 && p.lng >= 108.17 && p.lng <= 108.27);
+    if (dnCore.length >= 3) return dnCore;
+
+    // Cụm trung tâm Cố Đô Huế (Kinh thành, sông Hương)
+    const hueCore = valid.filter((p) => p.lat >= 16.43 && p.lat <= 16.50 && p.lng >= 107.54 && p.lng <= 107.62);
+    if (hueCore.length >= 3) return hueCore;
+
+    return valid;
+  }, [pois]);
+
+  const coreBounds = useMemo(() => {
+    if (coreCluster.length === 0) return null;
+    return L.latLngBounds(coreCluster.map((p) => [p.lat, p.lng] as [number, number]));
+  }, [coreCluster]);
+
+  const handleReturnToCenter = useCallback(() => {
+    if (mapRef.current) {
+      mapRef.current.stop();
+      mapRef.current.flyTo([16.0680, 108.2220], 13.5, {
+        duration: 0.85,
+        easeLinearity: 0.25,
+      });
+      setIsDistantExpanded(false);
+    }
+  }, []);
+
+  // Ô cơ bản trên map: CHỈ HIỆN KHI BẤM VÀO (selectedPoiId), KHÔNG hiện khi hover để bản đồ luôn rõ ràng, thoáng mắt
+  const selectedPoi = pois.find((p) => p.id === selectedPoiId) || null;
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#f4f2ee] rounded-[22px] [transform:translateZ(0)]">
@@ -797,15 +1366,10 @@ export default function PoiMap({
           background-color: #f2ede5 !important;
           outline: none !important;
         }
-        .leaflet-control-attribution {
-          font-size: 10px !important;
-          white-space: nowrap !important;
-          line-height: 1.2 !important;
-          background: rgba(255, 255, 255, 0.75) !important;
-          padding: 2px 6px !important;
-          border-radius: 4px !important;
-          margin-right: 8px !important;
-          margin-bottom: 4px !important;
+        .leaflet-control-attribution,
+        .leaflet-bottom.leaflet-left,
+        .leaflet-control-scale {
+          display: none !important;
         }
         .leaflet-control-attribution a {
           font-size: 10px !important;
@@ -830,6 +1394,40 @@ export default function PoiMap({
           overflow: visible !important;
           pointer-events: auto !important;
         }
+        @keyframes mindtripBallDrop {
+          0% {
+            opacity: 0.3;
+            transform: translateY(-28px) scale(0.92);
+          }
+          50% {
+            opacity: 0.85;
+            transform: translateY(4px) scale(1.05, 0.95);
+          }
+          72% {
+            opacity: 1;
+            transform: translateY(-3px) scale(0.98, 1.02);
+          }
+          90% {
+            opacity: 1;
+            transform: translateY(1px) scale(1.01);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        .gt-ball-drop {
+          animation: mindtripBallDrop 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+          will-change: transform, opacity;
+        }
+        .gt-pin-drop {
+          animation: mindtripBallDrop 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+          will-change: transform, opacity;
+        }
+        .gt-marker-bounce {
+          animation: mindtripBallDrop 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+          will-change: transform, opacity;
+        }
         .map-floating-btn {
           box-shadow: 0 2px 6px rgba(0,0,0,0.18);
           transition: background-color 0.15s ease, transform 0.1s ease;
@@ -843,13 +1441,14 @@ export default function PoiMap({
         }
       `}</style>
 
-      {/* Tâm bản đồ trung điểm Đà Nẵng & Huế, zoom 10 bao quát toàn vùng */}
+      {/* Tâm bản đồ trung tâm Đà Nẵng, zoom 13.5 thấy các khu trung tâm trước */}
       <MapContainer
-        center={[16.2500, 107.9000]}
-        zoom={10}
+        center={[16.0680, 108.2220]}
+        zoom={13.5}
         minZoom={7}
         maxZoom={18}
         zoomControl={false}
+        attributionControl={false}
         wheelDebounceTime={40}
         wheelPxPerZoomLevel={120}
         inertia={true}
@@ -883,22 +1482,79 @@ export default function PoiMap({
           pois={pois}
           selectedPoiId={selectedPoiId}
           hoveredPoiId={hoveredPoiId || hoveredMapPinId}
-          onSelectPoi={onSelectPoi}
+          onSelectPoi={(id) => {
+            cancelAutoCloseTimer();
+            onSelectPoi(id);
+          }}
           onHoverMapPin={(id) => {
             setHoveredMapPinId(id);
             if (onHoverPoi) onHoverPoi(id);
           }}
+          onMarkerHover={handleMarkerHover}
+          isDistantExpanded={isDistantExpanded}
+          setIsDistantExpanded={setIsDistantExpanded}
+          coreCluster={coreCluster}
+          coreBounds={coreBounds}
+          setIsMapLoading={setIsMapLoading}
         />
 
-        {/* Card xem trước khi rê chuột (hover) hoặc chọn ghim trên bản đồ */}
-        {pinToPreview && (
+        {/* Nút Floating chuẩn Mindtrip: Khi đang mở rộng xem điểm ở xa, hiện nút bấm êm ái quay về trung tâm */}
+        {isDistantExpanded && (
+          <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-[1000] animate-fadeIn pointer-events-auto">
+            <button
+              onClick={handleReturnToCenter}
+              className="map-floating-btn px-4 py-2 bg-white/95 backdrop-blur-md rounded-full flex items-center gap-1.5 text-xs font-semibold text-neutral-800 hover:text-black hover:bg-white shadow-md border border-neutral-200/80 transition-all cursor-pointer active:scale-95"
+            >
+              <i className="ph ph-arrow-counter-clockwise text-sm font-bold text-emerald-700"></i>
+              <span>Về Đà Nẵng</span>
+            </button>
+          </div>
+        )}
+
+        {/* 3-Dot Mindtrip Loading Pill: Chỉ hiển thị khi showMapLoader=true và pois.length > 20 (chế độ Khám phá), không hiển thị ở Lịch trình */}
+        {showMapLoader && pois.length > 20 && (
+          <div
+            className={`absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none transition-all duration-300 ease-out ${
+              isMapLoading && !isDistantExpanded ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-2 scale-95 pointer-events-none'
+            }`}
+          >
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.14)] border border-neutral-200/90 text-xs font-semibold text-neutral-800">
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-neutral-900 animate-bounce" style={{ animationDuration: '0.6s', animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-neutral-900 animate-bounce" style={{ animationDuration: '0.6s', animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-neutral-900 animate-bounce" style={{ animationDuration: '0.6s', animationDelay: '300ms' }} />
+              </div>
+              <span className="text-[11.5px] font-medium text-neutral-700 tracking-tight">Tìm kiếm khu vực này...</span>
+            </div>
+          </div>
+        )}
+
+        <MapClickHandler onDismiss={() => {
+          cancelAutoCloseTimer();
+          onSelectPoi(null);
+        }} />
+
+        {/* Ô cơ bản trên map: CHỈ HIỆN KHI BẤM VÀO (selectedPoiId), tự động đóng sau 450ms khi dời chuột ra ngoài */}
+        {selectedPoi && (
           <FloatingDetailCard 
-            poi={pinToPreview}
-            onClick={() => onSelectPoi(pinToPreview.id)}
-            onHoverPoi={setHoveredMapPinId}
-            isFavorite={favorites?.has(pinToPreview.id)}
+            poi={selectedPoi}
+            onClose={() => {
+              cancelAutoCloseTimer();
+              onSelectPoi(null);
+            }}
+            onOpenDetails={() => {
+              cancelAutoCloseTimer();
+              if (onOpenDetails) {
+                onOpenDetails(selectedPoi.id);
+              } else {
+                onSelectPoi(selectedPoi.id);
+              }
+            }}
+            onPointerEnter={cancelAutoCloseTimer}
+            onPointerLeave={() => startAutoCloseTimer(450)}
+            isFavorite={favorites?.has(selectedPoi.id)}
             onToggleFavorite={onToggleFavorite}
-            isAdded={addedTrips?.has(pinToPreview.id)}
+            isAdded={addedTrips?.has(selectedPoi.id)}
             onToggleAddTrip={onToggleAddTrip}
           />
         )}

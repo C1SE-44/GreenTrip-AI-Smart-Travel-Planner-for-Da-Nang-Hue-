@@ -10,6 +10,7 @@ import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LAB
 import PoiMap from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import SavedPlacesView from '@/components/saved/SavedPlacesView';
+import HomeDashboardView from '@/components/home/HomeDashboardView';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
@@ -190,10 +191,10 @@ function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {
   });
 }
 
-export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'explore' | 'trips' | 'saved' }) {
+export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'home' | 'explore' | 'trips' | 'saved' }) {
   const navigate = useNavigate();
   const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
-  const [viewMode, setViewMode] = useState<'explore' | 'trips' | 'saved'>(initialView);
+  const [viewMode, setViewMode] = useState<'home' | 'explore' | 'trips' | 'saved'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
@@ -849,6 +850,13 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           <nav className="flex flex-col space-y-[21px] text-sm">
             {[
               { 
+                key: 'home', 
+                onClick: () => { setViewMode('home'); navigate('/home'); }, 
+                icon: viewMode === 'home' ? 'ph-fill ph-house' : 'ph ph-house', 
+                label: 'Trang chủ', 
+                active: viewMode === 'home' 
+              },
+              { 
                 key: 'explore', 
                 onClick: () => { setViewMode('explore'); navigate('/explore'); }, 
                 icon: viewMode === 'explore' ? 'ph-fill ph-compass' : 'ph ph-compass', 
@@ -1035,7 +1043,28 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         </div>
       </aside>
 
-      {viewMode === 'trips' ? (
+      {viewMode === 'home' ? (
+        <HomeDashboardView
+          onNavigateToExplore={() => {
+            setViewMode('explore');
+            navigate('/explore');
+          }}
+          onNavigateToTrips={() => {
+            setViewMode('trips');
+            setActiveOverviewTrip(null);
+            setSelectedTripForDetails(null);
+            navigate('/planner');
+          }}
+          onNavigateToSaved={() => {
+            setViewMode('saved');
+            navigate('/saved');
+          }}
+          onCreateTrip={(defaultDest, defaultTitle) => {
+            setIsCreateTripModalOpen(true);
+          }}
+          currentUser={currentUser}
+        />
+      ) : viewMode === 'trips' ? (
         selectedTripForDetails ? (
           <TripItineraryView
             trip={selectedTripForDetails}

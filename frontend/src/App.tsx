@@ -52,6 +52,7 @@ function App() {
 
 
         {/* Explore page - Now has its own Sidebar layout */}
+        <Route path="/home" element={<ExplorePage initialView="home" />} />
         <Route path="/explore" element={<ExplorePage initialView="explore" />} />
         <Route path="/saved" element={<ExplorePage initialView="saved" />} />
 

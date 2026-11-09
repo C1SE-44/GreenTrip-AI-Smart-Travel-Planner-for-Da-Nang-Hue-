@@ -309,6 +309,7 @@ def _rank_and_format(
             "lat": poi.get("lat"),
             "lng": poi.get("lng"),
             "image": poi.get("image_url") or poi.get("image"),
+            "gallery": poi.get("gallery_urls") or poi.get("gallery") or [],
             "city": poi.get("city_name") or poi.get("city") or "Đà Nẵng",
             "explanation_snippet": snippet,
         }
@@ -665,6 +666,7 @@ def _recommend_by_ideas_and_taxonomy(
             "lat": poi.get("lat"),
             "lng": poi.get("lng"),
             "image": poi.get("image_url") or poi.get("image"),
+            "gallery": poi.get("gallery_urls") or poi.get("gallery") or [],
             "city": poi.get("city_name") or poi.get("city") or "Đà Nẵng",
             "explanation_snippet": snippet,
         }

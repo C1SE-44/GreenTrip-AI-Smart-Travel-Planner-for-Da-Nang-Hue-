@@ -15,11 +15,14 @@ interface PoiMapProps {
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   favorites?: Set<string>;
-  onToggleFavorite?: (id: string) => void;
+  pendingFavorites?: Set<string>;
+  onToggleFavorite?: (id: string, poi?: Poi) => void;
   addedTrips?: Set<string>;
   onToggleAddTrip?: (id: string) => void;
   hideTopControls?: boolean;
   showMapLoader?: boolean;
+  savedHeartMarkers?: boolean;
+  hideFloatingPreview?: boolean;
 }
 
 interface MarkerOffset {
@@ -38,11 +41,12 @@ function createMindtripMarkerIcon(
   offset: MarkerOffset = { position: 'right', yOffset: 0 },
   showLabel: boolean = true,
   isNewEntrance: boolean = false,
-  entranceDelayMs: number = 0
+  entranceDelayMs: number = 0,
+  savedHeartMarkers: boolean = false
 ): L.DivIcon {
   const isHighlighted = isSelected || isHovered;
   const displayName = cleanPoiName(poi.name);
-  const iconClass = getSpecificPoiIconClass(poi);
+  const iconClass = savedHeartMarkers ? 'ph-fill ph-heart text-amber-500' : getSpecificPoiIconClass(poi);
 
   let pinHtml = '';
   let labelHtml = '';
@@ -154,7 +158,8 @@ interface FloatingDetailCardProps {
   onPointerEnter?: () => void;
   onPointerLeave?: () => void;
   isFavorite?: boolean;
-  onToggleFavorite?: (id: string) => void;
+  isFavoritePending?: boolean;
+  onToggleFavorite?: (id: string, poi?: Poi) => void;
   isAdded?: boolean;
   onToggleAddTrip?: (id: string) => void;
 }
@@ -167,6 +172,7 @@ function FloatingDetailCard({
   onPointerEnter,
   onPointerLeave,
   isFavorite = false,
+  isFavoritePending = false,
   onToggleFavorite,
   isAdded = false,
   onToggleAddTrip,
@@ -373,7 +379,7 @@ function FloatingDetailCard({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onToggleFavorite?.(poi.id);
+              onToggleFavorite?.(poi.id, poi);
             }}
             className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
               isFavorite ? 'bg-white text-[#b45309]' : 'bg-black/40 hover:bg-black/60 text-white'
@@ -801,6 +807,7 @@ function DynamicMarkersLayer({
   pois,
   selectedPoiId,
   hoveredPoiId,
+  savedHeartMarkers = false,
   onSelectPoi,
   onHoverMapPin,
   onMarkerHover,
@@ -813,6 +820,7 @@ function DynamicMarkersLayer({
   pois: Poi[];
   selectedPoiId: string | null;
   hoveredPoiId: string | null;
+  savedHeartMarkers?: boolean;
   onSelectPoi: (id: string) => void;
   onHoverMapPin: (id: string | null) => void;
   onMarkerHover?: (id: string, isEnter: boolean) => void;
@@ -1233,7 +1241,7 @@ function DynamicMarkersLayer({
             key={poi.id}
             position={[poi.lat, poi.lng]}
             zIndexOffset={isSelected ? 9999 : isHovered ? 9000 : 50}
-            icon={createMindtripMarkerIcon(isSelected, isHovered, poi, offset, showLabel, isNewEntrance, entranceDelayMs)}
+            icon={createMindtripMarkerIcon(isSelected, isHovered, poi, offset, showLabel, isNewEntrance, entranceDelayMs, savedHeartMarkers)}
             eventHandlers={{
               click: () => onSelectPoi(poi.id),
               mouseover: () => {
@@ -1280,11 +1288,14 @@ export default function PoiMap({
   isExpanded = false,
   onToggleExpand,
   favorites,
+  pendingFavorites,
   onToggleFavorite,
   addedTrips,
   onToggleAddTrip,
   hideTopControls = false,
   showMapLoader = true,
+  savedHeartMarkers = false,
+  hideFloatingPreview = false,
 }: PoiMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const [hoveredMapPinId, setHoveredMapPinId] = useState<string | null>(null);
@@ -1482,6 +1493,7 @@ export default function PoiMap({
           pois={pois}
           selectedPoiId={selectedPoiId}
           hoveredPoiId={hoveredPoiId || hoveredMapPinId}
+          savedHeartMarkers={savedHeartMarkers}
           onSelectPoi={(id) => {
             cancelAutoCloseTimer();
             onSelectPoi(id);
@@ -1535,7 +1547,7 @@ export default function PoiMap({
         }} />
 
         {/* Ô cơ bản trên map: CHỈ HIỆN KHI BẤM VÀO (selectedPoiId), tự động đóng sau 450ms khi dời chuột ra ngoài */}
-        {selectedPoi && (
+        {selectedPoi && !hideFloatingPreview && (
           <FloatingDetailCard 
             poi={selectedPoi}
             onClose={() => {
@@ -1553,6 +1565,7 @@ export default function PoiMap({
             onPointerEnter={cancelAutoCloseTimer}
             onPointerLeave={() => startAutoCloseTimer(450)}
             isFavorite={favorites?.has(selectedPoi.id)}
+            isFavoritePending={pendingFavorites?.has(selectedPoi.id)}
             onToggleFavorite={onToggleFavorite}
             isAdded={addedTrips?.has(selectedPoi.id)}
             onToggleAddTrip={onToggleAddTrip}

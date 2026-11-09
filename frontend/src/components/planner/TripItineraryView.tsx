@@ -38,8 +38,10 @@ import {
   getDeterministicImage,
   normalizeCategory,
   normalizeCity,
+  normalizePoi,
   categoryLabels,
 } from '@/data/pois';
+import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import PoiMap from '@/components/poi/PoiMap';
 import {
   createEmptyItinerary,
@@ -168,6 +170,22 @@ export default function TripItineraryView({
   onBack,
   onUpdateTrip,
 }: TripItineraryViewProps) {
+  // ─── 0. Hệ thống địa điểm đã lưu (Favorites / Đã thích) của Thiện ───
+  const { savedIds, pendingIds, toggleSaved, openCollectionPicker, places } = useSavedPlaces();
+
+  // Đếm số lượng địa điểm đã thích từ hệ thống Đã lưu
+  const savedCount = useMemo(() => {
+    let count = savedIds.size;
+    try {
+      const rawFav = localStorage.getItem('greentrip_favorites');
+      if (rawFav) {
+        const parsed = JSON.parse(rawFav) as string[];
+        count = Math.max(count, parsed.length);
+      }
+    } catch {}
+    return count;
+  }, [savedIds]);
+
   // ─── 1. Quản lý trạng thái Lịch trình (TripItinerary Plan) ───
   const [plan, setPlan] = useState<TripItinerary>(() => createEmptyItinerary(trip));
   const [isLoading, setIsLoading] = useState(true);
@@ -726,7 +744,7 @@ export default function TripItineraryView({
       );
     }
 
-    // 4. Tab "Đã thích" (Favorites từ trang Explore)
+    // 4. Tab "Đã thích" (Favorites từ hệ thống Đã lưu của Thiện)
     if (modalTab === 'saved') {
       let favSet = new Set<string>();
       try {
@@ -735,11 +753,17 @@ export default function TripItineraryView({
       } catch (e) {
         console.error(e);
       }
-      list = list.filter((p) => favSet.has(p.id) || favSet.has(p.name));
+      const poisFromAll = allPois.filter(
+        (p) => savedIds.has(String(p.id)) || savedIds.has(p.name) || favSet.has(String(p.id)) || favSet.has(p.name)
+      );
+      const normalizedBackendPlaces = (places || [])
+        .map((item) => normalizePoi(item, true))
+        .filter((p): p is Poi => p !== null && !poisFromAll.some((ap) => String(ap.id) === String(p.id)));
+      list = [...poisFromAll, ...normalizedBackendPlaces];
     }
 
     return list;
-  }, [allPois, ideaPois, modalCity, modalCategory, modalSearch, modalTab, isDaNang, isHue]);
+  }, [allPois, ideaPois, places, savedIds, modalCity, modalCategory, modalSearch, modalTab, isDaNang, isHue]);
 
   return (
     <div
@@ -986,12 +1010,27 @@ export default function TripItineraryView({
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleToggleIdeaInTrip(poi.id);
+                                  void toggleSaved(String(poi.id), poi);
                                 }}
-                                className="w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xs flex items-center justify-center text-white transition shadow-xs cursor-pointer"
-                                title="Bỏ khỏi Ý tưởng"
+                                className={`w-7 h-7 rounded-full backdrop-blur-xs flex items-center justify-center transition shadow-xs cursor-pointer active:scale-90 ${
+                                  savedIds.has(String(poi.id)) || savedIds.has(poi.name)
+                                    ? 'bg-white/95 text-rose-500 hover:bg-white ring-1 ring-rose-200'
+                                    : 'bg-black/40 hover:bg-black/60 text-white'
+                                }`}
+                                title={
+                                  savedIds.has(String(poi.id)) || savedIds.has(poi.name)
+                                    ? 'Bỏ thích địa điểm'
+                                    : 'Thả tim yêu thích (Lưu vào Đã lưu)'
+                                }
                               >
-                                <Heart size={14} className="fill-rose-500 text-rose-500" />
+                                <Heart
+                                  size={14}
+                                  className={
+                                    savedIds.has(String(poi.id)) || savedIds.has(poi.name)
+                                      ? 'fill-rose-500 text-rose-500'
+                                      : 'text-white hover:text-rose-400'
+                                  }
+                                />
                               </button>
 
                               <button
@@ -1055,6 +1094,28 @@ export default function TripItineraryView({
                                   </div>
                                 )}
                                 <div className="border-t border-gray-100 my-1"></div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    void toggleSaved(String(poi.id), poi);
+                                    setActiveIdeaMenuPoiId(null);
+                                  }}
+                                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-medium flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Heart
+                                    size={13}
+                                    className={
+                                      savedIds.has(String(poi.id)) || savedIds.has(poi.name)
+                                        ? 'fill-rose-500 text-rose-500'
+                                        : 'text-gray-500'
+                                    }
+                                  />
+                                  <span>
+                                    {savedIds.has(String(poi.id)) || savedIds.has(poi.name)
+                                      ? 'Bỏ khỏi Đã lưu'
+                                      : 'Lưu vào Đã lưu'}
+                                  </span>
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1622,14 +1683,14 @@ export default function TripItineraryView({
       {/* ─── MODAL TÌM KIẾM & THÊM VÀO CHUYẾN ĐI (CHUẨN 1:1 TRIPOVERVIEWVIEW & MINDTRIP) ─── */}
       {showAddIdeasModal && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs py-6 px-4 animate-fadeIn"
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-xs py-6 px-4 animate-fadeIn"
           onClick={() => {
             setShowAddIdeasModal(false);
             setActiveDayAddModal(null);
           }}
         >
           <div
-            className="relative bg-white w-[750px] max-w-[calc(100vw-32px)] h-[calc(100vh-80px)] max-h-[820px] rounded-[24px] shadow-2xl flex flex-col border border-gray-100 overflow-hidden"
+            className="relative bg-white w-[750px] max-w-[calc(100vw-32px)] h-[calc(100vh-80px)] max-h-[820px] rounded-[24px] shadow-2xl flex flex-col border border-gray-100 overflow-hidden z-[1010]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Phần cố định: Tiêu đề + tab (có đường kẻ ngang dưới #eee, cao ~72px) */}
@@ -1691,19 +1752,11 @@ export default function TripItineraryView({
                 >
                   <Heart size={14} className={modalTab === 'saved' ? 'fill-red-500 text-red-500' : 'text-gray-400'} />
                   <span>Đã thích</span>
-                  {(() => {
-                    try {
-                      const rawFav = localStorage.getItem('greentrip_favorites');
-                      const count = rawFav ? (JSON.parse(rawFav) as string[]).length : 0;
-                      return count > 0 ? (
-                        <span className="w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                          {count}
-                        </span>
-                      ) : null;
-                    } catch {
-                      return null;
-                    }
-                  })()}
+                  {savedCount > 0 ? (
+                    <span className="w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      {savedCount}
+                    </span>
+                  ) : null}
                 </button>
                 <button
                   type="button"
@@ -1867,7 +1920,9 @@ export default function TripItineraryView({
                         {modalTab === 'ideas'
                           ? 'Kho Ý tưởng hiện chưa có địa điểm nào phù hợp với bộ lọc.'
                           : modalTab === 'saved'
-                          ? 'Bạn chưa thích địa điểm nào ở trang Khám phá. Hãy bấm thả tim ❤️ tại trang Explore để chọn nhanh vào Ý tưởng tại đây!'
+                          ? savedCount === 0
+                            ? 'Bạn chưa thích địa điểm nào ở trang Khám phá. Hãy bấm thả tim ❤️ tại trang Explore để chọn nhanh vào Ý tưởng tại đây!'
+                            : 'Không tìm thấy địa điểm đã thích nào phù hợp với bộ lọc hiện tại.'
                           : 'Không tìm thấy địa điểm phù hợp với bộ lọc hiện tại.'}
                       </div>
                     ) : (

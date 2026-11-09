@@ -28,7 +28,8 @@ import {
 import type { UserTrip } from '@/pages/ExplorePage';
 import { 
   pois as defaultAllPois, 
-  normalizePois, 
+  normalizePois,
+  normalizePoi, 
   normalizeCategory, 
   normalizeCity, 
   getDeterministicImage,
@@ -142,7 +143,7 @@ export default function TripOverviewView({
   onOpenItineraryDetails,
   onUpdateTrip,
 }: TripOverviewViewProps) {
-  const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
+  const { savedIds, pendingIds, openCollectionPicker, places } = useSavedPlaces();
   const handleOpenSavedCollections = (_poiId: string, poi?: Poi) => {
     if (poi) openCollectionPicker(poi);
   };
@@ -553,7 +554,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       );
     }
 
-    // 4. Tab "Đã thích" (Favorites từ trang Explore)
+    // 4. Tab "Đã thích" (Favorites từ Thiện's SavedPlacesContext)
     if (modalTab === 'saved') {
       let favSet = new Set<string>();
       try {
@@ -562,7 +563,13 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       } catch (e) {
         console.error(e);
       }
-      list = list.filter((p) => favSet.has(p.id) || favSet.has(p.name));
+      const poisFromAll = allPois.filter(
+        (p) => savedIds.has(String(p.id)) || savedIds.has(p.name) || favSet.has(String(p.id)) || favSet.has(p.name)
+      );
+      const normalizedBackendPlaces = (places || [])
+        .map((item) => normalizePoi(item, true))
+        .filter((p): p is Poi => p !== null && !poisFromAll.some((ap) => String(ap.id) === String(p.id)));
+      list = [...poisFromAll, ...normalizedBackendPlaces];
     }
 
     return list;
@@ -1995,17 +2002,16 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <Heart size={14} className={modalTab === 'saved' ? 'fill-red-500 text-red-500' : 'text-gray-400'} />
                   <span>Đã thích</span>
                   {(() => {
+                    let count = savedIds.size;
                     try {
                       const rawFav = localStorage.getItem('greentrip_favorites');
-                      const count = rawFav ? (JSON.parse(rawFav) as string[]).length : 0;
-                      return count > 0 ? (
-                        <span className="w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                          {count}
-                        </span>
-                      ) : null;
-                    } catch {
-                      return null;
-                    }
+                      if (rawFav) count = Math.max(count, (JSON.parse(rawFav) as string[]).length);
+                    } catch {}
+                    return count > 0 ? (
+                      <span className="w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                        {count}
+                      </span>
+                    ) : null;
                   })()}
                 </button>
                 <button
@@ -2166,7 +2172,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     {modalFilteredPois.length === 0 ? (
                       <div className="col-span-full py-16 text-center text-gray-500 text-sm">
                         {modalTab === 'saved'
-                          ? 'Bạn chưa thích địa điểm nào ở trang Khám phá. Hãy bấm thả tim ❤️ tại trang Explore để chọn nhanh vào Ý tưởng tại đây!'
+                          ? savedIds.size === 0
+                            ? 'Bạn chưa thích địa điểm nào ở trang Khám phá. Hãy bấm thả tim ❤️ tại trang Explore để chọn nhanh vào Ý tưởng tại đây!'
+                            : 'Không tìm thấy địa điểm đã thích nào phù hợp với bộ lọc hiện tại.'
                           : 'Không tìm thấy địa điểm phù hợp với bộ lọc hiện tại.'}
                       </div>
                     ) : (

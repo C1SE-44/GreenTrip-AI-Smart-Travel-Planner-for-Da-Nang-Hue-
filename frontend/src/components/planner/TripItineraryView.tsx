@@ -62,6 +62,9 @@ export interface TripItineraryViewProps {
   allPois?: Poi[];
   onBack: () => void;
   onUpdateTrip?: (updatedTrip: UserTrip) => void;
+  isDrawerMode?: boolean;
+  onClose?: () => void;
+  initialFocus?: 'ideas' | 'itinerary';
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -169,6 +172,9 @@ export default function TripItineraryView({
   allPois = [],
   onBack,
   onUpdateTrip,
+  isDrawerMode = false,
+  onClose,
+  initialFocus,
 }: TripItineraryViewProps) {
   // ─── 0. Hệ thống địa điểm đã lưu (Favorites / Đã thích) của Thiện ───
   const { savedIds, pendingIds, toggleSaved, openCollectionPicker, places } = useSavedPlaces();
@@ -226,6 +232,8 @@ export default function TripItineraryView({
 
   // Thao tác nhanh cho từng thẻ Ideas & Ngày
   const ideasCarouselRef = useRef<HTMLDivElement>(null);
+  const ideasSectionRef = useRef<HTMLDivElement>(null);
+  const itinerarySectionRef = useRef<HTMLDivElement>(null);
   const [activeIdeaMenuPoiId, setActiveIdeaMenuPoiId] = useState<string | null>(null);
   const [activeIdeaAddDayPoiId, setActiveIdeaAddDayPoiId] = useState<string | null>(null);
   const [activeMenuStopId, setActiveMenuStopId] = useState<string | null>(null);
@@ -405,6 +413,21 @@ export default function TripItineraryView({
       setTripIdeas(trip.ideas);
     }
   }, [trip.ideas]);
+
+  useEffect(() => {
+    if (initialFocus === 'ideas') {
+      setExpandIdeas(true);
+      const timer = setTimeout(() => {
+        ideasSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
+      return () => clearTimeout(timer);
+    } else if (initialFocus === 'itinerary') {
+      const timer = setTimeout(() => {
+        itinerarySectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [initialFocus]);
 
   // ─── 5. Thao tác THỦ CÔNG (Manual Planning First) ───
 
@@ -666,7 +689,11 @@ export default function TripItineraryView({
     if (onUpdateTrip) {
       onUpdateTrip({ ...trip, ideas: tripIdeas });
     }
-    onBack();
+    if (onClose) {
+      onClose();
+    } else {
+      onBack();
+    }
   };
 
   // ─── 6. Lọc POI hiển thị trên Bản đồ tương tác theo Bộ lọc ngày nổi ───
@@ -773,66 +800,146 @@ export default function TripItineraryView({
         setActiveIdeaMenuPoiId(null);
         setActiveMenuStopId(null);
       }}
-      className="flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn"
+      className={
+        isDrawerMode
+          ? "fixed inset-y-0 right-0 w-full sm:w-[620px] lg:w-[calc(50vw)] xl:w-[calc(50vw)] z-50 bg-white rounded-l-[24px] border-l border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.08),-4px_0_12px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden animate-slideInRight select-none"
+          : "flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn"
+      }
     >
-      {/* ─── TOP HEADER ─── */}
-      <header className="px-6 py-3.5 bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="w-8 h-8 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-black transition cursor-pointer shrink-0"
-            title="Quay lại chuyến đi"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <div className="min-w-0">
-            <h1 className="font-extrabold text-[17px] sm:text-[19px] text-gray-950 truncate leading-snug">
-              {displayTitle}
-            </h1>
-            <p className="text-xs text-gray-500 mt-0.5 font-medium truncate">
-              {displaySubtitle}
+      {/* ─── TOP HEADER (DRAWER MODE HOẶC FULL PAGE CHUẨN MINDTRIP) ─── */}
+      {isDrawerMode ? (
+        <header className="px-6 py-4 bg-white border-b border-gray-100 flex items-center justify-between shrink-0 z-30">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose || onBack}
+              className="w-9 h-9 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer"
+              title="Đóng lịch trình"
+            >
+              <X size={17} />
+            </button>
+            <button
+              type="button"
+              onClick={onClose || onBack}
+              className="w-9 h-9 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer"
+              title="Quay lại"
+            >
+              <ChevronLeft size={18} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium">
+              {isSaving ? (
+                <span className="flex items-center gap-1 text-amber-700">
+                  <RefreshCw size={12} className="animate-spin" /> Đang lưu...
+                </span>
+              ) : hasUnsavedChanges ? (
+                <span className="text-gray-400">Chưa lưu</span>
+              ) : (
+                <span className="text-emerald-700 flex items-center gap-1">
+                  <Check size={13} /> Đã lưu
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDayAddModal(null);
+                setModalTab('search');
+                setShowAddIdeasModal(true);
+              }}
+              className="flex items-center gap-1 px-3.5 py-1.5 rounded-full border border-gray-200 hover:border-black text-[12.5px] font-semibold text-gray-900 hover:bg-gray-50 transition cursor-pointer active:scale-95 shadow-2xs"
+              title="Thêm ý tưởng mới"
+            >
+              <Plus size={13} />
+              <span>Thêm ý tưởng</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDone}
+              className="h-8 px-4 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95"
+              title="Xong và đóng lịch trình"
+            >
+              Xong
+            </button>
+          </div>
+        </header>
+      ) : (
+        <header className="px-6 py-3.5 bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={onBack}
+              className="w-8 h-8 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-black transition cursor-pointer shrink-0"
+              title="Quay lại chuyến đi"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div className="min-w-0">
+              <h1 className="font-extrabold text-[17px] sm:text-[19px] text-gray-950 truncate leading-snug">
+                {displayTitle}
+              </h1>
+              <p className="text-xs text-gray-500 mt-0.5 font-medium truncate">
+                {displaySubtitle}
+              </p>
+            </div>
+          </div>
+
+          {/* Nút hành động phải: Trạng thái lưu & Nút Xong */}
+          <div className="flex items-center gap-3">
+            <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium">
+              {isSaving ? (
+                <span className="flex items-center gap-1 text-amber-700">
+                  <RefreshCw size={12} className="animate-spin" /> Đang lưu...
+                </span>
+              ) : hasUnsavedChanges ? (
+                <span className="text-gray-400">Chưa lưu</span>
+              ) : (
+                <span className="text-emerald-700 flex items-center gap-1">
+                  <Check size={13} /> Đã lưu
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDone}
+              className="h-9 px-5 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95"
+              title="Lưu lịch trình và quay lại tổng quan"
+            >
+              Xong
+            </button>
+          </div>
+        </header>
+      )}
+
+      {/* Drawer Title Section */}
+      {isDrawerMode && (
+        <div className="px-6 pt-3.5 pb-2.5 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
+          <div>
+            <h2 className="text-[24px] sm:text-[26px] font-extrabold text-gray-950 tracking-tight leading-tight">
+              Lịch trình chi tiết
+            </h2>
+            <p className="text-[13px] text-gray-500 mt-0.5 font-medium">
+              {displayTitle} • {plan.days.length} ngày
             </p>
           </div>
         </div>
+      )}
 
-        {/* Nút hành động phải: Trạng thái lưu & Nút Xong */}
-        <div className="flex items-center gap-3">
-          <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium">
-            {isSaving ? (
-              <span className="flex items-center gap-1 text-amber-700">
-                <RefreshCw size={12} className="animate-spin" /> Đang lưu...
-              </span>
-            ) : hasUnsavedChanges ? (
-              <span className="text-gray-400">Chưa lưu</span>
-            ) : (
-              <span className="text-emerald-700 flex items-center gap-1">
-                <Check size={13} /> Đã lưu
-              </span>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={handleDone}
-            className="h-9 px-5 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95"
-            title="Lưu lịch trình và quay lại tổng quan"
-          >
-            Xong
-          </button>
-        </div>
-      </header>
-
-      {/* ─── NỘI DUNG CHÍNH (2 CỘT) ─── */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
+      {/* ─── NỘI DUNG CHÍNH (2 CỘT HOẶC 1 CỘT CHO DRAWER) ─── */}
+      <div className={isDrawerMode ? "flex-1 w-full min-h-0 overflow-hidden flex flex-col" : "flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden"}>
         {/* ════════════════════════════════════════════════════════
-            CỘT TRÁI: Ý TƯỞNG + LỊCH THEO NGÀY (THỦ CÔNG CHUẨN)
+            CỘT: Ý TƯỞNG + LỊCH THEO NGÀY (THỦ CÔNG CHUẨN)
         ════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-6 xl:col-span-6 border-r border-gray-100 flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-track]:bg-transparent">
+        <div className={`${isDrawerMode ? 'w-full' : 'lg:col-span-6 xl:col-span-6 border-r border-gray-100'} flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-track]:bg-transparent`}>
           {/* ────────────────────────────────────────────────────────
               1. PHẦN Ý TƯỞNG (CHUẨN MINDTRIP ẢNH 3, 4 - BỘ LỌC BÊN PHẢI)
           ──────────────────────────────────────────────────────── */}
-          <section className="shrink-0 mb-4">
+          <section ref={ideasSectionRef} className="shrink-0 mb-4">
             <div className="flex items-center justify-between mb-2.5">
               {/* Tiêu đề bên trái */}
               <button
@@ -1181,7 +1288,7 @@ export default function TripItineraryView({
           {/* ────────────────────────────────────────────────────────
               2. PHẦN LỊCH TRÌNH THEO NGÀY (ITINERARY TIMELINE)
           ──────────────────────────────────────────────────────── */}
-          <section className="flex-1 flex flex-col min-h-0 mt-5">
+          <section ref={itinerarySectionRef} className="flex-1 flex flex-col min-h-0 mt-5">
             {/* Header Lịch trình */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
@@ -1626,58 +1733,60 @@ export default function TripItineraryView({
         </div>
 
         {/* ════════════════════════════════════════════════════════
-            CỘT PHẢI: BẢN ĐỒ LỘ TRÌNH ĐỒNG BỘ (BỘ LỌC NGÀY NỔI Ở TRÊN BÊN PHẢI)
+            CỘT PHẢI: BẢN ĐỒ LỘ TRÌNH ĐỒNG BỘ (CHỈ HIỆN KHI KHÔNG PHẢI DRAWER MODE)
         ════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-6 xl:col-span-6 h-full relative bg-gray-100 flex flex-col">
-          {/* Bộ chọn xem ngày nổi BÊN PHẢI Ở TRÊN BẢN ĐỒ (Chuẩn yêu cầu: "mấy cái lọc cho bên phải ở trên đi") */}
-          <div className="absolute top-4 right-4 z-[400] flex items-center gap-1 bg-white/95 backdrop-blur-md p-1 rounded-full shadow-md border border-gray-200/80">
-            <button
-              type="button"
-              onClick={() => setMapDayFilter('all')}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
-                mapDayFilter === 'all'
-                  ? 'bg-black text-white shadow-xs'
-                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
-              }`}
-            >
-              Tất cả các ngày
-            </button>
-            {plan.days.map((day) => (
+        {!isDrawerMode && (
+          <div className="lg:col-span-6 xl:col-span-6 h-full relative bg-gray-100 flex flex-col">
+            {/* Bộ chọn xem ngày nổi BÊN PHẢI Ở TRÊN BẢN ĐỒ (Chuẩn yêu cầu: "mấy cái lọc cho bên phải ở trên đi") */}
+            <div className="absolute top-4 right-4 z-[400] flex items-center gap-1 bg-white/95 backdrop-blur-md p-1 rounded-full shadow-md border border-gray-200/80">
               <button
-                key={day.day_number}
                 type="button"
-                onClick={() => setMapDayFilter(day.day_number)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                  mapDayFilter === day.day_number
+                onClick={() => setMapDayFilter('all')}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                  mapDayFilter === 'all'
                     ? 'bg-black text-white shadow-xs'
                     : 'text-gray-600 hover:text-black hover:bg-gray-100'
                 }`}
               >
-                <span>Ngày {day.day_number}</span>
-                {day.stops.length > 0 && (
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                      mapDayFilter === day.day_number ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
-                    }`}
-                  >
-                    {day.stops.length}
-                  </span>
-                )}
+                Tất cả các ngày
               </button>
-            ))}
-          </div>
+              {plan.days.map((day) => (
+                <button
+                  key={day.day_number}
+                  type="button"
+                  onClick={() => setMapDayFilter(day.day_number)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                    mapDayFilter === day.day_number
+                      ? 'bg-black text-white shadow-xs'
+                      : 'text-gray-600 hover:text-black hover:bg-gray-100'
+                  }`}
+                >
+                  <span>Ngày {day.day_number}</span>
+                  {day.stops.length > 0 && (
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                        mapDayFilter === day.day_number ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      {day.stops.length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
 
-          {/* Bản đồ Leaflet sạch sẽ */}
-          <div className="flex-1 w-full h-full relative">
-            <PoiMap
-              pois={mapPois.length > 0 ? mapPois : allPois.slice(0, 10)}
-              selectedPoiId={selectedMapPoiId}
-              hoveredPoiId={hoveredStopId}
-              onSelectPoi={(id) => setSelectedMapPoiId(id)}
-              onHoverPoi={(id) => setHoveredStopId(id)}
-            />
+            {/* Bản đồ Leaflet sạch sẽ */}
+            <div className="flex-1 w-full h-full relative">
+              <PoiMap
+                pois={mapPois.length > 0 ? mapPois : allPois.slice(0, 10)}
+                selectedPoiId={selectedMapPoiId}
+                hoveredPoiId={hoveredStopId}
+                onSelectPoi={(id) => setSelectedMapPoiId(id)}
+                onHoverPoi={(id) => setHoveredStopId(id)}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ─── MODAL TÌM KIẾM & THÊM VÀO CHUYẾN ĐI (CHUẨN 1:1 TRIPOVERVIEWVIEW & MINDTRIP) ─── */}

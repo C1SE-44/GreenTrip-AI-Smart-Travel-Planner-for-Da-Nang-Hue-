@@ -43,3 +43,18 @@ test('Planner TripOverview: Left column dedicated to AI insight & Chat (no POI r
   assert.ok(content.includes('Bắt đầu một cuộc trò chuyện mới cho chuyến đi này...'), 'Must have chat input placeholder');
   assert.ok(!content.includes('+ Lưu vào ý tưởng'), 'Must NOT have old POI recommendation cards list in planner overview');
 });
+
+test('Planner Itinerary Drawer: "Xem lịch theo ngày" opens TripItineraryView inside right card drawer container', () => {
+  const plannerContent = fs.readFileSync(plannerViewPath, 'utf8');
+  assert.ok(plannerContent.includes('showItineraryDrawer'), 'Must have showItineraryDrawer state');
+  assert.ok(plannerContent.includes('setShowItineraryDrawer(true)'), 'Must open drawer on action');
+  assert.ok(plannerContent.includes('<TripItineraryView'), 'Must embed TripItineraryView inside drawer');
+  assert.ok(plannerContent.includes('isDrawerMode={true}'), 'Must pass isDrawerMode={true}');
+
+  const itineraryViewPath = path.resolve('src/components/planner/TripItineraryView.tsx');
+  const itineraryContent = fs.readFileSync(itineraryViewPath, 'utf8');
+  assert.ok(itineraryContent.includes('isDrawerMode'), 'TripItineraryView must support isDrawerMode prop');
+  assert.ok(itineraryContent.includes('rounded-l-[24px]'), 'Drawer must have rounded-l-[24px] card styling');
+  assert.ok(itineraryContent.includes('animate-slideInRight'), 'Drawer must slide in from right');
+  assert.ok(itineraryContent.includes('!isDrawerMode &&'), 'Map column must only render when NOT in drawer mode');
+});

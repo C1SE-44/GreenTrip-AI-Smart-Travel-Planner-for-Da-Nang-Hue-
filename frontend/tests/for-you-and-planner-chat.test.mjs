@@ -47,9 +47,14 @@ test('Planner TripOverview: Left column dedicated to AI insight & Chat (no POI r
 test('Planner Itinerary Drawer: "Xem lịch theo ngày" opens TripItineraryView inside right card drawer container', () => {
   const plannerContent = fs.readFileSync(plannerViewPath, 'utf8');
   assert.ok(plannerContent.includes('showItineraryDrawer'), 'Must have showItineraryDrawer state');
-  assert.ok(plannerContent.includes('setShowItineraryDrawer(true)'), 'Must open drawer on action');
+  assert.ok(plannerContent.includes('setShowItineraryDrawer(true)'), 'Must open itinerary drawer on action');
   assert.ok(plannerContent.includes('<TripItineraryView'), 'Must embed TripItineraryView inside drawer');
   assert.ok(plannerContent.includes('isDrawerMode={true}'), 'Must pass isDrawerMode={true}');
+
+  // Also assert that "Ý tưởng đã lưu" drawer is preserved intact when clicking Ideas
+  assert.ok(plannerContent.includes('showIdeasView'), 'Must have showIdeasView state preserved');
+  assert.ok(plannerContent.includes('Ý tưởng đã lưu'), 'Must retain original "Ý tưởng đã lưu" drawer title');
+  assert.ok(plannerContent.includes('Thêm địa điểm bạn muốn đến.'), 'Must retain original polaroids empty state');
 
   const itineraryViewPath = path.resolve('src/components/planner/TripItineraryView.tsx');
   const itineraryContent = fs.readFileSync(itineraryViewPath, 'utf8');

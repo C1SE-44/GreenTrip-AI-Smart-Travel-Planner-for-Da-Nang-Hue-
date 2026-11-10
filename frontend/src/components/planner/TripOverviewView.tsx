@@ -238,11 +238,11 @@ const [recommendedPois, setRecommendedPois] = useState<Poi[]>([]);
   const [recommendationSubtitle, setRecommendationSubtitle] = useState('Theo gu và hành trình của bạn.');
   const [explanationPoi, setExplanationPoi] = useState<{ id: string; name: string; snippet?: string } | null>(null);
 
-  // State điều khiển Drawer Lịch trình chi tiết theo ngày & Ý tưởng (Chuẩn Mindtrip)
+  // State điều khiển Drawer Ý tưởng đã lưu (giữ nguyên gốc)
+  const [showIdeasView, setShowIdeasView] = useState(false);
+
+  // State điều khiển Drawer Lịch trình theo ngày (nhét phần lịch trình vào card chứa y hệt khi mở idea)
   const [showItineraryDrawer, setShowItineraryDrawer] = useState(false);
-  const [itineraryFocus, setItineraryFocus] = useState<'itinerary' | 'ideas'>('itinerary');
-  const showIdeasView = showItineraryDrawer;
-  const setShowIdeasView = (val: boolean) => setShowItineraryDrawer(val);
 
   // State điều khiển Modal "Thêm vào chuyến đi" (Add to trip)
   const [showAddIdeasModal, setShowAddIdeasModal] = useState(false);
@@ -1058,12 +1058,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         <div className="lg:col-span-6 flex flex-col space-y-3.5 lg:sticky lg:top-4.5 self-start">
           {/* Thanh điều hướng phân cấp rõ ràng: Ý tưởng (Gom) ➔ Lịch trình theo ngày (Primary CTA nổi bật) */}
               <div className="flex items-center gap-1.5 p-1 bg-neutral-100/90 rounded-2xl border border-neutral-200/80 shadow-2xs">
-                {/* 1. Ý tưởng đã lưu (Nơi gom địa điểm) */}
+                {/* 1. Ý tưởng đã lưu (Nơi gom địa điểm - GIỮ NGUYÊN GỐC) */}
                 <button
                   type="button"
                   onClick={() => {
-                    setItineraryFocus('ideas');
-                    setShowItineraryDrawer(true);
+                    setShowItineraryDrawer(false);
+                    setShowIdeasView(true);
                   }}
                   className="py-2 px-3 rounded-xl bg-white hover:bg-neutral-50 border border-neutral-200/60 shadow-2xs text-gray-900 font-bold text-[13px] transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer shrink-0"
                   title="Xem danh sách ý tưởng bạn đã lưu vào chuyến đi"
@@ -1077,11 +1077,11 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   </span>
                 </button>
 
-                {/* 2. Lịch trình theo ngày (HÀNH ĐỘNG CHÍNH - PRIMARY CTA NỔI BẬT) */}
+                {/* 2. Lịch trình theo ngày (HÀNH ĐỘNG CHÍNH - MỞ LỊCH TRÌNH VÀO CARD CHỨA) */}
                 <button
                   type="button"
                   onClick={() => {
-                    setItineraryFocus('itinerary');
+                    setShowIdeasView(false);
                     setShowItineraryDrawer(true);
                   }}
                   className="flex-1 py-2 px-3 sm:px-4 rounded-xl bg-black hover:bg-neutral-800 text-white font-bold text-[13px] transition flex items-center justify-center gap-2 shadow-xs active:scale-98 cursor-pointer group"
@@ -1815,7 +1815,6 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <button 
                     onClick={() => {
                       setActiveRightDrawer(null);
-                      setItineraryFocus('itinerary');
                       setShowItineraryDrawer(true);
                       if (onOpenItineraryDetails) onOpenItineraryDetails();
                     }} 
@@ -2235,15 +2234,171 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         </div>
       )}
 
-      {/* ─── DRAWER LỊCH TRÌNH THEO NGÀY & Ý TƯỞNG (CHUẨN MINDTRIP THEO YÊU CẦU NGƯỜI DÙNG) ─── */}
-      {showItineraryDrawer && !selectedPoi && (
+      {/* ─── 1. GIAO DIỆN Ý TƯỞNG ĐÃ LƯU (GIỮ NGUYÊN GỐC CHUẨN MINDTRIP THEO ẢNH) ─── */}
+      {showIdeasView && !showItineraryDrawer && !selectedPoi && (
+        <div 
+          className="fixed inset-y-0 right-0 w-full sm:w-[620px] lg:w-[calc(50vw)] xl:w-[calc(50vw)] z-50 bg-white rounded-l-[24px] border-l border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.08),-4px_0_12px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden animate-slideInRight"
+        >
+          {/* Top Bar: Nút Đóng (X), Quay lại (<), Nút Thêm ý tưởng (+) */}
+          <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowIdeasView(false)}
+                className="w-9 h-9 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer"
+                title="Đóng ý tưởng"
+              >
+                <X size={17} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowIdeasView(false)}
+                className="w-9 h-9 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer"
+                title="Quay lại"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAddIdeasModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200 hover:border-black text-[13px] font-semibold text-gray-900 hover:bg-gray-50 transition cursor-pointer active:scale-95 shadow-2xs"
+            >
+              <Plus size={14} />
+              <span>Thêm ý tưởng</span>
+            </button>
+          </div>
+
+          {/* Drawer Title Section */}
+          <div className="px-6 pt-4 pb-2">
+            <h2 className="text-[28px] sm:text-[32px] font-extrabold text-gray-950 tracking-tight leading-tight">
+              Ý tưởng đã lưu
+            </h2>
+            <p className="text-[13.5px] text-gray-500 mt-1">
+              {ideaPois.length} địa điểm bạn đã lưu cho chuyến đi
+            </p>
+          </div>
+
+          {/* Drawer Body: Empty State vs Cards Grid */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 auto-hide-scrollbar">
+            {ideaPois.length === 0 ? (
+              /* Empty State với đồ họa 3 polaroids chuẩn Mindtrip */
+              <div className="h-full min-h-[380px] flex flex-col items-center justify-center text-center py-12 px-4">
+                <div className="relative w-64 h-48 mb-6 flex items-center justify-center select-none pointer-events-none">
+                  {/* Left card: Sea / Beach (Tilted left) */}
+                  <div className="absolute w-[110px] h-[135px] bg-white p-2 rounded-2xl shadow-lg border border-gray-100 transform -rotate-12 -translate-x-12 translate-y-3 z-0">
+                    <img
+                      src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80"
+                      alt="Biển Mỹ Khê"
+                      className="w-full h-[95px] object-cover rounded-xl"
+                    />
+                  </div>
+                  {/* Right card: Scenic mountain (Tilted right) */}
+                  <div className="absolute w-[110px] h-[135px] bg-white p-2 rounded-2xl shadow-lg border border-gray-100 transform rotate-12 translate-x-12 translate-y-2 z-0">
+                    <img
+                      src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=300&q=80"
+                      alt="Cầu Rồng & Núi Non"
+                      className="w-full h-[95px] object-cover rounded-xl"
+                    />
+                  </div>
+                  {/* Center card: Di tích Cố Đô (Straight / Slight tilt) */}
+                  <div className="relative z-10 w-[115px] h-[140px] bg-white p-2 rounded-2xl shadow-xl border border-gray-200 transform -rotate-2">
+                    <img
+                      src="https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=300&q=80"
+                      alt="Đại Nội Huế"
+                      className="w-full h-[100px] object-cover rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                <h3 className="text-[20px] font-bold text-gray-950 mb-2">
+                  Thêm địa điểm bạn muốn đến.
+                </h3>
+                <p className="text-[14px] text-gray-500 max-w-sm mb-7 leading-relaxed">
+                  Có ý tưởng gì không? Thêm vào đây. Hãy xem đây là danh sách "có thể ghé thăm" của bạn.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowAddIdeasModal(true)}
+                  className="px-6 py-2.5 rounded-full bg-black text-white text-[13.5px] font-bold hover:bg-neutral-800 transition cursor-pointer active:scale-95 shadow-xs"
+                >
+                  + Thêm ý tưởng
+                </button>
+              </div>
+            ) : (
+              /* Danh sách ý tưởng: Lưới 2 cột card ảnh lớn chuẩn Mindtrip */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-6">
+                {ideaPois.map((poi) => (
+                  <div
+                    key={poi.id}
+                    onClick={() => setSelectedMapPoiId(poi.id)}
+                    className="group relative aspect-[4/3] rounded-2xl overflow-hidden cursor-pointer shadow-2xs hover:shadow-md transition-all duration-300 border border-gray-100 bg-gray-100"
+                  >
+                    <img
+                      src={poi.image}
+                      alt={poi.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10 transition-opacity" />
+
+                    {/* Huy hiệu Địa điểm xanh góc trên bên trái */}
+                    {poi.isGreen && (
+                      <div className="absolute top-3 left-3 z-10 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md backdrop-blur-md flex items-center gap-1 pointer-events-none">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>🌱 Địa điểm xanh</span>
+                      </div>
+                    )}
+
+                    {/* Nút hành động góc trên: Xóa khỏi ý tưởng */}
+                    <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleIdea(poi.id);
+                        }}
+                        className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md flex items-center justify-center text-red-500 transition cursor-pointer"
+                        title="Xóa khỏi ý tưởng"
+                      >
+                        <Heart size={15} className="fill-red-500 text-red-500" />
+                      </button>
+                    </div>
+
+                    {/* Thông tin địa điểm ở góc dưới */}
+                    <div className="absolute inset-x-0 bottom-0 p-3.5 z-10 flex flex-col justify-end text-left">
+                      <h4 className="text-[15px] font-bold text-white leading-tight drop-shadow-sm truncate" title={poi.name}>
+                        {poi.name}
+                      </h4>
+                      <div className="flex items-center gap-1.5 text-[12px] text-white/80 font-medium mt-1 truncate">
+                        <span>
+                          {poi.category === 'quan-an' 
+                            ? 'Ẩm thực' 
+                            : poi.category === 'di-tich' 
+                            ? 'Di tích' 
+                            : poi.category === 'canh-quan' 
+                            ? 'Cảnh quan' 
+                            : 'Tâm linh'} • {poi.city}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── 2. GIAO DIỆN LỊCH TRÌNH THEO NGÀY (CARD CHỨA Y HỆT KHI MỞ Ý TƯỞNG THEO YÊU CẦU) ─── */}
+      {showItineraryDrawer && !showIdeasView && !selectedPoi && (
         <TripItineraryView
           trip={trip}
           allPois={allPoisProp || allPois}
           onBack={() => setShowItineraryDrawer(false)}
           onClose={() => setShowItineraryDrawer(false)}
           isDrawerMode={true}
-          initialFocus={itineraryFocus}
           onUpdateTrip={(updatedTrip) => {
             if (updatedTrip.ideas) {
               setTripIdeas(updatedTrip.ideas);

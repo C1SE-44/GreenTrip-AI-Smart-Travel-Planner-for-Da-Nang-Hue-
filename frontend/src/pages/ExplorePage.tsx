@@ -67,12 +67,14 @@ export interface UserTrip {
 }
 
 
-const TABS: { id: 'all' | 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan'; label: string }[] = [
-  { id: 'all', label: 'Tất cả' },
+export type ExploreTabId = 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua';
+
+const TABS: { id: ExploreTabId; label: string }[] = [
   { id: 'for-you', label: 'Dành cho bạn' },
   { id: 'quan-an', label: 'Ẩm thực & Cafe' },
-  { id: 'di-tich', label: 'Di tích & Văn hóa' },
+  { id: 'di-tich', label: 'Di tích & Lịch sử' },
   { id: 'canh-quan', label: 'Cảnh quan & Thiên nhiên' },
+  { id: 'chua', label: 'Chùa & Tâm linh' },
 ];
 
 
@@ -249,7 +251,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
-  const [activeTab, setActiveTab] = useState<'all' | 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
+  const [activeTab, setActiveTab] = useState<ExploreTabId>('for-you');
+  const [expandedSectionCount, setExpandedSectionCount] = useState<Record<string, number>>({});
   // 1. POI hiển thị ô cơ bản trên bản đồ khi người dùng bấm vào
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   // 2. POI hiển thị bảng chi tiết sâu toàn màn hình (PoiDetailSection)
@@ -482,16 +485,14 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     };
   }, [cityFilter, categoryFilter, filterValues]);
 
-  const handleTabChange = (tabId: 'all' | 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan') => {
+  const handleTabChange = (tabId: ExploreTabId) => {
     setActiveTab(tabId);
     if (tabId === 'for-you') {
       setCategoryFilter('all');
+      setFilterValues((prev) => ({ ...prev, vibes: [], subCategories: [], features: [], minRating: null }));
       return;
     }
-    setCategoryFilter(tabId);
-    if (tabId === 'all') {
-      setFilterValues((prev) => ({ ...prev, vibes: [], subCategories: [], features: [], minRating: null }));
-    }
+    setCategoryFilter(tabId as PoiCategory);
   };
 
   const filteredPois = useMemo(() => {
@@ -499,7 +500,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
       let matchCat = true;
       if (categoryFilter === 'di-tich') {
-        matchCat = poi.category === 'di-tich' || poi.category === 'chua';
+        matchCat = poi.category === 'di-tich';
+      } else if (categoryFilter === 'chua') {
+        matchCat = poi.category === 'chua';
       } else if (categoryFilter === 'quan-an') {
         matchCat = poi.category === 'quan-an';
       } else if (categoryFilter === 'canh-quan') {
@@ -630,23 +633,43 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       filterValues.ecoPriority !== 'all';
 
     if (activeTab === 'for-you') {
-      return [...matched].sort((a, b) => {
-        // Thuật toán gợi ý cá nhân hóa chạy ẩn:
-        // 1. Điểm xanh (ưu tiên du lịch bền vững)
-        const greenA = a.isGreen ? 35 : 0;
-        const greenB = b.isGreen ? 35 : 0;
-        // 2. Điểm đánh giá thực tế
-        const ratingA = (a.rating || 4.0) * 10;
-        const ratingB = (b.rating || 4.0) * 10;
-        // 3. Địa điểm yêu thích / đã lưu của người dùng
-        const savedA = savedIds.has(a.id) ? 20 : 0;
-        const savedB = savedIds.has(b.id) ? 20 : 0;
-        // 4. Địa điểm biểu tượng / curated highlights
-        const highlightA = isCuratedHighlight(a) ? 25 : 0;
-        const highlightB = isCuratedHighlight(b) ? 25 : 0;
+      const likedPois = allPois.filter((p) => savedIds.has(p.id));
+      const likedCats = new Set(likedPois.map((p) => p.category));
+      const likedCities = new Set(likedPois.map((p) => p.city));
+      const likedSubs = new Set(likedPois.map((p) => p.sub_category?.toLowerCase()).filter(Boolean));
 
-        const scoreA = greenA + ratingA + savedA + highlightA;
-        const scoreB = greenB + ratingB + savedB + highlightB;
+      return [...matched].sort((a, b) => {
+        let scoreA = 0;
+        let scoreB = 0;
+
+        // Phản hồi hành vi thả tim của người dùng (chạy thuật toán ngầm ở dưới):
+        if (likedPois.length > 0) {
+          if (likedCats.has(a.category)) scoreA += 30;
+          if (likedCats.has(b.category)) scoreB += 30;
+          if (a.sub_category && likedSubs.has(a.sub_category.toLowerCase())) scoreA += 25;
+          if (b.sub_category && likedSubs.has(b.sub_category.toLowerCase())) scoreB += 25;
+          if (likedCities.has(a.city)) scoreA += 15;
+          if (likedCities.has(b.city)) scoreB += 15;
+        }
+
+        // 1. Điểm xanh (ưu tiên du lịch bền vững)
+        if (a.isGreen) scoreA += 35;
+        if (b.isGreen) scoreB += 35;
+        if (a.ecoScore) scoreA += a.ecoScore / 10;
+        if (b.ecoScore) scoreB += b.ecoScore / 10;
+
+        // 2. Điểm đánh giá thực tế
+        scoreA += (a.rating || 4.0) * 10;
+        scoreB += (b.rating || 4.0) * 10;
+
+        // 3. Địa điểm yêu thích / đã lưu của người dùng
+        if (savedIds.has(a.id)) scoreA += 15;
+        if (savedIds.has(b.id)) scoreB += 15;
+
+        // 4. Địa điểm biểu tượng / Must-Try
+        if (isCuratedHighlight(a)) scoreA += 25;
+        if (isCuratedHighlight(b)) scoreB += 25;
+
         return scoreB - scoreA;
       });
     }
@@ -695,96 +718,167 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [filterValues]);
 
   // Xác định chế độ xem tuyển chọn theo từng chuyên mục (Curated Sections Overview - Chuẩn Mindtrip):
-  // Kích hoạt khi ở tab "Tất cả", không tìm kiếm từ khóa, không ở mục 'đã lưu' và không chọn bộ lọc chuyên sâu
+  // Kích hoạt khi ở tab "Dành cho bạn", không tìm kiếm từ khóa, không ở mục 'đã lưu' và không chọn bộ lọc chuyên sâu
   const isCuratedOverview = useMemo(() => {
     return (
-      categoryFilter === 'all' &&
-      activeTab === 'all' &&
+      activeTab === 'for-you' &&
       !search.trim() &&
       viewMode !== 'saved' &&
       activeFilterCount === 0
     );
-  }, [categoryFilter, activeTab, search, viewMode, activeFilterCount]);
+  }, [activeTab, search, viewMode, activeFilterCount]);
 
-  // Nhóm các danh mục tuyển chọn đặc biệt cho chế độ xem tổng quan:
+  // Nhóm các danh mục tuyển chọn Must-Try cho chế độ xem "Dành cho bạn":
   const curatedSections = useMemo(() => {
     if (!isCuratedOverview) return null;
 
-    const sortHighlights = (list: Poi[]) => {
+    const sortMustTry = (list: Poi[]) => {
       return [...list].sort((a, b) => {
         const aH = isCuratedHighlight(a) ? 1 : 0;
         const bH = isCuratedHighlight(b) ? 1 : 0;
         if (aH !== bH) return bH - aH;
+        const aG = a.isGreen ? 1 : 0;
+        const bG = b.isGreen ? 1 : 0;
+        if (aG !== bG) return bG - aG;
         return (b.rating || 4.5) - (a.rating || 4.5);
       });
     };
 
-    // 1. Di tích & Biểu tượng văn hóa (Heritage & Iconic Landmarks)
-    const allHeritage = filteredPois.filter(
-      (p) => p.category === 'di-tich' || p.category === 'chua'
-    );
-    const topHeritage = sortHighlights(allHeritage).slice(0, 6);
+    // 0. Phản hồi hành vi thả tim của người dùng (nếu đã thả tim ít nhất 1 địa điểm)
+    const likedPois = allPois.filter((p) => savedIds.has(p.id));
+    let personalizedSection: {
+      title: string;
+      subtitle: string;
+      total: number;
+      items: Poi[];
+      categoryKey: PoiCategoryFilter;
+    } | null = null;
 
-    // 2. Ẩm thực & Quán ăn trứ danh (Dining & Local Culinary)
-    const allFood = filteredPois.filter(
-      (p) =>
-        p.category === 'quan-an' &&
-        !p.name.toLowerCase().includes('cafe') &&
-        !p.name.toLowerCase().includes('cà phê') &&
-        !p.name.toLowerCase().includes('coffee') &&
-        !p.sub_category?.includes('cafe')
-    );
-    const topFood = sortHighlights(allFood).slice(0, 6);
+    if (likedPois.length > 0) {
+      const likedCats = new Set(likedPois.map((p) => p.category));
+      const likedCities = new Set(likedPois.map((p) => p.city));
+      const likedSubs = new Set(likedPois.map((p) => p.sub_category?.toLowerCase()).filter(Boolean));
 
-    // 3. Cảnh quan & Thiên nhiên xanh (Nature & Eco Escapes)
+      const candidates = filteredPois.filter((p) => !savedIds.has(p.id));
+      const scoredCandidates = [...candidates].sort((a, b) => {
+        let scoreA = 0;
+        let scoreB = 0;
+        if (likedCats.has(a.category)) scoreA += 30;
+        if (likedCats.has(b.category)) scoreB += 30;
+        if (a.sub_category && likedSubs.has(a.sub_category.toLowerCase())) scoreA += 25;
+        if (b.sub_category && likedSubs.has(b.sub_category.toLowerCase())) scoreB += 25;
+        if (likedCities.has(a.city)) scoreA += 20;
+        if (likedCities.has(b.city)) scoreB += 20;
+        if (a.isGreen) scoreA += 35;
+        if (b.isGreen) scoreB += 35;
+        if (isCuratedHighlight(a)) scoreA += 25;
+        if (isCuratedHighlight(b)) scoreB += 25;
+        scoreA += (a.rating || 4.0) * 10;
+        scoreB += (b.rating || 4.0) * 10;
+        return scoreB - scoreA;
+      });
+
+      const limitFav = expandedSectionCount['favorites'] || 6;
+      if (scoredCandidates.length > 0) {
+        personalizedSection = {
+          title: 'Gợi ý phù hợp với sở thích của bạn',
+          subtitle: 'Dựa trên những địa điểm bạn đã yêu thích và ưu tiên hành trình du lịch xanh',
+          total: scoredCandidates.length,
+          items: scoredCandidates.slice(0, limitFav),
+          categoryKey: 'quan-an' as PoiCategoryFilter,
+        };
+      }
+    }
+
+    // 1. Ẩm thực & Quán ăn trứ danh (Must-Try Dining)
+    const allFood = filteredPois.filter((p) => p.category === 'quan-an');
+    const limitFood = expandedSectionCount['food'] || 6;
+    const topFood = sortMustTry(allFood).slice(0, limitFood);
+
+    // 2. Di tích & Biểu tượng lịch sử (Must-Try Heritage)
+    const allHeritage = filteredPois.filter((p) => p.category === 'di-tich');
+    const limitHeritage = expandedSectionCount['heritage'] || 6;
+    const topHeritage = sortMustTry(allHeritage).slice(0, limitHeritage);
+
+    // 3. Cảnh quan & Thiên nhiên xanh (Must-Try Nature)
     const allNature = filteredPois.filter((p) => p.category === 'canh-quan');
-    const topNature = sortHighlights(allNature).slice(0, 6);
+    const limitNature = expandedSectionCount['nature'] || 6;
+    const topNature = sortMustTry(allNature).slice(0, limitNature);
 
-    // 4. Cà phê & Không gian Chill (Specialty Coffee & Chill Spots)
-    const allCafes = filteredPois.filter(
-      (p) =>
-        (p.category === 'quan-an' || (p as any).cat_name?.includes('cafe')) &&
-        (p.name.toLowerCase().includes('cafe') ||
-          p.name.toLowerCase().includes('cà phê') ||
-          p.name.toLowerCase().includes('coffee') ||
-          p.name.toLowerCase().includes('roastery') ||
-          p.sub_category?.includes('cafe') ||
-          p.name.toLowerCase().includes('trà'))
-    );
-    const topCafes = sortHighlights(allCafes).slice(0, 6);
+    // 4. Chùa chiền & Điểm đến tâm linh (Must-Try Temples)
+    const allTemples = filteredPois.filter((p) => p.category === 'chua');
+    const limitTemples = expandedSectionCount['temples'] || 6;
+    const topTemples = sortMustTry(allTemples).slice(0, limitTemples);
 
-    return {
-      heritage: {
-        title: 'Điểm đến biểu tượng & Di tích lịch sử',
-        subtitle: 'Khám phá những di sản, danh thắng và công trình kiến trúc vượt thời gian',
-        total: allHeritage.length,
-        items: topHeritage,
-        categoryKey: 'di-tich' as PoiCategoryFilter,
-      },
-      food: {
-        title: 'Ẩm thực & Quán ăn trứ danh',
-        subtitle: 'Hương vị bản địa xứ Quảng - Đà Thành và Cố đô Huế đạt chuẩn Michelin',
-        total: allFood.length,
-        items: topFood,
-        categoryKey: 'quan-an' as PoiCategoryFilter,
-      },
-      nature: {
-        title: 'Trải nghiệm Xanh & Cảnh quan thiên nhiên',
-        subtitle: 'Những bãi biển cát trắng, đỉnh núi mây ngàn và sinh thái nguyên sơ',
-        total: allNature.length,
-        items: topNature,
-        categoryKey: 'canh-quan' as PoiCategoryFilter,
-      },
-      cafes: {
-        title: 'Cà phê & Không gian thư giãn',
-        subtitle: 'Tận hưởng nhịp sống chậm với hương cà phê rang mộc và view tuyệt đẹp',
-        total: allCafes.length,
-        items: topCafes,
-        categoryKey: 'quan-an' as PoiCategoryFilter,
-        subCategoryKey: 'cafe',
-      },
+    const sections: Record<string, {
+      title: string;
+      subtitle: string;
+      total: number;
+      items: Poi[];
+      categoryKey: PoiCategoryFilter;
+    }> = {};
+
+    if (personalizedSection && personalizedSection.items.length > 0) {
+      sections['favorites'] = personalizedSection;
+    }
+
+    sections['food'] = {
+      title: 'Ẩm thực & Quán ăn Must-Try',
+      subtitle: 'Hương vị bản địa xứ Quảng - Đà Thành và Cố đô Huế đạt chuẩn Michelin & Xanh',
+      total: allFood.length,
+      items: topFood,
+      categoryKey: 'quan-an' as PoiCategoryFilter,
     };
-  }, [isCuratedOverview, filteredPois]);
+
+    sections['heritage'] = {
+      title: 'Di tích & Biểu tượng lịch sử Must-Try',
+      subtitle: 'Khám phá các di sản cố đô, danh thắng và công trình biểu tượng vượt thời gian',
+      total: allHeritage.length,
+      items: topHeritage,
+      categoryKey: 'di-tich' as PoiCategoryFilter,
+    };
+
+    sections['nature'] = {
+      title: 'Cảnh quan & Thiên nhiên xanh Must-Try',
+      subtitle: 'Những bãi biển cát trắng, bán đảo Sơn Trà và sinh thái nguyên sơ',
+      total: allNature.length,
+      items: topNature,
+      categoryKey: 'canh-quan' as PoiCategoryFilter,
+    };
+
+    sections['temples'] = {
+      title: 'Chùa chiền & Điểm đến tâm linh Must-Try',
+      subtitle: 'Chiêm bái các cổ tự linh thiêng và danh lam chốn tổ thanh tịnh',
+      total: allTemples.length,
+      items: topTemples,
+      categoryKey: 'chua' as PoiCategoryFilter,
+    };
+
+    return sections;
+  }, [isCuratedOverview, filteredPois, allPois, savedIds, expandedSectionCount]);
+
+  // Bộ địa điểm ghim trên bản đồ (Giới hạn thông minh chống quá tải ghim bản đồ)
+  const displayedMapPois = useMemo(() => {
+    if (isCuratedOverview && curatedSections) {
+      const map = new Map<string, Poi>();
+      Object.values(curatedSections).forEach((sec) => {
+        sec.items.forEach((p) => {
+          if (p.lat && p.lng) map.set(p.id, p);
+        });
+      });
+      // Luôn hiển thị các địa điểm người dùng đã thả tim
+      savedIds.forEach((id) => {
+        const found = allPois.find((p) => p.id === id);
+        if (found && found.lat && found.lng) {
+          if (cityFilter === 'all' || found.city === cityFilter) {
+            map.set(found.id, found);
+          }
+        }
+      });
+      return Array.from(map.values());
+    }
+    return filteredPois;
+  }, [isCuratedOverview, curatedSections, filteredPois, savedIds, allPois, cityFilter]);
 
 
   const handleSelectPoi = (id: string | null) => {
@@ -1501,14 +1595,10 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             <div className="flex items-baseline gap-2">
               <h2 className="text-[17px] font-bold text-neutral-950 tracking-tight font-heading">
                 {isCuratedOverview
-                  ? 'Khám phá nổi bật'
+                  ? 'Gợi ý dành cho bạn'
                   : search.trim()
                   ? `Kết quả tìm kiếm cho "${search.trim()}"`
-                  : activeTab === 'for-you'
-                  ? 'Gợi ý dành riêng cho bạn'
-                  : activeTab !== 'all'
-                  ? (TABS.find((t) => t.id === activeTab)?.label || 'Địa điểm')
-                  : 'Tất cả địa điểm'}
+                  : (TABS.find((t) => t.id === activeTab)?.label || 'Địa điểm')}
               </h2>
               <span className="text-[13.5px] font-semibold text-neutral-400">
                 ({filteredPois.length})
@@ -1613,7 +1703,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                   </button>
                 </span>
               )}
-              {activeTab !== 'all' && filterValues.subCategories.map((sc) => {
+              {activeTab !== 'for-you' && filterValues.subCategories.map((sc) => {
                 const facets = SPECIFIC_FACETS_BY_CATEGORY[activeTab] || [];
                 const label = facets.find((f) => f.id === sc)?.label || SUB_CATEGORY_LABELS[sc] || sc;
                 return (
@@ -1634,7 +1724,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                   </span>
                 );
               })}
-              {activeTab !== 'all' && filterValues.features && filterValues.features.map((fId) => {
+              {activeTab !== 'for-you' && filterValues.features && filterValues.features.map((fId) => {
                 const feats = FEATURES_BY_CATEGORY[activeTab] || [];
                 const label = feats.find((f) => f.id === fId)?.label || fId;
                 return (
@@ -1701,20 +1791,38 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                       ))}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const targetTab = sec.categoryKey === 'chua' ? 'di-tich' : (sec.categoryKey as 'quan-an' | 'di-tich' | 'canh-quan');
-                        handleTabChange(targetTab);
-                        if ('subCategoryKey' in sec && sec.subCategoryKey) {
-                          setFilterValues((prev) => ({ ...prev, subCategories: [sec.subCategoryKey!] }));
-                        }
-                      }}
-                      className="w-full py-2.5 px-4 rounded-xl border border-zinc-200/90 hover:border-zinc-400 bg-white hover:bg-zinc-50 text-zinc-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer group active:scale-[0.99]"
-                    >
-                      <span>Xem thêm {sec.title.split('&')[0].trim()} ({sec.total})</span>
-                      <i className="ph-bold ph-arrow-right text-[13px] group-hover:translate-x-0.5 transition-transform"></i>
-                    </button>
+                    <div className="flex items-center gap-2 pt-1">
+                      {sec.total > sec.items.length && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpandedSectionCount((prev) => ({
+                              ...prev,
+                              [secKey]: (prev[secKey] || 6) + 4,
+                            }));
+                          }}
+                          className="flex-1 py-2.5 px-3 rounded-xl border border-zinc-200/90 hover:border-black bg-white hover:bg-zinc-50 text-zinc-900 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.99]"
+                        >
+                          <i className="ph ph-plus text-xs"></i>
+                          <span>Xem thêm 4 địa điểm</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleTabChange(sec.categoryKey as any);
+                          if ('subCategoryKey' in sec && (sec as any).subCategoryKey) {
+                            setFilterValues((prev) => ({ ...prev, subCategories: [(sec as any).subCategoryKey] }));
+                          }
+                        }}
+                        className={`py-2.5 px-4 rounded-xl border border-zinc-200/90 hover:border-zinc-400 bg-white hover:bg-zinc-50 text-zinc-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer group active:scale-[0.99] ${
+                          sec.total > sec.items.length ? 'flex-1' : 'w-full'
+                        }`}
+                      >
+                        <span>Xem toàn bộ ({sec.total})</span>
+                        <i className="ph-bold ph-arrow-right text-[13px] group-hover:translate-x-0.5 transition-transform"></i>
+                      </button>
+                    </div>
                   </section>
                 );
               })}
@@ -1810,7 +1918,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         <div className={`w-full h-full p-6 ${fullDetailPoi ? "invisible pointer-events-none" : "visible"}`}>
           <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
             <PoiMap
-              pois={filteredPois}
+              pois={displayedMapPois}
               selectedPoiId={selectedMapPoiId}
               hoveredPoiId={hoveredPoiId}
               onSelectPoi={handleSelectPoi}

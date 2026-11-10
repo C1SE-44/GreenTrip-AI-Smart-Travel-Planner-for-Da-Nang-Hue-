@@ -7,21 +7,27 @@ const explorePagePath = path.resolve('src/pages/ExplorePage.tsx');
 const plannerViewPath = path.resolve('src/components/planner/TripOverviewView.tsx');
 const poiCardPath = path.resolve('src/components/poi/PoiCard.tsx');
 
-test('Explore Page: TABS includes "Dành cho bạn" right next to "Tất cả"', () => {
+test('Explore Page: TABS replaces "Tất cả" with "Dành cho bạn" and 4 categories', () => {
   const content = fs.readFileSync(explorePagePath, 'utf8');
-  assert.ok(content.includes("{ id: 'all', label: 'Tất cả' }"), 'Must have Tất cả tab');
-  assert.ok(content.includes("{ id: 'for-you', label: 'Dành cho bạn' }"), 'Must have Dành cho bạn tab');
-  
-  // Verify order: for-you right next to all
-  const idxAll = content.indexOf("{ id: 'all', label: 'Tất cả' }");
-  const idxForYou = content.indexOf("{ id: 'for-you', label: 'Dành cho bạn' }");
-  assert.ok(idxForYou > idxAll, 'Dành cho bạn must follow Tất cả');
-  assert.ok(idxForYou - idxAll < 100, 'Dành cho bạn must be right next to Tất cả');
+  assert.ok(!content.includes("{ id: 'all', label: 'Tất cả' }"), 'Must NOT have "Tất cả" tab');
+  assert.ok(content.includes("{ id: 'for-you', label: 'Dành cho bạn' }"), 'Must have "Dành cho bạn" as initial tab');
+  assert.ok(content.includes("{ id: 'quan-an', label: 'Ẩm thực & Cafe' }"), 'Must have Ẩm thực category');
+  assert.ok(content.includes("{ id: 'di-tich', label: 'Di tích & Lịch sử' }"), 'Must have Di tích category');
+  assert.ok(content.includes("{ id: 'canh-quan', label: 'Cảnh quan & Thiên nhiên' }"), 'Must have Cảnh quan category');
+  assert.ok(content.includes("{ id: 'chua', label: 'Chùa & Tâm linh' }"), 'Must have Chùa category');
 });
 
-test('Explore Page: filteredPois applies hidden recommendation ranking for "for-you"', () => {
+test('Explore Page: filteredPois applies hidden recommendation ranking factoring in user favorites', () => {
   const content = fs.readFileSync(explorePagePath, 'utf8');
   assert.ok(content.includes("activeTab === 'for-you'"), 'Must handle for-you in filteredPois');
+  assert.ok(content.includes("likedPois"), 'Must factor in user liked/hearted places');
+});
+
+test('Explore Page: Curated sections render Must-Try for each category and limit map pins', () => {
+  const content = fs.readFileSync(explorePagePath, 'utf8');
+  assert.ok(content.includes('displayedMapPois'), 'Must define displayedMapPois to prevent map overcrowding');
+  assert.ok(content.includes('pois={displayedMapPois}'), 'PoiMap must receive displayedMapPois');
+  assert.ok(content.includes('sortMustTry'), 'Must prioritize must-try places');
 });
 
 test('PoiCard: Hides match percentage and explanation button by default', () => {

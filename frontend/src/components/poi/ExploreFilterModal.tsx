@@ -178,8 +178,9 @@ export interface SpecificFacet {
 
 export const CATEGORY_FACET_TITLES: Record<string, string> = {
   'quan-an': 'Ẩm thực',
-  'di-tich': 'Di sản & Văn hóa',
+  'di-tich': 'Di sản & Lịch sử',
   'canh-quan': 'Trải nghiệm thiên nhiên',
+  'chua': 'Chùa chiền & Tâm linh',
 };
 
 export const SPECIFIC_FACETS_BY_CATEGORY: Record<string, SpecificFacet[]> = {
@@ -337,6 +338,23 @@ export const SPECIFIC_FACETS_BY_CATEGORY: Record<string, SpecificFacet[]> = {
       id: 'ecotourism_camping',
       label: 'Sinh thái cộng đồng & Cắm trại',
       subKeys: ['agritourism', 'camping', 'eco_resort', 'community_based', 'adventure', 'snorkeling'],
+    },
+  ],
+  'chua': [
+    {
+      id: 'historic_zen_temples',
+      label: 'Cổ tự & Chốn tổ thiền môn',
+      subKeys: ['historic_zen_temples', 'pagoda', 'monastery'],
+    },
+    {
+      id: 'grand_mountain_ocean_temples',
+      label: 'Chùa tựa núi hướng biển',
+      subKeys: ['grand_mountain_ocean_temples', 'mountain_temple'],
+    },
+    {
+      id: 'heritage_shrines',
+      label: 'Đền đài & Miếu cổ linh thiêng',
+      subKeys: ['shrine', 'heritage'],
     },
   ],
 };
@@ -647,7 +665,7 @@ export function matchesPoiFeature(poi: Poi, featureId: string, category: string)
 export interface ExploreFilterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  activeTab: 'all' | 'quan-an' | 'di-tich' | 'canh-quan';
+  activeTab: 'all' | 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua' | string;
   values: ExploreFilterValues;
   onApply: (newValues: ExploreFilterValues) => void;
   onClearAll: () => void;

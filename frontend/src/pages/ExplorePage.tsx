@@ -64,6 +64,7 @@ export interface UserTrip {
   pacingLabel?: string;
   pacingLevel?: string;
   ideas?: string[];
+  copilotChatHistory?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 

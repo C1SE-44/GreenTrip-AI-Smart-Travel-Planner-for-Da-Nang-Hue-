@@ -63,3 +63,29 @@ test('Planner Itinerary Drawer: "Xem lịch theo ngày" opens TripItineraryView 
   assert.ok(itineraryContent.includes('animate-slideInRight'), 'Drawer must slide in from right');
   assert.ok(itineraryContent.includes('!isDrawerMode &&'), 'Map column must only render when NOT in drawer mode');
 });
+
+test('PB14 Copilot: Integrated seamlessly into Left-Column Chat of TripOverviewView without altering external layout', () => {
+  const content = fs.readFileSync(plannerViewPath, 'utf8');
+
+  // 1. Integration with copilotService
+  assert.ok(content.includes('sendCopilotChat'), 'Must import and use sendCopilotChat');
+  assert.ok(content.includes('CopilotSuggestedPoi'), 'Must handle CopilotSuggestedPoi type');
+
+  // 2. State & handling
+  assert.ok(content.includes('isAiThinking'), 'Must track AI thinking/loading state');
+  assert.ok(content.includes('quickPrompts'), 'Must support dynamic quick prompt chips');
+  assert.ok(content.includes('handleSaveCopilotPoiToIdeas'), 'Must support saving suggested POIs to ideas');
+
+  // 3. UI rendering in chat stream
+  assert.ok(content.includes('avoidNotice'), 'Must render weather/safety avoid notices');
+  assert.ok(content.includes('greenImpact'), 'Must render green CO2 reduction impact');
+  assert.ok(content.includes('budgetImpact'), 'Must render budget savings impact');
+  assert.ok(content.includes('suggestedPois'), 'Must render suggested POI recommendation cards');
+
+  // 4. Strict layout invariance: Right column & drawers preserved
+  assert.ok(content.includes('showIdeasView'), 'Ideas drawer preserved');
+  assert.ok(content.includes('showItineraryDrawer'), 'Itinerary drawer preserved');
+  assert.ok(content.includes('<PoiMap'), 'Right column map component preserved');
+  assert.ok(content.includes('Xem lịch theo ngày'), 'Itinerary button preserved');
+  assert.ok(content.includes('Ý tưởng'), 'Ideas button preserved');
+});

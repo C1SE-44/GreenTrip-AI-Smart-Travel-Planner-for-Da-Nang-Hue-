@@ -34,6 +34,25 @@ interface MarkerOffset {
 
 // 3. Tạo icon DivIcon cho Marker
 // Ghim đang chọn: Nền đen dạng viên thuốc, icon trắng + ảnh tròn thu nhỏ
+
+function getMapPoiPriceTier(poi: Poi): string {
+  const display = poi.ai_metadata?.price_range_display?.toLowerCase() || '';
+  if (display.includes('miễn phí') || poi.estimatedCost === 0) {
+    return '$';
+  }
+  const cost = poi.estimatedCost ?? 0;
+  if (cost > 0) {
+    if (cost < 50000) return '$';
+    if (cost <= 150000) return '$$';
+    if (cost <= 400000) return '$$$';
+    return '$$$$';
+  }
+  if (display.includes('$$$$')) return '$$$$';
+  if (display.includes('$$$')) return '$$$';
+  if (display.includes('$$')) return '$$';
+  return '$$';
+}
+
 function createMindtripMarkerIcon(
   isSelected: boolean,
   isHovered: boolean,
@@ -75,44 +94,41 @@ function createMindtripMarkerIcon(
     //   + Địa điểm xanh (isGreen) -> Chuyển từ TRẮNG SANG XANH LỤC (Emerald) nổi bật, tươi mát, khác biệt
     //   + Địa điểm tiêu chuẩn -> Chuyển sang NỀN ĐEN icon trắng nổi bật
     const isEcoHigh = Boolean(poi.isGreen);
+    const priceTier = getMapPoiPriceTier(poi);
+    // Marker dạng pill gồm icon và mức giá ($$) chuẩn Mindtrip
     pinHtml = `
-      <div class="map-marker-pin absolute -left-[15px] -top-[15px] w-[30px] h-[30px] rounded-full ${
+      <div class="map-marker-pin absolute -left-[24px] -top-[14px] h-[28px] px-2 rounded-full ${
         isHovered
           ? isEcoHigh
-            ? 'bg-emerald-600 text-white shadow-[0_6px_20px_rgba(5,150,105,0.45)] scale-115 ring-2 ring-emerald-400/60'
-            : 'bg-black text-white shadow-xl scale-115 ring-2 ring-black/25'
+            ? 'bg-emerald-600 text-white shadow-[0_6px_20px_rgba(5,150,105,0.45)] scale-110 ring-2 ring-emerald-400/60'
+            : 'bg-black text-white shadow-xl scale-110 ring-2 ring-black/25'
           : isEcoHigh
             ? 'bg-white text-zinc-950 shadow-[0_2px_8px_rgba(0,0,0,0.14)] border border-zinc-200/90 ring-1 ring-emerald-500/30'
             : 'bg-white text-zinc-950 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-200/90'
-      } flex items-center justify-center shrink-0 transition-all duration-150 pointer-events-auto">
-        <i class="${iconClass} text-[16px] ${isHovered ? 'text-white' : 'text-zinc-950'}"></i>
+      } flex items-center gap-1.5 shrink-0 transition-all duration-150 pointer-events-auto">
+        <i class="${iconClass} text-[14px] ${isHovered ? 'text-white' : isEcoHigh ? 'text-emerald-700' : 'text-zinc-950'}"></i>
+        <span class="text-[11px] font-bold leading-none ${isHovered ? 'text-white' : 'text-zinc-800'}">${priceTier}</span>
       </div>
     `;
 
-    // Chỉ hiển thị nhãn chữ khi showLabel=true hoặc khi đang được trỏ/hover chuột
-    if (showLabel || isHovered) {
-      // Vị trí nhãn chữ: 'top' (trên ghim), 'left' (bên trái), 'right' (bên phải)
+    // Tên chỉ hiện khi chọn hoặc hover để bản đồ không bị đè nhãn
+    if (isHovered) {
       let labelClass = 'map-marker-label absolute pointer-events-auto max-w-[170px] ';
       if (offset.position === 'top') {
-        labelClass += 'bottom-[18px] left-1/2 -translate-x-1/2 text-center';
+        labelClass += 'bottom-[20px] left-1/2 -translate-x-1/2 text-center';
       } else if (offset.position === 'left') {
-        labelClass += 'right-[18px] top-1/2 -translate-y-1/2 text-right';
+        labelClass += 'right-[28px] top-1/2 -translate-y-1/2 text-right';
       } else {
-        labelClass += 'left-[18px] top-1/2 -translate-y-1/2 text-left';
+        labelClass += 'left-[28px] top-1/2 -translate-y-1/2 text-left';
       }
 
-      // Nhãn chữ: Khi hover địa điểm xanh -> Chuyển sang nền xanh lục (Emerald); điểm thường -> Nền đen
       labelHtml = `
         <div class="${labelClass} ${
-          isHovered
-            ? isEcoHigh
-              ? 'bg-emerald-600 text-white border-emerald-500 shadow-[0_4px_16px_rgba(5,150,105,0.35)] font-medium z-50'
-              : 'bg-black text-white border-black shadow-lg font-medium z-50'
-            : 'bg-white/95 text-zinc-800 border-zinc-200/90 font-medium'
-        } backdrop-blur-[2px] px-2 py-0.5 rounded-[5px] shadow-[0_1px_4px_rgba(0,0,0,0.12)] border transition-all duration-150">
-          <span class="text-[11.5px] leading-tight whitespace-nowrap truncate inline-flex items-center ${
-            isHovered ? 'text-white' : 'text-zinc-800'
-          }">
+          isEcoHigh
+            ? 'bg-emerald-600 text-white border-emerald-500 shadow-[0_4px_16px_rgba(5,150,105,0.35)] font-medium z-50'
+            : 'bg-black text-white border-black shadow-lg font-medium z-50'
+        } backdrop-blur-[2px] px-2.5 py-1 rounded-full shadow-lg border transition-all duration-150">
+          <span class="text-[11.5px] leading-tight whitespace-nowrap truncate inline-flex items-center text-white font-medium">
             <span>${displayName}</span>
           </span>
         </div>
@@ -564,28 +580,25 @@ function MapControlsLayer({
     <>
       {!hideTopControls && (
         <>
-          {/* 0. Nút Thu gọn / Mở rộng toàn màn hình bản đồ */}
+          {/* 0. Nút Thu gọn bản đồ (⇤) */}
           <div className="absolute top-3.5 left-4 z-[1000] group">
             <button 
-              aria-label={isExpanded ? 'Thu nhỏ bản đồ' : 'Mở rộng bản đồ'}
+              aria-label={isExpanded ? 'Mở lại danh sách' : 'Thu gọn bản đồ'}
               onClick={() => {
                 onToggleExpand?.();
                 setTimeout(() => map.invalidateSize(), 150);
               }}
               className="map-floating-btn w-10 h-10 bg-white rounded-full flex items-center justify-center text-zinc-700 hover:text-black transition cursor-pointer shadow-md active:scale-95"
+              title={isExpanded ? 'Mở lại danh sách' : 'Thu gọn bản đồ'}
             >
               {isExpanded ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-                </svg>
+                <i className="ph ph-arrow-line-right text-lg text-zinc-800" aria-hidden="true"></i>
               ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-                </svg>
+                <i className="ph ph-arrow-line-left text-lg text-zinc-800" aria-hidden="true"></i>
               )}
             </button>
             <div className="absolute top-12 left-0 hidden group-hover:block bg-black text-white text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-md whitespace-nowrap pointer-events-none animate-fadeIn">
-              {isExpanded ? 'Thu nhỏ' : 'Mở rộng'}
+              {isExpanded ? 'Mở lại danh sách' : 'Thu gọn bản đồ'}
             </div>
           </div>
 

@@ -44,43 +44,51 @@ class SQLiteCursorWrapper:
         clean_query = re.sub(r"::\w+", "", clean_query)
         # 1c. Chuyển đổi ILIKE của PostgreSQL sang LIKE của SQLite
         clean_query = re.sub(r"\bILIKE\b", "LIKE", clean_query, flags=re.IGNORECASE)
-        # 1d. Chuyển đổi %% của psycopg sang % cho sqlite
-        clean_query = clean_query.replace("%%", "%")
-        # 1e. Chuyển đổi (SELECT ... LIMIT N) UNION ALL sang SELECT * FROM (SELECT ... LIMIT N) cho SQLite
+        # 1d. Chuyển đổi (SELECT ... LIMIT N) UNION ALL sang SELECT * FROM (SELECT ... LIMIT N) cho SQLite
         clean_query = re.sub(r"\(\s*(SELECT[\s\S]*?LIMIT\s+\d+)\s*\)", r"SELECT * FROM (\1)", clean_query, flags=re.IGNORECASE)
-        # 1f. Chuyển đổi jsonb extraction ->> sang json_extract cho SQLite
+        # 1e. Chuyển đổi jsonb extraction ->> sang json_extract cho SQLite
         clean_query = re.sub(r"(\w+)\.ai_metadata->>'(\w+)'", r"json_extract(\1.ai_metadata, '$.\2')", clean_query)
-        # 1g. Chuẩn hóa giá trị boolean nếu có
+        # 1f. Chuẩn hóa giá trị boolean nếu có
         clean_query = clean_query.replace("TRUE", "1").replace("FALSE", "0")
+        # 1g. SQLite không hỗ trợ IF NOT EXISTS trong ALTER TABLE ADD COLUMN
+        clean_query = re.sub(r"\bADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\b", "ADD COLUMN", clean_query, flags=re.IGNORECASE)
 
         # 2. Xử lý tham số %s và = ANY(%s)
-        new_params = []
         if params is not None:
             param_list = list(params) if isinstance(params, (list, tuple)) else [params]
-            param_idx = 0
-            pattern = re.compile(r"(\=\s*ANY\s*\(\s*%s\s*\)|%s)", re.IGNORECASE)
+            if "%s" in clean_query or "= ANY(" in clean_query or "= any(" in clean_query:
+                new_params = []
+                param_idx = 0
+                # Lưu ý: Không dùng re.IGNORECASE cho placeholder %s để tránh match nhầm %S (ví dụ trong %%Sông Hàn%%)
+                pattern = re.compile(r"(\=\s*ANY\s*\(\s*%s\s*\)|\=\s*any\s*\(\s*%s\s*\)|(?<!%)%s(?![a-zA-Z0-9_]))")
 
-            def replacer(match: re.Match) -> str:
-                nonlocal param_idx
-                token = match.group(0)
-                val = param_list[param_idx] if param_idx < len(param_list) else None
-                param_idx += 1
-                if "ANY" in token.upper():
-                    if isinstance(val, (list, tuple)) and len(val) > 0:
-                        placeholders = ", ".join(["?"] * len(val))
-                        new_params.extend(val)
-                        return f"IN ({placeholders})"
+                def replacer(match: re.Match) -> str:
+                    nonlocal param_idx
+                    token = match.group(0)
+                    val = param_list[param_idx] if param_idx < len(param_list) else None
+                    param_idx += 1
+                    if "ANY" in token.upper():
+                        if isinstance(val, (list, tuple)) and len(val) > 0:
+                            placeholders = ", ".join(["?"] * len(val))
+                            new_params.extend(val)
+                            return f"IN ({placeholders})"
+                        else:
+                            return "IN (NULL)"
                     else:
-                        return "IN (NULL)"
-                else:
-                    new_params.append(val)
-                    return "?"
+                        new_params.append(val)
+                        return "?"
 
-            clean_query = pattern.sub(replacer, clean_query)
-            params_to_pass = tuple(new_params)
+                clean_query = pattern.sub(replacer, clean_query)
+                params_to_pass = tuple(new_params)
+            else:
+                # Nếu query đã dùng sẵn cú pháp ? của sqlite hoặc không chứa %s
+                params_to_pass = tuple(param_list)
         else:
             clean_query = clean_query.replace("%s", "?")
             params_to_pass = None
+
+        # 3. Chuyển đổi %% của psycopg sang % cho sqlite (thực hiện sau khi đã bind placeholder %s)
+        clean_query = clean_query.replace("%%", "%")
 
         try:
             if params_to_pass is not None:
@@ -91,6 +99,11 @@ class SQLiteCursorWrapper:
             err_str = str(err).upper()
             if "UNIQUE" in err_str:
                 raise UniqueViolation(str(err)) from err
+            raise
+        except sqlite3.OperationalError as err:
+            err_str = str(err).lower()
+            if "duplicate column name" in err_str:
+                return self
             raise
         except Exception:
             raise

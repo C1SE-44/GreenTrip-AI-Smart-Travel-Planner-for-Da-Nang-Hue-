@@ -1256,14 +1256,23 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             <Plus size={16} />
           </button>
 
-          {/* Hidden toggle for test compatibility (kế hoạch cụ thể để sau) */}
+          {/* Nút CTA chuyển bước sang Kế hoạch chi tiết */}
           <button
             type="button"
-            onClick={() => setShowItineraryDrawer(true)}
-            className="hidden"
-            aria-hidden="true"
+            onClick={() => {
+              if (onOpenItineraryDetails) {
+                onOpenItineraryDetails();
+              } else {
+                setShowItineraryDrawer(true);
+              }
+            }}
+            className="h-8 px-3.5 rounded-full bg-black hover:bg-neutral-800 text-white font-bold text-[12px] transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 group ml-0.5"
+            title="Chuyển sang bước lên kế hoạch chi tiết theo ngày"
           >
-            Xem lịch theo ngày
+            <Compass size={14} className="text-emerald-400 shrink-0" />
+            <span className="whitespace-nowrap">Kế hoạch chi tiết</span>
+            <ChevronRight size={12} className="text-gray-400 group-hover:translate-x-0.5 group-hover:text-white transition-transform shrink-0" />
+            <span className="sr-only">Xem lịch theo ngày</span>
           </button>
         </div>
       </div>

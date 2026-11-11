@@ -1061,13 +1061,60 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               );
 
               return (
-                <button
-                  key={item.label}
-                  onClick={item.onClick}
-                  className="w-full text-left bg-transparent border-0 cursor-pointer p-0 select-none"
-                >
-                  {itemContent}
-                </button>
+                <div key={item.label} className="w-full">
+                  <button
+                    onClick={item.onClick}
+                    className="w-full text-left bg-transparent border-0 cursor-pointer p-0 select-none"
+                  >
+                    {itemContent}
+                  </button>
+
+                  {/* Cây nhánh con (Tree branch) khi đang mở một chuyến đi cụ thể */}
+                  {item.key === 'trips' && viewMode === 'trips' && (activeOverviewTrip || selectedTripForDetails) && !isSidebarCollapsed && (
+                    <div className="pl-4 pt-1.5 pb-1 space-y-1 relative ml-5 border-l-2 border-gray-200 mt-1">
+                      {/* Nhánh 1: Ý tưởng */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const targetTrip = selectedTripForDetails || activeOverviewTrip;
+                          setSelectedTripForDetails(null);
+                          setActiveOverviewTrip(targetTrip);
+                          setViewMode('trips');
+                        }}
+                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] transition cursor-pointer select-none ${
+                          !selectedTripForDetails
+                            ? 'bg-neutral-900 text-white font-bold shadow-2xs'
+                            : 'text-gray-600 hover:text-black hover:bg-gray-100 font-medium'
+                        }`}
+                      >
+                        <span className="text-amber-400 text-xs">💡</span>
+                        <span className="truncate">Ý tưởng</span>
+                      </button>
+
+                      {/* Nhánh 2: Kế hoạch chi tiết */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const targetTrip = activeOverviewTrip || selectedTripForDetails;
+                          if (targetTrip) {
+                            setSelectedTripForDetails(targetTrip);
+                            setViewMode('trips');
+                          }
+                        }}
+                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] transition cursor-pointer select-none ${
+                          selectedTripForDetails
+                            ? 'bg-neutral-900 text-white font-bold shadow-2xs'
+                            : 'text-gray-600 hover:text-black hover:bg-gray-100 font-medium'
+                        }`}
+                      >
+                        <span className="text-emerald-400 text-xs">🧭</span>
+                        <span className="truncate">Kế hoạch chi tiết</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>

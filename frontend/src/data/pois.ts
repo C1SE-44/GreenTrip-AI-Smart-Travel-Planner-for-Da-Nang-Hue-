@@ -484,7 +484,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoord
   const statusOpenHours = typeof item.opening_hours?.status_text === 'string' ? item.opening_hours.status_text.trim() : '';
 
   return {
-    id: String(item.id ?? (item as any).poi_id ?? ''),
+    id: String(item.id ?? (item as unknown as { poi_id?: string | number }).poi_id ?? ''),
     name: rawName,
     cleanName,
     cleanTitle,

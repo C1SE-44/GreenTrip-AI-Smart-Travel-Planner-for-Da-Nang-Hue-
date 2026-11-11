@@ -1,4 +1,4 @@
-import { Leaf, Compass } from 'lucide-react';
+import { Leaf, Compass, Utensils, Landmark, Church, Mountain, CalendarPlus, PlusSquare } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
@@ -25,7 +25,7 @@ import ExploreFilterModal, {
 } from '@/components/poi/ExploreFilterModal';
 import QuickFilterBar from '@/components/poi/QuickFilterBar';
 import type { DailyItineraryOutline, MatchedPOI, CostBreakdown } from '@/services/tripService';
-import { useSavedPlaces } from '@/context/SavedPlacesContext';
+import type { CopilotDayOutline } from '@/components/planner/copilotTripData';
 import {
   computePoiWeightedScore,
   ECO_PRIORITY_WEIGHT_MAP,
@@ -56,7 +56,7 @@ export interface UserTrip {
   status?: string;
   prompt?: string;
   totalBudget?: number;
-  itineraryOutline?: DailyItineraryOutline[];
+  itineraryOutline?: CopilotDayOutline[];
   matchedPois?: MatchedPOI[];
   costBreakdown?: CostBreakdown;
   pacingLevel?: 'Relaxed' | 'Balanced' | 'Fast';
@@ -273,6 +273,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const favorites = savedIds;
   const [viewMode, setViewMode] = useState<'explore' | 'trips' | 'saved'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
+  const [selectedTripForDetails, setSelectedTripForDetails] = useState<UserTrip | null>(null);
   const [pendingTripPoiIds, setPendingTripPoiIds] = useState<string[] | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
   const [addToTripSelection, setAddToTripSelection] = useState<AddToTripSelection | null>(null);
@@ -1037,13 +1038,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         </div>
       </aside>
 
-      {viewMode === 'saved' ? (
-        <SavedPlacesView
-          addedTrips={new Set(userTrips.flatMap((trip) => trip.ideas || []))}
-          onToggleAddTrip={(poiId) => setPendingTripPoiIds([poiId])}
-          onAddAllToTrip={(poiIds) => setPendingTripPoiIds(poiIds)}
-        />
-      ) : viewMode === 'trips' ? (
+      {viewMode === 'trips' ? (
         activeOverviewTrip ? (
           <TripOverviewView
             trip={activeOverviewTrip}

@@ -37,10 +37,33 @@ CREATE TABLE IF NOT EXISTS public.itinerary_stops (
 );
 
 -- Upgrade tables created by an earlier API bootstrap without replacing existing rows.
+ALTER TABLE public.itineraries ADD COLUMN IF NOT EXISTS trip_id TEXT;
+ALTER TABLE public.itineraries ADD COLUMN IF NOT EXISTS start_date DATE;
+ALTER TABLE public.itineraries ADD COLUMN IF NOT EXISTS days_count INTEGER;
 ALTER TABLE public.itineraries
     ALTER COLUMN start_date TYPE DATE USING NULLIF(start_date::text, '')::date;
+
+ALTER TABLE public.itinerary_days ADD COLUMN IF NOT EXISTS day_id TEXT;
+ALTER TABLE public.itinerary_days ADD COLUMN IF NOT EXISTS trip_id TEXT;
+ALTER TABLE public.itinerary_days ADD COLUMN IF NOT EXISTS date DATE;
+ALTER TABLE public.itinerary_days ADD COLUMN IF NOT EXISTS title TEXT DEFAULT '';
 ALTER TABLE public.itinerary_days
     ALTER COLUMN date TYPE DATE USING NULLIF(date::text, '')::date;
+
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS stop_id TEXT;
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS day_id TEXT;
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS title TEXT DEFAULT '';
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS category TEXT;
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS stop_type TEXT DEFAULT 'poi';
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'idea';
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS sequence INTEGER DEFAULT 0;
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS duration_minutes INTEGER;
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS start_time TEXT;
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS end_time TEXT;
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS comment TEXT;
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
 
 DO $$
 BEGIN

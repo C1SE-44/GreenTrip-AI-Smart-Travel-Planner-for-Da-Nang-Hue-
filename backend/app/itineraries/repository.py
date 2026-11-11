@@ -81,7 +81,7 @@ def ensure_itinerary_tables():
 
     CREATE TABLE IF NOT EXISTS itinerary_days (
         itinerary_day_id TEXT PRIMARY KEY,
-        itinerary_id TEXT NOT NULL,
+        itinerary_id TEXT DEFAULT '',
         day_number INTEGER NOT NULL,
         theme TEXT,
         focus_city TEXT,
@@ -91,9 +91,9 @@ def ensure_itinerary_tables():
 
     CREATE TABLE IF NOT EXISTS itinerary_stops (
         itinerary_stop_id TEXT PRIMARY KEY,
-        itinerary_day_id TEXT NOT NULL,
-        poi_id TEXT NOT NULL,
-        sequence_no INTEGER NOT NULL,
+        itinerary_day_id TEXT DEFAULT '',
+        poi_id TEXT,
+        sequence_no INTEGER NOT NULL DEFAULT 0,
         time_slot TEXT,
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

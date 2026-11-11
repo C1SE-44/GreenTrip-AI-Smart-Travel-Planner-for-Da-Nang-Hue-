@@ -129,8 +129,6 @@ export interface CategoryBudgets {
   activities: string;
 }
 
-type RecommendedPoi = Poi & { matchScore?: number };
-
 export function parseCategoryBudgets(raw?: string): CategoryBudgets {
   const def: CategoryBudgets = { dining: 'any', lodging: 'any', activities: 'any' };
   if (!raw) return def;
@@ -2595,7 +2593,6 @@ export default function TripOverviewView({
                       </div>
                     ) : modalFilteredPois.length === 0 ? (
                       <div className="col-span-full py-16 text-center text-gray-500 text-sm">
-                        {modalTab === 'saved'
                         {modalTab === 'saved'
                           ? savedPlaces.length
                             ? 'Không tìm thấy địa điểm đã lưu theo bộ lọc này.'

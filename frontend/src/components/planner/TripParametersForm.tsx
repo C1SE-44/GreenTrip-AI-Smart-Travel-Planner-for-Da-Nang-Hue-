@@ -1158,7 +1158,7 @@ export default function TripParametersForm() {
                     </div>
 
                     <ul className="space-y-1 pl-4 text-xs text-stone-600">
-                      {item.suggested_activities.map((act, actIdx) => (
+                      {(item.suggested_activities || []).map((act, actIdx) => (
                         <li key={actIdx} className="list-disc leading-relaxed">
                           {act}
                         </li>

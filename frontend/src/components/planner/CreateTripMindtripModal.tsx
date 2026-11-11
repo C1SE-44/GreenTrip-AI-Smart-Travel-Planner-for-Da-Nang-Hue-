@@ -203,9 +203,9 @@ export default function CreateTripMindtripModal({
 
       const validatedData = backendResponse.data;
 
-      const title = tripPrompt.trim()
-        ? (tripPrompt.trim().length > 50 ? tripPrompt.trim().slice(0, 50) + '...' : tripPrompt.trim())
-        : `Hành trình ${normDest} ${validDays} ngày`;
+      const cleanPrompt = tripPrompt.trim();
+      const isUsableTitle = cleanPrompt.length > 5 && cleanPrompt.length <= 40 && !cleanPrompt.toLowerCase().startsWith('bắt đầu') && !cleanPrompt.includes('?') && !['ư', 'a', 'ơi', 'alo'].includes(cleanPrompt.toLowerCase());
+      const title = isUsableTitle ? cleanPrompt : `Chuyến đi ${normDest}`;
 
       const coverImage = normDest === 'Huế'
         ? 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=800&q=80'
@@ -240,9 +240,9 @@ export default function CreateTripMindtripModal({
     } catch (err: unknown) {
       console.warn('Backend API notification, falling back smoothly:', err);
 
-      const title = tripPrompt.trim()
-        ? (tripPrompt.trim().length > 50 ? tripPrompt.trim().slice(0, 50) + '...' : tripPrompt.trim())
-        : `Hành trình ${normDest} ${validDays} ngày`;
+      const cleanPrompt = tripPrompt.trim();
+      const isUsableTitle = cleanPrompt.length > 5 && cleanPrompt.length <= 40 && !cleanPrompt.toLowerCase().startsWith('bắt đầu') && !cleanPrompt.includes('?') && !['ư', 'a', 'ơi', 'alo'].includes(cleanPrompt.toLowerCase());
+      const title = isUsableTitle ? cleanPrompt : `Chuyến đi ${normDest}`;
 
       const coverImage = normDest === 'Huế'
         ? 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=800&q=80'

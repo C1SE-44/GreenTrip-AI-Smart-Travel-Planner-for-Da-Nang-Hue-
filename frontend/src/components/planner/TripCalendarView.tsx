@@ -209,6 +209,11 @@ export default function TripCalendarView({
 
   const mapPois = currentDayStops.length > 0 ? currentDayStops : ideaPois.slice(0, 10);
 
+  // Chuẩn hóa tên chuyến đi (loại bỏ 'ư', 'a', text chat)
+  const cleanTitle = trip.title?.trim();
+  const isGibberish = !cleanTitle || cleanTitle.length <= 2 || cleanTitle.toLowerCase() === 'ư' || cleanTitle.toLowerCase() === 'a' || cleanTitle.toLowerCase().startsWith('bắt đầu');
+  const displayTitle = isGibberish ? `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}` : cleanTitle;
+
   return (
     <div className="flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn">
       {/* ─── HEADER: TIÊU ĐỀ CHUYẾN ĐI & NÚT QUAY LẠI ─── */}
@@ -222,9 +227,17 @@ export default function TripCalendarView({
           >
             <ChevronLeft size={18} />
           </button>
+          <img
+            src={trip.image || (trip.destination === 'Huế' 
+              ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=200&auto=format&fit=crop&q=80'
+              : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80'
+            )}
+            alt={trip.destination}
+            className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
+          />
           <div className="min-w-0">
-            <h1 className="font-extrabold text-[17px] sm:text-[19px] text-gray-950 truncate leading-snug">
-              {trip.title || `Chuyến đi ${trip.destination}`}
+            <h1 className="font-extrabold text-[16px] sm:text-[18px] text-gray-950 truncate leading-snug">
+              {displayTitle}
             </h1>
             <p className="text-xs text-gray-500 mt-0.5 font-medium truncate">
               {trip.destination} • {calendarRangeText} ({plan.days.length} ngày)
@@ -238,10 +251,12 @@ export default function TripCalendarView({
             <button
               type="button"
               onClick={onNavigateToItinerary}
-              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-gray-200 hover:border-black text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 hover:border-black text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer shadow-2xs group"
+              title="Xem danh sách chi tiết các ngày"
             >
               <Compass size={13} className="text-emerald-600" />
-              <span>Xem dạng Timeline</span>
+              <span>Kế hoạch chi tiết</span>
+              <ChevronRight size={12} className="text-gray-400 group-hover:translate-x-0.5 transition-transform" />
             </button>
           )}
 
@@ -269,11 +284,11 @@ export default function TripCalendarView({
       </header>
 
       {/* ─── NỘI DUNG CHÍNH: BỐ CỤC 2 CỘT (LỊCH CALENDAR + BẢN ĐỒ / Ý TƯỞNG) ─── */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden bg-white">
+      <div className="flex-1 min-h-0 flex items-stretch overflow-hidden bg-white">
         {/* ════════════════════════════════════════════════════════
             CỘT TRÁI: BẢNG LỊCH THỜI GIAN BIỂU (GOOGLE CALENDAR STYLE)
         ════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-7 xl:col-span-7 h-full flex flex-col bg-white border-r border-gray-200 select-none overflow-hidden">
+        <div className="w-[580px] lg:w-[640px] xl:w-[700px] shrink-0 h-full flex flex-col bg-white border-r border-gray-100 select-none overflow-hidden">
           {/* Header Lịch: Calendar + Điều hướng ngày */}
           <div className="px-6 pt-5 pb-3 shrink-0 flex items-center justify-between border-b border-gray-100">
             <div>
@@ -440,127 +455,131 @@ export default function TripCalendarView({
         </div>
 
         {/* ════════════════════════════════════════════════════════
-            CỘT PHẢI: BẢN ĐỒ LỘ TRÌNH HOẶC KHAY Ý TƯỞNG ĐÃ LƯU
+            CỘT PHẢI: BẢN ĐỒ LỘ TRÌNH HOẶC KHAY Ý TƯỞNG ĐÃ LƯU (ĐỒNG BỘ CARD BO GÓC 22PX)
         ════════════════════════════════════════════════════════ */}
-        <div className="lg:col-span-5 xl:col-span-5 h-full relative bg-gray-50 flex flex-col overflow-hidden">
-          {/* Header cột phải: Tab switch */}
-          <div className="p-3 bg-white border-b border-gray-200 flex items-center justify-between shrink-0">
-            <div className="inline-flex items-center p-1 bg-gray-100 rounded-full border border-gray-200/80 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setCalendarRightTab('map')}
-                className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  calendarRightTab === 'map' ? 'bg-white text-black shadow-xs' : 'text-gray-600 hover:text-black'
-                }`}
-              >
-                🗺️ Bản đồ lộ trình
-              </button>
-              <button
-                type="button"
-                onClick={() => setCalendarRightTab('ideas')}
-                className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  calendarRightTab === 'ideas' ? 'bg-white text-black shadow-xs' : 'text-gray-600 hover:text-black'
-                }`}
-              >
-                <span>💡 Ý tưởng chưa xếp</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 text-[10px] font-extrabold">
-                  {unscheduledIdeaPois.length}
-                </span>
-              </button>
-            </div>
-
-            <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2.5 py-1 rounded-full">
-              Ngày {selectedCalendarDay}
-            </span>
-          </div>
-
-          {/* Nội dung: Map hoặc Ideas List */}
-          <div className="flex-1 min-h-0 relative">
-            {calendarRightTab === 'map' ? (
-              <div className="w-full h-full relative">
-                <PoiMap
-                  pois={mapPois}
-                  selectedPoiId={selectedMapPoiId}
-                  hoveredPoiId={hoveredStopId}
-                  onSelectPoi={(id) => setSelectedMapPoiId(id)}
-                  onHoverPoi={setHoveredStopId}
-                  showMapLoader={false}
-                  isExpanded={false}
-                  favorites={savedIds}
-                  pendingFavorites={pendingIds}
-                  onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}
-                  addedTrips={new Set(tripIdeas)}
-                  onToggleAddTrip={() => {}}
-                />
-              </div>
-            ) : (
-              <div className="w-full h-full overflow-y-auto p-4 space-y-3 auto-hide-scrollbar bg-white">
-                <div className="flex items-center justify-between pb-1 border-b border-gray-100">
-                  <span className="text-xs text-gray-500 font-medium">
-                    Bấm [+] để xếp vào Ngày {selectedCalendarDay}:
-                  </span>
+        <section className="flex-1 h-full relative bg-white overflow-hidden" data-purpose="right-panel-container">
+          <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] py-4 pb-6">
+            <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)] flex flex-col bg-white">
+              {/* Header cột phải: Tab switch */}
+              <div className="p-2.5 sm:p-3 bg-white border-b border-gray-100 flex items-center justify-between shrink-0">
+                <div className="inline-flex items-center p-1 bg-gray-100 rounded-full border border-gray-200/80 shadow-2xs">
                   <button
                     type="button"
-                    onClick={() => {
-                      unscheduledIdeaPois.forEach((p, i) => {
-                        const targetDay = (i % plan.days.length) + 1;
-                        handleAddStopToDay(targetDay, p);
-                      });
-                    }}
-                    className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition cursor-pointer"
+                    onClick={() => setCalendarRightTab('map')}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      calendarRightTab === 'map' ? 'bg-white text-black shadow-xs' : 'text-gray-600 hover:text-black'
+                    }`}
                   >
-                    ⚡ Tự động xếp tất cả
+                    🗺️ Bản đồ lộ trình
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCalendarRightTab('ideas')}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      calendarRightTab === 'ideas' ? 'bg-white text-black shadow-xs' : 'text-gray-600 hover:text-black'
+                    }`}
+                  >
+                    <span>💡 Ý tưởng chưa xếp</span>
+                    <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 text-[10px] font-extrabold">
+                      {unscheduledIdeaPois.length}
+                    </span>
                   </button>
                 </div>
 
-                {unscheduledIdeaPois.length === 0 ? (
-                  <div className="py-12 text-center text-gray-400">
-                    <p className="text-sm font-semibold">Tất cả ý tưởng đã được xếp lịch!</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Các địa điểm đã được phân bổ vào các ngày của bạn.
-                    </p>
+                <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2.5 py-1 rounded-full">
+                  Ngày {selectedCalendarDay}
+                </span>
+              </div>
+
+              {/* Nội dung: Map hoặc Ideas List */}
+              <div className="flex-1 min-h-0 relative">
+                {calendarRightTab === 'map' ? (
+                  <div className="w-full h-full relative">
+                    <PoiMap
+                      pois={mapPois}
+                      selectedPoiId={selectedMapPoiId}
+                      hoveredPoiId={hoveredStopId}
+                      onSelectPoi={(id) => setSelectedMapPoiId(id)}
+                      onHoverPoi={setHoveredStopId}
+                      showMapLoader={false}
+                      isExpanded={false}
+                      favorites={savedIds}
+                      pendingFavorites={pendingIds}
+                      onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}
+                      addedTrips={new Set(tripIdeas)}
+                      onToggleAddTrip={() => {}}
+                    />
                   </div>
                 ) : (
-                  unscheduledIdeaPois.map((p) => {
-                    const img = (p as any).image_url || p.image || getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
-                    return (
-                      <div
-                        key={p.id}
-                        className="p-2.5 rounded-2xl border border-gray-200/90 hover:border-black/30 hover:shadow-2xs transition-all flex items-center justify-between gap-2.5 bg-gray-50/70 hover:bg-white group"
+                  <div className="w-full h-full overflow-y-auto p-4 space-y-3 auto-hide-scrollbar bg-white">
+                    <div className="flex items-center justify-between pb-1 border-b border-gray-100">
+                      <span className="text-xs text-gray-500 font-medium">
+                        Bấm [+] để xếp vào Ngày {selectedCalendarDay}:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          unscheduledIdeaPois.forEach((p, i) => {
+                            const targetDay = (i % plan.days.length) + 1;
+                            handleAddStopToDay(targetDay, p);
+                          });
+                        }}
+                        className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition cursor-pointer"
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <img
-                            src={img}
-                            alt={p.name}
-                            className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-200/70"
-                          />
-                          <div className="min-w-0">
-                            <h5 className="font-bold text-[13px] text-gray-900 truncate">
-                              {p.name}
-                            </h5>
-                            <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                              {p.address || p.category}
-                            </p>
-                          </div>
-                        </div>
+                        ⚡ Tự động xếp tất cả
+                      </button>
+                    </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleAddStopToDay(selectedCalendarDay, p)}
-                          className="px-3 py-1.5 rounded-xl bg-black hover:bg-neutral-800 text-white text-xs font-bold shrink-0 transition active:scale-95 cursor-pointer shadow-2xs flex items-center gap-1"
-                          title={`Thêm vào Ngày ${selectedCalendarDay}`}
-                        >
-                          <Plus size={13} />
-                          <span>Ngày {selectedCalendarDay}</span>
-                        </button>
+                    {unscheduledIdeaPois.length === 0 ? (
+                      <div className="py-12 text-center text-gray-400">
+                        <p className="text-sm font-semibold">Tất cả ý tưởng đã được xếp lịch!</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Các địa điểm đã được phân bổ vào các ngày của bạn.
+                        </p>
                       </div>
-                    );
-                  })
+                    ) : (
+                      unscheduledIdeaPois.map((p) => {
+                        const img = (p as any).image_url || p.image || getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
+                        return (
+                          <div
+                            key={p.id}
+                            className="p-2.5 rounded-2xl border border-gray-200/90 hover:border-black/30 hover:shadow-2xs transition-all flex items-center justify-between gap-2.5 bg-gray-50/70 hover:bg-white group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <img
+                                src={img}
+                                alt={p.name}
+                                className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-200/70"
+                              />
+                              <div className="min-w-0">
+                                <h5 className="font-bold text-[13px] text-gray-900 truncate">
+                                  {p.name}
+                                </h5>
+                                <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                                  {p.address || p.category}
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleAddStopToDay(selectedCalendarDay, p)}
+                              className="px-3 py-1.5 rounded-xl bg-black hover:bg-neutral-800 text-white text-xs font-bold shrink-0 transition active:scale-95 cursor-pointer shadow-2xs flex items-center gap-1"
+                              title={`Thêm vào Ngày ${selectedCalendarDay}`}
+                            >
+                              <Plus size={13} />
+                              <span>Ngày {selectedCalendarDay}</span>
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

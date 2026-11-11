@@ -5,6 +5,7 @@ import {
   ChevronUp,
   ChevronRight,
   Clock,
+  Calendar as CalendarIcon,
   Plus,
   ArrowUp,
   ArrowDown,
@@ -65,6 +66,7 @@ export interface TripItineraryViewProps {
   isDrawerMode?: boolean;
   onClose?: () => void;
   initialFocus?: 'ideas' | 'itinerary';
+  onNavigateToCalendar?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -175,6 +177,7 @@ export default function TripItineraryView({
   isDrawerMode = false,
   onClose,
   initialFocus,
+  onNavigateToCalendar,
 }: TripItineraryViewProps) {
   // ─── 0. Hệ thống địa điểm đã lưu (Favorites / Đã thích) của Thiện ───
   const { savedIds, pendingIds, toggleSaved, openCollectionPicker, places } = useSavedPlaces();
@@ -256,18 +259,20 @@ export default function TripItineraryView({
   const [modalCategory, setModalCategory] = useState<string>('for-you');
   const [customIdeaInput, setCustomIdeaInput] = useState('');
 
-  // Tiêu đề chuyến đi rõ ràng
+  // Tiêu đề chuyến đi rõ ràng (tự động loại bỏ chữ 'ư', câu chat hoặc chuỗi ngắn)
   const displayTitle = useMemo(() => {
-    if (trip.title && trip.title.trim().length > 2 && trip.title.trim().toLowerCase() !== 'a') {
-      return trip.title;
+    const clean = trip.title?.trim();
+    if (clean && clean.length > 2 && clean.toLowerCase() !== 'ư' && clean.toLowerCase() !== 'a' && !clean.toLowerCase().startsWith('bắt đầu')) {
+      return clean;
     }
-    return `Chuyến đi ${trip.destination}`;
+    return `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}`;
   }, [trip.title, trip.destination]);
 
-  // Phụ đề gọn
+  // Phụ đề gọn (không bị lặp '4 ngày 4 ngày')
   const displaySubtitle = useMemo(() => {
-    const dates = trip.startDate || 'Tháng 11/2026';
-    return `${trip.destination} • ${dates} (${plan.days.length} ngày)`;
+    let dates = trip.startDate || 'Tháng 11/2026';
+    dates = dates.replace(/\s*\(\d+\s*ngày\)/gi, '').trim();
+    return `${trip.destination || 'Đà Nẵng & Huế'} • ${dates} (${plan.days.length} ngày)`;
   }, [trip.destination, trip.startDate, plan.days.length]);
 
   // ─── 3. Đồng bộ danh sách POI từ `tripIdeas` ───
@@ -878,8 +883,16 @@ export default function TripItineraryView({
             >
               <ChevronLeft size={18} />
             </button>
+            <img
+              src={trip.image || (trip.destination === 'Huế' 
+                ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=200&auto=format&fit=crop&q=80'
+                : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80'
+              )}
+              alt={trip.destination}
+              className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
+            />
             <div className="min-w-0">
-              <h1 className="font-extrabold text-[17px] sm:text-[19px] text-gray-950 truncate leading-snug">
+              <h1 className="font-extrabold text-[16px] sm:text-[18px] text-gray-950 truncate leading-snug">
                 {displayTitle}
               </h1>
               <p className="text-xs text-gray-500 mt-0.5 font-medium truncate">
@@ -888,8 +901,21 @@ export default function TripItineraryView({
             </div>
           </div>
 
-          {/* Nút hành động phải: Trạng thái lưu & Nút Xong */}
-          <div className="flex items-center gap-3">
+          {/* Nút hành động phải: Chuyển sang Lịch + Trạng thái lưu & Nút Xong */}
+          <div className="flex items-center gap-2.5">
+            {onNavigateToCalendar && (
+              <button
+                type="button"
+                onClick={onNavigateToCalendar}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 hover:border-black text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer shadow-2xs group"
+                title="Chuyển sang chế độ xem dạng Lịch"
+              >
+                <CalendarIcon size={13} className="text-blue-600" />
+                <span>Xem dạng Lịch</span>
+                <ChevronRight size={12} className="text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            )}
+
             <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium">
               {isSaving ? (
                 <span className="flex items-center gap-1 text-amber-700">
@@ -931,11 +957,11 @@ export default function TripItineraryView({
       )}
 
       {/* ─── NỘI DUNG CHÍNH (2 CỘT HOẶC 1 CỘT CHO DRAWER) ─── */}
-      <div className={isDrawerMode ? "flex-1 w-full min-h-0 overflow-hidden flex flex-col" : "flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden"}>
+      <div className={isDrawerMode ? "flex-1 w-full min-h-0 overflow-hidden flex flex-col" : "flex-1 min-h-0 flex items-stretch overflow-hidden bg-white"}>
         {/* ════════════════════════════════════════════════════════
             CỘT: Ý TƯỞNG + LỊCH THEO NGÀY (THỦ CÔNG CHUẨN)
         ════════════════════════════════════════════════════════ */}
-        <div className={`${isDrawerMode ? 'w-full' : 'lg:col-span-6 xl:col-span-6 border-r border-gray-100'} flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-track]:bg-transparent`}>
+        <div className={`${isDrawerMode ? 'w-full' : 'w-[560px] lg:w-[620px] xl:w-[680px] shrink-0 border-r border-gray-100'} flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 auto-hide-scrollbar`}>
           {/* ────────────────────────────────────────────────────────
               1. PHẦN Ý TƯỞNG (CHUẨN MINDTRIP ẢNH 3, 4 - BỘ LỌC BÊN PHẢI)
           ──────────────────────────────────────────────────────── */}
@@ -1736,56 +1762,67 @@ export default function TripItineraryView({
             CỘT PHẢI: BẢN ĐỒ LỘ TRÌNH ĐỒNG BỘ (CHỈ HIỆN KHI KHÔNG PHẢI DRAWER MODE)
         ════════════════════════════════════════════════════════ */}
         {!isDrawerMode && (
-          <div className="lg:col-span-6 xl:col-span-6 h-full relative bg-gray-100 flex flex-col">
-            {/* Bộ chọn xem ngày nổi BÊN PHẢI Ở TRÊN BẢN ĐỒ (Chuẩn yêu cầu: "mấy cái lọc cho bên phải ở trên đi") */}
-            <div className="absolute top-4 right-4 z-[400] flex items-center gap-1 bg-white/95 backdrop-blur-md p-1 rounded-full shadow-md border border-gray-200/80">
-              <button
-                type="button"
-                onClick={() => setMapDayFilter('all')}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
-                  mapDayFilter === 'all'
-                    ? 'bg-black text-white shadow-xs'
-                    : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                }`}
-              >
-                Tất cả các ngày
-              </button>
-              {plan.days.map((day) => (
-                <button
-                  key={day.day_number}
-                  type="button"
-                  onClick={() => setMapDayFilter(day.day_number)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                    mapDayFilter === day.day_number
-                      ? 'bg-black text-white shadow-xs'
-                      : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                  }`}
-                >
-                  <span>Ngày {day.day_number}</span>
-                  {day.stops.length > 0 && (
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                        mapDayFilter === day.day_number ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
+          <section className="flex-1 h-full relative bg-white overflow-hidden" data-purpose="right-panel-container">
+            <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] py-4 pb-6">
+              <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
+                {/* Bộ chọn xem ngày nổi BÊN PHẢI Ở TRÊN BẢN ĐỒ (Chuẩn glass pill) */}
+                <div className="absolute top-3.5 right-3.5 z-[400] flex items-center gap-1 bg-white/90 backdrop-blur-md p-1 rounded-full shadow-md border border-gray-200/80">
+                  <button
+                    type="button"
+                    onClick={() => setMapDayFilter('all')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                      mapDayFilter === 'all'
+                        ? 'bg-black text-white shadow-xs'
+                        : 'text-gray-600 hover:text-black hover:bg-gray-100'
+                    }`}
+                  >
+                    Tất cả các ngày
+                  </button>
+                  {plan.days.map((day) => (
+                    <button
+                      key={day.day_number}
+                      type="button"
+                      onClick={() => setMapDayFilter(day.day_number)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                        mapDayFilter === day.day_number
+                          ? 'bg-black text-white shadow-xs'
+                          : 'text-gray-600 hover:text-black hover:bg-gray-100'
                       }`}
                     >
-                      {day.stops.length}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+                      <span>Ngày {day.day_number}</span>
+                      {day.stops.length > 0 && (
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                            mapDayFilter === day.day_number ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
+                          }`}
+                        >
+                          {day.stops.length}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
 
-            {/* Bản đồ Leaflet sạch sẽ */}
-            <div className="flex-1 w-full h-full relative">
-              <PoiMap
-                pois={mapPois.length > 0 ? mapPois : allPois.slice(0, 10)}
-                selectedPoiId={selectedMapPoiId}
-                hoveredPoiId={hoveredStopId}
-                onSelectPoi={(id) => setSelectedMapPoiId(id)}
-                onHoverPoi={(id) => setHoveredStopId(id)}
-              />
+                {/* Bản đồ Leaflet sạch sẽ */}
+                <div className="w-full h-full relative">
+                  <PoiMap
+                    pois={mapPois.length > 0 ? mapPois : allPois.slice(0, 10)}
+                    selectedPoiId={selectedMapPoiId}
+                    hoveredPoiId={hoveredStopId}
+                    onSelectPoi={(id) => setSelectedMapPoiId(id)}
+                    onHoverPoi={(id) => setHoveredStopId(id)}
+                    showMapLoader={false}
+                    isExpanded={false}
+                    favorites={savedIds}
+                    pendingFavorites={pendingIds}
+                    onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}
+                    addedTrips={new Set(tripIdeas)}
+                    onToggleAddTrip={(id) => handleToggleIdeaInTrip(id)}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
         )}
       </div>
 

@@ -234,7 +234,16 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [userTrips, setUserTrips] = useState<UserTrip[]>(() => {
     try {
       const raw = localStorage.getItem('greentrip_user_trips');
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed.map((t: UserTrip) => {
+            const rawTitle = (t.title || '').trim();
+            const isBadTitle = !rawTitle || rawTitle.length <= 3 || ['ư', 'a', 'ơi', 'alo'].includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().startsWith('bắt đầu');
+            return isBadTitle ? { ...t, title: `Chuyến đi ${t.destination || 'Đà Nẵng & Huế'}` } : t;
+          });
+        }
+      }
     } catch (e) {
       console.error(e);
     }
@@ -1320,6 +1329,14 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 setActiveTripSubTab('ideas');
                 setSelectedTripForDetails(null);
               }}
+              onNavigateToCalendar={() => {
+                const target = activeOverviewTrip || selectedTripForDetails;
+                if (target) {
+                  setActiveTripSubTab('calendar');
+                  setSelectedTripForDetails(target);
+                  setActiveOverviewTrip(target);
+                }
+              }}
               onUpdateTrip={(updatedTrip) => {
                 setSelectedTripForDetails(updatedTrip);
                 setActiveOverviewTrip(updatedTrip);
@@ -1920,8 +1937,13 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           isOpen={isCreateTripModalOpen}
           onClose={() => setIsCreateTripModalOpen(false)}
           onCreateTrip={(newTrip) => {
+            const rawTitle = (newTrip.title || '').trim();
+            const isBadTitle = !rawTitle || rawTitle.length <= 3 || ['ư', 'a', 'ơi', 'alo'].includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().startsWith('bắt đầu');
+            const safeTitle = isBadTitle ? `Chuyến đi ${newTrip.destination || 'Đà Nẵng & Huế'}` : rawTitle;
+
             const trip: UserTrip = {
               ...newTrip,
+              title: safeTitle,
               id: newTrip.id || `trip-${Date.now()}`,
               image:
                 newTrip.coverImage ||
@@ -1944,8 +1966,13 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             setIsCreateTripModalOpen(false);
           }}
           onCreated={(newTrip) => {
+            const rawTitle = (newTrip.title || '').trim();
+            const isBadTitle = !rawTitle || rawTitle.length <= 3 || ['ư', 'a', 'ơi', 'alo'].includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().startsWith('bắt đầu');
+            const safeTitle = isBadTitle ? `Chuyến đi ${newTrip.destination || 'Đà Nẵng & Huế'}` : rawTitle;
+
             const trip: UserTrip = {
               ...newTrip,
+              title: safeTitle,
               id: newTrip.id || `trip-${Date.now()}`,
               image:
                 newTrip.coverImage ||

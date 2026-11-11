@@ -1141,9 +1141,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   };
 
   return (
-    <div className="flex-1 h-full bg-white overflow-hidden select-none animate-fadeIn flex flex-col pl-6 sm:pl-8 lg:pl-[40px] pr-6 sm:pr-8 lg:pr-[36px] pt-2.5 pb-6">
+    <div className="flex-1 h-full bg-white overflow-hidden select-none animate-fadeIn flex flex-col">
       {/* ─── THANH TRẠNG THÁI 1 HÀNG DUY NHẤT CHUẨN 100% MINDTRIP ─── */}
-      <div className="h-11 sm:h-12 flex items-center justify-between shrink-0 mb-3 gap-2 overflow-x-auto no-scrollbar">
+      <div className="h-12 flex items-center justify-between shrink-0 px-6 lg:px-[36px] pt-1.5 pb-2 border-b border-gray-100/90 gap-2 overflow-x-auto no-scrollbar">
         {/* BÊN TRÁI: NÚT QUAY LẠI + THUMBNAIL + TÊN CHUYẾN ĐI (DROPDOWN) */}
         <div className="flex items-center gap-2.5 shrink-0 min-w-0">
           <button
@@ -1268,11 +1268,15 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         </div>
       </div>
 
-      {/* ─── NỘI DUNG CHÍNH: 2 KHÔNG GIAN BỔ TRỢ (CHAT COPILOT 45% + LIVE MAP 39%) ─── */}
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-6 lg:gap-[40px] items-stretch">
+      {/* ─── NỘI DUNG CHÍNH: BỐ CỤC CHUẨN TRANG EXPLORE (CỘT GIỮA + BẢN ĐỒ FLEX-1) ─── */}
+      <div className="flex-1 min-h-0 flex items-stretch overflow-hidden">
         
-        {/* ────── CỘT TRÁI: AI COPILOT CHAT & HƯỚNG DẪN ────── */}
-        <div className="flex-1 min-w-0 h-full flex flex-col justify-between">
+        {/* ────── CỘT GIỮA: AI COPILOT CHAT WORKSPACE (CHIỀU RỘNG CHUẨN EXPLORE) ────── */}
+        <div 
+          className={`${
+            isMapExpanded ? 'hidden' : 'w-[560px] lg:w-[620px] xl:w-[660px] shrink-0'
+          } h-full bg-white flex flex-col justify-between pl-6 lg:pl-[36px] pr-5 pt-3.5 pb-5 border-r border-gray-100 select-none transition-[width] duration-300 ease-in-out`}
+        >
           {/* Header Chat: Chats 1 chuẩn Mindtrip */}
           <div className="flex items-center justify-between mb-2 shrink-0">
             <h3 className="text-[15px] font-bold text-gray-950 tracking-tight flex items-center gap-1.5">
@@ -1280,119 +1284,25 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               <span className="text-gray-400 font-normal text-xs">1</span>
               <span className="sr-only">Đoạn chat (1)</span>
             </h3>
-            <span className="text-[11px] text-gray-400 font-medium">Thảo luận cùng trợ lý AI & đồng bộ ý tưởng lên bản đồ</span>
+            <span className="text-[11px] text-gray-400 font-medium">Hỏi AI để gợi ý & đồng bộ ý tưởng lên bản đồ</span>
           </div>
 
           {/* Luồng tin nhắn chat (cuộn độc lập bên trong) */}
-          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 auto-hide-scrollbar">
-            {/* THÔNG ĐIỆP GỢI Ý MỞ ĐẦU CHUẨN MINDTRIP */}
-            <div className="space-y-3.5 text-gray-900 text-[13.5px] leading-relaxed pb-1">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-2xl bg-black text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Sparkles size={15} className="text-emerald-400" />
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3.5 auto-hide-scrollbar">
+            {/* Trạng thái chào mừng tự nhiên khi chưa có tin nhắn (không dùng thành phần mô phỏng giả tạo) */}
+            {chatMessages.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12 text-gray-400">
+                <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center text-gray-800 mb-3 shadow-2xs">
+                  <Sparkles size={20} className="text-emerald-600" />
                 </div>
-                <div>
-                  <h3 className="text-[14.5px] font-bold text-gray-950 tracking-tight">
-                    Bạn đang thiếu ý tưởng? Hãy cùng thảo luận với trợ lý của chúng tôi!
-                  </h3>
-                  <p className="text-[11.5px] text-gray-500">
-                    Gợi ý tối ưu & đồng bộ địa điểm lên bản đồ cho chuyến đi {trip.destination}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-gray-700 text-[13px] pl-1 sm:pl-2">
-                <p className="flex items-start gap-2">
-                  <span className="shrink-0 font-bold">•</span>
-                  <span><strong>Gợi ý chặng đi nổi bật:</strong> 📍 <strong>Hội An</strong> lung linh đèn lồng phố cổ buổi tối, và ⛰️ <strong>Đèo Hải Vân</strong> ngắm cung đường ven biển ngoạn mục.</span>
-                </p>
-                <p className="flex items-start gap-2">
-                  <span className="shrink-0 font-bold">•</span>
-                  <span><strong>Nhịp điệu chuyến đi lý tưởng:</strong> Nghỉ dưỡng tắm biển + thưởng thức ẩm thực bản địa {trip.destination}, 1–2 chuyến tham quan nửa ngày, và 1 ngày trải nghiệm lớn (di tích, vịnh biển, hoặc di chuyển xe điện tiết kiệm CO₂).</span>
+                <h4 className="text-[15px] font-bold text-gray-950 tracking-tight">
+                  Trợ lý GreenTrip AI
+                </h4>
+                <p className="text-xs text-gray-500 max-w-[320px] mt-1 leading-relaxed">
+                  Hãy hỏi bất kỳ điều gì để tìm kiếm quán ăn, điểm check-in xanh và gợi ý ý tưởng cho chuyến đi <strong className="text-gray-800">{trip.destination}</strong>.
                 </p>
               </div>
-
-              {/* Khối 2 câu hỏi định hướng chuẩn Mindtrip */}
-              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-2.5 shadow-2xs">
-                <div className="font-bold text-[13px] text-gray-900 flex items-center gap-1.5">
-                  <span>Hai câu hỏi nhanh để trợ lý AI tối ưu cho bạn</span>
-                  <span className="text-emerald-600 font-bold">✅</span>
-                </div>
-                <ol className="list-decimal list-inside space-y-1 text-xs text-gray-700 leading-relaxed font-medium">
-                  <li>Bạn dự kiến ở lại mấy ngày tại {trip.destination} (hoặc ngày kết thúc)?</li>
-                  <li>Gu ưu tiên hàng đầu của bạn: Thư giãn biển & nghỉ dưỡng, Ẩm thực & cafe bản địa, hay Khám phá di sản văn hóa?</li>
-                </ol>
-                <p className="text-[11.5px] text-gray-500 italic pt-0.5">
-                  Nếu bạn chia sẻ câu trả lời, trợ lý GreenTrip AI sẽ gợi ý ngay danh sách địa điểm chuẩn gu nhất!
-                </p>
-              </div>
-
-              {/* Thẻ 3 địa điểm gợi ý ban đầu với ảnh và nút Thêm vào ý tưởng chuẩn Mindtrip */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                {starterPois.map((p) => {
-                  const isSaved = isPoiSavedInIdeas(p);
-                  const isFav = savedIds.has(p.id);
-                  const img = (p as any).image_url || getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
-                  return (
-                    <div
-                      key={p.id}
-                      onMouseEnter={() => handleDebouncedHover(p.id)}
-                      onMouseLeave={() => handleDebouncedHover(null)}
-                      className="group relative rounded-2xl overflow-hidden border border-gray-200/80 bg-white hover:border-black/30 hover:shadow-2xs transition-all flex flex-col justify-between"
-                    >
-                      <div className="relative aspect-[1.15/1] w-full overflow-hidden bg-gray-100">
-                        <img
-                          src={img}
-                          alt={p.name}
-                          className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
-                          onError={(e) => {
-                            e.currentTarget.src = getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
-                          }}
-                        />
-                        {/* Nút tim & Nút thêm vào ý tưởng ở góc ảnh chuẩn Mindtrip */}
-                        <div className="absolute top-2 right-2 flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenSavedCollections(p.id)}
-                            className={`w-7 h-7 rounded-full backdrop-blur-md flex items-center justify-center transition cursor-pointer ${
-                              isFav ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 text-white'
-                            }`}
-                            title="Lưu yêu thích"
-                          >
-                            <Heart size={13} className={isFav ? 'fill-white' : ''} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSaveCopilotPoiToIdeas(p)}
-                            disabled={isSaved}
-                            className={`w-7 h-7 rounded-full backdrop-blur-md flex items-center justify-center transition cursor-pointer ${
-                              isSaved ? 'bg-emerald-600 text-white' : 'bg-black/40 hover:bg-black/60 text-white'
-                            }`}
-                            title={isSaved ? 'Đã thêm vào ý tưởng' : 'Thêm vào ý tưởng'}
-                          >
-                            {isSaved ? <Check size={13} /> : <Plus size={14} />}
-                          </button>
-                        </div>
-                        {p.isGreen && (
-                          <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-emerald-600/90 text-white text-[10px] font-bold backdrop-blur-xs flex items-center gap-1">
-                            <Leaf size={10} />
-                            <span>Địa điểm xanh</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-2.5">
-                        <h5 className="font-bold text-[12.5px] text-gray-900 truncate group-hover:text-black">
-                          {p.name}
-                        </h5>
-                        <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                          {p.category === 'quan-an' ? 'Ẩm thực & Cafe' : p.category === 'di-tich' ? 'Di tích lịch sử' : 'Cảnh quan nổi bật'}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            )}
 
             {/* Các tin nhắn chat thực tế giữa người dùng và AI */}
             {chatMessages.map((msg, idx) => (
@@ -1541,7 +1451,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             ))}
           </div>
 
-          {/* Ô nhập tin nhắn floating ghim đáy chuẩn Mindtrip */}
+          {/* Ô nhập tin nhắn floating ghim đáy */}
           <div className="w-full shrink-0">
             <div className="w-full rounded-[24px] border border-gray-200/90 p-3 shadow-sm bg-white hover:border-gray-300 focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all flex flex-col justify-between">
               <input
@@ -1601,44 +1511,39 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 </div>
               </div>
             </div>
-            {/* Dòng ghi chú nhỏ chuẩn Mindtrip */}
-            <p className="text-center text-[11px] text-gray-400 mt-2">
-              GreenTrip AI có thể đưa ra gợi ý cần xác nhận lại. Vui lòng kiểm tra thông tin quan trọng.
-            </p>
           </div>
         </div>
 
-        {/* ────── CỘT PHẢI: BẢN ĐỒ TƯƠNG TÁC (LUÔN MỞ SONG SONG, ĐỒNG BỘ VỚI AI CHAT) ────── */}
-        <div className="w-full lg:w-[39%] shrink-0 h-full relative">
-          <div 
-            className={`w-full h-full transition-all duration-300 ${
-              isMapExpanded 
-                ? 'fixed inset-4 z-50 rounded-3xl h-[calc(100vh-32px)] shadow-2xl' 
-                : 'rounded-3xl shadow-sm'
-            } overflow-hidden border border-gray-200 relative [transform:translateZ(0)]`}
-          >
-            <PoiMap
-              pois={relevantPois}
-              selectedPoiId={selectedMapPoiId}
-              hoveredPoiId={hoveredMapPoiId}
-              onSelectPoi={setSelectedMapPoiId}
-              onHoverPoi={setHoveredMapPoiId}
-              showMapLoader={false}
-              isExpanded={isMapExpanded}
-              onToggleExpand={() => {
-                setIsMapExpanded((prev) => !prev);
-                setTimeout(() => {
-                  window.dispatchEvent(new Event('resize'));
-                }, 200);
-              }}
-              favorites={savedIds}
-              pendingFavorites={pendingIds}
-              onToggleFavorite={handleOpenSavedCollections}
-              addedTrips={new Set(tripIdeas)}
-              onToggleAddTrip={handleToggleIdea}
-            />
+        {/* ────── CỘT PHẢI: MAP SECTION CHUẨN TRANG EXPLORE (FLEX-1, PADDING & BORDER KHỚP 100%) ────── */}
+        <section 
+          className="flex-1 h-full relative bg-white overflow-hidden" 
+          data-purpose="right-panel-container"
+        >
+          <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] py-4 pb-6">
+            <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
+              <PoiMap
+                pois={relevantPois}
+                selectedPoiId={selectedMapPoiId}
+                hoveredPoiId={hoveredMapPoiId}
+                onSelectPoi={setSelectedMapPoiId}
+                onHoverPoi={setHoveredMapPoiId}
+                showMapLoader={false}
+                isExpanded={isMapExpanded}
+                onToggleExpand={() => {
+                  setIsMapExpanded((prev) => !prev);
+                  setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                  }, 200);
+                }}
+                favorites={savedIds}
+                pendingFavorites={pendingIds}
+                onToggleFavorite={handleOpenSavedCollections}
+                addedTrips={new Set(tripIdeas)}
+                onToggleAddTrip={handleToggleIdea}
+              />
+            </div>
           </div>
-        </div>
+        </section>
       </div>
 
       {/* ─── MODAL 1: Ở ĐÂU (KHI BẤM VÀO PILL ĐIỂM ĐẾN) ─── */}

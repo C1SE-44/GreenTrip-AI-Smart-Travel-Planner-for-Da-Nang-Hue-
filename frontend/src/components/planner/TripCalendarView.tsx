@@ -29,6 +29,9 @@ import {
   saveTripItinerary,
   createEmptyItinerary,
   stopFromPoi,
+  alignItineraryToTrip,
+  parseStartDateFromTrip,
+  updateDateRangeWithDays,
 } from '@/services/itineraryService';
 import PoiMap from '@/components/poi/PoiMap';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
@@ -96,22 +99,47 @@ export default function TripCalendarView({
 
   // Danh sách ý tưởng (Ideas) của chuyến đi
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => {
-    if (Array.isArray(trip.ideas) && trip.ideas.length > 0) return trip.ideas;
-    const isHue = /hue|huế/i.test(trip.destination);
-    const targetCity: PoiCity = isHue ? 'Huế' : 'Đà Nẵng';
-    const cityPois = allPois.filter((p) => normalizeCity(p.city) === targetCity);
-    const defaults = cityPois.slice(0, 8).map((p) => p.id);
-    return defaults.length > 0 ? defaults : ['poi-1', 'poi-2', 'poi-3', 'poi-4'];
+    if (Array.isArray(trip.ideas)) return trip.ideas;
+    return [];
   });
 
-  // Tải plan từ backend
+  useEffect(() => {
+    if (Array.isArray(trip.ideas)) {
+      setTripIdeas(trip.ideas);
+    }
+  }, [trip.ideas]);
+
+  // Tải plan từ backend & căn chỉnh theo số ngày của chuyến đi
   useEffect(() => {
     let active = true;
-    getTripItinerary(trip.id).then((p) => {
-      if (active && p) setPlan(p);
-    }).catch(console.warn);
-    return () => { active = false; };
+    getTripItinerary(trip.id)
+      .then((p) => {
+        if (active && p) {
+          const aligned = alignItineraryToTrip(p, trip);
+          setPlan(aligned.itinerary);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          const fresh = createEmptyItinerary(trip);
+          setPlan(fresh);
+        }
+      });
+    return () => {
+      active = false;
+    };
   }, [trip.id]);
+
+  // Đồng bộ số ngày khi trip.daysCount thay đổi
+  useEffect(() => {
+    if (trip.daysCount && trip.daysCount !== plan.days.length) {
+      const aligned = alignItineraryToTrip(plan, trip);
+      if (aligned.changed) {
+        setPlan(aligned.itinerary);
+        persistPlan(aligned.itinerary);
+      }
+    }
+  }, [trip.daysCount, trip, plan]);
 
   const persistPlan = (nextPlan: TripItinerary) => {
     setPlan(nextPlan);
@@ -155,17 +183,18 @@ export default function TripCalendarView({
     persistPlan({ ...plan, days: nextDays });
   };
 
+  const startMeta = useMemo(() => {
+    return parseStartDateFromTrip(trip.startDate);
+  }, [trip.startDate]);
+
   // Thông tin ngày cho header Calendar
   const calendarDaysMeta = useMemo(() => {
     return plan.days.map((day, idx) => {
       let dateObj: Date | null = null;
       if (day.date) {
         dateObj = new Date(day.date);
-      } else if (trip.startDate && /^\d{4}-\d{2}-\d{2}$/.test(trip.startDate)) {
-        dateObj = new Date(trip.startDate);
-        dateObj.setDate(dateObj.getDate() + idx);
       } else {
-        dateObj = new Date(2026, 10, 14 + idx);
+        dateObj = new Date(startMeta.year, startMeta.month - 1, startMeta.day + idx);
       }
 
       const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -181,14 +210,14 @@ export default function TripCalendarView({
         stops: day.stops,
       };
     });
-  }, [plan.days, trip.startDate]);
+  }, [plan.days, startMeta]);
 
   const calendarRangeText = useMemo(() => {
     if (calendarDaysMeta.length === 0) return '';
     const first = calendarDaysMeta[0];
     const last = calendarDaysMeta[calendarDaysMeta.length - 1];
-    return `${first.dayOfMonth} – ${last.dayOfMonth} thg ${first.monthNum}, 2026`;
-  }, [calendarDaysMeta]);
+    return `${first.dayOfMonth} – ${last.dayOfMonth} thg ${first.monthNum}, ${startMeta.year}`;
+  }, [calendarDaysMeta, startMeta]);
 
   // POIs cho bản đồ cột phải
   const currentDayStops = useMemo(() => {

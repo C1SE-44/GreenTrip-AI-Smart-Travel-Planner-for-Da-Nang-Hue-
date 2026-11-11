@@ -1357,6 +1357,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           ) : activeOverviewTrip ? (
             <TripOverviewView
               trip={activeOverviewTrip}
+              allPois={allPois}
               onBack={() => {
                 setActiveOverviewTrip(null);
                 setSelectedTripForDetails(null);

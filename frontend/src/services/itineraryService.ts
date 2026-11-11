@@ -434,3 +434,127 @@ export function optimizeDays(
   });
   return { days: normalizeSequence(scheduled), assignedCount, unassignedCount, restCount };
 }
+
+/**
+ * Tự động phân tích ngày bắt đầu từ chuỗi ngày của UserTrip
+ * Hỗ trợ các định dạng: "1 - 5 thg 11", "Ngày 1 – 5 tháng 11", "14 – 18 thg 11, 2026", "Từ 16 thg 11", ISO date "2026-11-14"
+ */
+export function parseStartDateFromTrip(startDateStr?: string | null): { day: number; month: number; year: number } {
+  const defaultYear = 2026;
+  if (!startDateStr || !startDateStr.trim()) {
+    return { day: 1, month: 11, year: defaultYear };
+  }
+
+  const raw = startDateStr.trim();
+
+  // 1. Dạng ISO: "2026-11-14"
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [y, m, d] = raw.split('-').map(Number);
+    return { day: d || 1, month: m || 11, year: y || defaultYear };
+  }
+
+  // 2. Dạng khoảng ngày: "Ngày 1 – 5 tháng 11", "1 - 5 thg 11", "14 – 17 thg 11, 2026"
+  const rangeMatch = raw.match(/(?:Ngày\s*)?(\d+)\s*[–-]\s*\d+\s+(?:thg|tháng)\s+(\d+)(?:,?\s*(\d{4}))?/i);
+  if (rangeMatch) {
+    return {
+      day: parseInt(rangeMatch[1], 10),
+      month: parseInt(rangeMatch[2], 10),
+      year: rangeMatch[3] ? parseInt(rangeMatch[3], 10) : defaultYear,
+    };
+  }
+
+  // 3. Dạng "Từ 16 thg 11"
+  const fromMatch = raw.match(/Từ\s+(\d+)\s+(?:thg|tháng)\s+(\d+)(?:,?\s*(\d{4}))?/i);
+  if (fromMatch) {
+    return {
+      day: parseInt(fromMatch[1], 10),
+      month: parseInt(fromMatch[2], 10),
+      year: fromMatch[3] ? parseInt(fromMatch[3], 10) : defaultYear,
+    };
+  }
+
+  // 4. Số đầu tiên trước thg/tháng
+  const simpleMatch = raw.match(/(\d+)\s*(?:thg|tháng)\s*(\d+)/i);
+  if (simpleMatch) {
+    return {
+      day: parseInt(simpleMatch[1], 10),
+      month: parseInt(simpleMatch[2], 10),
+      year: defaultYear,
+    };
+  }
+
+  return { day: 1, month: 11, year: defaultYear };
+}
+
+/**
+ * Tự động cập nhật chuỗi ngày khi số lượng ngày của chuyến đi thay đổi (ví dụ: du lịch từ 1-5, thêm 1 ngày thành 1-6)
+ */
+export function updateDateRangeWithDays(currentDateStr?: string | null, newDaysCount: number = 1): string {
+  const safeDays = Math.max(1, newDaysCount);
+  if (!currentDateStr || !currentDateStr.trim()) {
+    return `Ngày 1 – ${safeDays} tháng 11`;
+  }
+
+  let raw = currentDateStr.trim();
+  const hadParenthesisDays = /\(\d+\s*ngày\)/i.test(raw);
+  if (hadParenthesisDays) {
+    raw = raw.replace(/\s*\(\d+\s*ngày\)/gi, '').trim();
+  }
+
+  // 1. Dạng: "Ngày 1 – 5 tháng 11" hoặc "Ngày 1 - 5 tháng 11, 2026"
+  const ngayPattern = /^Ngày\s+(\d+)\s*[–-]\s*(\d+)\s+tháng\s+(\d+)(.*)$/i;
+  const matchNgay = raw.match(ngayPattern);
+  if (matchNgay) {
+    const startDay = parseInt(matchNgay[1], 10);
+    const month = matchNgay[3];
+    const tail = matchNgay[4] || '';
+    const newEndDay = startDay + safeDays - 1;
+    const res = `Ngày ${startDay} – ${newEndDay} tháng ${month}${tail}`;
+    return hadParenthesisDays ? `${res} (${safeDays} ngày)` : res;
+  }
+
+  // 2. Dạng: "1 - 5 thg 11" hoặc "1 – 5 thg 11" hoặc "14 – 17 thg 11, 2026"
+  const dashPattern = /^(\d+)\s*[–-]\s*(\d+)\s+(thg|tháng)\s+(\d+)(.*)$/i;
+  const matchDash = raw.match(dashPattern);
+  if (matchDash) {
+    const startDay = parseInt(matchDash[1], 10);
+    const unit = matchDash[3];
+    const month = matchDash[4];
+    const tail = matchDash[5] || '';
+    const newEndDay = startDay + safeDays - 1;
+    const res = `${startDay} – ${newEndDay} ${unit} ${month}${tail}`;
+    return hadParenthesisDays ? `${res} (${safeDays} ngày)` : res;
+  }
+
+  // 3. Dạng: "Từ 16 thg 11" hoặc "Từ 2 thg 11"
+  const tuPattern = /^Từ\s+(\d+)\s+(thg|tháng)\s+(\d+)(.*)$/i;
+  const matchTu = raw.match(tuPattern);
+  if (matchTu) {
+    const startDay = parseInt(matchTu[1], 10);
+    const unit = matchTu[2];
+    const month = matchTu[3];
+    const tail = matchTu[4] || '';
+    const newEndDay = startDay + safeDays - 1;
+    const res = `${startDay} – ${newEndDay} ${unit} ${month}${tail}`;
+    return hadParenthesisDays ? `${res} (${safeDays} ngày)` : res;
+  }
+
+  // 4. Dạng: "4 ngày • Tháng 11" hoặc "4 ngày • Tháng 11, 2026"
+  const flexPattern = /^(\d+)\s*ngày\s*•\s*(.*)$/i;
+  const matchFlex = raw.match(flexPattern);
+  if (matchFlex) {
+    const rest = matchFlex[2];
+    return `${safeDays} ngày • ${rest}`;
+  }
+
+  // 5. ISO Date string: "2026-11-14"
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [y, m, d] = raw.split('-').map(Number);
+    const newEndDay = d + safeDays - 1;
+    const res = `Ngày ${d} – ${newEndDay} tháng ${m}`;
+    return hadParenthesisDays ? `${res} (${safeDays} ngày)` : res;
+  }
+
+  const res = `${safeDays} ngày • ${raw}`;
+  return hadParenthesisDays ? `${res} (${safeDays} ngày)` : res;
+}

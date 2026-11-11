@@ -1,0 +1,6 @@
+{
+  "codeConnect": {
+    "include": ["frontend/src/components/ui/**/*.figma.ts", "frontend/src/components/**/*.figma.ts"],
+    "parser": "react"
+  }
+}

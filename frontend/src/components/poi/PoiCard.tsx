@@ -150,7 +150,7 @@ export default function PoiCard({
           </button>
         )}
 
-        {/* Nút tim và "+" ở góc trên: Nền trắng đục nổi bật, viền nhẹ, tooltip rõ ràng */}
+        {/* Nút tim và "+" ở góc trên: Nền trắng đục nổi bật, viền nhẹ, tooltip rõ ràng (vùng chạm >= 40px) */}
         <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
           <button
             type="button"
@@ -162,7 +162,7 @@ export default function PoiCard({
               e.stopPropagation();
               onToggleFavorite(poi.id, poi);
             }}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
               favorite 
                 ? 'bg-white text-rose-600 ring-1 ring-rose-200' 
                 : 'bg-white/90 hover:bg-white text-neutral-700 hover:text-rose-600 hover:scale-105'
@@ -179,7 +179,7 @@ export default function PoiCard({
               e.stopPropagation();
               onToggleAddTrip?.(poi.id);
             }}
-            className={`${showAddToTrip ? '' : 'hidden'} w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+            className={`${showAddToTrip ? '' : 'hidden'} w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
               isAdded 
                 ? 'bg-emerald-700 text-white ring-1 ring-emerald-800' 
                 : 'bg-white/90 hover:bg-white text-neutral-800 hover:text-emerald-700 hover:scale-105'

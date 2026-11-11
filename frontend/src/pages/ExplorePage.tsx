@@ -1,9 +1,10 @@
-import { Leaf } from 'lucide-react';
+import { Leaf, Compass } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
 import CreateTripMindtripModal from '@/components/planner/CreateTripMindtripModal';
 import AddToTripModal from '@/components/planner/AddToTripModal';
+import ItineraryRouteMap from '@/components/planner/ItineraryRouteMap';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
@@ -220,6 +221,47 @@ function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {
   });
 }
 
+export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
+  {
+    id: 'sample-danang-hue-3d',
+    title: 'Hành trình Xanh Đà Nẵng - Huế (3 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 10 – 12 tháng 11',
+    peopleCount: 2,
+    daysCount: 3,
+    tags: ['Đà Nẵng & Huế', '3 Ngày', 'Lộ trình tối ưu OSRM', 'Xanh'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+    ideas: [
+      '029a28df-b091-49d9-a911-738572c72464',
+      'd58fe815-4aa1-45b2-831a-11b97e130918',
+      'bfed964e-ff10-44f4-8654-2136245ab062',
+    ],
+  },
+  {
+    id: 'sample-danang-hue-5d',
+    title: 'Đà Nẵng - Huế Trọn Vẹn (5 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 15 – 19 tháng 11',
+    peopleCount: 2,
+    daysCount: 5,
+    tags: ['Đà Nẵng & Huế', '5 Ngày', 'Di sản & Biển xanh'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'sample-central-vietnam-7d',
+    title: 'Khám phá Miền Trung Huyền Diệu (7 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 20 – 26 tháng 11',
+    peopleCount: 4,
+    daysCount: 7,
+    tags: ['Miền Trung', '7 Ngày', 'Tour gia đình'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800&auto=format&fit=crop&q=80',
+  },
+];
+
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'explore' | 'trips' | 'saved' }) {
   const navigate = useNavigate();
   const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
@@ -248,24 +290,17 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [initialView, navigate]);
 
   const [userTrips, setUserTrips] = useState<UserTrip[]>(() => {
+    let savedTrips: UserTrip[] = [];
     try {
       const raw = localStorage.getItem('greentrip_user_trips');
-      if (raw) return JSON.parse(raw);
+      if (raw) savedTrips = JSON.parse(raw);
     } catch (e) {
       console.error(e);
     }
-    return [
-      {
-        id: 'trip-danang-default',
-        title: 'Chuyến đi Đà Nẵng, tháng 11 năm 2026',
-        destination: 'Đà Nẵng',
-        startDate: 'Ngày 2 – 5 tháng 11',
-        peopleCount: 1,
-        tags: ['Đà Nẵng', 'Ngày 2 – 5 tháng 11', 'Ai', 'Ngân sách'],
-        createdAt: '2026-11-01',
-        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
-      },
-    ];
+
+    const savedIds = new Set(savedTrips.map((t) => t.id));
+    const missingSamples = SEEDED_SAMPLE_TRIPS.filter((s) => !savedIds.has(s.id));
+    return [...savedTrips, ...missingSamples];
   });
 
   useEffect(() => {
@@ -483,20 +518,63 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         setLoading(true);
         setError(null);
 
-        const response = await getPois({
+        const queryParams = {
           limit: 100,
-          page: 1,
           city: cityFilter !== 'all' ? cityFilter : undefined,
           category: categoryFilter !== 'all' ? categoryFilter : undefined,
           eco_priority: filterValues.ecoPriority,
           budget_tier: filterValues.budget,
           eco_certified_only: filterValues.ecoCertifiedOnly,
           green_transit_only: filterValues.greenTransitOnly,
+        };
+
+        // 1. Tải trang 1 tức thì để hiển thị ngay trong 100ms
+        const firstPage = await getPois({
+          ...queryParams,
+          page: 1,
         });
 
-        const normalized = normalizePois(response.items);
         if (!active) return;
-        setAllPois(normalized.length > 0 ? normalized : pois);
+
+        const firstItems = firstPage.items || [];
+        const initialNormalized = normalizePois(firstItems);
+        if (initialNormalized.length > 0) {
+          setAllPois(initialNormalized);
+        } else {
+          setAllPois(pois);
+        }
+        setLoading(false);
+
+        // 2. Tải song song các trang còn lại nếu có >100 địa điểm (482 POIs = 5 trang)
+        const totalPages = firstPage.pagination?.total_pages || 1;
+        if (totalPages > 1) {
+          try {
+            const remainingPromises = [];
+            for (let p = 2; p <= totalPages; p++) {
+              remainingPromises.push(
+                getPois({
+                  ...queryParams,
+                  page: p,
+                })
+              );
+            }
+            const remainingResponses = await Promise.all(remainingPromises);
+            if (!active) return;
+
+            const allItems = [...firstItems];
+            for (const res of remainingResponses) {
+              if (res.items && res.items.length > 0) {
+                allItems.push(...res.items);
+              }
+            }
+            const fullNormalized = normalizePois(allItems);
+            if (fullNormalized.length > 0) {
+              setAllPois(fullNormalized);
+            }
+          } catch (secondaryError) {
+            console.warn('Could not fetch remaining POI pages, keeping page 1 items:', secondaryError);
+          }
+        }
       } catch (loadError) {
         if (!active) return;
         console.warn('Backend POIs fetch failed, using fallback data:', loadError);
@@ -804,7 +882,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 active: viewMode === 'saved',
                 badge: savedIds.size > 0 ? String(savedIds.size) : undefined
               },
-              { to: '#', icon: 'ph ph-bell', label: 'Cập nhật' },
               { 
                 key: 'trips', 
                 onClick: () => { 
@@ -855,7 +932,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 </div>
               );
 
-              return 'onClick' in item ? (
+              return (
                 <button
                   key={item.label}
                   onClick={item.onClick}
@@ -863,34 +940,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 >
                   {itemContent}
                 </button>
-              ) : item.to === '#' ? (
-                <a key={item.label} href="#">{itemContent}</a>
-              ) : (
-                <Link key={item.label} to={item.to}>{itemContent}</Link>
               );
             })}
           </nav>
-
-          {/* Button Trò chuyện mới - Cố định tọa độ */}
-          <div className="pt-6">
-            {isSidebarCollapsed ? (
-              <div className="w-9 h-9 flex items-center justify-center shrink-0">
-                <button
-                  className="w-9 h-9 bg-[#F0F2F5] hover:bg-[#E4E6EB] text-gray-950 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 group/newchat relative"
-                  title="Trò chuyện mới"
-                >
-                  <i className="ph ph-chat-circle-dots text-[19px] text-black"></i>
-                  <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 bg-black text-white text-[11.5px] font-medium px-2.5 py-1 rounded-md shadow-md whitespace-nowrap pointer-events-none opacity-0 group-hover/newchat:opacity-100 transition-opacity z-50">
-                    Trò chuyện mới
-                  </div>
-                </button>
-              </div>
-            ) : (
-              <button className="w-full py-2.5 px-4 bg-[#F0F2F5] hover:bg-[#E4E6EB] text-gray-950 font-semibold text-[13.5px] rounded-full transition-all text-center border-0 shadow-none cursor-pointer whitespace-nowrap overflow-hidden">
-                Trò chuyện mới
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Sidebar Bottom / User & Footer - Cố định tọa độ */}
@@ -963,18 +1015,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           {/* Legal footer */}
           <div className="overflow-hidden transition-all duration-300">
             {!isSidebarCollapsed ? (
-              <div className="px-0 text-[11.5px] text-gray-500/80 leading-relaxed font-normal mt-1 animate-fadeIn">
-                <p className="space-x-1">
-                  <span>Công ty</span><span>•</span><span>Liên hệ</span><span>•</span><span>Giúp đỡ</span>
-                </p>
-                <p className="space-x-1">
-                  <span>Điều khoản</span><span>•</span><span>Sự riêng tư</span>
-                </p>
-                <p className="mt-1.5 text-gray-500/80 text-[11px]">© 2026 GreenTrip, Inc.</p>
+              <div className="px-0 text-[11px] text-gray-400 leading-relaxed font-normal mt-1 animate-fadeIn">
+                <p>© 2026 GreenTrip • Du lịch thông minh & Bền vững</p>
               </div>
             ) : (
               <div className="w-9 h-9 flex items-center justify-center shrink-0">
-                <div className="flex justify-center text-gray-400 hover:text-black transition cursor-pointer text-xs" title="© 2026 GreenTrip, Inc.">
+                <div className="flex justify-center text-gray-400 hover:text-black transition cursor-pointer text-xs" title="© 2026 GreenTrip • Du lịch thông minh & Bền vững">
                   <i className="ph ph-info text-[16px]"></i>
                 </div>
               </div>
@@ -987,6 +1033,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         activeOverviewTrip ? (
           <TripOverviewView
             trip={activeOverviewTrip}
+            allPois={allPois}
             onBack={() => setActiveOverviewTrip(null)}
             onOpenItineraryDetails={() => setSelectedTripForDetails(activeOverviewTrip)}
             onUpdateTrip={(updatedTrip) => {
@@ -1612,6 +1659,52 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         onCreateTrip={createTripForPois}
         onClose={() => setAddToTripSelection(null)}
       />
+
+      {/* 6. Itinerary Route Map Details Modal with Numbered Markers */}
+      {selectedTripForDetails && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 lg:p-6 animate-fadeIn"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-3xl w-full max-w-7xl h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-neutral-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 bg-neutral-50/90">
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg shadow-xs">
+                  📍
+                </span>
+                <div>
+                  <h2 className="text-lg font-bold text-neutral-900 tracking-tight">
+                    {selectedTripForDetails.title || 'Lịch trình chi tiết & Lộ trình di chuyển'}
+                  </h2>
+                  <p className="text-xs text-neutral-500">
+                    Bản đồ điểm đến đánh số thứ tự (Numbered Markers) & Lộ trình tối ưu theo từng ngày
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTripForDetails(null)}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-neutral-200/80 text-neutral-600 transition cursor-pointer"
+                aria-label="Đóng bản đồ lộ trình"
+              >
+                <i className="ph ph-x text-lg"></i>
+              </button>
+            </div>
+
+            {/* Modal Body: ItineraryRouteMap */}
+            <div className="flex-1 overflow-hidden p-4 bg-neutral-100">
+              <ItineraryRouteMap
+                itineraryId={selectedTripForDetails.id}
+                totalDays={selectedTripForDetails.daysCount || selectedTripForDetails.flexibleDays || 3}
+                className="h-full"
+                showStopsList={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1762,10 +1855,7 @@ function PoiCard({
           ))}
         </div>
 
-        {/* Icon ⓘ ở góc phải đáy */}
-        <div className="absolute bottom-2.5 right-2.5 pointer-events-none z-10">
-          <i className="ph ph-info text-white/80 hover:text-white text-[15px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"></i>
-        </div>
+
       </div>
 
       {/* 2. Card Details: Tên, loại hình, địa chỉ */}

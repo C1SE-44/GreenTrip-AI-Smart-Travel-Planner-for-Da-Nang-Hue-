@@ -339,24 +339,15 @@ export default function TripOverviewView({
   const [chatInput, setChatInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [quickPrompts, setQuickPrompts] = useState<string[]>([
-    `Phân bổ lịch trình ${trip.daysCount || 4} ngày hợp lý?`,
-    `Quán ăn đặc sản ngon gần tuyến tham quan?`,
-    `Cung đường di chuyển xanh tối ưu?`,
-    `Dự báo thời tiết & lưu ý an toàn?`,
-    `Gợi ý hành lý & trang phục phù hợp?`,
+    'Ẩm thực xanh bản địa',
+    'Di tích & bảo tàng gần',
+    'Thuê xe máy điện',
   ]);
-  const [chatMessages, setChatMessages] = useState<CopilotChatMessageItem[]>([
-    {
-      id: 'init-1',
-      sender: 'ai',
-      text: `Chào bạn! Tôi đã chuẩn bị xong kế hoạch hành trình ${trip.destination} ${trip.daysCount} ngày. Bạn cần hỏi thêm về ăn uống, đi lại hay điều chỉnh hoạt động nào không?`,
-      timestamp: 'Vừa xong',
-    },
-  ]);
+  const [chatMessages, setChatMessages] = useState<CopilotChatMessageItem[]>([]);
 
   // Tự động cuộn xuống khi có tin nhắn mới hoặc AI đang suy nghĩ
   useEffect(() => {
-    if (chatMessages.length > 1 || isAiThinking) {
+    if (chatMessages.length > 0 || isAiThinking) {
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatMessages, isAiThinking]);
@@ -718,8 +709,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     return list;
   }, [allPois, modalCity, modalCategory, modalSearch, modalTab, tripIdeas]);
 
-  // Tiêu đề lớn hiển thị (1 dòng rút gọn chuẩn Mindtrip)
-  const displayTitle = `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}`;
+  // Tiêu đề lớn hiển thị (ưu tiên tên riêng người dùng đặt, nếu không fallback theo điểm đến)
+  const displayTitle = trip.title?.trim() || `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}`;
 
   // Rút gọn ngày bắt đầu cho viên thuốc metadata (ví dụ: "Từ 2 thg 11")
   const formatDateBrief = (dateStr?: string) => {
@@ -1064,118 +1055,166 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   };
 
   return (
-    <div className="flex-1 h-full bg-white overflow-y-auto auto-hide-scrollbar select-none animate-fadeIn flex flex-col">
-      <div className="max-w-[1360px] w-full mx-auto px-5 sm:px-8 pt-4.5 sm:pt-5 pb-10 flex flex-col">
-        {/* ─── TOP ROW: NÚT BACK CHUẨN MINDTRIP (KHOẢNG CÁCH GIẢM 20%, THOÁNG ĐÃNG) ─── */}
-        <div className="flex items-center mb-4 sm:mb-4.5 shrink-0">
-          <button
-            onClick={onBack}
-            className="w-9 h-9 rounded-full border border-gray-200/90 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shadow-2xs"
-            title="Quay lại danh sách chuyến đi"
-          >
-            <ChevronLeft size={18} />
-          </button>
+    <div className="flex-1 h-full bg-white overflow-hidden select-none animate-fadeIn flex flex-col pl-6 sm:pl-8 lg:pl-[40px] pr-6 sm:pr-8 lg:pr-[36px] pt-2.5 pb-[36px]">
+      {/* ─── ROW 1: NÚT QUAY LẠI (CÙNG TÂM DỌC VỚI LOGO Ở SIDEBAR) ─── */}
+      <div className="h-10 flex items-center shrink-0 mb-1">
+        <button
+          onClick={onBack}
+          className="w-9 h-9 rounded-full border border-gray-200/90 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shadow-2xs"
+          title="Quay lại danh sách chuyến đi"
+        >
+          <ChevronLeft size={18} />
+        </button>
+      </div>
+
+      {/* ─── ROW 2: TIÊU ĐỀ CHUYẾN ĐI (BÊN PHẢI ĐỂ TRỐNG) ─── */}
+      <div className="shrink-0 mb-3">
+        <h1 className="text-[26px] sm:text-[28px] font-extrabold text-gray-950 tracking-tight leading-tight">
+          {displayTitle}
+        </h1>
+      </div>
+
+      {/* ─── ROW 3: 4 INPUTS (TRÁI) & THANH Ý TƯỞNG/LỊCH (PHẢI) CÙNG CHIỀU CAO, CÙNG ĐƯỜNG TÂM ─── */}
+      <div className="flex items-center justify-between gap-6 lg:gap-[64px] shrink-0 mb-3.5 h-[42px]">
+        {/* Trái: 4 ô input dropdowns (padding ngang mỗi ô x0.8) */}
+        <div className="flex-1 min-w-0">
+          <div className="inline-flex items-center rounded-full border border-gray-200/90 divide-x divide-gray-200 bg-white shadow-2xs h-[42px] overflow-hidden max-w-full">
+            {/* 1. Điểm đến */}
+            <button
+              type="button"
+              onClick={() => setShowWhereModal(true)}
+              className="px-3 h-full flex items-center gap-1.5 hover:bg-gray-50 text-gray-800 text-[13px] font-medium transition cursor-pointer group"
+              title="Bấm để thay đổi điểm đến"
+            >
+              <span className="truncate">{trip.destination}</span>
+              <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            </button>
+
+            {/* 2. Ngày bắt đầu */}
+            <button
+              type="button"
+              onClick={() => setShowWhenModal(true)}
+              className="px-3 h-full flex items-center gap-1.5 hover:bg-gray-50 text-gray-800 text-[13px] font-medium transition cursor-pointer group"
+              title="Bấm để thay đổi ngày và thời gian"
+            >
+              <span className="truncate">{formatDateBrief(trip.startDate)}</span>
+              <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            </button>
+
+            {/* 3. Số khách */}
+            <button
+              type="button"
+              onClick={() => setShowWhoModal(true)}
+              className="px-3 h-full flex items-center gap-1.5 hover:bg-gray-50 text-gray-800 text-[13px] font-medium transition cursor-pointer group"
+              title="Bấm để thay đổi số lượng người đi"
+            >
+              <span className="truncate">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</span>
+              <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            </button>
+
+            {/* 4. Ngân sách */}
+            <button
+              type="button"
+              onClick={() => setShowBudgetModal(true)}
+              className="px-3 h-full flex items-center gap-1.5 hover:bg-gray-50 text-gray-600 hover:text-gray-900 text-[13px] font-medium transition cursor-pointer group"
+              title="Bấm để thay đổi phạm vi ngân sách"
+            >
+              <span className="truncate">{budgetBriefText}</span>
+              <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            </button>
+          </div>
         </div>
 
-        {/* ─── NỘI DUNG CHÍNH: 2 CỘT CHUẨN MINDTRIP (GIẢM 20% KHOẢNG CÁCH, NHÍCH LÊN HỢP LÝ) ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* ────── CỘT TRÁI (LEFT COLUMN - 6 COLS, THU GỌN BỀ NGANG CARD) ────── */}
-        <div className="lg:col-span-6 flex flex-col space-y-4">
-          {/* 1. Tiêu đề lớn & Khung Metadata (Gộp 1 khung viền mảnh chuẩn Mindtrip) */}
-          <div>
-            <h1 className="text-[26px] sm:text-[28px] font-extrabold text-gray-950 tracking-tight leading-tight mb-2.5">
-              {displayTitle}
-            </h1>
+        {/* Phải: Thanh điều hướng Ý tưởng / Lịch trình (Cùng chiều cao h-[42px], không bị cắt chữ) */}
+        <div className="w-full lg:w-[39%] shrink-0 h-[42px]">
+          <div className="flex items-center gap-1.5 p-1 bg-neutral-100/90 rounded-2xl border border-neutral-200/80 shadow-2xs h-full">
+            {/* 1. Ý tưởng đã lưu */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowItineraryDrawer(false);
+                setShowIdeasView(true);
+              }}
+              className="h-full px-3 rounded-xl bg-white hover:bg-neutral-50 border border-neutral-200/60 shadow-2xs text-gray-900 font-bold text-[13px] transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer shrink-0"
+              title="Xem danh sách ý tưởng bạn đã lưu vào chuyến đi"
+            >
+              <Lightbulb size={15} className="text-amber-500 shrink-0" />
+              <span>Ý tưởng</span>
+              <span className={`min-w-[19px] h-[19px] px-1 rounded-full text-[10.5px] font-extrabold flex items-center justify-center ${
+                tripIdeas.length > 0 ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {tripIdeas.length}
+              </span>
+            </button>
 
-            {/* Khung thông tin tóm tắt: Gộp 1 khung viền mảnh, ngăn vạch dọc chuẩn Mindtrip */}
-            <div className="inline-flex items-center rounded-full border border-gray-200/90 divide-x divide-gray-200 bg-white shadow-2xs h-[36px] overflow-hidden">
-              {/* 1. Điểm đến */}
-              <button
-                type="button"
-                onClick={() => setShowWhereModal(true)}
-                className="px-3.5 h-full flex items-center gap-1.5 hover:bg-gray-50 text-gray-800 text-[13px] font-medium transition cursor-pointer group"
-                title="Bấm để thay đổi điểm đến"
-              >
-                <span>{trip.destination}</span>
-                <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
-              </button>
+            {/* 2. Lịch trình theo ngày */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowIdeasView(false);
+                setShowItineraryDrawer(true);
+              }}
+              className="h-full px-3.5 rounded-xl bg-black hover:bg-neutral-800 text-white font-bold text-[13px] transition flex items-center justify-center gap-1.5 shadow-xs active:scale-98 cursor-pointer group shrink-0"
+              title="Xem và sắp xếp lịch trình chi tiết theo từng ngày (Timeline, khoảng cách, phương tiện xanh)"
+            >
+              <Compass size={15} className="text-emerald-400 shrink-0" />
+              <span className="whitespace-nowrap">Xem lịch theo ngày</span>
+              <ChevronRight size={13} className="text-gray-400 group-hover:translate-x-0.5 group-hover:text-white transition-transform shrink-0" />
+            </button>
 
-              {/* 2. Ngày bắt đầu (Ví dụ: Từ 2 thg 11) */}
-              <button
-                type="button"
-                onClick={() => setShowWhenModal(true)}
-                className="px-3.5 h-full flex items-center gap-1.5 hover:bg-gray-50 text-gray-800 text-[13px] font-medium transition cursor-pointer group"
-                title="Bấm để thay đổi ngày và thời gian"
-              >
-                <span>{formatDateBrief(trip.startDate)}</span>
-                <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
-              </button>
+            {/* 3. Lịch tổng quan */}
+            <button
+              type="button"
+              onClick={() => setActiveRightDrawer('calendar')}
+              className="h-full px-2.5 rounded-xl hover:bg-white text-gray-600 hover:text-black font-semibold text-[12.5px] transition flex items-center justify-center gap-1 active:scale-98 cursor-pointer shrink-0"
+              title="Xem khung thời gian và ngày đi của chuyến đi"
+            >
+              <CalendarIcon size={14} className="text-gray-500 shrink-0" />
+              <span>Lịch</span>
+            </button>
 
-              {/* 3. Số khách (Ví dụ: 2 du khách) */}
-              <button
-                type="button"
-                onClick={() => setShowWhoModal(true)}
-                className="px-3.5 h-full flex items-center gap-1.5 hover:bg-gray-50 text-gray-800 text-[13px] font-medium transition cursor-pointer group"
-                title="Bấm để thay đổi số lượng người đi"
-              >
-                <span>{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</span>
-                <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
-              </button>
+            {/* 4. Phân tách + Gu (Không bị cắt "Gu...") */}
+            <div className="h-4 w-[1px] bg-neutral-300 mx-0.5 shrink-0" />
+            <button
+              type="button"
+              onClick={() => setShowBudgetModal(true)}
+              className="h-full px-2.5 rounded-xl hover:bg-white text-gray-600 hover:text-black font-semibold text-[12.5px] transition flex items-center justify-center gap-1 active:scale-98 cursor-pointer shrink-0"
+              title="Thiết lập ngân sách và gu du lịch của chuyến đi"
+            >
+              <SlidersHorizontal size={14} className="text-gray-500 shrink-0" />
+              <span>Gu</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
-              {/* 4. Ngân sách (Ví dụ: $$$$, KHÔNG nền đen) */}
-              <button
-                type="button"
-                onClick={() => setShowBudgetModal(true)}
-                className="px-3.5 h-full flex items-center gap-1.5 hover:bg-gray-50 text-gray-600 hover:text-gray-900 text-[13px] font-medium transition cursor-pointer group"
-                title="Bấm để thay đổi phạm vi ngân sách"
-              >
-                <span>{budgetBriefText}</span>
-                <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
-              </button>
-            </div>
+      {/* ─── ROW 4: CHAT (TRÁI) & MAP (PHẢI) CÙNG ĐỈNH, CÙNG ĐÁY ─── */}
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-6 lg:gap-[64px] items-stretch">
+        {/* CỘT TRÁI: KHUNG TRÒ CHUYỆN AI COPILOT */}
+        <div className="flex-1 min-w-0 h-full flex flex-col justify-between">
+          {/* Tiêu đề chat: Chats 1 (Mindtrip chuẩn, bỏ chấm xanh và subtitle) */}
+          <div className="flex items-center justify-between mb-2 shrink-0">
+            <h3 className="text-[17px] font-bold text-gray-950 tracking-tight flex items-center gap-1.5">
+              <span>Chats</span>
+              <span className="text-gray-400 font-normal text-sm">1</span>
+              <span className="sr-only">Đoạn chat (1)</span>
+            </h3>
           </div>
 
-          {/* KHỐI TRÒ CHUYỆN AI COPILOT CHUẨN GỌN GÀNG, SẠCH SẼ */}
-          <div className="space-y-3 pt-1 flex flex-col flex-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <h3 className="text-[17px] font-bold text-gray-950 tracking-tight">
-                  Đoạn chat (1)
-                </h3>
-                <span className="text-xs text-gray-400 font-normal">• Trợ lý GreenTrip AI</span>
+          {/* Luồng tin nhắn chat (cuộn bên trong độc lập, không cuộn cả trang) */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3 auto-hide-scrollbar">
+            {chatMessages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400 text-sm">
+                <p className="text-gray-400 text-xs">Bắt đầu một cuộc trò chuyện mới cho chuyến đi này...</p>
               </div>
-            </div>
-
-            {/* Gợi ý câu hỏi nhanh cho chuyến đi */}
-            <div className="space-y-1.5 pt-0.5">
-              <p className="text-[11.5px] font-semibold text-gray-400">Gợi ý câu hỏi nhanh:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {quickPrompts.map((q, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      handleSendChatMessage(q);
-                    }}
-                    className="text-xs bg-gray-50 hover:bg-gray-100 hover:border-gray-300 border border-gray-200/80 rounded-full px-3 py-1.5 text-gray-700 transition cursor-pointer active:scale-95"
-                  >
-                    💡 {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Luồng tin nhắn trò chuyện với Trợ lý AI */}
-            <div className="space-y-2.5 min-h-[340px] max-h-[520px] overflow-y-auto pr-1 auto-hide-scrollbar">
-              {chatMessages.map((msg, idx) => (
+            ) : (
+              chatMessages.map((msg, idx) => (
                 <div
                   key={msg.id || idx}
-                  className={`p-3 rounded-2xl text-[13px] leading-relaxed shadow-2xs ${
+                  className={`p-3.5 rounded-2xl text-[13px] leading-relaxed shadow-2xs ${
                     msg.sender === 'user'
                       ? 'bg-neutral-900 text-white ml-auto max-w-[85%]'
-                      : 'bg-white text-gray-800 mr-auto max-w-[95%] border border-gray-200/80 space-y-2.5'
+                      : 'bg-white text-gray-800 w-full border border-gray-200/80 space-y-2.5'
                   }`}
                 >
                   {msg.sender === 'user' ? (
@@ -1210,16 +1249,16 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     </div>
                   )}
 
-                  {/* Thẻ gợi ý địa điểm từ Copilot */}
+                  {/* Thẻ gợi ý địa điểm từ Copilot (căn phẳng mép phải w-full) */}
                   {msg.suggestedPois && msg.suggestedPois.length > 0 && (
-                    <div className="space-y-2 pt-1">
+                    <div className="space-y-2 pt-1 w-full">
                       {msg.suggestedPois.map((p) => {
                         const isSaved = isPoiSavedInIdeas(p);
                         const img = p.image_url || getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
                         return (
                           <div
                             key={p.id}
-                            className="p-2.5 rounded-xl border border-gray-200/90 hover:border-black/30 bg-gray-50/70 hover:bg-white transition-all flex flex-col sm:flex-row gap-2.5 items-start sm:items-center justify-between shadow-2xs group"
+                            className="p-2.5 rounded-xl border border-gray-200/90 hover:border-black/30 bg-gray-50/70 hover:bg-white transition-all flex flex-col sm:flex-row gap-2.5 items-start sm:items-center justify-between shadow-2xs group w-full"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <img
@@ -1286,177 +1325,128 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     </div>
                   )}
                 </div>
-              ))}
+              ))
+            )}
 
-              {/* Trạng thái đang suy nghĩ */}
-              {isAiThinking && (
-                <div className="p-3 rounded-2xl bg-white border border-gray-200/80 text-gray-600 text-[13px] mr-auto max-w-[90%] shadow-2xs flex items-center gap-2">
-                  <Sparkles size={15} className="text-emerald-600 animate-spin shrink-0" />
-                  <span>Trợ lý GreenTrip AI đang tìm kiếm & tối ưu lịch trình xanh...</span>
-                </div>
-              )}
+            {isAiThinking && (
+              <div className="p-3 rounded-2xl bg-white border border-gray-200/80 text-gray-600 text-[13px] mr-auto max-w-[90%] shadow-2xs flex items-center gap-2">
+                <Sparkles size={15} className="text-emerald-600 animate-spin shrink-0" />
+                <span>Trợ lý GreenTrip AI đang tìm kiếm & tối ưu lịch trình xanh...</span>
+              </div>
+            )}
 
-              <div ref={chatEndRef} />
-            </div>
+            <div ref={chatEndRef} />
+          </div>
 
-            {/* Khung nhập tin nhắn chat chuẩn Mindtrip */}
-            <div className="rounded-[24px] border border-gray-200/90 p-3.5 shadow-sm bg-white hover:border-gray-300 focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all flex flex-col justify-between">
-              <input
-                ref={chatInputRef}
-                type="text"
-                placeholder="Bắt đầu một cuộc trò chuyện mới cho chuyến đi này..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSendChatMessage();
-                }}
-                className="w-full text-[13.5px] text-gray-900 placeholder:text-gray-400 focus:outline-none bg-transparent pt-0.5"
-              />
+          {/* Chip gợi ý câu hỏi (3 chip ngắn ≤ 22 ký tự, đặt sát ngay trên ô nhập) */}
+          <div className="flex flex-wrap gap-1.5 w-full pt-2 pb-2 shrink-0">
+            {quickPrompts.slice(0, 3).map((q, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSendChatMessage(q)}
+                className="text-xs bg-gray-50 hover:bg-gray-100 hover:border-gray-300 border border-gray-200/80 rounded-full px-3 py-1.5 text-gray-700 transition cursor-pointer active:scale-95 truncate max-w-full"
+                title={q}
+              >
+                💡 {q}
+              </button>
+            ))}
+          </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100/70 mt-3">
+          {/* Ô nhập tin nhắn ghim đáy */}
+          <div className="w-full shrink-0 rounded-[24px] border border-gray-200/90 p-3.5 shadow-sm bg-white hover:border-gray-300 focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all flex flex-col justify-between">
+            <input
+              ref={chatInputRef}
+              type="text"
+              placeholder="Bắt đầu một cuộc trò chuyện mới cho chuyến đi này..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSendChatMessage();
+              }}
+              className="w-full text-[13.5px] text-gray-900 placeholder:text-gray-400 focus:outline-none bg-transparent pt-0.5"
+            />
+
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100/70 mt-3">
+              <button
+                type="button"
+                onClick={() => setShowAddIdeasModal(true)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
+                title="Thêm địa điểm vào ý tưởng chuyến đi"
+              >
+                <Plus size={18} />
+              </button>
+
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddIdeasModal(true)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                  title="Thêm địa điểm vào ý tưởng chuyến đi"
+                  onClick={() => {
+                    handleSendChatMessage('Tư vấn phương tiện di chuyển xanh tiết kiệm CO2 cho chuyến đi');
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                  title="Phương tiện di chuyển xanh"
                 >
-                  <Plus size={18} />
+                  <Car size={17} />
                 </button>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleSendChatMessage('Tư vấn phương tiện di chuyển xanh tiết kiệm CO2 cho chuyến đi');
-                    }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
-                    title="Phương tiện di chuyển xanh"
-                  >
-                    <Car size={17} />
-                  </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSendChatMessage('Gợi ý trải nghiệm văn hóa và đặc sản bản địa hôm nay');
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
+                  title="Ghi chú giọng nói"
+                >
+                  <Mic size={17} />
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleSendChatMessage('Gợi ý trải nghiệm văn hóa và đặc sản bản địa hôm nay');
-                    }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                    title="Ghi chú giọng nói"
-                  >
-                    <Mic size={17} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSendChatMessage()}
-                    disabled={isAiThinking}
-                    className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
-                    title="Gửi"
-                  >
-                    <Send size={14} className="ml-0.5" />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSendChatMessage()}
+                  disabled={isAiThinking}
+                  className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Gửi"
+                >
+                  <Send size={14} className="ml-0.5" />
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ────── CỘT PHẢI (RIGHT COLUMN - 6 COLS, CỐ ĐỊNH MAP CHUẨN MINDTRIP) ────── */}
-        <div className="lg:col-span-6 flex flex-col space-y-3.5 lg:sticky lg:top-4.5 self-start">
-          {/* Thanh điều hướng phân cấp rõ ràng: Ý tưởng (Gom) ➔ Lịch trình theo ngày (Primary CTA nổi bật) */}
-              <div className="flex items-center gap-1.5 p-1 bg-neutral-100/90 rounded-2xl border border-neutral-200/80 shadow-2xs">
-                {/* 1. Ý tưởng đã lưu (Nơi gom địa điểm - GIỮ NGUYÊN GỐC) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowItineraryDrawer(false);
-                    setShowIdeasView(true);
-                  }}
-                  className="py-2 px-3 rounded-xl bg-white hover:bg-neutral-50 border border-neutral-200/60 shadow-2xs text-gray-900 font-bold text-[13px] transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer shrink-0"
-                  title="Xem danh sách ý tưởng bạn đã lưu vào chuyến đi"
-                >
-                  <Lightbulb size={15} className="text-amber-500 shrink-0" />
-                  <span className="hidden sm:inline">Ý tưởng</span>
-                  <span className={`min-w-[19px] h-[19px] px-1 rounded-full text-[10.5px] font-extrabold flex items-center justify-center ${
-                    tripIdeas.length > 0 ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {tripIdeas.length}
-                  </span>
-                </button>
-
-                {/* 2. Lịch trình theo ngày (HÀNH ĐỘNG CHÍNH - MỞ LỊCH TRÌNH VÀO CARD CHỨA) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowIdeasView(false);
-                    setShowItineraryDrawer(true);
-                  }}
-                  className="flex-1 py-2 px-3 sm:px-4 rounded-xl bg-black hover:bg-neutral-800 text-white font-bold text-[13px] transition flex items-center justify-center gap-2 shadow-xs active:scale-98 cursor-pointer group"
-                  title="Xem và sắp xếp lịch trình chi tiết theo từng ngày (Timeline, khoảng cách, phương tiện xanh)"
-                >
-                  <Compass size={15} className="text-emerald-400 shrink-0" />
-                  <span className="truncate">Xem lịch theo ngày</span>
-                  <ChevronRight size={14} className="text-gray-400 group-hover:translate-x-0.5 group-hover:text-white transition-transform shrink-0" />
-                </button>
-
-                {/* 3. Lịch tổng quan (Phụ trợ) */}
-                <button
-                  type="button"
-                  onClick={() => setActiveRightDrawer('calendar')}
-                  className="py-2 px-2.5 rounded-xl hover:bg-white text-gray-600 hover:text-black font-semibold text-[12.5px] transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer shrink-0"
-                  title="Xem khung thời gian và ngày đi của chuyến đi"
-                >
-                  <CalendarIcon size={14} className="text-gray-500 shrink-0" />
-                  <span className="hidden xl:inline">Lịch</span>
-                </button>
-
-                {/* 4. Phân tách + Ngân sách & Gu (Phụ trợ) */}
-                <div className="h-4 w-[1px] bg-neutral-300 mx-0.5 shrink-0" />
-                <button
-                  type="button"
-                  onClick={() => setShowBudgetModal(true)}
-                  className="py-2 px-2.5 rounded-xl hover:bg-white text-gray-600 hover:text-black font-semibold text-[12.5px] transition flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer shrink-0"
-                  title="Thiết lập ngân sách và gu du lịch của chuyến đi"
-                >
-                  <SlidersHorizontal size={14} className="text-gray-500 shrink-0" />
-                  <span className="hidden xl:inline">Gu</span>
-                </button>
-              </div>
-
-              {/* Bản đồ tương tác trực quan (Interactive Map với đầy đủ thuộc tính chuẩn Explore) */}
-              <div 
-                className={`w-full transition-all duration-300 ${
-                  isMapExpanded 
-                    ? 'fixed inset-4 z-50 rounded-3xl h-[calc(100vh-32px)] shadow-2xl' 
-                    : 'h-[580px] xl:h-[calc(100vh-175px)] min-h-[520px] max-h-[750px] rounded-3xl shadow-sm'
-                } overflow-hidden border border-gray-200 relative [transform:translateZ(0)]`}
-              >
-                <PoiMap
-                  pois={relevantPois}
-                  selectedPoiId={selectedMapPoiId}
-                  hoveredPoiId={hoveredMapPoiId}
-                  onSelectPoi={setSelectedMapPoiId}
-                  onHoverPoi={setHoveredMapPoiId}
-                  showMapLoader={false}
-                  isExpanded={isMapExpanded}
-                  onToggleExpand={() => {
-                    setIsMapExpanded((prev) => !prev);
-                    setTimeout(() => {
-                      window.dispatchEvent(new Event('resize'));
-                    }, 200);
-                  }}
-                  favorites={savedIds}
-                  pendingFavorites={pendingIds}
-                  onToggleFavorite={handleOpenSavedCollections}
-                  addedTrips={new Set(tripIdeas)}
-                  onToggleAddTrip={handleToggleIdea}
-                />
-              </div>
+        {/* CỘT PHẢI: BẢN ĐỒ TƯƠNG TÁC (CÙNG ĐỈNH & ĐÁY VỚI CỘT CHAT) */}
+        <div className="w-full lg:w-[39%] shrink-0 h-full relative">
+          <div 
+            className={`w-full h-full transition-all duration-300 ${
+              isMapExpanded 
+                ? 'fixed inset-4 z-50 rounded-3xl h-[calc(100vh-32px)] shadow-2xl' 
+                : 'rounded-3xl shadow-sm'
+            } overflow-hidden border border-gray-200 relative [transform:translateZ(0)]`}
+          >
+            <PoiMap
+              pois={relevantPois}
+              selectedPoiId={selectedMapPoiId}
+              hoveredPoiId={hoveredMapPoiId}
+              onSelectPoi={setSelectedMapPoiId}
+              onHoverPoi={setHoveredMapPoiId}
+              showMapLoader={false}
+              isExpanded={isMapExpanded}
+              onToggleExpand={() => {
+                setIsMapExpanded((prev) => !prev);
+                setTimeout(() => {
+                  window.dispatchEvent(new Event('resize'));
+                }, 200);
+              }}
+              favorites={savedIds}
+              pendingFavorites={pendingIds}
+              onToggleFavorite={handleOpenSavedCollections}
+              addedTrips={new Set(tripIdeas)}
+              onToggleAddTrip={handleToggleIdea}
+            />
+          </div>
         </div>
-
-      </div>
-      </div>
-
+      </div>
+
       {/* ─── MODAL 1: Ở ĐÂU (KHI BẤM VÀO PILL ĐIỂM ĐẾN) ─── */}
       {showWhereModal && (
         <div 

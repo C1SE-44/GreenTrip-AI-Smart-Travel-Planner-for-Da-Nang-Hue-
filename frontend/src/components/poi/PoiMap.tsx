@@ -1485,7 +1485,7 @@ export default function PoiMap({
       >
         {/* Tải trước 12 hàng ô gạch (keepBuffer=12) & cập nhật liên tục để xóa bỏ hoàn toàn hiện tượng mảng vuông bị khuyết khi lướt */}
         <TileLayer
-          url="https://{s}.google.com/vt/lyrs=m&hl=vi&x={x}&y={y}&z={z}&apistyle=s.t:2|p.v:off,s.t:5|s.e:l.i|p.v:off,s.t:17|s.e:l.i|p.v:off,s.t:18|s.e:l.i|p.v:off,s.t:road|s.e:l.i|p.v:off,s.t:road.highway|s.e:labels.icon|p.v:off,s.t:road.arterial|s.e:labels.icon|p.v:off"
+          url="https://{s}.google.com/vt/lyrs=m&hl=vi&x={x}&y={y}&z={z}&apistyle=s.t:poi|p.v:off,s.t:transit|p.v:off,s.t:2|p.v:off,s.t:5|s.e:l.i|p.v:off,s.t:17|s.e:l.i|p.v:off,s.t:18|s.e:l.i|p.v:off,s.t:road|s.e:l.i|p.v:off,s.t:road.highway|s.e:labels.icon|p.v:off,s.t:road.arterial|s.e:labels.icon|p.v:off"
           subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
           attribution='&copy; Google Maps'
           keepBuffer={12}

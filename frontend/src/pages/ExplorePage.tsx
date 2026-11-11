@@ -1326,8 +1326,9 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               trip={selectedTripForDetails}
               allPois={allPois}
               onBack={() => {
-                setActiveTripSubTab('ideas');
+                setActiveOverviewTrip(null);
                 setSelectedTripForDetails(null);
+                setActiveTripSubTab('ideas');
               }}
               onNavigateToCalendar={() => {
                 const target = activeOverviewTrip || selectedTripForDetails;

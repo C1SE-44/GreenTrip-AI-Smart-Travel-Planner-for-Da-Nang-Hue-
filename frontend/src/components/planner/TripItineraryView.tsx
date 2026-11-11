@@ -232,6 +232,7 @@ export default function TripItineraryView({
 
   // Bộ lọc xem ngày nổi trên Bản đồ (đặt góc trên bên phải)
   const [mapDayFilter, setMapDayFilter] = useState<number | 'all'>('all');
+  const [showDayFilterDropdown, setShowDayFilterDropdown] = useState(false);
 
   // Thao tác nhanh cho từng thẻ Ideas & Ngày
   const ideasCarouselRef = useRef<HTMLDivElement>(null);
@@ -873,7 +874,7 @@ export default function TripItineraryView({
           </div>
         </header>
       ) : (
-        <header className="px-6 py-3.5 bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
+        <header className="h-[60px] px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
@@ -1765,42 +1766,84 @@ export default function TripItineraryView({
           <section className="flex-1 h-full relative bg-white overflow-hidden" data-purpose="right-panel-container">
             <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] py-4 pb-6">
               <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
-                {/* Bộ chọn xem ngày nổi BÊN PHẢI Ở TRÊN BẢN ĐỒ (Chuẩn glass pill) */}
-                <div className="absolute top-3.5 right-3.5 z-[400] flex items-center gap-1 bg-white/90 backdrop-blur-md p-1 rounded-full shadow-md border border-gray-200/80">
+                {/* Bộ chọn xem đường đi theo ngày dạng Dropdown dọc (Chuẩn yêu cầu: "thay cái dãy ngày, thành kiểu xem đường đi của ngày, khi mở thì sẽ hiện hàng dọc ngày nào ngày nào") */}
+                <div className="absolute top-3.5 right-3.5 z-[400] flex flex-col items-end">
                   <button
                     type="button"
-                    onClick={() => setMapDayFilter('all')}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
-                      mapDayFilter === 'all'
-                        ? 'bg-black text-white shadow-xs'
-                        : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                    }`}
+                    onClick={() => setShowDayFilterDropdown((prev) => !prev)}
+                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/95 hover:bg-white text-gray-900 font-bold text-xs shadow-md border border-gray-200/90 transition cursor-pointer active:scale-95 group"
+                    title="Bấm để chọn xem đường đi theo từng ngày"
                   >
-                    Tất cả các ngày
+                    <span className="text-emerald-600 text-xs">🗺️</span>
+                    <span>
+                      {mapDayFilter === 'all' ? 'Đường đi: Tất cả các ngày' : `Đường đi: Ngày ${mapDayFilter}`}
+                    </span>
+                    <ChevronDown size={13} className={`text-gray-400 group-hover:text-black transition-transform duration-200 ${showDayFilterDropdown ? 'rotate-180' : ''}`} />
                   </button>
-                  {plan.days.map((day) => (
-                    <button
-                      key={day.day_number}
-                      type="button"
-                      onClick={() => setMapDayFilter(day.day_number)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                        mapDayFilter === day.day_number
-                          ? 'bg-black text-white shadow-xs'
-                          : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                      }`}
+
+                  {/* Dropdown danh sách hàng dọc các ngày */}
+                  {showDayFilterDropdown && (
+                    <div 
+                      className="mt-2 w-[220px] max-h-[340px] overflow-y-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/90 p-1.5 space-y-1 z-[500] auto-hide-scrollbar animate-fadeIn"
                     >
-                      <span>Ngày {day.day_number}</span>
-                      {day.stops.length > 0 && (
-                        <span
-                          className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                            mapDayFilter === day.day_number ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
-                          }`}
-                        >
-                          {day.stops.length}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMapDayFilter('all');
+                          setShowDayFilterDropdown(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer text-left ${
+                          mapDayFilter === 'all'
+                            ? 'bg-black text-white shadow-xs'
+                            : 'text-gray-700 hover:text-black hover:bg-gray-100/80'
+                        }`}
+                      >
+                        <span>Tất cả các ngày</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                          mapDayFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
+                        }`}>
+                          Toàn bộ
                         </span>
-                      )}
-                    </button>
-                  ))}
+                      </button>
+
+                      <div className="h-px bg-gray-100 my-1"></div>
+
+                      {plan.days.map((day) => {
+                        const isSelected = mapDayFilter === day.day_number;
+                        return (
+                          <button
+                            key={day.day_number}
+                            type="button"
+                            onClick={() => {
+                              setMapDayFilter(day.day_number);
+                              setShowDayFilterDropdown(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer text-left ${
+                              isSelected
+                                ? 'bg-black text-white shadow-xs'
+                                : 'text-gray-700 hover:text-black hover:bg-gray-100/80'
+                            }`}
+                          >
+                            <span className="truncate">
+                              Ngày {day.day_number}
+                              {day.stops.length > 0 && (
+                                <span className="font-normal opacity-70 ml-1 text-[11px]">
+                                  ({day.stops.length} điểm)
+                                </span>
+                              )}
+                            </span>
+                            {day.stops.length > 0 && (
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded-full shrink-0 ml-1.5 ${
+                                isSelected ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
+                              }`}>
+                                {day.stops.length}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Bản đồ Leaflet sạch sẽ */}

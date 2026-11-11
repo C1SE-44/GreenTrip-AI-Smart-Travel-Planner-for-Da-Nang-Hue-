@@ -1010,8 +1010,13 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 key: 'trips', 
                 onClick: () => { 
                   setViewMode('trips'); 
-                  setActiveOverviewTrip(null);
                   setSelectedTripForDetails(null);
+                  if (userTrips.length > 0) {
+                    setActiveOverviewTrip(userTrips[0]);
+                  } else {
+                    setActiveOverviewTrip(null);
+                    setIsCreateTripModalOpen(true);
+                  }
                   navigate('/planner'); 
                 }, 
                 icon: viewMode === 'trips' ? 'ph-fill ph-calendar-plus' : 'ph ph-calendar-plus', 

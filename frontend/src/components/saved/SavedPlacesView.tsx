@@ -96,9 +96,11 @@ function CollectionNameDialog({
 export default function SavedPlacesView({
   addedTrips,
   onToggleAddTrip,
+  onAddAllToTrip,
 }: {
   addedTrips?: Set<string>;
   onToggleAddTrip?: (poiId: string) => void;
+  onAddAllToTrip?: (poiIds: string[]) => void;
 }) {
   const {
     places,
@@ -322,7 +324,14 @@ export default function SavedPlacesView({
                 {categories.map((category) => <option key={category} value={category}>{categoryLabels[category]}</option>)}
               </select>
             </label>
-            <span className="text-sm text-neutral-600">{filteredCollectionPlaces.length} địa điểm</span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-neutral-600">{filteredCollectionPlaces.length} địa điểm</span>
+              {onAddAllToTrip && filteredCollectionPlaces.length > 0 && (
+                <button type="button" onClick={() => onAddAllToTrip(normalizedCollectionPlaces.map((poi) => poi.id))} className="min-h-10 rounded-full bg-neutral-900 px-4 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">
+                  Thêm album vào chuyến đi
+                </button>
+              )}
+            </div>
           </div>
           </>
         )}

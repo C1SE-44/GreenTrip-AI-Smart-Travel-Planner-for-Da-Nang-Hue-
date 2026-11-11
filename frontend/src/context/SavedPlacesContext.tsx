@@ -32,7 +32,6 @@ interface SavedPlacesContextValue {
   refresh: () => Promise<void>;
   refreshCollections: () => Promise<void>;
   toggleSaved: (poiId: string, poi?: Poi) => Promise<void>;
-  ensureSaved: (poiId: string) => Promise<void>;
   openCollectionPicker: (poi: Poi) => void;
 }
 
@@ -183,30 +182,6 @@ export function SavedPlacesProvider({ children }: PropsWithChildren) {
     }
   }, [goToLogin, pendingIds, refresh, savedIds, showFeedback]);
 
-  const ensureSaved = useCallback(async (poiId: string) => {
-    const accountToken = getAccessToken();
-    if (!accountToken || savedIds.has(poiId) || pendingIds.has(poiId)) return;
-
-    setPendingIds((previous) => new Set(previous).add(poiId));
-    try {
-      await savePlace(poiId);
-      if (getAccessToken() !== accountToken) return;
-      await refresh();
-    } catch (saveError) {
-      if (getAccessToken() !== accountToken) return;
-      if (errorStatus(saveError) === 401) {
-        showFeedback('Chưa thể xác thực yêu cầu đồng bộ địa điểm. Tài khoản vẫn đang đăng nhập.', true);
-      }
-      else showFeedback('Không thể đồng bộ địa điểm vào danh sách Đã lưu.', true);
-    } finally {
-      setPendingIds((previous) => {
-        const next = new Set(previous);
-        next.delete(poiId);
-        return next;
-      });
-    }
-  }, [pendingIds, refresh, savedIds, showFeedback]);
-
   const openCollectionPicker = useCallback((poi: Poi) => {
     if (!getAccessToken()) {
       goToLogin();
@@ -234,9 +209,8 @@ export function SavedPlacesProvider({ children }: PropsWithChildren) {
     refresh,
     refreshCollections,
     toggleSaved,
-    ensureSaved,
     openCollectionPicker,
-  }), [places, collections, savedIds, pendingIds, loading, error, feedback, refresh, refreshCollections, toggleSaved, ensureSaved, openCollectionPicker]);
+  }), [places, collections, savedIds, pendingIds, loading, error, feedback, refresh, refreshCollections, toggleSaved, openCollectionPicker]);
 
   return (
     <SavedPlacesContext.Provider value={contextValue}>

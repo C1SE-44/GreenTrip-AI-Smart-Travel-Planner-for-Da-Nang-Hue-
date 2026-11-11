@@ -150,7 +150,6 @@ export default function TripOverviewView({
     loading: savedPlacesLoading,
     error: savedPlacesError,
     refresh: refreshSavedPlaces,
-    ensureSaved,
     openCollectionPicker,
   } = useSavedPlaces();
 
@@ -308,7 +307,6 @@ export default function TripOverviewView({
   }, [trip.id, trip.destination]);
 
   const handleToggleIdea = (poiId: string) => {
-    const isAdding = !tripIdeas.includes(poiId);
     setTripIdeas((prev) => {
       const next = prev.includes(poiId) ? prev.filter((id) => id !== poiId) : [...prev, poiId];
       if (onUpdateTrip) {
@@ -316,9 +314,6 @@ export default function TripOverviewView({
       }
       return next;
     });
-    if (isAdding && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(poiId) && !savedIds.has(poiId)) {
-      void ensureSaved(poiId);
-    }
   };
 
   const handleToggleFavorite = (poiId: string) => {
@@ -331,9 +326,6 @@ export default function TripOverviewView({
     if (next.length === tripIdeas.length) return;
     setTripIdeas(next);
     onUpdateTrip?.({ ...trip, ideas: next });
-    poiIds.forEach((poiId) => {
-      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(poiId)) void ensureSaved(poiId);
-    });
   };
 
   // Helper kiểm tra điểm đến linh hoạt

@@ -2,6 +2,7 @@ import { CalendarPlus, Compass, Heart, Leaf, PlusSquare, Utensils, Landmark, Chu
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
+import SavedPlacesView from '@/components/saved/SavedPlacesView';
 import CreateTripMindtripModal from '@/components/planner/CreateTripMindtripModal';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse } from '@/data/pois';
@@ -220,6 +221,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const { savedIds: favorites, toggleSaved } = useSavedPlaces();
   const [viewMode, setViewMode] = useState<'explore' | 'trips' | 'saved'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
+  const [pendingTripPoiIds, setPendingTripPoiIds] = useState<string[] | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
 
@@ -954,7 +956,13 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         </div>
       </aside>
 
-      {viewMode === 'trips' ? (
+      {viewMode === 'saved' ? (
+        <SavedPlacesView
+          addedTrips={new Set(userTrips.flatMap((trip) => trip.ideas || []))}
+          onToggleAddTrip={(poiId) => setPendingTripPoiIds([poiId])}
+          onAddAllToTrip={(poiIds) => setPendingTripPoiIds(poiIds)}
+        />
+      ) : viewMode === 'trips' ? (
         activeOverviewTrip ? (
           <TripOverviewView
             trip={activeOverviewTrip}
@@ -1578,6 +1586,39 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
             setIsCreateTripModalOpen(false);
           }}
         />
+      )}
+      {pendingTripPoiIds && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPendingTripPoiIds(null); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="saved-add-trip-title" className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="saved-add-trip-title" className="text-lg font-bold text-neutral-950">Thêm vào chuyến đi</h2>
+                <p className="mt-1 text-sm text-neutral-700">Chọn chuyến đi để thêm {pendingTripPoiIds.length === 1 ? 'địa điểm này' : `${pendingTripPoiIds.length} địa điểm này`} vào Ý tưởng.</p>
+              </div>
+              <button type="button" aria-label="Đóng" onClick={() => setPendingTripPoiIds(null)} className="flex h-10 w-10 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800"><i className="ph ph-x" aria-hidden="true" /></button>
+            </div>
+            <div className="mt-5 max-h-72 space-y-2 overflow-y-auto">
+              {userTrips.map((trip) => (
+                <button key={trip.id} type="button" onClick={() => {
+                  const nextIdeas = [...new Set([...(trip.ideas || []), ...pendingTripPoiIds])];
+                  const updated = { ...trip, ideas: nextIdeas };
+                  setUserTrips((previous) => previous.map((item) => item.id === trip.id ? updated : item));
+                  if (activeOverviewTrip?.id === trip.id) setActiveOverviewTrip(updated);
+                  setPendingTripPoiIds(null);
+                  setViewMode('trips');
+                  setActiveOverviewTrip(updated);
+                }} className="flex min-h-14 w-full items-center justify-between rounded-xl border border-neutral-200 px-4 text-left hover:border-neutral-500 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">
+                  <span><span className="block font-semibold text-neutral-950">{trip.title}</span><span className="text-sm text-neutral-700">{trip.destination}{trip.daysCount ? ` · ${trip.daysCount} ngày` : ''}</span></span>
+                  <span className="text-sm font-semibold text-neutral-900">{(trip.ideas || []).filter((id) => pendingTripPoiIds.includes(id)).length === pendingTripPoiIds.length ? 'Đã thêm' : 'Chọn'}</span>
+                </button>
+              ))}
+              {!userTrips.length && <p className="rounded-xl bg-neutral-50 p-4 text-sm text-neutral-700">Bạn chưa có chuyến đi. Hãy tạo chuyến đi trước rồi thêm địa điểm vào Ý tưởng.</p>}
+            </div>
+            <div className="mt-5 flex justify-end">
+              <button type="button" onClick={() => setPendingTripPoiIds(null)} className="min-h-10 rounded-full px-4 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">Hủy</button>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );

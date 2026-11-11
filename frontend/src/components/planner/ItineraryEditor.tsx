@@ -8,8 +8,11 @@ import { createEmptyItinerary, getTripItinerary, saveTripItinerary, stopFromPoi,
 interface ItineraryEditorProps {
   trip: UserTrip;
   ideas: Poi[];
+  recommendations?: Poi[];
+  recommendationsLoading?: boolean;
   onClose: () => void;
   onAddIdea: () => void;
+  onSelectIdeas?: (poiIds: string[]) => void;
 }
 
 function minutesFor(stop: ItineraryStop): number {
@@ -98,8 +101,238 @@ function distanceKm(a: ItineraryStop, b: ItineraryStop): number | null {
   return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
+type VisitPeriod = 'morning' | 'afternoon' | 'evening';
+
+function preferredVisitPeriods(poi: Poi | undefined): VisitPeriod[] {
+  const hints = (poi?.best_time || []).map((hint) => hint.toLocaleLowerCase('vi-VN'));
+  const recognized = hints.flatMap((hint): VisitPeriod[] => {
+    if (/night|evening|tối|đêm/.test(hint)) return ['evening'];
+    if (/afternoon|chiều/.test(hint)) return ['afternoon'];
+    if (/morning|sáng/.test(hint)) return ['morning'];
+    const startHour = hint.match(/(?:^|\D)(\d{1,2}):\d{2}/)?.[1];
+    if (startHour != null) {
+      const hour = Number(startHour);
+      return [hour >= 17 || hour < 5 ? 'evening' : hour >= 12 ? 'afternoon' : 'morning'];
+    }
+    return [];
+  }).filter((period, index, periods) => periods.indexOf(period) === index);
+  if (recognized.length) return recognized;
+
+  const details = `${poi?.sub_category || ''} ${poi?.name || ''} ${poi?.category || ''}`.toLocaleLowerCase('vi-VN');
+  if (/cafe|cà phê|coffee/.test(details)) return ['afternoon', 'evening', 'morning'];
+  if (/quán ăn|nhà hàng|restaurant|food/.test(details)) return ['afternoon', 'evening', 'morning'];
+  if (/nightlife|bar|pub|đêm|night/.test(details)) return ['evening', 'afternoon', 'morning'];
+  return ['morning', 'afternoon', 'evening'];
+}
+
+function experienceGroup(poi: Poi | undefined, stop: ItineraryStop): string {
+  const details = `${poi?.sub_category || ''} ${poi?.name || stop.title} ${poi?.category || stop.category || ''}`.toLocaleLowerCase('vi-VN');
+  if (/cafe|cà phê|coffee/.test(details)) return 'cafe';
+  if (/quan-an|quán ăn|nhà hàng|restaurant|food/.test(details)) return 'dining';
+  return poi?.category || stop.category || 'other';
+}
+
+function explainDaySchedule(day: ItineraryDay, poiById: Map<string, Poi>): string {
+  const visits = day.stops.filter((stop) => stop.stop_type !== 'rest');
+  if (!visits.length) return 'Ngày này chưa có địa điểm nào được xếp.';
+
+  const reasons: string[] = [];
+  const cities = [...new Set(visits.map((stop) => stop.city).filter((city): city is string => Boolean(city)))];
+  if (cities.length === 1) reasons.push(`Các điểm tập trung tại ${cities[0]}.`);
+  else if (cities.length > 1) reasons.push(`Lịch có điểm tại ${cities.join(' và ')}.`);
+
+  const timeCounts = new Map<VisitPeriod, number>();
+  visits.forEach((stop) => {
+    if (!stop.start_time) return;
+    const hour = Number(stop.start_time.slice(0, 2));
+    const period: VisitPeriod = hour >= 17 || hour < 5 ? 'evening' : hour >= 12 ? 'afternoon' : 'morning';
+    timeCounts.set(period, (timeCounts.get(period) || 0) + 1);
+  });
+  const periodLabels: Record<VisitPeriod, string> = { morning: 'buổi sáng', afternoon: 'buổi chiều', evening: 'buổi tối' };
+  const timeSummary = [...timeCounts].map(([period, count]) => `${count} điểm ${periodLabels[period]}`);
+  if (timeSummary.length) reasons.push(`Khung giờ hiện tại: ${timeSummary.join(', ')}.`);
+  const unscheduled = visits.length - [...timeCounts.values()].reduce((total, count) => total + count, 0);
+  if (unscheduled) reasons.push(`${unscheduled} điểm chưa có giờ cụ thể.`);
+
+  const cafes = visits.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length;
+  if (cafes) reasons.push(`${cafes} quán cà phê trong ngày để tránh dồn trải nghiệm cùng loại.`);
+
+  const distances: number[] = [];
+  visits.forEach((stop, index) => visits.slice(index + 1).forEach((other) => {
+    const distance = distanceKm(stop, other);
+    if (distance != null) distances.push(distance);
+  }));
+  if (distances.length) {
+    const nearest = Math.min(...distances);
+    reasons.push(`Cặp điểm gần nhất cách khoảng ${nearest.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} km đường chim bay; thời gian đi đường có thể lâu hơn.`);
+  }
+
+  const restCount = day.stops.filter((stop) => stop.stop_type === 'rest').length;
+  if (restCount) reasons.push(`Đã giữ ${restCount} khoảng nghỉ trong lịch.`);
+  return reasons.join(' ');
+}
+
+function setAssistantVisitTimes(stops: ItineraryStop[], poiById: Map<string, Poi>, restPeriods: RestPeriod[]): ItineraryStop[] {
+  const windows: Record<VisitPeriod, { start: number; end: number }> = {
+    morning: { start: 8 * 60 + 30, end: 12 * 60 },
+    afternoon: { start: 14 * 60, end: 17 * 60 + 30 },
+    evening: { start: 18 * 60, end: 22 * 60 },
+  };
+  const booked: { start: number; end: number; gap: number }[] = stops.flatMap((stop) => {
+    if (!stop.start_time || !stop.end_time) return [];
+    return [{ start: minutesFromTime(stop.start_time), end: minutesFromTime(stop.end_time), gap: stop.stop_type === 'rest' ? 0 : 30 }];
+  });
+  restPeriods.forEach((period) => {
+    const range = period.time_range.match(/(\d{2}:\d{2})\s*[–—-]\s*(\d{2}:\d{2})/);
+    if (range) booked.push({ start: minutesFromTime(range[1]), end: minutesFromTime(range[2]), gap: 0 });
+  });
+  return stops.map((stop) => {
+    if (stop.stop_type === 'rest' || stop.start_time || stop.end_time) return stop;
+    const duration = minutesFor(stop);
+    const periods = preferredVisitPeriods(stop.poi_id ? poiById.get(stop.poi_id) : undefined);
+    let slot: { start: number; end: number } | null = null;
+    for (const period of periods) {
+      const window = windows[period];
+      for (let start = window.start; start + duration <= window.end; start += 15) {
+        const end = start + duration;
+        if (booked.every((range) => end <= range.start - range.gap || start >= range.end + range.gap)) {
+          slot = { start, end };
+          break;
+        }
+      }
+      if (slot) break;
+    }
+    if (!slot) return stop;
+    booked.push({ start: slot.start, end: slot.end, gap: 30 });
+    const start = slot.start;
+    return { ...stop, start_time: timeFromMinutes(start), end_time: timeFromMinutes(start + duration) };
+  });
+}
+
 function normalizeSequence(days: ItineraryDay[]): ItineraryDay[] {
   return days.map((day) => ({ ...day, stops: day.stops.map((stop, index) => ({ ...stop, sequence: index })) }));
+}
+
+function clearOverlappingVisitTimes(plan: TripItinerary): { plan: TripItinerary; repairedCount: number } {
+  let repairedCount = 0;
+  const days = plan.days.map((day) => {
+    const stops = day.stops.map((stop) => ({ ...stop }));
+    // Keep explicit user appointments when possible. Clear only the conflicting
+    // visit's time fields so its place and other edits stay intact.
+    for (let pass = 0; pass < stops.length; pass += 1) {
+      const timed = stops
+        .map((stop, index) => ({ stop, index }))
+        .filter(({ stop }) => stop.start_time && stop.end_time)
+        .sort((a, b) => a.stop.start_time!.localeCompare(b.stop.start_time!));
+      const conflict = timed.findIndex(({ stop }, index) => index > 0
+        && stop.start_time! < timed[index - 1].stop.end_time!);
+      if (conflict < 0) break;
+      const previous = timed[conflict - 1];
+      const current = timed[conflict];
+      const victim = previous.stop.source === 'manual' && current.stop.source !== 'manual'
+        ? current
+        : current.stop.source === 'manual' && previous.stop.source !== 'manual'
+          ? previous
+          : current;
+      stops[victim.index] = { ...victim.stop, start_time: null, end_time: null };
+      repairedCount += 1;
+    }
+    return { ...day, stops };
+  });
+  return { plan: { ...plan, days }, repairedCount };
+}
+
+function selectAutomaticPois(
+  days: ItineraryDay[],
+  ideas: Poi[],
+  recommendations: Poi[],
+  trip: UserTrip,
+  pacing: 'Relaxed' | 'Balanced' | 'Fast',
+  dailyCapacity: number,
+): {
+  selected: Poi[];
+  added: Poi[];
+  selectedCost: number;
+  limits: { target: number; destination: number; time: number; budget: number; category: number };
+  targetStops: number;
+  budgetLimit: number;
+  people: number;
+} {
+  const people = Math.max(1, trip.peopleCount || 1);
+  const dayCount = Math.max(1, days.length);
+  const targetPerDay = pacing === 'Relaxed' ? 2 : pacing === 'Fast' ? 5 : 3;
+  const targetStops = dayCount * targetPerDay;
+  const activityBudget = trip.costBreakdown?.activities_and_tickets
+    ?? (trip.totalBudget != null ? trip.totalBudget * 0.25 : Number.POSITIVE_INFINITY);
+  const budgetLimit = Number.isFinite(activityBudget) ? activityBudget : Number.POSITIVE_INFINITY;
+  const existingStops = days.flatMap((day) => day.stops.filter((stop) => stop.stop_type !== 'rest'));
+  const placedIds = new Set(existingStops.map((stop) => stop.poi_id).filter((id): id is string => Boolean(id)));
+  const placedCustomNames = new Set(existingStops
+    .filter((stop) => stop.stop_type === 'custom')
+    .map((stop) => stop.title.trim().toLocaleLowerCase('vi-VN')));
+  const isAlreadyPlaced = (poi: Poi) => placedIds.has(poi.id)
+    || (poi.id.startsWith('custom-') && placedCustomNames.has(poi.name.trim().toLocaleLowerCase('vi-VN')));
+  const existingMinutes = existingStops.reduce((total, stop) => total + minutesFor(stop), 0);
+  const existingIdeaIds = new Set(ideas.map((poi) => poi.id));
+  const recommendationOnly = recommendations.filter((poi) => !existingIdeaIds.has(poi.id));
+  const candidates = [...ideas, ...recommendationOnly];
+  const placedPois = candidates.filter(isAlreadyPlaced);
+  const estimatedGroupCost = (poi: Poi) => Math.max(0, poi.estimatedCost || 0) * people;
+  let selectedCost = [...ideas, ...recommendationOnly.filter(isAlreadyPlaced)]
+    .reduce((total, poi) => total + estimatedGroupCost(poi), 0);
+  const selected = [...ideas];
+  const added: Poi[] = [];
+  const seen = new Set([...placedIds, ...ideas.map((poi) => poi.id)]);
+  const baseMinutes = existingMinutes + ideas.filter((poi) => !isAlreadyPlaced(poi))
+    .reduce((total, poi) => total + minutesFor(stopFromPoi(poi)), 0);
+  let remainingMinutes = Math.max(0, dayCount * dailyCapacity - baseMinutes);
+  let remainingSlots = Math.max(0, targetStops - existingStops.length - ideas.filter((poi) => !isAlreadyPlaced(poi)).length);
+  const limits = { target: 0, destination: 0, time: 0, budget: 0, category: 0 };
+  const categoryCounts = new Map<string, number>();
+  [...placedPois, ...ideas.filter((poi) => !isAlreadyPlaced(poi))].forEach((poi) => {
+    categoryCounts.set(poi.category, (categoryCounts.get(poi.category) || 0) + 1);
+  });
+  const categoryLimit = Math.max(2, dayCount);
+  const includesDaNang = /đà\s*nẵng|da\s*nang/i.test(trip.destination);
+  const includesHue = /huế|hue/i.test(trip.destination);
+
+  for (const poi of recommendationOnly) {
+    if (seen.has(poi.id)) continue;
+    if (remainingSlots <= 0) {
+      limits.target += 1;
+      continue;
+    }
+    const inDestination = (includesDaNang && /đà\s*nẵng|da\s*nang/i.test(poi.city))
+      || (includesHue && /huế|hue/i.test(poi.city))
+      || (!includesDaNang && !includesHue);
+    if (!inDestination) {
+      limits.destination += 1;
+      continue;
+    }
+    const candidateMinutes = minutesFor(stopFromPoi(poi));
+    const cost = estimatedGroupCost(poi);
+    if (candidateMinutes > remainingMinutes) {
+      limits.time += 1;
+      continue;
+    }
+    if (selectedCost + cost > budgetLimit) {
+      limits.budget += 1;
+      continue;
+    }
+    if ((categoryCounts.get(poi.category) || 0) >= categoryLimit) {
+      limits.category += 1;
+      continue;
+    }
+    selected.push(poi);
+    added.push(poi);
+    seen.add(poi.id);
+    selectedCost += cost;
+    remainingMinutes -= candidateMinutes;
+    remainingSlots -= 1;
+    categoryCounts.set(poi.category, (categoryCounts.get(poi.category) || 0) + 1);
+  }
+
+  return { selected, added, selectedCost, limits, targetStops, budgetLimit, people };
 }
 
 function alignItineraryToTrip(itinerary: TripItinerary, trip: UserTrip): { itinerary: TripItinerary; changed: boolean; warning: string } {
@@ -183,8 +416,7 @@ function normalizeLegacyLunchBreaks(itinerary: TripItinerary): { itinerary: Trip
   return { itinerary: { ...itinerary, days: normalizeSequence(days) }, changed };
 }
 
-function reorderNearStops(stops: ItineraryStop[]): ItineraryStop[] {
-  const places = stops.filter((stop) => stop.stop_type !== 'rest');
+function orderByProximity(places: ItineraryStop[]): ItineraryStop[] {
   if (places.length < 3 || places.some((stop) => stop.latitude == null || stop.longitude == null)) return places;
   const remaining = places.slice(1);
   const ordered = [places[0]];
@@ -204,6 +436,30 @@ function reorderNearStops(stops: ItineraryStop[]): ItineraryStop[] {
   return ordered;
 }
 
+function reorderNearStops(stops: ItineraryStop[]): ItineraryStop[] {
+  const places = stops.filter((stop) => stop.stop_type !== 'rest');
+  if (!places.some((stop) => stop.start_time || stop.end_time)) return orderByProximity(places);
+
+  // Giờ do người dùng đặt là mốc cố định; chỉ tối ưu các đoạn nằm giữa những mốc đó.
+  const ordered: ItineraryStop[] = [];
+  let segment: ItineraryStop[] = [];
+  const flushSegment = () => {
+    if (segment.length) ordered.push(...orderByProximity(segment));
+    segment = [];
+  };
+
+  places.forEach((stop) => {
+    if (stop.start_time || stop.end_time) {
+      flushSegment();
+      ordered.push(stop);
+    } else {
+      segment.push(stop);
+    }
+  });
+  flushSegment();
+  return ordered;
+}
+
 function optimizeDays(days: ItineraryDay[], ideas: Poi[], dailyCapacity: number, outlines: DailyItineraryOutline[] = []): { days: ItineraryDay[]; assignedCount: number; unassignedCount: number; restCount: number } {
   const next = days.map((day) => ({ ...day, stops: [...day.stops] }));
   const placed = new Set(next.flatMap((day) => day.stops.map((stop) => stop.poi_id).filter((id): id is string => Boolean(id))));
@@ -211,27 +467,46 @@ function optimizeDays(days: ItineraryDay[], ideas: Poi[], dailyCapacity: number,
     .filter((stop) => stop.stop_type === 'custom')
     .map((stop) => stop.title.trim().toLocaleLowerCase('vi-VN'))));
   const pending = ideas.filter((poi) => !placed.has(poi.id) && !(poi.id.startsWith('custom-') && placedCustomNames.has(poi.name.trim().toLocaleLowerCase('vi-VN'))));
+  const poiById = new Map(ideas.map((poi) => [poi.id, poi]));
   let assignedCount = 0;
   let unassignedCount = 0;
 
   pending.forEach((poi) => {
     const candidate = stopFromPoi(poi, 'assistant');
     const duration = minutesFor(candidate);
-    const eligible = next
+    let eligible = next
       .map((day, index) => ({ day, index, stops: day.stops.filter((stop) => stop.stop_type !== 'rest') }))
       .filter(({ stops }) => stops.reduce((total, stop) => total + minutesFor(stop), 0) + duration <= dailyCapacity);
+    const cafeCandidate = experienceGroup(poiById.get(poi.id), candidate) === 'cafe';
+    if (cafeCandidate) {
+      eligible = eligible.filter(({ stops }) =>
+        stops.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length < 2);
+    }
     if (!eligible.length) {
       unassignedCount += 1;
       return;
     }
+    const canAvoidAnotherCafe = cafeCandidate && eligible.some(({ stops }) =>
+      stops.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length === 0);
+    if (canAvoidAnotherCafe) {
+      const cafeFreeDays = eligible.filter(({ stops }) =>
+        stops.every((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) !== 'cafe'));
+      if (cafeFreeDays.length) {
+        eligible.splice(0, eligible.length, ...cafeFreeDays);
+      }
+    }
     eligible.sort((a, b) => {
-      const cityPenalty = (stops: ItineraryStop[]) => stops.length && !stops.some((stop) => stop.city === candidate.city) ? 120 : 0;
-      const proximityPenalty = (stops: ItineraryStop[]) => {
-        const last = [...stops].reverse().find((stop) => stop.latitude != null && stop.longitude != null);
-        return last ? (distanceKm(last, candidate) ?? 0) * 8 : 0;
+      const score = (stops: ItineraryStop[]) => {
+        const load = stops.reduce((total, stop) => total + minutesFor(stop), 0);
+        const cityPenalty = stops.length && !stops.some((stop) => stop.city === candidate.city) ? 120 : 0;
+        const proximityPenalty = stops.reduce((closest, stop) => {
+          const distance = distanceKm(stop, candidate);
+          return distance == null ? closest : Math.min(closest, distance);
+        }, Number.POSITIVE_INFINITY);
+        const cafeCount = stops.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length;
+        return load + cityPenalty + (Number.isFinite(proximityPenalty) ? proximityPenalty * 8 : 0) + cafeCount * 90;
       };
-      const load = (stops: ItineraryStop[]) => stops.reduce((total, stop) => total + minutesFor(stop), 0);
-      return load(a.stops) + cityPenalty(a.stops) + proximityPenalty(a.stops) - load(b.stops) - cityPenalty(b.stops) - proximityPenalty(b.stops);
+      return score(a.stops) - score(b.stops);
     });
     const selected = eligible[0].day;
     selected.stops.push(candidate);
@@ -240,17 +515,23 @@ function optimizeDays(days: ItineraryDay[], ideas: Poi[], dailyCapacity: number,
 
   let restCount = 0;
   const scheduled = next.map((day) => {
-    const orderedPlaces = reorderNearStops(day.stops);
-    const ordered = [...orderedPlaces];
-    const existingRests = day.stops.filter((stop) => stop.stop_type === 'rest');
-    existingRests.forEach((rest) => insertRestInOrder(ordered, rest));
-    const totalMinutes = orderedPlaces.reduce((total, stop) => total + minutesFor(stop), 0);
     const outline = outlines.find((item) => item.day === day.day_number);
     const periods: RestPeriod[] = outline?.rest_periods?.length ? outline.rest_periods : [{
       time_range: '12:00–14:00',
       activity: 'Ăn trưa chậm rãi và nghỉ tại nơi lưu trú hoặc quán cà phê yên tĩnh.',
       duration_minutes: 90,
     }];
+    const proximityOrdered = reorderNearStops(day.stops);
+    const orderedPlaces = setAssistantVisitTimes(proximityOrdered, poiById, periods).sort((a, b) => {
+      if (a.start_time && b.start_time) return minutesFromTime(a.start_time) - minutesFromTime(b.start_time);
+      if (a.start_time) return -1;
+      if (b.start_time) return 1;
+      return a.sequence - b.sequence;
+    });
+    const ordered = [...orderedPlaces];
+    const existingRests = day.stops.filter((stop) => stop.stop_type === 'rest');
+    existingRests.forEach((rest) => insertRestInOrder(ordered, rest));
+    const totalMinutes = orderedPlaces.reduce((total, stop) => total + minutesFor(stop), 0);
     const shouldSuggestRest = orderedPlaces.length >= 2;
 
     periods.forEach((period) => {
@@ -308,15 +589,16 @@ function saveErrorMessage(error: unknown, action: 'save' | 'load'): string {
     : 'Không tải được lịch trình từ máy chủ. Kiểm tra kết nối rồi thử lại.';
 }
 
-export default function ItineraryEditor({ trip, ideas, onClose, onAddIdea }: ItineraryEditorProps) {
+export default function ItineraryEditor({ trip, ideas, recommendations = [], recommendationsLoading = false, onClose, onAddIdea, onSelectIdeas }: ItineraryEditorProps) {
   const [plan, setPlan] = useState<TripItinerary>(() => createEmptyItinerary(trip));
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [error, setError] = useState('');
-  const [errorAction, setErrorAction] = useState<'save' | 'load' | null>(null);
+  const [errorAction, setErrorAction] = useState<'save' | 'load' | 'repair' | null>(null);
   const [scheduleWarning, setScheduleWarning] = useState('');
   const [insight, setInsight] = useState('');
+  const [pacingOverride, setPacingOverride] = useState<'Relaxed' | 'Balanced' | 'Fast' | null>(null);
   const [addingToDay, setAddingToDay] = useState<string | null>(null);
   const [dragData, setDragData] = useState<{ stopId?: string; ideaId?: string; dayId?: string } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -325,13 +607,14 @@ export default function ItineraryEditor({ trip, ideas, onClose, onAddIdea }: Iti
   const latestPlan = useRef(plan);
   const currentTrip = useRef(trip);
   currentTrip.current = trip;
+  const poiDetailsById = useMemo(() => new Map([...ideas, ...recommendations].map((poi) => [poi.id, poi])), [ideas, recommendations]);
   const ideaIdsInPlan = useMemo(() => new Set(plan.days.flatMap((day) => day.stops.map((stop) => stop.poi_id).filter((id): id is string => Boolean(id)))), [plan.days]);
   const customIdeaNamesInPlan = useMemo(() => new Set(plan.days.flatMap((day) => day.stops
     .filter((stop) => stop.stop_type === 'custom')
     .map((stop) => stop.title.trim().toLocaleLowerCase('vi-VN')))), [plan.days]);
   const isIdeaInPlan = (poi: Poi) => ideaIdsInPlan.has(poi.id) || (poi.id.startsWith('custom-') && customIdeaNamesInPlan.has(poi.name.trim().toLocaleLowerCase('vi-VN')));
   const unplannedIdeas = ideas.filter((poi) => !isIdeaInPlan(poi));
-  const pacingLevel = pacingForTrip(trip);
+  const pacingLevel = pacingOverride || pacingForTrip(trip);
   const maxDailyMinutes = dailyVisitCapacity(pacingLevel);
 
   const persist = useCallback((nextPlan: TripItinerary) => {
@@ -358,7 +641,8 @@ export default function ItineraryEditor({ trip, ideas, onClose, onAddIdea }: Iti
         } catch (cause) {
           if (version === saveVersion.current) {
             setError(saveErrorMessage(cause, 'save'));
-            setErrorAction('save');
+            const apiError = cause as { status?: number; detail?: string };
+            setErrorAction(apiError.status === 422 && /khung giờ bị trùng/i.test(apiError.detail || '') ? 'repair' : 'save');
           }
         } finally {
           if (version === saveVersion.current) setIsSaving(false);
@@ -506,17 +790,45 @@ export default function ItineraryEditor({ trip, ideas, onClose, onAddIdea }: Iti
     setDragData(null);
   };
 
-  const optimize = () => {
-    const result = optimizeDays(plan.days, ideas, maxDailyMinutes, trip.itineraryOutline);
+  const optimize = (requestedPacing: 'Relaxed' | 'Balanced' | 'Fast' = pacingLevel) => {
+    const capacityForPacing = dailyVisitCapacity(requestedPacing);
+    const selection = selectAutomaticPois(plan.days, ideas, recommendations, trip, requestedPacing, capacityForPacing);
+    const result = optimizeDays(plan.days, selection.selected, capacityForPacing, trip.itineraryOutline);
     persist({ ...plan, days: result.days });
-    const capacityExplanation = `GreenTrip giới hạn khoảng ${(maxDailyMinutes / 60).toLocaleString('vi-VN')} giờ tham quan/ngày theo nhịp ${pacingLevel}, ưu tiên cùng thành phố và các điểm gần nhau theo tọa độ đường chim bay. Chưa tính thời gian di chuyển thực tế.`;
+    if (selection.added.length) onSelectIdeas?.(selection.added.map((poi) => poi.id));
+    const capacityExplanation = `GreenTrip xếp theo khung giờ phù hợp của địa điểm, ưu tiên cùng thành phố và các điểm gần nhau, đồng thời giới hạn tối đa 2 quán cà phê mỗi ngày. Nhịp ${requestedPacing} giới hạn khoảng ${(capacityForPacing / 60).toLocaleString('vi-VN')} giờ tham quan/ngày; khoảng cách là đường chim bay, chưa tính giao thông thực tế.`;
+    const limitingReasons = [
+      selection.limits.budget > 0
+        ? `${selection.limits.budget} gợi ý vượt ngân sách hoạt động còn khoảng ${Math.max(0, selection.budgetLimit - selection.selectedCost).toLocaleString('vi-VN')} VNĐ sau khi tính các ý tưởng đã chọn.`
+        : '',
+      selection.limits.time > 0
+        ? `${selection.limits.time} gợi ý vượt thời lượng tham quan còn lại theo nhịp ${requestedPacing}.`
+        : '',
+      selection.limits.target > 0
+        ? `Đã đạt mục tiêu khoảng ${selection.targetStops} địa điểm cho ${plan.days.length} ngày ở nhịp ${requestedPacing}.`
+        : '',
+      selection.limits.destination > 0
+        ? `${selection.limits.destination} gợi ý nằm ngoài điểm đến của chuyến đi.`
+        : '',
+      selection.limits.category > 0
+        ? `${selection.limits.category} gợi ý bị lược bớt để lịch không dồn quá nhiều địa điểm cùng nhóm.`
+        : '',
+    ].filter(Boolean).join(' ');
     if (result.assignedCount || result.restCount) {
-      const added = [result.assignedCount ? `${result.assignedCount} địa điểm` : '', result.restCount ? `${result.restCount} khoảng nghỉ` : ''].filter(Boolean).join(' và ');
-      setInsight(`Đã bổ sung ${added} theo gợi ý.${result.unassignedCount ? ` Còn ${result.unassignedCount} địa điểm chưa xếp vì các ngày đã chạm giới hạn thời gian; bạn có thể chuyển bớt điểm hoặc tăng số ngày.` : ''} ${capacityExplanation}`);
+      const scheduled = [result.assignedCount ? `${result.assignedCount} địa điểm` : '', result.restCount ? `${result.restCount} khoảng nghỉ` : ''].filter(Boolean).join(' và ');
+      const autoPicked = selection.added.length
+        ? ` Trợ lý chọn thêm ${selection.added.length} gợi ý đang hợp điểm đến, thứ hạng đề xuất và ngân sách hoạt động; ước tính ${selection.selectedCost.toLocaleString('vi-VN')} VNĐ cho ${Math.max(1, trip.peopleCount || 1)} người.`
+        : ' Các địa điểm đã chọn được ưu tiên trước; không cần thêm gợi ý mới.';
+      setInsight(`Đã xếp ${scheduled}.${autoPicked}${limitingReasons ? ` ${limitingReasons}` : ''}${result.unassignedCount ? ` Còn ${result.unassignedCount} địa điểm chưa xếp vì đã chạm giới hạn thời lượng hoặc giới hạn tối đa 2 quán cà phê mỗi ngày; bạn có thể chuyển bớt điểm hoặc tăng số ngày.` : ''} ${capacityExplanation}`);
     } else if (result.unassignedCount) {
-      setInsight(`Còn ${result.unassignedCount} địa điểm chưa xếp vì các ngày đã chạm giới hạn thời gian. Hãy chuyển bớt điểm, giảm thời lượng hoặc tăng số ngày. ${capacityExplanation}`);
+      setInsight(`Còn ${result.unassignedCount} địa điểm chưa xếp vì lịch đã chạm giới hạn thời lượng hoặc giới hạn tối đa 2 quán cà phê mỗi ngày. ${limitingReasons} Hãy chuyển bớt điểm, giảm thời lượng hoặc tăng số ngày. ${capacityExplanation}`);
     } else {
-      setInsight(`Các ý tưởng đều đã có trong lịch; không cần thêm điểm hay khoảng nghỉ mới. ${capacityExplanation}`);
+      const selectionNote = selection.added.length
+        ? ` Trợ lý đã chọn thêm ${selection.added.length} gợi ý, nhưng lịch chưa nhận được điểm mới. ${limitingReasons}`
+        : recommendations.length
+          ? ` Chưa có gợi ý nào được thêm. ${limitingReasons || 'Không có POI phù hợp trong danh sách gợi ý hiện tại.'} Hãy điều chỉnh ngân sách/nhịp hoặc thêm địa điểm thủ công.`
+          : ' Các ý tưởng đều đã có trong lịch; không cần thêm điểm hay khoảng nghỉ mới.';
+      setInsight(`${selectionNote} ${capacityExplanation}`);
     }
   };
 
@@ -534,6 +846,17 @@ export default function ItineraryEditor({ trip, ideas, onClose, onAddIdea }: Iti
 
   const retrySave = () => {
     persist(latestPlan.current);
+  };
+
+  const repairConflictingTimes = () => {
+    const repaired = clearOverlappingVisitTimes(latestPlan.current);
+    if (!repaired.repairedCount) {
+      setError('Không còn khung giờ trùng để tự sửa. Bạn vẫn có thể chỉnh giờ từng địa điểm bên dưới.');
+      setErrorAction(null);
+      return;
+    }
+    setInsight(`Đã gỡ ${repaired.repairedCount} khung giờ bị trùng. Các địa điểm và ghi chú vẫn được giữ; bạn có thể đặt lại giờ cho điểm vừa gỡ.`);
+    persist(repaired.plan);
   };
 
   const updateRestTime = (dayId: string, stop: ItineraryStop, field: 'start_time' | 'end_time', value: string) => {
@@ -557,7 +880,7 @@ export default function ItineraryEditor({ trip, ideas, onClose, onAddIdea }: Iti
           <h3 className="text-lg font-bold text-gray-950">Lịch trình</h3>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <p className="text-sm text-gray-700">{plan.days_count} ngày · {trip.destination}</p>
-            {trip.pacingLabel && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-950">Nhịp độ · {trip.pacingLabel}</span>}
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-950">Nhịp độ · {pacingLevel === 'Relaxed' ? '🌿 Thong thả' : pacingLevel === 'Fast' ? '⚡ Dày đặc' : '⚖️ Cân bằng'}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -566,25 +889,27 @@ export default function ItineraryEditor({ trip, ideas, onClose, onAddIdea }: Iti
         </div>
       </div>
 
-      {error && <div role="alert" className="mx-5 mt-4 flex items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-950"><span>{error}</span>{errorAction && <button type="button" onClick={errorAction === 'save' ? retrySave : () => void load()} className="flex min-h-10 shrink-0 items-center gap-1.5 font-semibold"><RefreshCw size={15} />Thử lại</button>}</div>}
+      {error && <div role="alert" className="mx-5 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-950"><span className="min-w-0 flex-1">{error}</span><div className="flex shrink-0 items-center gap-2">{errorAction === 'repair' && <button type="button" onClick={repairConflictingTimes} className="flex min-h-10 items-center gap-1.5 rounded-full bg-amber-100 px-3 font-semibold hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800">Sửa giờ trùng</button>}{errorAction && errorAction !== 'repair' && <button type="button" onClick={errorAction === 'save' ? retrySave : () => void load()} className="flex min-h-10 shrink-0 items-center gap-1.5 px-2 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"><RefreshCw size={15} />Thử lại</button>}</div></div>}
       {scheduleWarning && <div role="status" className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-950">{scheduleWarning}</div>}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <section className="border-b border-gray-100 px-5 py-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h4 className="flex items-center gap-2 text-sm font-bold text-gray-950"><Lightbulb size={16} className="text-amber-600" />Ý tưởng <span className="font-normal text-gray-600">{ideas.length} địa điểm</span></h4>
-              <p className="mt-1 text-xs text-gray-600">Kéo địa điểm vào ngày muốn đi, hoặc chọn “Thêm vào ngày”.</p>
+              <h4 className="flex items-center gap-2 text-sm font-bold text-gray-950"><Lightbulb size={16} className="text-amber-600" />Ý tưởng <span className="font-normal text-gray-600">{ideas.length} địa điểm đã chọn</span></h4>
+              <p className="mt-1 text-xs text-gray-600">Danh sách địa điểm bạn đã lưu/chọn; chọn nhịp bên dưới để trợ lý xếp lại số điểm phù hợp mỗi ngày.</p>
             </div>
             <button type="button" onClick={onAddIdea} className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-gray-300 px-3 text-sm font-semibold text-gray-900 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"><Plus size={15} />Thêm địa điểm</button>
           </div>
           {ideas.length ? (
             <div className="flex gap-3 overflow-x-auto pb-1" aria-label="Địa điểm từ ý tưởng">
               {ideas.map((poi) => (
-                <article key={poi.id} draggable={!isIdeaInPlan(poi)} onDragStart={(event) => { setDragData({ ideaId: poi.id }); event.dataTransfer.setData('text/plain', poi.id); }} className={`w-48 shrink-0 rounded-xl border border-gray-200 p-2.5 ${isIdeaInPlan(poi) ? 'opacity-60' : 'bg-white'}`}>
-                  <div className="flex items-start gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-emerald-800" /><div className="min-w-0"><p className="truncate text-sm font-semibold text-gray-950" title={poi.name}>{poi.name}</p><p className="mt-0.5 text-xs text-gray-600">{poi.city} · {poi.visitDuration || 'Chưa có thời lượng'}</p></div></div>
+                <article key={poi.id} draggable={!isIdeaInPlan(poi)} onDragStart={(event) => { setDragData({ ideaId: poi.id }); event.dataTransfer.setData('text/plain', poi.id); }} className={`w-48 shrink-0 overflow-hidden rounded-xl border border-gray-200 ${isIdeaInPlan(poi) ? 'opacity-65' : 'bg-white'}`}>
+                  <img src={poi.image} alt={poi.name} loading="lazy" className="h-24 w-full bg-emerald-50 object-cover" />
+                  <div className="p-2.5"><div className="flex items-start gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-emerald-800" /><div className="min-w-0"><p className="line-clamp-2 min-h-10 text-sm font-semibold text-gray-950" title={poi.name}>{poi.name}</p><p className="mt-0.5 truncate text-xs text-gray-600">{poi.city} · {poi.visitDuration || 'Chưa có thời lượng'}</p></div></div>
                   {isIdeaInPlan(poi) ? <p className="mt-2 text-xs font-medium text-gray-600">Đã xếp lịch</p> : <button type="button" onClick={() => setAddingToDay(addingToDay ? null : `pick:${poi.id}`)} className="mt-2 flex min-h-10 w-full items-center justify-center gap-1 rounded-lg bg-gray-100 text-xs font-semibold text-gray-900 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"><Plus size={13} />Thêm vào ngày</button>}
                   {addingToDay === `pick:${poi.id}` && <div className="mt-1 space-y-1">{plan.days.map((day) => <button key={day.day_id} type="button" onClick={() => addIdea(day.day_id, poi)} className="block min-h-10 w-full rounded-lg px-2 text-left text-xs text-gray-800 hover:bg-emerald-50">Ngày {day.day_number}{displayDate(day.date) ? ` · ${displayDate(day.date)}` : ''}</button>)}</div>}
+                  </div>
                 </article>
               ))}
             </div>
@@ -594,14 +919,31 @@ export default function ItineraryEditor({ trip, ideas, onClose, onAddIdea }: Iti
         <section className="px-5 py-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h4 className="text-sm font-bold text-gray-950">Lịch theo ngày <span className="font-normal text-gray-600">{plan.days.length} ngày</span></h4>
-            <button type="button" onClick={optimize} disabled={isLoading || !ideas.length || Boolean(scheduleWarning)} className="flex min-h-10 items-center gap-2 rounded-full bg-gray-950 px-4 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"><Sparkles size={15} />Tối ưu lịch</button>
+            <button type="button" onClick={() => optimize()} disabled={isLoading || recommendationsLoading || (!ideas.length && !recommendations.length) || Boolean(scheduleWarning)} aria-describedby="smart-schedule-help" aria-busy={recommendationsLoading} className="flex min-h-10 items-center gap-2 rounded-full bg-gray-950 px-4 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">{recommendationsLoading ? <RefreshCw size={15} className="animate-spin" aria-hidden="true" /> : <Sparkles size={15} aria-hidden="true" />}{recommendationsLoading ? 'Đang lấy gợi ý' : 'Sắp xếp thông minh'}</button>
           </div>
-          <p className="mb-4 text-xs leading-relaxed text-gray-700">GreenTrip xếp theo thành phố, tọa độ và thời lượng địa điểm; nhịp {pacingLevel} giới hạn khoảng {(maxDailyMinutes / 60).toLocaleString('vi-VN')} giờ tham quan/ngày. Địa điểm chưa có thời lượng được ước tính 90 phút; chưa tính tuyến đường hay giao thông thực tế.</p>
-          {insight && <div className="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm leading-relaxed text-emerald-950" aria-live="polite"><span className="font-semibold">Vì sao gợi ý này?</span> {insight}</div>}
+          <p id="smart-schedule-help" className="mb-4 text-sm leading-relaxed text-gray-700">{recommendationsLoading ? 'Trợ lý đang tìm gợi ý phù hợp với điểm đến và ngân sách của chuyến đi.' : `Trợ lý ưu tiên ý tưởng của bạn, chọn thêm từ ${recommendations.length} gợi ý phù hợp ngân sách và nhịp ${pacingLevel}, rồi xếp theo khung giờ phù hợp và cụm địa điểm gần nhau. Lịch giới hạn tối đa 2 quán cà phê mỗi ngày để hành trình đa dạng hơn. Bạn vẫn có thể kéo thả hoặc sửa từng điểm sau khi xếp.`}</p>
+          <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-sm font-semibold text-gray-900">Chọn nhịp chuyến đi</p>
+              <p className="text-xs text-gray-700">Gợi ý ban đầu: {pacingForTrip(trip) === 'Relaxed' ? 'Thong thả' : pacingForTrip(trip) === 'Fast' ? 'Dày đặc' : 'Cân bằng'}</p>
+            </div>
+            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Chọn nhịp chuyến đi">
+              {([
+                ['Relaxed', '🌿 Thong thả'],
+                ['Balanced', '⚖️ Cân bằng'],
+                ['Fast', '⚡ Dày đặc'],
+              ] as const).map(([level, label]) => (
+                <button key={level} type="button" aria-pressed={pacingLevel === level} disabled={isLoading || recommendationsLoading || Boolean(scheduleWarning)} onClick={() => { setPacingOverride(level); optimize(level); }} className={`min-h-10 rounded-lg border px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 ${pacingLevel === level ? 'border-emerald-800 bg-emerald-100 text-emerald-950' : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-100'}`}>{label}</button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-gray-700">{pacingLevel === 'Relaxed' ? 'Khoảng 3,5 giờ tham quan/ngày, thường 2 điểm; giữ nhiều thời gian nghỉ.' : pacingLevel === 'Balanced' ? 'Khoảng 4,5 giờ tham quan/ngày, thường 3 điểm; cân bằng khám phá và nghỉ.' : 'Khoảng 5,5 giờ tham quan/ngày, có thể xếp tới 5 điểm nếu thời lượng và giờ mở cửa cho phép.'} Chọn một nhịp để trợ lý xếp lại lịch ngay. Bạn vẫn có thể tự thêm nhiều điểm hơn vào lịch.</p>
+          </div>
+          {insight && <div className="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm leading-relaxed text-emerald-950" aria-live="polite"><span className="font-semibold">Vì sao GreenTrip xếp như vậy?</span> {insight}</div>}
 
           {isLoading ? <div className="space-y-3" aria-label="Đang tải lịch trình"><div className="h-20 animate-pulse rounded-xl bg-gray-100" /><div className="h-28 animate-pulse rounded-xl bg-gray-100" /></div> : plan.days.map((day) => {
             const dayOutline = trip.itineraryOutline?.find((outline) => outline.day === day.day_number);
             const visitStops = day.stops.filter((stop) => stop.stop_type !== 'rest');
+            const dayScheduleReason = explainDaySchedule(day, poiDetailsById);
             const dailyLoad = visitStops.reduce((total, stop) => total + minutesFor(stop), 0);
             const estimatedDurationCount = visitStops.filter((stop) => !stop.duration_minutes).length;
             return (
@@ -618,11 +960,12 @@ export default function ItineraryEditor({ trip, ideas, onClose, onAddIdea }: Iti
                 </div>
                 <button type="button" aria-expanded={addingToDay === day.day_id} disabled={Boolean(scheduleWarning) && day.day_number > (trip.daysCount || plan.days_count)} onClick={() => setAddingToDay(addingToDay === day.day_id ? null : day.day_id)} className="flex min-h-10 items-center gap-1 rounded-full px-3 text-sm font-semibold text-gray-900 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"><Plus size={15} />Thêm</button>
               </header>
-              {dayOutline && (dayOutline.assistant_tip || dayOutline.rest_periods?.length) ? (
+              {(visitStops.length > 0 || (dayOutline && (dayOutline.assistant_tip || dayOutline.rest_periods?.length))) ? (
                 <aside className="border-b border-emerald-100 bg-emerald-50/60 px-4 py-3">
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-950"><Sparkles size={14} aria-hidden="true" />Trợ lý GreenTrip gợi ý</p>
-                  {dayOutline.assistant_tip && <p className="mt-1 text-sm leading-relaxed text-emerald-950">{dayOutline.assistant_tip}</p>}
-                  {dayOutline.rest_periods?.map((period, index) => {
+                  {visitStops.length > 0 && <p className="mt-1 text-sm leading-relaxed text-emerald-950"><span className="font-semibold">Vì sao gợi ý ngày này?</span> {dayScheduleReason}</p>}
+                  {dayOutline?.assistant_tip && <p className="mt-1 text-sm leading-relaxed text-emerald-950">{dayOutline.assistant_tip}</p>}
+                  {dayOutline?.rest_periods?.map((period, index) => {
                     const isScheduled = restExistsInPeriod(day, period.time_range);
                     return (
                       <div key={`${day.day_id}-rest-tip-${index}`} className="mt-2 rounded-lg border border-emerald-200 bg-white/80 px-3 py-2">
@@ -660,9 +1003,9 @@ export default function ItineraryEditor({ trip, ideas, onClose, onAddIdea }: Iti
                           {stop.stop_type === 'custom' && <div className="mt-2 grid gap-2 sm:grid-cols-3"><label className="block"><span className="mb-1 block text-xs text-gray-700">Tên hoạt động</span><input value={stop.title} onChange={(event) => updateStop(day.day_id, stop.stop_id, { title: event.target.value })} className="min-h-10 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" /></label><label className="block"><span className="mb-1 block text-xs text-gray-700">Thành phố</span><select value={stop.city || ''} onChange={(event) => updateStop(day.day_id, stop.stop_id, { city: event.target.value || null })} className="min-h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"><option value="">Chọn thành phố</option><option value="Đà Nẵng">Đà Nẵng</option><option value="Huế">Huế</option></select></label><label className="block"><span className="mb-1 block text-xs text-gray-700">Địa chỉ (không bắt buộc)</span><input value={stop.address || ''} onChange={(event) => updateStop(day.day_id, stop.stop_id, { address: event.target.value || null })} placeholder="Thêm địa chỉ" className="min-h-10 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" /></label></div>}
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             <span className="text-xs text-gray-600">Giờ tự đặt</span>
-                            <label><span className="sr-only">Giờ bắt đầu của {stop.title}</span><input type="time" value={stop.start_time || ''} onChange={(event) => updateStop(day.day_id, stop.stop_id, { start_time: event.target.value || null })} className="min-h-10 rounded-lg border border-gray-300 px-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" /></label>
+                            <label><span className="sr-only">Giờ bắt đầu của {stop.title}</span><input type="time" value={stop.start_time || ''} onChange={(event) => updateStop(day.day_id, stop.stop_id, { start_time: event.target.value || null, source: 'manual' })} className="min-h-10 rounded-lg border border-gray-300 px-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" /></label>
                             <span aria-hidden="true" className="text-gray-600">–</span>
-                            <label><span className="sr-only">Giờ kết thúc của {stop.title}</span><input type="time" value={stop.end_time || ''} onChange={(event) => updateStop(day.day_id, stop.stop_id, { end_time: event.target.value || null })} className="min-h-10 rounded-lg border border-gray-300 px-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" /></label>
+                            <label><span className="sr-only">Giờ kết thúc của {stop.title}</span><input type="time" value={stop.end_time || ''} onChange={(event) => updateStop(day.day_id, stop.stop_id, { end_time: event.target.value || null, source: 'manual' })} className="min-h-10 rounded-lg border border-gray-300 px-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" /></label>
                           </div>
                           <label className="mt-2 block"><span className="sr-only">Ghi chú cho {stop.title}</span><span className="mb-1 flex items-center gap-1 text-xs text-gray-600"><MessageSquare size={12} />Ghi chú</span><textarea rows={1} value={stop.comment || ''} onChange={(event) => updateStop(day.day_id, stop.stop_id, { comment: event.target.value || null })} placeholder="Thêm ghi chú cho địa điểm này…" className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" /></label>
                         </>}

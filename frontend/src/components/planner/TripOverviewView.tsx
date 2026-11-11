@@ -1,5 +1,6 @@
 // TripOverviewView - Updated with Ideas & 2-Stage PB09 Recommendations
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -29,19 +30,21 @@ import type { UserTrip } from '@/pages/ExplorePage';
 import { 
   pois as defaultAllPois, 
   normalizePois, 
+  normalizePoi,
   normalizeCategory, 
   normalizeCity, 
   getDeterministicImage,
   type Poi,
   type PoiCity,
 } from '@/data/pois';
-import { getPois } from '@/services/poi';
+import { getPois, getPoisByIds } from '@/services/poi';
 import { fetchJson } from '@/lib/api';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import ExplanationModal from '@/components/poi/ExplanationModal';
 import ItineraryEditor from '@/components/planner/ItineraryEditor';
+import { useSavedPlaces } from '@/context/SavedPlacesContext';
 
 export interface TripOverviewViewProps {
   trip: UserTrip;
@@ -140,6 +143,17 @@ export default function TripOverviewView({
   onBack,
   onUpdateTrip,
 }: TripOverviewViewProps) {
+  const navigate = useNavigate();
+  const {
+    places: savedPlaces,
+    savedIds,
+    loading: savedPlacesLoading,
+    error: savedPlacesError,
+    refresh: refreshSavedPlaces,
+    ensureSaved,
+    openCollectionPicker,
+  } = useSavedPlaces();
+
   // Bộ dữ liệu POI hoàn chỉnh từ Explore / backend
   const [loadedPois, setLoadedPois] = useState<Poi[]>([]);
 
@@ -220,6 +234,11 @@ export default function TripOverviewView({
 
   // ─── DANH SÁCH Ý TƯỞNG (IDEAS / WISHLIST) CỦA CHUYẾN ĐI ───
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => trip.ideas || []);
+  const [resolvedIdeaPois, setResolvedIdeaPois] = useState<Poi[]>([]);
+  const savedPoiItems = useMemo(
+    () => savedPlaces.map((item) => normalizePoi(item)).filter((poi): poi is Poi => poi !== null),
+    [savedPlaces],
+  );
 
   // ─── STATE CHO GỢI Ý ĐỊA ĐIỂM (TOP 10 TỐI ƯU THEO BACKEND PB09) ───
   const [recommendedPois, setRecommendedPois] = useState<RecommendedPoi[]>([]);
@@ -255,16 +274,65 @@ export default function TripOverviewView({
   }, [trip.ideas]);
 
   useEffect(() => {
+    if (savedPlacesLoading) return;
+    const availableIds = new Set([
+      ...allPois.map((poi) => poi.id),
+      ...recommendedPois.map((poi) => poi.id),
+      ...savedPoiItems.map((poi) => poi.id),
+      ...resolvedIdeaPois.map((poi) => poi.id),
+    ]);
+    const missingIds = tripIdeas.filter((id) =>
+      /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id) && !availableIds.has(id),
+    );
+    if (!missingIds.length) return;
+
+    let cancelled = false;
+    void getPoisByIds(missingIds)
+      .then((items) => {
+        if (cancelled) return;
+        const found = normalizePois(items);
+        if (found.length) {
+          setResolvedIdeaPois((previous) => {
+            const byId = new Map(previous.map((poi) => [poi.id, poi]));
+            found.forEach((poi) => byId.set(poi.id, poi));
+            return [...byId.values()];
+          });
+        }
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [allPois, recommendedPois, savedPoiItems, savedPlacesLoading, resolvedIdeaPois, tripIdeas]);
+
+  useEffect(() => {
     setCustomIdeaCity(/hue|huế/i.test(trip.destination) ? 'Huế' : 'Đà Nẵng');
   }, [trip.id, trip.destination]);
 
   const handleToggleIdea = (poiId: string) => {
+    const isAdding = !tripIdeas.includes(poiId);
     setTripIdeas((prev) => {
       const next = prev.includes(poiId) ? prev.filter((id) => id !== poiId) : [...prev, poiId];
       if (onUpdateTrip) {
         onUpdateTrip({ ...trip, ideas: next });
       }
       return next;
+    });
+    if (isAdding && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(poiId) && !savedIds.has(poiId)) {
+      void ensureSaved(poiId);
+    }
+  };
+
+  const handleToggleFavorite = (poiId: string) => {
+    const poi = allPois.find((item) => item.id === poiId) || recommendedPois.find((item) => item.id === poiId);
+    if (poi) openCollectionPicker(poi);
+  };
+
+  const handleSelectIdeas = (poiIds: string[]) => {
+    const next = [...new Set([...tripIdeas, ...poiIds])];
+    if (next.length === tripIdeas.length) return;
+    setTripIdeas(next);
+    onUpdateTrip?.({ ...trip, ideas: next });
+    poiIds.forEach((poiId) => {
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(poiId)) void ensureSaved(poiId);
     });
   };
 
@@ -327,12 +395,21 @@ export default function TripOverviewView({
       );
       if (foundInRec) return foundInRec;
 
+      const foundInSaved = savedPoiItems.find(
+        (p) => p.id === id || p.name.toLowerCase() === id.toLowerCase()
+      );
+      if (foundInSaved) return foundInSaved;
+
+      const foundById = resolvedIdeaPois.find((p) => p.id === id);
+      if (foundById) return foundById;
+
       // 3. Fallback cho custom idea hoặc POI thêm từ bên ngoài
       const cleanName = id.startsWith('custom-') ? id.replace(/^custom-(?:\d+-)?/, '') || id : id;
       const customIdea = trip.customIdeas?.find((idea) => idea.id === id);
+      const isDatabaseId = /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id);
       return {
         id,
-        name: customIdea?.name || cleanName,
+        name: customIdea?.name || (isDatabaseId ? (savedPlacesLoading ? 'Đang tải địa điểm…' : 'Địa điểm đã lưu') : cleanName),
         category: 'canh-quan' as const,
         city: customIdea?.city || (isHue(trip.destination) ? 'Huế' : 'Đà Nẵng') as PoiCity,
         lat: Number.NaN,
@@ -345,7 +422,7 @@ export default function TripOverviewView({
         ecoScore: 85,
       };
     });
-  }, [tripIdeas, allPois, recommendedPois, trip.customIdeas, trip.destination]);
+  }, [tripIdeas, allPois, recommendedPois, savedPoiItems, resolvedIdeaPois, savedPlacesLoading, trip.customIdeas, trip.destination]);
 
   // POI đang được chọn để mở Card chi tiết lớn (PoiDetailSection) tái sử dụng chuẩn trang Explore
   const selectedPoi = useMemo(() => {
@@ -410,13 +487,17 @@ export default function TripOverviewView({
               id: foundLocal?.id || item.poi_id || `rec-${idx}`,
               name: foundLocal?.name || item.name,
               category: foundLocal?.category || category,
+              sub_category: foundLocal?.sub_category || item.sub_category || undefined,
               city: foundLocal?.city || city,
               lat: typeof item.lat === 'number' && Number.isFinite(item.lat) ? item.lat : foundLocal?.lat ?? Number.NaN,
               lng: typeof item.lng === 'number' && Number.isFinite(item.lng) ? item.lng : foundLocal?.lng ?? Number.NaN,
               image: item.image || foundLocal?.image || getDeterministicImage(item.name, item.poi_id || idx, category, city),
               description: foundLocal?.description || item.explanation_snippet || 'Địa điểm hấp dẫn cho chuyến đi của bạn.',
               rating: item.satisfaction_score || foundLocal?.rating || 4.6,
-              visitDuration: foundLocal?.visitDuration || '1–2 giờ',
+              visitDuration: foundLocal?.visitDuration || (typeof item.average_visit_minutes === 'number' ? `${Math.round(item.average_visit_minutes / 60 * 10) / 10} giờ` : '1–2 giờ'),
+              average_visit_minutes: foundLocal?.average_visit_minutes ?? item.average_visit_minutes ?? null,
+              best_time: foundLocal?.best_time || item.best_time || undefined,
+              opening_hours: foundLocal?.opening_hours || item.opening_hours || undefined,
               ecoScore: Math.round((item.green_score || 0.85) <= 1 ? (item.green_score || 0.85) * 100 : item.green_score),
               estimatedCost: item.estimated_cost || foundLocal?.estimatedCost || 50000,
               matchScore: typeof item.match_score === 'number' ? Math.round(item.match_score) : undefined,
@@ -500,7 +581,7 @@ export default function TripOverviewView({
 
   // ─── LỌC POIS CHO MODAL "THÊM VÀO CHUYẾN ĐI" (ADD TO TRIP MODAL) ───
   const modalFilteredPois = useMemo(() => {
-    let list = allPois;
+    let list = modalTab === 'saved' ? savedPoiItems : allPois;
 
     // 1. Lọc theo Thành phố
     if (modalCity === 'Đà Nẵng') {
@@ -535,13 +616,8 @@ export default function TripOverviewView({
       );
     }
 
-    // 4. Tab "Đã lưu" (Saved)
-    if (modalTab === 'saved') {
-      list = list.filter((p) => tripIdeas.includes(p.id) || tripIdeas.some((id) => id.toLowerCase() === p.name.toLowerCase()));
-    }
-
     return list;
-  }, [allPois, modalCity, modalCategory, modalSearch, modalTab, tripIdeas]);
+  }, [allPois, savedPoiItems, modalCity, modalCategory, modalSearch, modalTab]);
 
   // Tiêu đề lớn hiển thị (1 dòng rút gọn chuẩn Mindtrip)
   const displayTitle = `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}`;
@@ -1185,8 +1261,8 @@ export default function TripOverviewView({
                       window.dispatchEvent(new Event('resize'));
                     }, 200);
                   }}
-                  favorites={new Set(tripIdeas)}
-                  onToggleFavorite={handleToggleIdea}
+                  favorites={savedIds}
+                  onToggleFavorite={handleToggleFavorite}
                   addedTrips={new Set(tripIdeas)}
                   onToggleAddTrip={handleToggleIdea}
                 />
@@ -1848,6 +1924,9 @@ export default function TripOverviewView({
             {activeRightDrawer === 'calendar' && <ItineraryEditor
               trip={trip}
               ideas={ideaPois}
+              recommendations={recommendedPois}
+              recommendationsLoading={isLoadingRecommendations}
+              onSelectIdeas={handleSelectIdeas}
               onClose={() => setActiveRightDrawer(null)}
               onAddIdea={() => {
                 setReturnToCalendarAfterAdd(true);
@@ -1918,9 +1997,9 @@ export default function TripOverviewView({
                   }`}
                 >
                   <span>Đã lưu</span>
-                  {tripIdeas.length > 0 && (
+                  {savedPlaces.length > 0 && (
                     <span className="w-4.5 h-4.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center">
-                      {tripIdeas.length}
+                      {savedPlaces.length}
                     </span>
                   )}
                 </button>
@@ -2079,11 +2158,27 @@ export default function TripOverviewView({
 
                   {/* Lưới thẻ 3 cột */}
                   <div className="mt-3 grid grid-cols-3 gap-x-3.5 gap-y-5">
-                    {modalFilteredPois.length === 0 ? (
+                    {modalTab === 'saved' && savedPlacesError ? (
+                      <div className="col-span-full rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950" role="alert">
+                        <p>{savedPlacesError}</p>
+                        <button type="button" onClick={() => void refreshSavedPlaces()} className="mt-3 min-h-10 rounded-full border border-amber-300 px-4 font-semibold hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">Thử tải lại</button>
+                      </div>
+                    ) : modalTab === 'saved' && savedPlacesLoading ? (
+                      <div className="col-span-full grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Đang tải địa điểm đã lưu">
+                        {[0, 1, 2].map((item) => <div key={item} className="aspect-square animate-pulse rounded-2xl bg-gray-100" />)}
+                      </div>
+                    ) : modalFilteredPois.length === 0 ? (
                       <div className="col-span-full py-16 text-center text-gray-500 text-sm">
                         {modalTab === 'saved'
-                          ? 'Chưa có địa điểm nào được lưu vào Ý tưởng. Hãy chuyển sang tab Tìm kiếm để thêm nhé!'
+                          ? savedPlaces.length
+                            ? 'Không tìm thấy địa điểm đã lưu theo bộ lọc này.'
+                            : localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+                              ? 'Bạn chưa lưu địa điểm nào. Hãy tìm địa điểm rồi bấm biểu tượng tim để lưu.'
+                              : 'Đăng nhập để xem danh sách địa điểm đã lưu của bạn.'
                           : 'Không tìm thấy địa điểm phù hợp với bộ lọc hiện tại.'}
+                        {modalTab === 'saved' && !savedPlaces.length && !(localStorage.getItem('access_token') || sessionStorage.getItem('access_token')) && (
+                          <button type="button" onClick={() => navigate('/login')} className="mx-auto mt-3 flex min-h-10 items-center rounded-full bg-gray-950 px-4 font-semibold text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">Đăng nhập</button>
+                        )}
                       </div>
                     ) : (
                       modalFilteredPois.map((poi) => {
@@ -2271,7 +2366,10 @@ export default function TripOverviewView({
 
             <button
               type="button"
-              onClick={() => setShowAddIdeasModal(true)}
+              onClick={() => {
+                setModalTab('search');
+                setShowAddIdeasModal(true);
+              }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200 hover:border-black text-[13px] font-semibold text-gray-900 hover:bg-gray-50 transition cursor-pointer active:scale-95 shadow-2xs"
             >
               <Plus size={14} />
@@ -2329,7 +2427,10 @@ export default function TripOverviewView({
                 </p>
                 <button
                   type="button"
-                  onClick={() => setShowAddIdeasModal(true)}
+                  onClick={() => {
+                    setModalTab('search');
+                    setShowAddIdeasModal(true);
+                  }}
                   className="px-6 py-2.5 rounded-full bg-black text-white text-[13.5px] font-bold hover:bg-neutral-800 transition cursor-pointer active:scale-95 shadow-xs"
                 >
                   + Thêm ý tưởng
@@ -2414,10 +2515,10 @@ export default function TripOverviewView({
         >
           <PoiDetailSection
             poi={selectedPoi}
-            isFavorite={tripIdeas.includes(selectedPoi.id)}
+            isFavorite={savedIds.has(selectedPoi.id)}
             isAddedToTrip={tripIdeas.includes(selectedPoi.id)}
             onClose={() => setSelectedMapPoiId(null)}
-            onToggleFavorite={handleToggleIdea}
+            onToggleFavorite={handleToggleFavorite}
             onToggleAddTrip={handleToggleIdea}
             onViewOnMap={() => {
               setHoveredMapPoiId(selectedPoi.id);

@@ -4,11 +4,13 @@ import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import ExplorePage from '@/pages/ExplorePage';
 import LandingPage from '@/pages/LandingPage';
 import PlannerPage from '@/pages/PlannerPage';
+import { SavedPlacesProvider } from '@/context/SavedPlacesContext';
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <SavedPlacesProvider>
+        <Routes>
         {/* Landing Page & Auth Modal Overlay Routes */}
         <Route
           path="/"
@@ -58,7 +60,8 @@ function App() {
         <Route path="/trips" element={<ExplorePage initialView="trips" />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        </Routes>
+      </SavedPlacesProvider>
     </BrowserRouter>
   );
 }

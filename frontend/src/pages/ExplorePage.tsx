@@ -1,4 +1,4 @@
-import { Leaf } from 'lucide-react';
+import { CalendarPlus, Compass, Heart, Leaf, PlusSquare, Utensils, Landmark, Church, Mountain } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
@@ -21,6 +21,7 @@ import ExploreFilterModal, {
 } from '@/components/poi/ExploreFilterModal';
 import QuickFilterBar from '@/components/poi/QuickFilterBar';
 import type { DailyItineraryOutline, MatchedPOI, CostBreakdown } from '@/services/tripService';
+import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import {
   computePoiWeightedScore,
   ECO_PRIORITY_WEIGHT_MAP,
@@ -98,11 +99,11 @@ const SUB_CHIPS_CONFIG: Record<string, { id: string; label: string }[]> = {
   ],
 };
 
-const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
-  'quan-an': { icon: 'ph-fork-knife', label: 'Quán ăn' },
-  'di-tich': { icon: 'ph-landmark', label: 'Di tích' },
-  'chua': { icon: 'ph-hands-praying', label: 'Chùa & Tâm linh' },
-  'canh-quan': { icon: 'ph-mountains', label: 'Cảnh quan' },
+const CATEGORY_META: Record<PoiCategory, { icon: typeof Compass; label: string }> = {
+  'quan-an': { icon: Utensils, label: 'Quán ăn' },
+  'di-tich': { icon: Landmark, label: 'Di tích' },
+  'chua': { icon: Church, label: 'Chùa & Tâm linh' },
+  'canh-quan': { icon: Mountain, label: 'Cảnh quan' },
 };
 
 
@@ -216,6 +217,7 @@ function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {
 
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'explore' | 'trips' | 'saved' }) {
   const navigate = useNavigate();
+  const { savedIds: favorites, toggleSaved } = useSavedPlaces();
   const [viewMode, setViewMode] = useState<'explore' | 'trips' | 'saved'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
@@ -260,14 +262,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [activeTab, setActiveTab] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('greentrip_favorites');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
   const [addedTrips, setAddedTrips] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem('greentrip_added_trips');
@@ -276,14 +270,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       return new Set();
     }
   });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('greentrip_favorites', JSON.stringify(Array.from(favorites)));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [favorites]);
 
   useEffect(() => {
     try {
@@ -725,12 +711,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [allPois, selectedPoiId]);
 
   const toggleFavorite = (id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const poi = allPois.find((item) => item.id === id);
+    void toggleSaved(id, poi);
   };
 
   const currentCityLabel = cityFilter === 'all' ? 'Tất cả địa điểm' : cityFilter;
@@ -813,14 +795,14 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               { 
                 key: 'explore', 
                 onClick: () => { setViewMode('explore'); navigate('/explore'); }, 
-                icon: viewMode === 'explore' ? 'ph-fill ph-compass' : 'ph ph-compass', 
+                icon: Compass,
                 label: 'Khám phá', 
                 active: viewMode === 'explore' 
               },
               { 
                 key: 'saved', 
                 onClick: () => setViewMode('saved'), 
-                icon: viewMode === 'saved' ? 'ph-fill ph-heart text-[#b45309]' : 'ph ph-heart', 
+                icon: Heart,
                 label: 'Đã lưu', 
                 active: viewMode === 'saved',
                 badge: favorites.size > 0 ? String(favorites.size) : undefined
@@ -832,7 +814,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   setActiveOverviewTrip(null);
                   navigate('/planner'); 
                 }, 
-                icon: viewMode === 'trips' ? 'ph-fill ph-calendar-plus' : 'ph ph-calendar-plus', 
+                icon: CalendarPlus,
                 label: 'Lịch trình', 
                 active: viewMode === 'trips',
                 badge: userTrips.length > 0 ? String(userTrips.length) : undefined
@@ -840,7 +822,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               { 
                 key: 'create',
                 onClick: () => setIsCreateTripModalOpen(true),
-                icon: 'ph ph-plus-square', 
+                icon: PlusSquare,
                 label: 'Tạo chuyến đi' 
               },
             ].map((item) => {
@@ -848,7 +830,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 <div className={`flex items-center py-0.5 text-black transition-colors group/item relative ${item.active ? 'font-semibold' : ''}`}>
                   {/* Khung icon cố định 36x36px ở tọa độ không đổi */}
                   <div className="w-9 h-9 flex items-center justify-center shrink-0 relative">
-                    <i className={`${item.icon} text-[23px] text-black ${item.active ? '' : 'group-hover/item:opacity-75'} transition-opacity`}></i>
+                    <item.icon size={23} strokeWidth={2} className={`text-black ${item.active ? '' : 'group-hover/item:opacity-75'} transition-opacity`} aria-hidden="true" />
                     {item.badge && (
                       <span className="absolute -top-1 -right-1 bg-[#b45309] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
                         {item.badge}
@@ -1752,7 +1734,7 @@ function PoiCard({
         </div>
 
         <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-normal">
-          <i className={`ph ${CATEGORY_META[poi.category]?.icon || 'ph-map-pin'} text-gray-400 text-[14px] shrink-0`}></i>
+          {(() => { const CategoryIcon = CATEGORY_META[poi.category]?.icon || Compass; return <CategoryIcon size={14} className="shrink-0 text-gray-600" aria-hidden="true" />; })()}
           <span className="truncate">{CATEGORY_META[poi.category]?.label || 'Điểm tham quan'}</span>
         </div>
 

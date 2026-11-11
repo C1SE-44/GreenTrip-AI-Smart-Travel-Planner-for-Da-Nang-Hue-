@@ -49,6 +49,10 @@ class RecommendationPOI(BaseModel):
     poi_id: str
     name: str
     category_name: str | None = None
+    sub_category: str | None = None
+    average_visit_minutes: float | None = None
+    best_time: list[str] | None = None
+    opening_hours: dict[str, Any] | None = None
     match_score: float = Field(ge=0.0, le=100.0)
     estimated_cost: float | None = None
     satisfaction_score: float | None = None

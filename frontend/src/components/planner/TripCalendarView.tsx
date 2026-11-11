@@ -1,0 +1,567 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Trash2,
+  Check,
+  X,
+  RefreshCw,
+  Lightbulb,
+  Compass,
+  Star,
+  MapPin,
+} from 'lucide-react';
+import type { UserTrip } from '@/pages/ExplorePage';
+import {
+  type Poi,
+  type PoiCategory,
+  type PoiCity,
+  getDeterministicImage,
+  normalizeCategory,
+  normalizeCity,
+} from '@/data/pois';
+import {
+  type TripItinerary,
+  type ItineraryDay,
+  type ItineraryStop,
+  getTripItinerary,
+  saveTripItinerary,
+  createEmptyItinerary,
+  stopFromPoi,
+} from '@/services/itineraryService';
+import PoiMap from '@/components/poi/PoiMap';
+import { useSavedPlaces } from '@/context/SavedPlacesContext';
+
+export interface TripCalendarViewProps {
+  trip: UserTrip;
+  allPois: Poi[];
+  onBack: () => void;
+  onUpdateTrip?: (trip: UserTrip) => void;
+  onNavigateToItinerary?: () => void;
+}
+
+const CALENDAR_HOURS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+
+function formatCalendarHour(h: number) {
+  if (h === 12) return '12pm';
+  if (h > 12) return `${h - 12}pm`;
+  return `${h}am`;
+}
+
+function getStopSlot(stop: ItineraryStop, idx: number) {
+  if (stop.start_time) {
+    const parts = stop.start_time.split(':');
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1] || '0', 10);
+    return { hour: isNaN(h) ? 8 + idx * 2 : h, minute: isNaN(m) ? 0 : m, duration: stop.duration_minutes || 90 };
+  }
+  const defaultSlots = [
+    { hour: 8, minute: 30, duration: 90 },
+    { hour: 11, minute: 30, duration: 75 },
+    { hour: 14, minute: 30, duration: 90 },
+    { hour: 18, minute: 30, duration: 90 },
+    { hour: 20, minute: 30, duration: 60 },
+  ];
+  return defaultSlots[idx % defaultSlots.length];
+}
+
+function getStopCategoryTheme(category: string | null) {
+  const cat = (category || '').toLowerCase();
+  if (cat.includes('quan-an') || cat.includes('ẩm thực') || cat.includes('ăn') || cat.includes('cafe')) {
+    return 'bg-amber-100/90 hover:bg-amber-200/90 border-amber-300 text-amber-950 shadow-2xs';
+  }
+  if (cat.includes('di-tich') || cat.includes('canh-quan') || cat.includes('chua') || cat.includes('xanh') || cat.includes('văn hóa')) {
+    return 'bg-emerald-100/90 hover:bg-emerald-200/90 border-emerald-300 text-emerald-950 shadow-2xs';
+  }
+  return 'bg-blue-100/90 hover:bg-blue-200/90 border-blue-300 text-blue-950 shadow-2xs';
+}
+
+export default function TripCalendarView({
+  trip,
+  allPois,
+  onBack,
+  onUpdateTrip,
+  onNavigateToItinerary,
+}: TripCalendarViewProps) {
+  const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
+
+  // 1. Quản lý trạng thái Lịch trình (Itinerary Plan)
+  const [plan, setPlan] = useState<TripItinerary>(() => createEmptyItinerary(trip));
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(1);
+  const [calendarRightTab, setCalendarRightTab] = useState<'map' | 'ideas'>('map');
+  const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
+  const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
+
+  // Danh sách ý tưởng (Ideas) của chuyến đi
+  const [tripIdeas, setTripIdeas] = useState<string[]>(() => {
+    if (Array.isArray(trip.ideas) && trip.ideas.length > 0) return trip.ideas;
+    const isHue = /hue|huế/i.test(trip.destination);
+    const targetCity: PoiCity = isHue ? 'Huế' : 'Đà Nẵng';
+    const cityPois = allPois.filter((p) => normalizeCity(p.city) === targetCity);
+    const defaults = cityPois.slice(0, 8).map((p) => p.id);
+    return defaults.length > 0 ? defaults : ['poi-1', 'poi-2', 'poi-3', 'poi-4'];
+  });
+
+  // Tải plan từ backend
+  useEffect(() => {
+    let active = true;
+    getTripItinerary(trip.id).then((p) => {
+      if (active && p) setPlan(p);
+    }).catch(console.warn);
+    return () => { active = false; };
+  }, [trip.id]);
+
+  const persistPlan = (nextPlan: TripItinerary) => {
+    setPlan(nextPlan);
+    setIsSaving(true);
+    saveTripItinerary(nextPlan)
+      .then(() => setIsSaving(false))
+      .catch((err) => {
+        console.warn('Could not save itinerary:', err);
+        setIsSaving(false);
+      });
+  };
+
+  // POIs từ ý tưởng
+  const ideaPois = useMemo(() => {
+    return tripIdeas
+      .map((id) => allPois.find((p) => p.id === id || p.name.toLowerCase() === id.toLowerCase()))
+      .filter((p): p is Poi => p !== null && p !== undefined);
+  }, [tripIdeas, allPois]);
+
+  // Các ý tưởng chưa được xếp vào ngày nào
+  const scheduledPoiIds = useMemo(() => {
+    return new Set(plan.days.flatMap((d) => d.stops.map((s) => s.poi_id || s.title.toLowerCase())));
+  }, [plan]);
+
+  const unscheduledIdeaPois = useMemo(() => {
+    return ideaPois.filter((p) => !scheduledPoiIds.has(p.id) && !scheduledPoiIds.has(p.name.toLowerCase()));
+  }, [ideaPois, scheduledPoiIds]);
+
+  // Thêm một POI vào ngày cụ thể
+  const handleAddStopToDay = (dayNumber: number, poi: Poi) => {
+    const newStop = stopFromPoi(poi, 'manual');
+    const nextDays = plan.days.map((day) => {
+      if (day.day_number !== dayNumber) return day;
+      const stops = [...day.stops, newStop];
+      return { ...day, stops: stops.map((s, idx) => ({ ...s, sequence: idx })) };
+    });
+    persistPlan({ ...plan, days: nextDays });
+  };
+
+  // Xóa stop khỏi ngày
+  const handleDeleteStop = (dayNumber: number, stopId: string) => {
+    const nextDays = plan.days.map((day) => {
+      if (day.day_number !== dayNumber) return day;
+      return {
+        ...day,
+        stops: day.stops.filter((s) => s.stop_id !== stopId).map((s, idx) => ({ ...s, sequence: idx })),
+      };
+    });
+    persistPlan({ ...plan, days: nextDays });
+  };
+
+  // Thông tin ngày cho header Calendar
+  const calendarDaysMeta = useMemo(() => {
+    return plan.days.map((day, idx) => {
+      let dateObj: Date | null = null;
+      if (day.date) {
+        dateObj = new Date(day.date);
+      } else if (trip.startDate && /^\d{4}-\d{2}-\d{2}$/.test(trip.startDate)) {
+        dateObj = new Date(trip.startDate);
+        dateObj.setDate(dateObj.getDate() + idx);
+      } else {
+        dateObj = new Date(2026, 10, 14 + idx);
+      }
+
+      const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+      const dayOfWeek = dayNames[dateObj.getDay()];
+      const dayOfMonth = dateObj.getDate();
+      const monthNum = dateObj.getMonth() + 1;
+
+      return {
+        day_number: day.day_number,
+        dayOfWeek,
+        dayOfMonth,
+        monthNum,
+        stops: day.stops,
+      };
+    });
+  }, [plan.days, trip.startDate]);
+
+  const calendarRangeText = useMemo(() => {
+    if (calendarDaysMeta.length === 0) return '';
+    const first = calendarDaysMeta[0];
+    const last = calendarDaysMeta[calendarDaysMeta.length - 1];
+    return `${first.dayOfMonth} – ${last.dayOfMonth} thg ${first.monthNum}, 2026`;
+  }, [calendarDaysMeta]);
+
+  // POIs cho bản đồ cột phải
+  const currentDayStops = useMemo(() => {
+    const day = plan.days.find((d) => d.day_number === selectedCalendarDay);
+    if (!day) return [];
+    return day.stops
+      .map((s) => allPois.find((p) => p.id === s.poi_id || p.name.toLowerCase() === s.title.toLowerCase()))
+      .filter((p): p is Poi => Boolean(p));
+  }, [plan.days, selectedCalendarDay, allPois]);
+
+  const mapPois = currentDayStops.length > 0 ? currentDayStops : ideaPois.slice(0, 10);
+
+  return (
+    <div className="flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn">
+      {/* ─── HEADER: TIÊU ĐỀ CHUYẾN ĐI & NÚT QUAY LẠI ─── */}
+      <header className="px-6 py-3.5 bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={onBack}
+            className="w-8 h-8 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-black transition cursor-pointer shrink-0"
+            title="Quay lại danh sách chuyến đi"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <div className="min-w-0">
+            <h1 className="font-extrabold text-[17px] sm:text-[19px] text-gray-950 truncate leading-snug">
+              {trip.title || `Chuyến đi ${trip.destination}`}
+            </h1>
+            <p className="text-xs text-gray-500 mt-0.5 font-medium truncate">
+              {trip.destination} • {calendarRangeText} ({plan.days.length} ngày)
+            </p>
+          </div>
+        </div>
+
+        {/* Nút hành động phải */}
+        <div className="flex items-center gap-2.5">
+          {onNavigateToItinerary && (
+            <button
+              type="button"
+              onClick={onNavigateToItinerary}
+              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-gray-200 hover:border-black text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer"
+            >
+              <Compass size={13} className="text-emerald-600" />
+              <span>Xem dạng Timeline</span>
+            </button>
+          )}
+
+          <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium">
+            {isSaving ? (
+              <span className="flex items-center gap-1 text-amber-700">
+                <RefreshCw size={12} className="animate-spin" /> Đang lưu...
+              </span>
+            ) : (
+              <span className="text-emerald-700 flex items-center gap-1">
+                <Check size={13} /> Đã lưu
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onBack}
+            className="h-9 px-5 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95"
+            title="Xong và quay lại"
+          >
+            Xong
+          </button>
+        </div>
+      </header>
+
+      {/* ─── NỘI DUNG CHÍNH: BỐ CỤC 2 CỘT (LỊCH CALENDAR + BẢN ĐỒ / Ý TƯỞNG) ─── */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden bg-white">
+        {/* ════════════════════════════════════════════════════════
+            CỘT TRÁI: BẢNG LỊCH THỜI GIAN BIỂU (GOOGLE CALENDAR STYLE)
+        ════════════════════════════════════════════════════════ */}
+        <div className="lg:col-span-7 xl:col-span-7 h-full flex flex-col bg-white border-r border-gray-200 select-none overflow-hidden">
+          {/* Header Lịch: Calendar + Điều hướng ngày */}
+          <div className="px-6 pt-5 pb-3 shrink-0 flex items-center justify-between border-b border-gray-100">
+            <div>
+              <h2 className="text-[26px] font-extrabold text-gray-950 tracking-tight leading-none">
+                Calendar
+              </h2>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md">
+                  {plan.days.length} days
+                </span>
+                <span className="text-xs text-gray-400">•</span>
+                <span className="text-xs font-semibold text-gray-600">
+                  {trip.destination}
+                </span>
+              </div>
+            </div>
+
+            {/* Điều hướng dải ngày */}
+            <div className="flex items-center gap-3">
+              <span className="text-[13px] font-bold text-gray-900">
+                {calendarRangeText}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCalendarDay((prev) => Math.max(1, prev - 1));
+                  }}
+                  className="w-7 h-7 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black cursor-pointer shadow-2xs"
+                  title="Ngày trước"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCalendarDay((prev) => Math.min(plan.days.length, prev + 1));
+                  }}
+                  className="w-7 h-7 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black cursor-pointer shadow-2xs"
+                  title="Ngày sau"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Lưới thời gian cuộn */}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative auto-hide-scrollbar">
+            {/* Header cột các ngày */}
+            <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-2xs flex items-stretch">
+              <div className="w-14 shrink-0 text-center py-2.5 text-[11px] font-semibold text-gray-400 border-r border-gray-100 select-none">
+                GMT+7
+              </div>
+              <div className="flex-1 grid grid-flow-col auto-cols-fr divide-x divide-gray-100">
+                {calendarDaysMeta.map((day) => {
+                  const isSelected = selectedCalendarDay === day.day_number;
+                  return (
+                    <div
+                      key={day.day_number}
+                      onClick={() => setSelectedCalendarDay(day.day_number)}
+                      className={`py-2 text-center cursor-pointer transition-colors ${
+                        isSelected ? 'bg-neutral-50/80' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="text-[11.5px] font-medium text-gray-500">
+                        {day.dayOfWeek}
+                      </div>
+                      <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mx-auto mt-0.5 ${
+                          isSelected
+                            ? 'bg-black text-white shadow-xs'
+                            : 'text-gray-900 hover:bg-gray-200/70'
+                        }`}
+                      >
+                        {day.dayOfMonth}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Hàng all-day */}
+            <div className="flex items-stretch border-b border-gray-200/90 text-xs text-gray-400 bg-gray-50/30">
+              <div className="w-14 shrink-0 text-center py-1.5 text-[10.5px] font-medium border-r border-gray-100 select-none">
+                all-day
+              </div>
+              <div className="flex-1 grid grid-flow-col auto-cols-fr divide-x divide-gray-100">
+                {calendarDaysMeta.map((day) => (
+                  <div key={day.day_number} className="h-7 p-1"></div>
+                ))}
+              </div>
+            </div>
+
+            {/* Các hàng giờ (7:00 sáng đến 10:00 tối) */}
+            <div className="relative">
+              {CALENDAR_HOURS.map((hour) => (
+                <div key={hour} className="h-14 flex items-stretch border-b border-gray-100 relative group/row">
+                  <div className="w-14 shrink-0 text-right pr-2 pt-1 text-[11px] text-gray-400 font-medium select-none border-r border-gray-100">
+                    {formatCalendarHour(hour)}
+                  </div>
+
+                  <div className="flex-1 grid grid-flow-col auto-cols-fr divide-x divide-gray-100 relative">
+                    {calendarDaysMeta.map((day) => {
+                      const matchingStops = day.stops.filter((stop, idx) => {
+                        const slot = getStopSlot(stop, idx);
+                        return slot.hour === hour;
+                      });
+
+                      return (
+                        <div
+                          key={day.day_number}
+                          onClick={() => setSelectedCalendarDay(day.day_number)}
+                          className="relative h-full p-0.5 hover:bg-gray-50/50 transition-colors group/cell"
+                        >
+                          {matchingStops.map((stop) => {
+                            const slot = getStopSlot(stop, day.stops.indexOf(stop));
+                            const themeClass = getStopCategoryTheme(stop.category);
+                            return (
+                              <div
+                                key={stop.stop_id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedMapPoiId(stop.poi_id || stop.stop_id);
+                                }}
+                                className={`absolute inset-x-1 top-0.5 rounded-xl p-2 z-10 cursor-pointer transition-all border leading-tight ${themeClass}`}
+                                style={{
+                                  height: `${Math.max(48, Math.min(100, (slot.duration / 60) * 56))}px`,
+                                }}
+                                title={`${stop.title} (${slot.duration} phút)`}
+                              >
+                                <div className="flex items-start justify-between gap-1">
+                                  <div className="font-bold text-[11.5px] truncate flex items-center gap-1">
+                                    <span>★</span>
+                                    <span className="truncate">{stop.title}</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteStop(day.day_number, stop.stop_id);
+                                    }}
+                                    className="text-gray-500 hover:text-rose-600 opacity-0 group-hover/cell:opacity-100 transition-opacity p-0.5 shrink-0"
+                                    title="Xóa khỏi lịch"
+                                  >
+                                    <X size={11} />
+                                  </button>
+                                </div>
+                                <div className="text-[10px] font-semibold opacity-80 mt-0.5">
+                                  {formatCalendarHour(hour)} • {slot.duration}m
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ════════════════════════════════════════════════════════
+            CỘT PHẢI: BẢN ĐỒ LỘ TRÌNH HOẶC KHAY Ý TƯỞNG ĐÃ LƯU
+        ════════════════════════════════════════════════════════ */}
+        <div className="lg:col-span-5 xl:col-span-5 h-full relative bg-gray-50 flex flex-col overflow-hidden">
+          {/* Header cột phải: Tab switch */}
+          <div className="p-3 bg-white border-b border-gray-200 flex items-center justify-between shrink-0">
+            <div className="inline-flex items-center p-1 bg-gray-100 rounded-full border border-gray-200/80 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setCalendarRightTab('map')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  calendarRightTab === 'map' ? 'bg-white text-black shadow-xs' : 'text-gray-600 hover:text-black'
+                }`}
+              >
+                🗺️ Bản đồ lộ trình
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalendarRightTab('ideas')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  calendarRightTab === 'ideas' ? 'bg-white text-black shadow-xs' : 'text-gray-600 hover:text-black'
+                }`}
+              >
+                <span>💡 Ý tưởng chưa xếp</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 text-[10px] font-extrabold">
+                  {unscheduledIdeaPois.length}
+                </span>
+              </button>
+            </div>
+
+            <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2.5 py-1 rounded-full">
+              Ngày {selectedCalendarDay}
+            </span>
+          </div>
+
+          {/* Nội dung: Map hoặc Ideas List */}
+          <div className="flex-1 min-h-0 relative">
+            {calendarRightTab === 'map' ? (
+              <div className="w-full h-full relative">
+                <PoiMap
+                  pois={mapPois}
+                  selectedPoiId={selectedMapPoiId}
+                  hoveredPoiId={hoveredStopId}
+                  onSelectPoi={(id) => setSelectedMapPoiId(id)}
+                  onHoverPoi={setHoveredStopId}
+                  showMapLoader={false}
+                  isExpanded={false}
+                  favorites={savedIds}
+                  pendingFavorites={pendingIds}
+                  onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}
+                  addedTrips={new Set(tripIdeas)}
+                  onToggleAddTrip={() => {}}
+                />
+              </div>
+            ) : (
+              <div className="w-full h-full overflow-y-auto p-4 space-y-3 auto-hide-scrollbar bg-white">
+                <div className="flex items-center justify-between pb-1 border-b border-gray-100">
+                  <span className="text-xs text-gray-500 font-medium">
+                    Bấm [+] để xếp vào Ngày {selectedCalendarDay}:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      unscheduledIdeaPois.forEach((p, i) => {
+                        const targetDay = (i % plan.days.length) + 1;
+                        handleAddStopToDay(targetDay, p);
+                      });
+                    }}
+                    className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition cursor-pointer"
+                  >
+                    ⚡ Tự động xếp tất cả
+                  </button>
+                </div>
+
+                {unscheduledIdeaPois.length === 0 ? (
+                  <div className="py-12 text-center text-gray-400">
+                    <p className="text-sm font-semibold">Tất cả ý tưởng đã được xếp lịch!</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Các địa điểm đã được phân bổ vào các ngày của bạn.
+                    </p>
+                  </div>
+                ) : (
+                  unscheduledIdeaPois.map((p) => {
+                    const img = (p as any).image_url || p.image || getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
+                    return (
+                      <div
+                        key={p.id}
+                        className="p-2.5 rounded-2xl border border-gray-200/90 hover:border-black/30 hover:shadow-2xs transition-all flex items-center justify-between gap-2.5 bg-gray-50/70 hover:bg-white group"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <img
+                            src={img}
+                            alt={p.name}
+                            className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-200/70"
+                          />
+                          <div className="min-w-0">
+                            <h5 className="font-bold text-[13px] text-gray-900 truncate">
+                              {p.name}
+                            </h5>
+                            <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                              {p.address || p.category}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAddStopToDay(selectedCalendarDay, p)}
+                          className="px-3 py-1.5 rounded-xl bg-black hover:bg-neutral-800 text-white text-xs font-bold shrink-0 transition active:scale-95 cursor-pointer shadow-2xs flex items-center gap-1"
+                          title={`Thêm vào Ngày ${selectedCalendarDay}`}
+                        >
+                          <Plus size={13} />
+                          <span>Ngày {selectedCalendarDay}</span>
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

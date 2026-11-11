@@ -26,6 +26,15 @@ def list_saved_places(
                     WHERE i.user_id = %s
                       AND (%s::uuid IS NULL OR i.collection_id = %s)
                     GROUP BY i.user_id, i.poi_id
+                ), saved_counts AS (
+                    SELECT
+                        i.poi_id,
+                        COUNT(DISTINCT c.user_id)::int AS saved_count
+                    FROM public.saved_place_collection_items AS i
+                    JOIN public.saved_place_collections AS c
+                      ON c.collection_id = i.collection_id
+                     AND c.user_id = i.user_id
+                    GROUP BY i.poi_id
                 )
                 SELECT
                     p.poi_id::text AS id,
@@ -56,11 +65,13 @@ def list_saved_places(
                     p.social_links AS social_links,
                     p.opening_hours AS opening_hours,
                     p.email AS email,
+                    COALESCE(saved_counts.saved_count, 0) AS saved_count,
                     saved.saved_at
                 FROM saved
                 JOIN public.pois p ON p.poi_id = saved.poi_id
                 JOIN public.poi_categories c ON c.category_id = p.category_id
                 JOIN public.cities ci ON ci.city_id = p.city_id
+                LEFT JOIN saved_counts ON saved_counts.poi_id = p.poi_id
                 ORDER BY saved.saved_at DESC, p.name ASC
                 """,
                 (user_id, collection_id, collection_id),

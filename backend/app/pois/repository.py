@@ -187,10 +187,21 @@ def list_pois(
                     p.website_url AS website_url,
                     p.social_links AS social_links,
                     p.opening_hours AS opening_hours,
-                    p.email AS email
+                    p.email AS email,
+                    COALESCE(saved_counts.saved_count, 0) AS saved_count
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id
                 JOIN public.cities ci ON p.city_id = ci.city_id
+                LEFT JOIN (
+                    SELECT
+                        i.poi_id,
+                        COUNT(DISTINCT c.user_id)::int AS saved_count
+                    FROM public.saved_place_collection_items AS i
+                    JOIN public.saved_place_collections AS c
+                      ON c.collection_id = i.collection_id
+                     AND c.user_id = i.user_id
+                    GROUP BY i.poi_id
+                ) AS saved_counts ON saved_counts.poi_id = p.poi_id
                 {where_sql}
                 {order_by_sql}
                 LIMIT %s OFFSET %s

@@ -13,10 +13,13 @@ interface PoiMapProps {
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   favorites?: Set<string>;
-  onToggleFavorite?: (id: string) => void;
+  pendingFavorites?: Set<string>;
+  onToggleFavorite?: (id: string, poi?: Poi) => void;
   addedTrips?: Set<string>;
   onToggleAddTrip?: (id: string) => void;
   hideTopControls?: boolean;
+  savedHeartMarkers?: boolean;
+  hideFloatingPreview?: boolean;
 }
 
 interface MarkerOffset {
@@ -28,6 +31,11 @@ interface MarkerOffset {
 function cleanPoiName(name: string): string {
   if (!name) return '';
   return name.replace(/\s*\([^)]*\)/g, '').trim();
+}
+
+function hasValidCoordinates(poi: Poi): boolean {
+  return Number.isFinite(poi.lat) && Number.isFinite(poi.lng)
+    && poi.lat >= -90 && poi.lat <= 90 && poi.lng >= -180 && poi.lng <= 180;
 }
 
 // 2. Icon danh mục hiển thị trong pin
@@ -53,11 +61,14 @@ function createMindtripMarkerIcon(
   isHovered: boolean,
   poi: Poi,
   offset: MarkerOffset = { position: 'right', yOffset: 0 },
-  showLabel: boolean = true
+  showLabel: boolean = true,
+  savedHeartMarker = false,
 ): L.DivIcon {
   const isHighlighted = isSelected || isHovered;
   const displayName = cleanPoiName(poi.name);
-  const iconSvg = getCategoryIconSvg(poi.category, isHighlighted);
+  const iconSvg = savedHeartMarker
+    ? `<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" fill="${isHighlighted ? '#fff' : '#e11d48'}" stroke="${isHighlighted ? '#fff' : '#be123c'}" stroke-width="1.2"/></svg>`
+    : getCategoryIconSvg(poi.category, isHighlighted);
 
   let pinHtml = '';
   let labelHtml = '';
@@ -137,7 +148,8 @@ interface FloatingDetailCardProps {
   onClick?: () => void;
   onHoverPoi?: (id: string | null) => void;
   isFavorite?: boolean;
-  onToggleFavorite?: (id: string) => void;
+  isFavoritePending?: boolean;
+  onToggleFavorite?: (id: string, poi?: Poi) => void;
   isAdded?: boolean;
   onToggleAddTrip?: (id: string) => void;
 }
@@ -148,6 +160,7 @@ function FloatingDetailCard({
   onClick,
   onHoverPoi,
   isFavorite = false,
+  isFavoritePending = false,
   onToggleFavorite,
   isAdded = false,
   onToggleAddTrip,
@@ -328,14 +341,19 @@ function FloatingDetailCard({
         {/* Nút tim và "+" ở góc trên (nhỏ gọn 32px) */}
         <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
           <button
+            type="button"
+            aria-label={isFavorite ? `Bỏ lưu ${poi.name}` : `Lưu ${poi.name}`}
+            aria-pressed={isFavorite}
+            aria-busy={isFavoritePending}
+            disabled={isFavoritePending}
             onClick={(e) => {
               e.stopPropagation();
-              onToggleFavorite?.(poi.id);
+              onToggleFavorite?.(poi.id, poi);
             }}
-            className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
+            className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
               isFavorite ? 'bg-white text-[#b45309]' : 'bg-black/40 hover:bg-black/60 text-white'
             }`}
-            title="Lưu yêu thích"
+            title={isFavorite ? 'Bỏ lưu khỏi danh sách Đã lưu' : 'Lưu vào danh sách Đã lưu'}
           >
             <i className={`ph ${isFavorite ? 'ph-fill ph-heart text-[16px] text-[#b45309]' : 'ph-heart text-[16px]'}`}></i>
           </button>
@@ -434,16 +452,20 @@ function MapAutoFitter({ pois }: { pois: Poi[] }) {
   const prevIdsRef = useRef<string>('');
 
   useEffect(() => {
-    if (!pois || pois.length === 0) return;
-    const currentIds = pois.map((p) => p.id).sort().join(',');
+    const validPois = pois.filter(hasValidCoordinates);
+    if (validPois.length === 0) return;
+    const currentIds = validPois.map((p) => p.id).sort().join(',');
     if (prevIdsRef.current === currentIds) return;
 
     const timer = setTimeout(() => {
       try {
         map.invalidateSize();
-        const bounds = L.latLngBounds(pois.map((p) => [p.lat, p.lng] as [number, number]));
+        const bounds = L.latLngBounds(validPois.map((p) => [p.lat, p.lng] as [number, number]));
         if (bounds.isValid()) {
-          if (prevIdsRef.current !== '') {
+          if (validPois.length === 1) {
+            const [poi] = validPois;
+            map.flyTo([poi.lat, poi.lng], 14, { duration: 0.7, easeLinearity: 0.25 });
+          } else if (prevIdsRef.current !== '') {
             map.flyToBounds(bounds, {
               padding: [40, 40],
               maxZoom: 14,
@@ -603,12 +625,14 @@ function DynamicMarkersLayer({
   hoveredPoiId,
   onSelectPoi,
   onHoverMapPin,
+  savedHeartMarkers,
 }: {
   pois: Poi[];
   selectedPoiId: string | null;
   hoveredPoiId: string | null;
   onSelectPoi: (id: string) => void;
   onHoverMapPin: (id: string | null) => void;
+  savedHeartMarkers: boolean;
 }) {
   const map = useMap();
   const [currentZoom, setCurrentZoom] = useState<number>(() => map.getZoom());
@@ -754,10 +778,10 @@ function DynamicMarkersLayer({
 
         return (
           <Marker
-            key={`${poi.id}-${isHighlighted ? 'active' : 'idle'}-${showLabel ? 'lbl' : 'nolbl'}-${offset.position}-${offset.yOffset}`}
+            key={poi.id}
             position={[poi.lat, poi.lng]}
             zIndexOffset={isSelected ? 9999 : isHovered ? 9000 : 50}
-            icon={createMindtripMarkerIcon(isSelected, isHovered, poi, offset, showLabel)}
+            icon={createMindtripMarkerIcon(isSelected, isHovered, poi, offset, showLabel, savedHeartMarkers)}
             eventHandlers={{
               click: () => onSelectPoi(poi.id),
               mouseover: () => onHoverMapPin(poi.id),
@@ -779,16 +803,20 @@ export default function PoiMap({
   isExpanded = false,
   onToggleExpand,
   favorites,
+  pendingFavorites,
   onToggleFavorite,
   addedTrips,
   onToggleAddTrip,
   hideTopControls = false,
+  savedHeartMarkers = false,
+  hideFloatingPreview = false,
 }: PoiMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const [hoveredMapPinId, setHoveredMapPinId] = useState<string | null>(null);
+  const mappablePois = useMemo(() => pois.filter(hasValidCoordinates), [pois]);
 
   // Chỉ hiện Card xem trước khi con chuột rê trực tiếp lên Marker trên bản đồ (hover)
-  const pinToPreview = pois.find((p) => p.id === hoveredMapPinId) || null;
+  const pinToPreview = mappablePois.find((p) => p.id === hoveredMapPinId) || null;
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#f4f2ee] rounded-[22px] [transform:translateZ(0)]">
@@ -871,7 +899,7 @@ export default function PoiMap({
         />
 
         <MapResizeListener />
-        <MapAutoFitter pois={pois} />
+        <MapAutoFitter pois={mappablePois} />
         
         <MapControlsLayer 
           isExpanded={isExpanded}
@@ -880,10 +908,11 @@ export default function PoiMap({
         />
 
         <DynamicMarkersLayer
-          pois={pois}
+          pois={mappablePois}
           selectedPoiId={selectedPoiId}
           hoveredPoiId={hoveredPoiId || hoveredMapPinId}
           onSelectPoi={onSelectPoi}
+          savedHeartMarkers={savedHeartMarkers}
           onHoverMapPin={(id) => {
             setHoveredMapPinId(id);
             if (onHoverPoi) onHoverPoi(id);
@@ -891,12 +920,13 @@ export default function PoiMap({
         />
 
         {/* Card xem trước khi rê chuột (hover) hoặc chọn ghim trên bản đồ */}
-        {pinToPreview && (
+        {pinToPreview && !hideFloatingPreview && (
           <FloatingDetailCard 
             poi={pinToPreview}
             onClick={() => onSelectPoi(pinToPreview.id)}
             onHoverPoi={setHoveredMapPinId}
             isFavorite={favorites?.has(pinToPreview.id)}
+            isFavoritePending={pendingFavorites?.has(pinToPreview.id)}
             onToggleFavorite={onToggleFavorite}
             isAdded={addedTrips?.has(pinToPreview.id)}
             onToggleAddTrip={onToggleAddTrip}

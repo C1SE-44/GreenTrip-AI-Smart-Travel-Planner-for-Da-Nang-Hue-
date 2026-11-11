@@ -106,6 +106,7 @@ export interface Poi {
   opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
   matchScore?: number;
+  savedCount?: number;
 }
 
 export interface BackendPoiItem {
@@ -140,6 +141,7 @@ export interface BackendPoiItem {
   opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
   matchScore?: number;
+  saved_count?: number | null;
 }
 
 export interface PaginationMetadata {
@@ -429,7 +431,7 @@ export function normalizeCity(value?: string | null): PoiCity {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function normalizePoi(item: BackendPoiItem | Poi | any): Poi | null {
+export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoordinates = false): Poi | null {
   if (!item) return null;
   if (item.id && item.name && Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lng)) && item.category && item.city) {
     return item as Poi;
@@ -437,7 +439,8 @@ export function normalizePoi(item: BackendPoiItem | Poi | any): Poi | null {
   const latitude = Number(item.latitude ?? item.lat);
   const longitude = Number(item.longitude ?? item.lng);
 
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+  const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+  if (!hasCoordinates && !allowMissingCoordinates) {
     return null;
   }
 
@@ -491,8 +494,8 @@ export function normalizePoi(item: BackendPoiItem | Poi | any): Poi | null {
     isMichelin,
     category,
     city,
-    lat: latitude,
-    lng: longitude,
+    lat: hasCoordinates ? latitude : Number.NaN,
+    lng: hasCoordinates ? longitude : Number.NaN,
     address: item.address?.trim() || null,
     image,
     gallery,
@@ -516,6 +519,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any): Poi | null {
     social_links: item.social_links && typeof item.social_links === 'object' ? item.social_links : null,
     opening_hours: item.opening_hours && typeof item.opening_hours === 'object' ? item.opening_hours : null,
     email: item.email?.trim() || null,
+    savedCount: Number.isFinite(Number(item.saved_count)) ? Math.max(0, Number(item.saved_count)) : undefined,
   };
 }
 

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Heart } from 'lucide-react';
 import type { Poi, PoiCategory } from '@/data/pois';
 import { getGalleryImages, getDeterministicImage, SUB_CATEGORY_LABELS, categoryLabels } from '@/data/pois';
 import ExplanationModal from '@/components/poi/ExplanationModal';
@@ -31,10 +32,14 @@ export interface PoiCardProps {
   index?: number;
   active?: boolean;
   favorite?: boolean;
+  favoritePending?: boolean;
   isAdded?: boolean;
+  showAddToTrip?: boolean;
+  compact?: boolean;
+  showSavedCount?: boolean;
   onClick: () => void;
   onHover: (id: string | null) => void;
-  onToggleFavorite: (id: string) => void;
+  onToggleFavorite: (id: string, poi?: Poi) => void;
   onToggleAddTrip?: (id: string) => void;
   recommendation?: {
     matchScore: number;
@@ -48,7 +53,11 @@ export default function PoiCard({
   poi,
   active = false,
   favorite = false,
+  favoritePending = false,
   isAdded = false,
+  showAddToTrip = true,
+  compact = false,
+  showSavedCount = false,
   onClick,
   onHover,
   onToggleFavorite,
@@ -92,7 +101,7 @@ export default function PoiCard({
       className="flex flex-col group cursor-pointer select-none"
     >
       {/* 1. Card Image Box */}
-      <div className={`relative w-full aspect-[1.05/1] rounded-[20px] overflow-hidden bg-neutral-100 shadow-sm transition-all duration-200 isolate ${
+      <div className={`relative w-full ${compact ? 'aspect-[1.35/1] rounded-2xl' : 'aspect-[1.05/1] rounded-[20px]'} overflow-hidden bg-neutral-100 shadow-sm transition-all duration-200 isolate ${
         active ? 'ring-2 ring-emerald-900' : ''
       }`}>
         <img
@@ -141,17 +150,19 @@ export default function PoiCard({
           </button>
         )}
 
-        {/* Nút tim và "+" ở góc trên: Nền trắng đục nổi bật, viền nhẹ, tooltip rõ ràng (vùng chạm >= 40px) */}
+        {/* Nút tim và "+" ở góc trên: Nền trắng đục nổi bật, viền nhẹ, tooltip rõ ràng */}
         <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
           <button
             type="button"
-            aria-label="Lưu yêu thích"
+            aria-label={favorite ? `Bỏ lưu ${poi.name}` : `Lưu ${poi.name}`}
             aria-pressed={favorite}
+            aria-busy={favoritePending}
+            disabled={favoritePending}
             onClick={(e) => {
               e.stopPropagation();
-              onToggleFavorite(poi.id);
+              onToggleFavorite(poi.id, poi);
             }}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
               favorite
                 ? 'bg-white text-rose-600 ring-1 ring-rose-200'
                 : 'bg-white/90 hover:bg-white text-neutral-700 hover:text-rose-600 hover:scale-105'
@@ -168,7 +179,7 @@ export default function PoiCard({
               e.stopPropagation();
               onToggleAddTrip?.(poi.id);
             }}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+            className={`${showAddToTrip ? '' : 'hidden'} w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
               isAdded
                 ? 'bg-emerald-700 text-white ring-1 ring-emerald-800'
                 : 'bg-white/90 hover:bg-white text-neutral-800 hover:text-emerald-700 hover:scale-105'
@@ -221,9 +232,9 @@ export default function PoiCard({
       </div>
 
       {/* 2. Card Details: Tên, loại hình, địa chỉ, giá & rating */}
-      <div className="mt-2.5 space-y-1">
+      <div className={`${compact ? 'mt-2 space-y-0.5' : 'mt-2.5 space-y-1'}`}>
         <div className="flex items-center justify-between gap-2 min-w-0">
-          <h3 className="font-bold text-[15px] text-neutral-950 tracking-tight truncate leading-snug group-hover:text-emerald-900" title={poi.name}>
+          <h3 className={`font-bold ${compact ? 'text-sm' : 'text-[15px]'} text-neutral-950 tracking-tight truncate leading-snug group-hover:text-emerald-900`} title={poi.name}>
             {poi.cleanTitle || poi.cleanName || poi.name}
           </h3>
           {poi.rating > 0 && (
@@ -237,7 +248,7 @@ export default function PoiCard({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-[13px] text-neutral-600 font-normal min-w-0">
+        <div className={`flex items-center gap-1.5 ${compact ? 'text-xs' : 'text-[13px]'} text-neutral-600 font-normal min-w-0`}>
           <i className={`ph ${CATEGORY_META[poi.category]?.icon || 'ph-map-pin'} text-neutral-600 text-[14px] shrink-0`} aria-hidden="true"></i>
           <span className="truncate">{categoryLabel}</span>
           <span className="text-neutral-400" aria-hidden="true">·</span>
@@ -250,6 +261,13 @@ export default function PoiCard({
           </span>
           <span className="shrink-0 font-semibold text-emerald-800">{formattedCost}</span>
         </div>
+
+        {showSavedCount && typeof poi.savedCount === 'number' && (
+          <p className="flex min-h-6 items-center gap-1.5 pt-0.5 text-xs text-neutral-700" aria-label={`Đã lưu bởi ${poi.savedCount} người`}>
+            <Heart size={14} className="shrink-0 fill-rose-600 text-rose-600" aria-hidden="true" />
+            <span>Đã lưu bởi {poi.savedCount.toLocaleString('vi-VN')} người</span>
+          </p>
+        )}
 
         {recommendation && (
           <div className="pt-1.5" onClick={(event) => event.stopPropagation()}>

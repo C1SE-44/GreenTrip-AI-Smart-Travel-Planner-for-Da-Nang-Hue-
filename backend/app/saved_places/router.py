@@ -48,7 +48,7 @@ def _account_id(user_id: str) -> UUID:
 def _collection_not_found() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail="Không tìm thấy bộ sưu tập này.",
+        detail="KhÃ´ng tÃ¬m tháº¥y bá»™ sÆ°u táº­p nÃ y.",
     )
 
 
@@ -74,7 +74,7 @@ def create_current_user_collection(
     try:
         collection_id = create_saved_place_collection(_account_id(user_id), request.name)
     except InvalidCollectionNameError as exc:
-        raise HTTPException(status_code=422, detail="Nhập tên bộ sưu tập từ 1 đến 80 ký tự.") from exc
+        raise HTTPException(status_code=422, detail="Nháº­p tÃªn bá»™ sÆ°u táº­p tá»« 1 Ä‘áº¿n 80 kÃ½ tá»±.") from exc
     return SavedPlaceCollectionMutationResponse(collection_id=collection_id)
 
 
@@ -105,7 +105,7 @@ def add_current_user_place_to_collection(
     except POINotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Không tìm thấy địa điểm này.",
+            detail="KhÃ´ng tÃ¬m tháº¥y Ä‘á»‹a Ä‘iá»ƒm nÃ y.",
         ) from exc
     return CollectionPlaceMutationResponse(
         collection_id=collection_id, poi_id=poi_id, saved=True, changed=changed
@@ -148,7 +148,7 @@ def rename_current_user_collection(
     except CollectionNotFoundError as exc:
         raise _collection_not_found() from exc
     except InvalidCollectionNameError as exc:
-        raise HTTPException(status_code=422, detail="Nhập tên bộ sưu tập từ 1 đến 80 ký tự.") from exc
+        raise HTTPException(status_code=422, detail="Nháº­p tÃªn bá»™ sÆ°u táº­p tá»« 1 Ä‘áº¿n 80 kÃ½ tá»±.") from exc
     return SavedPlaceCollectionMutationResponse(collection_id=collection_id, changed=changed)
 
 
@@ -167,7 +167,7 @@ def delete_current_user_collection(
     except DefaultCollectionError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Không thể xóa bộ sưu tập mặc định.",
+            detail="KhÃ´ng thá»ƒ xÃ³a bá»™ sÆ°u táº­p máº·c Ä‘á»‹nh.",
         ) from exc
     return SavedPlaceCollectionMutationResponse(collection_id=collection_id, changed=True)
 

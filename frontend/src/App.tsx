@@ -10,7 +10,7 @@ function App() {
   return (
     <BrowserRouter>
       <SavedPlacesProvider>
-        <Routes>
+      <Routes>
         {/* Landing Page & Auth Modal Overlay Routes */}
         <Route
           path="/"
@@ -53,6 +53,7 @@ function App() {
 
         {/* Explore page - Now has its own Sidebar layout */}
         <Route path="/explore" element={<ExplorePage initialView="explore" />} />
+        <Route path="/saved" element={<ExplorePage initialView="saved" />} />
 
         {/* Trip Planner page */}
         <Route path="/planner" element={<ExplorePage initialView="trips" />} />
@@ -60,7 +61,7 @@ function App() {
         <Route path="/trips" element={<ExplorePage initialView="trips" />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+      </Routes>
       </SavedPlacesProvider>
     </BrowserRouter>
   );

@@ -3,12 +3,21 @@ import { X, Minus, Plus, Calendar, Loader2, Sparkles, ChevronLeft, ChevronRight 
 import type { UserTrip } from '@/pages/ExplorePage';
 import { validateTripParameters } from '@/services/tripService';
 
-export interface CreateTripMindtripModalProps {
+export interface CreateTripCopilotModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreateTrip?: (trip: UserTrip) => void;
   onCreated?: (trip: UserTrip) => void;
 }
+
+import {
+  buildDefaultMindtripItinerary,
+  buildDefaultMindtripConversation,
+  type CopilotDayOutline,
+} from './copilotTripData';
+import { extractTripIntentFromPrompt, type ExtractedTripIntent } from '@/utils/vietnamesePromptExtractor';
+
+export { buildDefaultMindtripItinerary, buildDefaultMindtripConversation };
 
 function estimatePacing(days: number): { level: 'Relaxed' | 'Balanced' | 'Fast'; label: string } {
   const pointsPerDay = 4 / days;
@@ -17,12 +26,12 @@ function estimatePacing(days: number): { level: 'Relaxed' | 'Balanced' | 'Fast';
   return { level: 'Fast', label: '⚡ Dày đặc' };
 }
 
-export default function CreateTripMindtripModal({
+export default function CreateTripCopilotModal({
   isOpen,
   onClose,
   onCreateTrip,
   onCreated,
-}: CreateTripMindtripModalProps) {
+}: CreateTripCopilotModalProps) {
   const [tripPrompt, setTripPrompt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -63,6 +72,45 @@ export default function CreateTripMindtripModal({
   const [infants, setInfants] = useState(0);
   const [pets, setPets] = useState(0);
   const [showWhoModal, setShowWhoModal] = useState(false);
+  const [extractedIntent, setExtractedIntent] = useState<ExtractedTripIntent | null>(null);
+
+  // 4. BUDGET TIER STATE (Phân loại ngân sách chuẩn Mentor: Tiết kiệm, Tiêu chuẩn, Cao cấp)
+  const [budgetTier, setBudgetTier] = useState<'budget' | 'standard' | 'luxury'>('standard');
+  const [diningTier, setDiningTier] = useState<string>('any');
+  const [lodgingTier, setLodgingTier] = useState<string>('any');
+  const [activitiesTier, setActivitiesTier] = useState<string>('any');
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+
+  // Bộ bóc tách thông số tự nhiên tức thì từ prompt chuẩn Mindtrip
+  const handlePromptChange = (val: string) => {
+    const text = val.slice(0, 2000);
+    setTripPrompt(text);
+
+    if (!text.trim()) {
+      setExtractedIntent(null);
+      return;
+    }
+
+    const intent = extractTripIntentFromPrompt(text);
+    setExtractedIntent(intent);
+
+    // 1. Nhận diện điểm đến (Where)
+    setWhereTarget(intent.destination);
+
+    // 2. Nhận diện số ngày (When)
+    setFlexibleDays(intent.days);
+    if (rangeStart) {
+      const newEnd = new Date(rangeStart.getTime() + (intent.days - 1) * 86400000);
+      setRangeEnd(newEnd);
+    }
+
+    // 3. Nhận diện số người / du khách (Who)
+    setAdults(intent.guests.adults);
+    setChildren(intent.guests.children);
+    setInfants(intent.guests.infants);
+    setPets(intent.guests.pets);
+  };
+
 
   if (!isOpen) return null;
 
@@ -85,7 +133,26 @@ export default function CreateTripMindtripModal({
   };
 
   const whenDisplay = getWhenDisplay();
-  const whoDisplay = `${totalGuests} du khách`;
+  const getWhoDisplay = () => {
+
+    if (extractedIntent && extractedIntent.companionshipLabel) {
+
+      return `${totalGuests} du khách (${extractedIntent.companionshipLabel})`;
+
+    }
+
+    return `${totalGuests} du khách`;
+
+  };
+
+  const whoDisplay = getWhoDisplay();
+
+  const getBudgetDisplay = () => {
+    if (budgetTier === 'budget') return '$ Tiết kiệm';
+    if (budgetTier === 'luxury') return '$$$ Cao cấp';
+    return '$$ Tiêu chuẩn';
+  };
+  const budgetDisplay = getBudgetDisplay();
 
   // Helper hàm cho lịch 2 tháng bên tab "Ngày tháng"
   const month1Year = calendarBaseMonth.getFullYear();
@@ -195,7 +262,10 @@ export default function CreateTripMindtripModal({
       const backendResponse = await validateTripParameters({
         destination: normDest,
         days: validDays,
-        total_budget: estimatedBudget,
+        budget_tier: budgetTier,
+        dining_tier: diningTier !== 'any' ? (diningTier === '$' ? 'budget' : diningTier === '$$$' ? 'luxury' : 'standard') : undefined,
+        lodging_tier: lodgingTier !== 'any' ? (lodgingTier === '$' ? 'budget' : lodgingTier === '$$$' ? 'luxury' : 'standard') : undefined,
+        activities_tier: activitiesTier !== 'any' ? (activitiesTier === '$' ? 'budget' : activitiesTier === '$$$' ? 'luxury' : 'standard') : undefined,
         num_people: validPeople,
         start_date: startDateStr,
         preferences: ['food', 'culture', 'nature', 'eco'],
@@ -225,7 +295,19 @@ export default function CreateTripMindtripModal({
         status: 'upcoming',
         prompt: tripPrompt.trim(),
         totalBudget: estimatedBudget,
-        itineraryOutline: validatedData.itinerary_outline || [],
+        itineraryOutline: (validatedData.itinerary_outline && validatedData.itinerary_outline.length > 0)
+          ? (validatedData.itinerary_outline as unknown as CopilotDayOutline[]).map((d: CopilotDayOutline, idx: number) => ({
+              ...d,
+              stops: d.stops || buildDefaultMindtripItinerary(normDest, validDays)[idx]?.stops || [],
+            }))
+          : buildDefaultMindtripItinerary(normDest, validDays),
+        copilotChatHistory: buildDefaultMindtripConversation(
+          normDest,
+          validDays,
+          Math.max(1, totalGuests),
+          tripPrompt.trim(),
+          extractedIntent
+        ),
         matchedPois: validatedData.matched_pois || [],
         costBreakdown: validatedData.cost_breakdown,
         pacingLevel: validatedData.pacing_level,
@@ -263,6 +345,14 @@ export default function CreateTripMindtripModal({
         totalBudget: estimatedBudget,
         pacingLevel: pacing.level,
         pacingLabel: pacing.label,
+        itineraryOutline: buildDefaultMindtripItinerary(normDest, validDays),
+        copilotChatHistory: buildDefaultMindtripConversation(
+          normDest,
+          validDays,
+          Math.max(1, totalGuests),
+          tripPrompt.trim(),
+          extractedIntent
+        ),
       };
 
       const cb = onCreateTrip || onCreated;
@@ -309,12 +399,18 @@ export default function CreateTripMindtripModal({
           <textarea
             placeholder="Ví dụ: 3 ngày ở Đà Nẵng và Huế, thích ngắm cảnh, ẩm thực..."
             value={tripPrompt}
-            onChange={(e) => setTripPrompt(e.target.value.slice(0, 2000))}
+            onChange={(e) => handlePromptChange(e.target.value)}
             className="w-full rounded-[16px] border border-[#c8c8c8] px-[13px] py-[12px] text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black transition-all resize-none h-[106px] leading-relaxed"
           />
           {/* Bộ đếm ký tự: nằm ngoài dưới ô, căn phải, cách đáy ô 14px (mt-[6px]) */}
-          <div className="flex justify-end mt-[6px]">
-            <span className="text-[11px] text-gray-400 font-mono">
+          <div className="flex items-center justify-between mt-[6px]">
+            {tripPrompt.trim().length > 6 && extractedIntent ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-semibold border border-emerald-100 animate-fadeIn max-w-[85%] truncate">
+                <Sparkles size={11} className="text-emerald-600 shrink-0" />
+                <span className="truncate">AI nhận diện: <strong>{extractedIntent.summaryPill}</strong></span>
+              </span>
+            ) : <span />}
+            <span className="text-[11px] text-gray-400 font-mono shrink-0">
               {tripPrompt.length} / 2000
             </span>
           </div>
@@ -371,6 +467,22 @@ export default function CreateTripMindtripModal({
             <div className="flex items-center">
               <span className="text-[12.5px] font-medium text-gray-600">
                 {whoDisplay}
+              </span>
+            </div>
+          </button>
+
+          {/* 4. NGÂN SÁCH (Budget Tiers - Chuẩn Mentor) */}
+          <button
+            type="button"
+            onClick={() => setShowBudgetModal(true)}
+            className="w-full h-[44px] flex items-center justify-between pl-[17px] pr-[17px] rounded-[14px] border border-[#c8c8c8] hover:border-gray-400 transition-colors bg-white cursor-pointer group text-left"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-[13.5px] font-bold text-black">Ngân sách</span>
+            </div>
+            <div className="flex items-center">
+              <span className="text-[12.5px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                {budgetDisplay}
               </span>
             </div>
           </button>
@@ -902,3 +1014,8 @@ export default function CreateTripMindtripModal({
     </div>
   );
 }
+
+
+// Compatibility export
+export const CreateTripMindtripModal = CreateTripCopilotModal;
+export type { CreateTripCopilotModalProps as CreateTripMindtripModalProps };

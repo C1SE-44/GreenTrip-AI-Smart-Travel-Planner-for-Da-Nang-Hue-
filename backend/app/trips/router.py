@@ -1,8 +1,22 @@
-from fastapi import APIRouter, Header, HTTPException, status
+from collections.abc import Generator
+from fastapi import APIRouter, Depends, Header, HTTPException, status
+from psycopg import Connection
+
 from app.auth.service import decode_access_token
+from app.db.postgres import get_connection
 from app.trips.itinerary_repository import get_itinerary, save_itinerary
-from app.trips.schemas import TripItineraryResponse, TripItinerarySyncRequest, TripParametersRequest, TripParametersResponse
-from app.trips.service import validate_and_process_trip_parameters
+from app.trips.schemas import (
+    CopilotChatRequest,
+    CopilotChatResponse,
+    TripItineraryResponse,
+    TripItinerarySyncRequest,
+    TripParametersRequest,
+    TripParametersResponse,
+)
+from app.trips.service import (
+    process_copilot_chat,
+    validate_and_process_trip_parameters,
+)
 
 router = APIRouter(prefix="/trips", tags=["Trip Planner"])
 
@@ -16,6 +30,15 @@ def _optional_user_id(authorization: str | None) -> str | None:
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Phiên đăng nhập không hợp lệ.")
     return user_id
+
+
+def get_trips_connection() -> Generator[Connection, None, None]:
+    conn = get_connection()
+    try:
+        yield conn
+    finally:
+        if hasattr(conn, "close"):
+            conn.close()
 
 
 @router.get("/{trip_id}/itinerary", response_model=TripItineraryResponse)
@@ -54,3 +77,23 @@ def validate_trip_parameters(payload: TripParametersRequest) -> TripParametersRe
         message="Thông số chuyến đi hợp lệ và sẵn sàng để tạo lịch trình.",
         data=validated_data,
     )
+
+
+@router.post(
+    "/copilot/chat",
+    response_model=CopilotChatResponse,
+    status_code=status.HTTP_200_OK,
+    summary="In-Planner AI Travel Copilot Chat (PB14)",
+    description="Trợ lý du lịch AI nhận ngữ cảnh chuyến đi hiện tại để tư vấn và xử lý đổi quán chay, gợi ý tránh mưa.",
+)
+def copilot_chat(
+    payload: CopilotChatRequest,
+    connection: Connection = Depends(get_trips_connection),
+) -> CopilotChatResponse:
+    try:
+        return process_copilot_chat(payload, connection)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Lỗi xử lý yêu cầu Copilot: {str(exc)}",
+        ) from exc

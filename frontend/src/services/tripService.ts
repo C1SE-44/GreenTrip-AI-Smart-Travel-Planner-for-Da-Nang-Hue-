@@ -3,7 +3,11 @@ import { API_BASE_URL } from '../lib/api';
 export interface TripParametersPayload {
   destination: string;
   days: number;
-  total_budget: number;
+  total_budget?: number;
+  budget_tier?: 'budget' | 'standard' | 'luxury';
+  dining_tier?: 'budget' | 'standard' | 'luxury';
+  lodging_tier?: 'budget' | 'standard' | 'luxury';
+  activities_tier?: 'budget' | 'standard' | 'luxury';
   num_people: number;
   start_date?: string | null;
   preferences?: string[];
@@ -58,6 +62,9 @@ export interface ValidatedTripData {
   total_budget: number;
   daily_budget_per_person: number;
   budget_tier: 'budget' | 'standard' | 'luxury';
+  dining_tier?: string;
+  lodging_tier?: string;
+  activities_tier?: string;
   pacing_level: 'Relaxed' | 'Balanced' | 'Fast';
   pacing_label: string;
   pacing_desc: string;

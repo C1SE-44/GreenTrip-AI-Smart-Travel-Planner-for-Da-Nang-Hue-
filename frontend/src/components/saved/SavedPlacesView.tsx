@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Heart, Loader2, Map, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, Heart, Loader2, Map as MapIcon, Plus, Search, Trash2, X } from 'lucide-react';
 import type { Poi, PoiCategory } from '@/data/pois';
-import { categoryLabels, normalizePoi } from '@/data/pois';
+import { categoryLabels, normalizePoi, normalizePois, pois } from '@/data/pois';
 import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import PoiMap from '@/components/poi/PoiMap';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { filterSavedPlaces, type SavedPlacesCityFilter } from '@/components/saved/savedPlacesFilters';
+import { getPois } from '@/services/poi';
 import {
   addPlaceToCollection,
   createSavedCollection,
@@ -96,11 +97,11 @@ function CollectionNameDialog({
 export default function SavedPlacesView({
   addedTrips,
   onToggleAddTrip,
-  onAddAllToTrip,
+  onAddAlbumToTrip,
 }: {
   addedTrips?: Set<string>;
   onToggleAddTrip?: (poiId: string) => void;
-  onAddAllToTrip?: (poiIds: string[]) => void;
+  onAddAlbumToTrip?: (poiIds: string[], albumName: string) => void;
 }) {
   const {
     places,
@@ -121,6 +122,13 @@ export default function SavedPlacesView({
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [showAddPlaceDialog, setShowAddPlaceDialog] = useState(false);
   const [addingPlaceId, setAddingPlaceId] = useState<string | null>(null);
+  const [addPlaceSearch, setAddPlaceSearch] = useState('');
+  const [addPlaceCityFilter, setAddPlaceCityFilter] = useState<SavedPlacesCityFilter>('all');
+  const [addPlaceCategoryFilter, setAddPlaceCategoryFilter] = useState<PoiCategory | 'all'>('all');
+  const [directoryPois, setDirectoryPois] = useState<Poi[]>([]);
+  const [directoryLoading, setDirectoryLoading] = useState(false);
+  const [directoryError, setDirectoryError] = useState<string | null>(null);
+  const [directoryRetryCount, setDirectoryRetryCount] = useState(0);
   const [collectionPlaces, setCollectionPlaces] = useState<SavedPlace[]>([]);
   const [collectionLoading, setCollectionLoading] = useState(false);
   const [collectionError, setCollectionError] = useState<string | null>(null);
@@ -164,11 +172,18 @@ export default function SavedPlacesView({
       .filter((place) => placeMatchesSearch(place, query)),
     [normalizedCollectionPlaces, cityFilter, categoryFilter, query],
   );
+  const placeCatalog = useMemo(() => {
+    const catalog = new Map<string, Poi>();
+    [...pois, ...normalizedPlaces, ...normalizedCollectionPlaces, ...directoryPois]
+      .forEach((place) => catalog.set(String(place.id), place));
+    return Array.from(catalog.values());
+  }, [normalizedCollectionPlaces, normalizedPlaces, directoryPois]);
   const availablePlacesToAdd = useMemo(() => {
     const collectionPoiIds = new Set(normalizedCollectionPlaces.map((place) => place.id));
-    return normalizedPlaces.filter((place) => !collectionPoiIds.has(place.id)
-      && placeMatchesSearch(place, query));
-  }, [normalizedPlaces, normalizedCollectionPlaces, query]);
+    return filterSavedPlaces(placeCatalog, addPlaceCityFilter, addPlaceCategoryFilter)
+      .filter((place) => !collectionPoiIds.has(place.id) && placeMatchesSearch(place, addPlaceSearch))
+      .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  }, [placeCatalog, normalizedCollectionPlaces, addPlaceCityFilter, addPlaceCategoryFilter, addPlaceSearch]);
   const visibleCollections = useMemo(
     () => collections.filter((collection) => `${collection.name}`.toLocaleLowerCase('vi').includes(query.trim().toLocaleLowerCase('vi'))),
     [collections, query],
@@ -181,9 +196,41 @@ export default function SavedPlacesView({
   const selectedPoi = (selectedCollectionId ? normalizedCollectionPlaces : normalizedPlaces)
     .find((place) => place.id === selectedPoiId) ?? null;
 
+  useEffect(() => {
+    if (!showAddPlaceDialog) return;
+    let active = true;
+    const loadPlaceCatalog = async () => {
+      setDirectoryLoading(true);
+      setDirectoryError(null);
+      try {
+        const firstPage = await getPois({ page: 1, limit: 100 });
+        const totalPages = firstPage.pagination?.total_pages ?? 1;
+        const remainingPages = totalPages > 1
+          ? await Promise.all(Array.from({ length: totalPages - 1 }, (_, index) => getPois({ page: index + 2, limit: 100 })))
+          : [];
+        const catalog = normalizePois([firstPage, ...remainingPages].flatMap((page) => page.items ?? []));
+        if (active && catalog.length > 0) setDirectoryPois(catalog);
+      } catch {
+        if (active) setDirectoryError('Chưa tải được toàn bộ danh mục. Bạn vẫn có thể chọn từ các địa điểm đang có; thử tải lại để cập nhật.');
+      } finally {
+        if (active) setDirectoryLoading(false);
+      }
+    };
+    void loadPlaceCatalog();
+    return () => { active = false; };
+  }, [showAddPlaceDialog, directoryRetryCount]);
+
   const openCreateDialog = () => {
     setDialogError(null);
     setDialog({ mode: 'create' });
+  };
+
+  const openAddPlaceDialog = () => {
+    setAddPlaceSearch('');
+    setAddPlaceCityFilter('all');
+    setAddPlaceCategoryFilter('all');
+    setDirectoryError(null);
+    setShowAddPlaceDialog(true);
   };
 
   const saveCollectionName = async (name: string) => {
@@ -270,10 +317,21 @@ export default function SavedPlacesView({
                   <p className="text-sm text-neutral-600" aria-live="polite">{selectedCollection?.place_count ?? collectionPlaces.length} địa điểm</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setShowAddPlaceDialog(true)} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-neutral-900 px-4 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 focus-visible:ring-offset-2"><Plus size={16} aria-hidden="true" /> Thêm địa điểm</button>
-                <button type="button" onClick={() => setMobileMapOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-neutral-300 px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 lg:hidden"><Map size={16} aria-hidden="true" /> Bản đồ</button>
-                {!showCollectionMap && <button type="button" onClick={() => setShowCollectionMap(true)} className="hidden min-h-10 items-center gap-2 rounded-full border border-neutral-300 px-4 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 lg:inline-flex"><Map size={16} aria-hidden="true" /> Bản đồ</button>}
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={openAddPlaceDialog} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-neutral-900 px-4 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 focus-visible:ring-offset-2"><Plus size={16} aria-hidden="true" /> Thêm địa điểm</button>
+                {onAddAlbumToTrip && (
+                  <button
+                    type="button"
+                    onClick={() => onAddAlbumToTrip(normalizedCollectionPlaces.map((place) => place.id), selectedCollection?.name ?? 'Album')}
+                    disabled={collectionLoading || normalizedCollectionPlaces.length === 0}
+                    title="Lưu toàn bộ địa điểm trong album vào một chuyến đi"
+                    className="inline-flex min-h-10 items-center gap-2 rounded-full border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <CalendarPlus size={16} aria-hidden="true" /> Thêm album vào chuyến đi
+                  </button>
+                )}
+                <button type="button" onClick={() => setMobileMapOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-neutral-300 px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 lg:hidden"><MapIcon size={16} aria-hidden="true" /> Bản đồ</button>
+                {!showCollectionMap && <button type="button" onClick={() => setShowCollectionMap(true)} className="hidden min-h-10 items-center gap-2 rounded-full border border-neutral-300 px-4 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 lg:inline-flex"><MapIcon size={16} aria-hidden="true" /> Bản đồ</button>}
                 <button type="button" onClick={() => { setDialogError(null); if (selectedCollection) setDialog({ mode: 'rename', collection: selectedCollection }); }} className="min-h-10 rounded-full border border-neutral-300 px-4 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">Đổi tên</button>
                 {!selectedCollection?.is_default && <button type="button" onClick={() => { setDeleteError(null); setDeleteConfirm(selectedCollection); }} className="flex min-h-10 items-center gap-1.5 rounded-full border border-neutral-300 px-4 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800"><Trash2 size={16} aria-hidden="true" /> Xóa bộ sưu tập</button>}
               </div>
@@ -324,14 +382,7 @@ export default function SavedPlacesView({
                 {categories.map((category) => <option key={category} value={category}>{categoryLabels[category]}</option>)}
               </select>
             </label>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-neutral-600">{filteredCollectionPlaces.length} địa điểm</span>
-              {onAddAllToTrip && filteredCollectionPlaces.length > 0 && (
-                <button type="button" onClick={() => onAddAllToTrip(normalizedCollectionPlaces.map((poi) => poi.id))} className="min-h-10 rounded-full bg-neutral-900 px-4 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">
-                  Thêm album vào chuyến đi
-                </button>
-              )}
-            </div>
+            <span className="text-sm text-neutral-600">{filteredCollectionPlaces.length} địa điểm</span>
           </div>
           </>
         )}
@@ -468,7 +519,7 @@ export default function SavedPlacesView({
             </>
           ) : (
             <div className="flex h-full min-h-64 w-full flex-col items-center justify-center rounded-2xl bg-neutral-50 px-6 text-center">
-              <Map size={24} className="mb-3 text-neutral-600" aria-hidden="true" />
+              <MapIcon size={24} className="mb-3 text-neutral-600" aria-hidden="true" />
               <h2 className="text-base font-semibold text-neutral-950">
                 {normalizedCollectionPlaces.length === 0 ? 'Bộ sưu tập chưa có địa điểm' : 'Chưa có tọa độ để hiển thị bản đồ'}
               </h2>
@@ -489,36 +540,79 @@ export default function SavedPlacesView({
       )}
 
       {showAddPlaceDialog && selectedCollection && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !addingPlaceId) setShowAddPlaceDialog(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="add-saved-place-title" className="flex max-h-[min(82vh,680px)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-card">
-            <header className="flex items-start justify-between gap-4 border-b border-neutral-200 px-5 py-4">
-              <div>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-neutral-950/45 p-3 sm:p-6" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !addingPlaceId) setShowAddPlaceDialog(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="add-saved-place-title" aria-describedby="add-saved-place-description" className="flex max-h-[calc(100dvh-24px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-card">
+            <header className="flex items-start justify-between gap-4 border-b border-neutral-200 px-4 py-4 sm:px-5">
+              <div className="min-w-0">
                 <h2 id="add-saved-place-title" className="text-lg font-semibold text-neutral-950">Thêm địa điểm vào {selectedCollection.name}</h2>
-                <p className="mt-1 text-sm text-neutral-600">Chọn từ những địa điểm bạn đã lưu.</p>
+                <p id="add-saved-place-description" className="mt-1 text-sm text-neutral-700">Tìm địa điểm theo tên hoặc lọc theo thành phố và danh mục.</p>
               </div>
-              <button type="button" aria-label="Đóng" onClick={() => setShowAddPlaceDialog(false)} disabled={Boolean(addingPlaceId)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 disabled:opacity-50"><X size={19} aria-hidden="true" /></button>
+              <button type="button" aria-label="Đóng" onClick={() => setShowAddPlaceDialog(false)} disabled={Boolean(addingPlaceId)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 disabled:opacity-50"><X size={19} aria-hidden="true" /></button>
             </header>
-            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+
+            <div className="space-y-3 border-b border-neutral-200 px-4 py-4 sm:px-5">
+              <label htmlFor="add-place-search" className="sr-only">Tìm địa điểm theo tên, địa chỉ hoặc thành phố</label>
+              <div className="relative">
+                <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-700" aria-hidden="true" />
+                <input
+                  id="add-place-search"
+                  type="search"
+                  value={addPlaceSearch}
+                  onChange={(event) => setAddPlaceSearch(event.target.value)}
+                  placeholder="Tìm tên địa điểm, địa chỉ hoặc thành phố"
+                  className="min-h-11 w-full rounded-xl border border-neutral-300 bg-white pl-10 pr-3 text-sm text-neutral-950 placeholder:text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-800"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-neutral-800">
+                  Thành phố
+                  <select value={addPlaceCityFilter} onChange={(event) => setAddPlaceCityFilter(event.target.value as SavedPlacesCityFilter)} className="mt-1 block min-h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-800">
+                    <option value="all">Tất cả thành phố</option>
+                    <option value="danang">Đà Nẵng</option>
+                    <option value="hue">Huế</option>
+                  </select>
+                </label>
+                <label className="block text-sm font-medium text-neutral-800">
+                  Danh mục
+                  <select value={addPlaceCategoryFilter} onChange={(event) => setAddPlaceCategoryFilter(event.target.value as PoiCategory | 'all')} className="mt-1 block min-h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-800">
+                    <option value="all">Tất cả danh mục</option>
+                    {Object.entries(categoryLabels).map(([category, label]) => <option key={category} value={category}>{label}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-neutral-700" aria-live="polite">
+                <span>{availablePlacesToAdd.length} địa điểm phù hợp</span>
+                {directoryLoading && <span className="inline-flex items-center gap-2"><Loader2 size={15} className="animate-spin" aria-hidden="true" /> Đang cập nhật danh mục</span>}
+              </div>
+              {directoryError && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-3 py-2.5" role="status">
+                  <p className="text-sm text-neutral-800">{directoryError}</p>
+                  <button type="button" onClick={() => setDirectoryRetryCount((count) => count + 1)} disabled={directoryLoading} className="min-h-10 shrink-0 rounded-full border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 disabled:opacity-50">Thử tải lại</button>
+                </div>
+              )}
+              {collectionError && <p className="text-sm text-red-800" role="alert">{collectionError}</p>}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2 sm:px-5">
               {availablePlacesToAdd.length ? availablePlacesToAdd.map((place) => (
-                <div key={place.id} className="flex items-center gap-3 rounded-xl p-2 hover:bg-neutral-50">
-                  <img src={place.image} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
+                <div key={place.id} className="flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-neutral-50">
+                  <img src={place.image} alt="" loading="lazy" className="h-14 w-14 shrink-0 rounded-lg bg-neutral-100 object-cover" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-neutral-950">{place.name}</p>
-                    <p className="truncate text-sm text-neutral-600">{place.city}</p>
+                    <p className="truncate text-sm text-neutral-700">{place.city} · {categoryLabels[place.category]}</p>
                   </div>
-                  <button type="button" onClick={() => void addSavedPlaceToCollection(place.id)} disabled={Boolean(addingPlaceId)} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-neutral-300 px-3 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 disabled:opacity-50">
+                  <button type="button" aria-label={`Thêm ${place.name} vào ${selectedCollection.name}`} onClick={() => void addSavedPlaceToCollection(place.id)} disabled={Boolean(addingPlaceId)} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-neutral-300 px-3 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 disabled:opacity-50">
                     {addingPlaceId === place.id ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Plus size={16} aria-hidden="true" />}
                     Thêm
                   </button>
                 </div>
               )) : (
-                <div className="flex min-h-40 flex-col items-center justify-center px-5 text-center">
-                  <p className="text-sm font-semibold text-neutral-900">Không còn địa điểm đã lưu để thêm</p>
-                  <p className="mt-1 text-sm text-neutral-600">Khám phá địa điểm mới rồi lưu vào bộ sưu tập này.</p>
-                  <a href="/explore" className="mt-3 inline-flex min-h-10 items-center rounded-full bg-neutral-900 px-4 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">Khám phá địa điểm</a>
+                <div className="flex min-h-48 flex-col items-center justify-center px-5 text-center">
+                  <p className="text-base font-semibold text-neutral-950">Không tìm thấy địa điểm phù hợp</p>
+                  <p className="mt-1 text-sm text-neutral-700">Thử từ khóa khác hoặc đặt lại bộ lọc để xem thêm địa điểm.</p>
+                  <button type="button" onClick={() => { setAddPlaceSearch(''); setAddPlaceCityFilter('all'); setAddPlaceCategoryFilter('all'); }} className="mt-3 inline-flex min-h-11 items-center rounded-full bg-neutral-900 px-4 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">Đặt lại bộ lọc</button>
                 </div>
               )}
-              {collectionError && <p className="px-2 py-2 text-sm text-red-800" role="alert">{collectionError}</p>}
             </div>
           </section>
         </div>

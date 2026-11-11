@@ -78,6 +78,17 @@ export function SavedPlacesProvider({ children }: PropsWithChildren) {
     feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), isError ? 5000 : 2600);
   }, []);
 
+  const expireSession = useCallback(() => {
+    localStorage.removeItem('access_token');
+    sessionStorage.removeItem('access_token');
+    setPlaces([]);
+    setCollections([]);
+    setCollectionPoi(null);
+    setError(null);
+    window.dispatchEvent(new Event('auth-change'));
+    goToLogin();
+  }, [goToLogin]);
+
   const refresh = useCallback(async () => {
     const requestId = ++requestIdRef.current;
     if (!getAccessToken()) {
@@ -103,12 +114,12 @@ export function SavedPlacesProvider({ children }: PropsWithChildren) {
       if (requestId !== requestIdRef.current) return;
       setLoading(false);
       if (errorStatus(loadError) === 401) {
-        setError('Phiên kết nối danh sách đã lưu chưa được xác thực. Tài khoản vẫn đang đăng nhập; vui lòng thử tải lại sau.');
+        expireSession();
         return;
       }
       setError('Chưa thể tải địa điểm đã lưu. Vui lòng thử lại.');
     }
-  }, []);
+  }, [expireSession]);
 
   const refreshCollections = useCallback(async () => {
     if (!getAccessToken()) {
@@ -119,11 +130,9 @@ export function SavedPlacesProvider({ children }: PropsWithChildren) {
       const response = await getSavedCollections();
       setCollections(response.items ?? []);
     } catch (loadError) {
-      if (errorStatus(loadError) === 401) {
-        setError('Phiên kết nối danh sách đã lưu chưa được xác thực. Tài khoản vẫn đang đăng nhập; vui lòng thử tải lại sau.');
-      }
+      if (errorStatus(loadError) === 401) expireSession();
     }
-  }, []);
+  }, [expireSession]);
 
   useEffect(() => {
     void refresh();
@@ -169,7 +178,7 @@ export function SavedPlacesProvider({ children }: PropsWithChildren) {
     } catch (mutationError) {
       if (getAccessToken() !== accountToken) return;
       if (errorStatus(mutationError) === 401) {
-        showFeedback('Chưa thể xác thực yêu cầu lưu địa điểm. Tài khoản vẫn đang đăng nhập.', true);
+        expireSession();
       } else {
         showFeedback('Không thể cập nhật địa điểm đã lưu. Vui lòng thử lại.', true);
       }
@@ -180,7 +189,7 @@ export function SavedPlacesProvider({ children }: PropsWithChildren) {
         return next;
       });
     }
-  }, [goToLogin, pendingIds, refresh, savedIds, showFeedback]);
+  }, [expireSession, goToLogin, pendingIds, refresh, savedIds, showFeedback]);
 
   const openCollectionPicker = useCallback((poi: Poi) => {
     if (!getAccessToken()) {

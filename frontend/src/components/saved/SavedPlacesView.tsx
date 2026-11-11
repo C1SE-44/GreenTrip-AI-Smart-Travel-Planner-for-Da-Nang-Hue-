@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CalendarPlus, Heart, Loader2, Map as MapIcon, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, Heart, Loader2, Map as MapIcon, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import type { Poi, PoiCategory } from '@/data/pois';
 import { categoryLabels, normalizePoi, normalizePois, pois } from '@/data/pois';
 import PoiCard from '@/components/poi/PoiCard';
@@ -120,6 +120,7 @@ export default function SavedPlacesView({
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [showCollectionMap, setShowCollectionMap] = useState(true);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
+  const [showCollectionMenu, setShowCollectionMenu] = useState(false);
   const [showAddPlaceDialog, setShowAddPlaceDialog] = useState(false);
   const [addingPlaceId, setAddingPlaceId] = useState<string | null>(null);
   const [addPlaceSearch, setAddPlaceSearch] = useState('');
@@ -303,37 +304,109 @@ export default function SavedPlacesView({
   const title = isCollectionDetail ? selectedCollection?.name : 'Đã lưu';
 
   return (
-    <main className={`relative h-full min-w-0 flex-1 bg-white auto-hide-scrollbar ${isCollectionDetail ? 'flex overflow-hidden' : 'overflow-y-auto'}`}>
-      <div className={`mx-auto w-full max-w-[1440px] px-5 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-9 ${isCollectionDetail ? `h-full min-h-0 max-w-none overflow-y-auto lg:mx-0 lg:shrink-0 lg:px-8 lg:py-6 ${showCollectionMap ? 'lg:w-[48%]' : 'lg:w-full'}` : ''}`}>
-        <header className="mb-5">
+    <main className="relative h-full min-w-0 flex-1 bg-white flex overflow-hidden">
+      <div
+        className={
+          isCollectionDetail
+            ? 'w-[560px] lg:w-[620px] xl:w-[660px] shrink-0 h-full bg-white flex flex-col border-r border-neutral-100 overflow-y-auto auto-hide-scrollbar px-6 py-6 select-none'
+            : 'mx-auto w-full max-w-[1440px] px-5 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-9 overflow-y-auto auto-hide-scrollbar'
+        }
+      >
+        <header className="mb-4">
           {isCollectionDetail ? (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <button type="button" onClick={() => { setSelectedCollectionId(null); setSelectedPoiId(null); }} aria-label="Quay lại bộ sưu tập" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-800 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">
-                  <ArrowLeft size={20} aria-hidden="true" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedCollectionId(null); setSelectedPoiId(null); }}
+                  aria-label="Quay lại bộ sưu tập"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-100 transition-colors"
+                >
+                  <ArrowLeft size={18} aria-hidden="true" />
                 </button>
                 <div className="min-w-0">
-                  <h1 className="truncate text-[22px] font-bold tracking-tight text-neutral-950">{title}</h1>
-                  <p className="text-sm text-neutral-600" aria-live="polite">{selectedCollection?.place_count ?? collectionPlaces.length} địa điểm</p>
+                  <div className="flex items-center gap-1.5">
+                    <h1 className="truncate text-[20px] font-bold tracking-tight text-neutral-950">{title}</h1>
+                    <button
+                      type="button"
+                      onClick={() => { setDialogError(null); if (selectedCollection) setDialog({ mode: 'rename', collection: selectedCollection }); }}
+                      aria-label="Đổi tên bộ sưu tập"
+                      title="Đổi tên bộ sưu tập"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+                    >
+                      <Pencil size={14} aria-hidden="true" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-neutral-500 font-medium" aria-live="polite">
+                    {selectedCollection?.place_count ?? collectionPlaces.length} địa điểm
+                  </p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button type="button" onClick={openAddPlaceDialog} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-neutral-900 px-4 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 focus-visible:ring-offset-2"><Plus size={16} aria-hidden="true" /> Thêm địa điểm</button>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={openAddPlaceDialog}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full bg-neutral-950 px-3.5 text-xs font-semibold text-white hover:bg-neutral-800 transition-colors shadow-xs"
+                >
+                  <Plus size={15} aria-hidden="true" />
+                  <span>Thêm địa điểm</span>
+                </button>
                 {onAddAlbumToTrip && (
                   <button
                     type="button"
                     onClick={() => onAddAlbumToTrip(normalizedCollectionPlaces.map((place) => place.id), selectedCollection?.name ?? 'Album')}
                     disabled={collectionLoading || normalizedCollectionPlaces.length === 0}
                     title="Lưu toàn bộ địa điểm trong album vào một chuyến đi"
-                    className="inline-flex min-h-10 items-center gap-2 rounded-full border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 hover:border-neutral-300 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
                   >
-                    <CalendarPlus size={16} aria-hidden="true" /> Thêm album vào chuyến đi
+                    <CalendarPlus size={14} aria-hidden="true" />
+                    <span>Thêm vào chuyến đi</span>
                   </button>
                 )}
-                <button type="button" onClick={() => setMobileMapOpen(true)} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-neutral-300 px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 lg:hidden"><MapIcon size={16} aria-hidden="true" /> Bản đồ</button>
-                {!showCollectionMap && <button type="button" onClick={() => setShowCollectionMap(true)} className="hidden min-h-10 items-center gap-2 rounded-full border border-neutral-300 px-4 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 lg:inline-flex"><MapIcon size={16} aria-hidden="true" /> Bản đồ</button>}
-                <button type="button" onClick={() => { setDialogError(null); if (selectedCollection) setDialog({ mode: 'rename', collection: selectedCollection }); }} className="min-h-10 rounded-full border border-neutral-300 px-4 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">Đổi tên</button>
-                {!selectedCollection?.is_default && <button type="button" onClick={() => { setDeleteError(null); setDeleteConfirm(selectedCollection); }} className="flex min-h-10 items-center gap-1.5 rounded-full border border-neutral-300 px-4 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800"><Trash2 size={16} aria-hidden="true" /> Xóa bộ sưu tập</button>}
+                {!selectedCollection?.is_default && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowCollectionMenu((prev) => !prev)}
+                      aria-label="Tùy chọn bộ sưu tập"
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 transition-colors shadow-xs"
+                    >
+                      <MoreHorizontal size={16} aria-hidden="true" />
+                    </button>
+                    {showCollectionMenu && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowCollectionMenu(false)} />
+                        <div className="absolute right-0 top-10 z-50 w-44 rounded-2xl border border-neutral-100 bg-white p-1.5 shadow-xl animate-fadeIn">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCollectionMenu(false);
+                              setDialogError(null);
+                              if (selectedCollection) setDialog({ mode: 'rename', collection: selectedCollection });
+                            }}
+                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+                          >
+                            <Pencil size={14} />
+                            <span>Đổi tên album</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCollectionMenu(false);
+                              setDeleteError(null);
+                              setDeleteConfirm(selectedCollection);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                            <span>Xóa bộ sưu tập</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -368,22 +441,42 @@ export default function SavedPlacesView({
 
         {isCollectionDetail && (
           <>
-          <label className="mb-3 flex min-h-12 items-center gap-3 rounded-full bg-neutral-100 px-4 focus-within:ring-2 focus-within:ring-neutral-800">
-            <Search size={19} className="shrink-0 text-neutral-700" aria-hidden="true" />
-            <span className="sr-only">Tìm trong bộ sưu tập</span>
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Tìm trong ${selectedCollection?.name ?? 'bộ sưu tập'}`} className="min-w-0 flex-1 bg-transparent text-sm text-neutral-950 outline-none placeholder:text-neutral-600" />
-            {query && <button type="button" onClick={() => setQuery('')} aria-label="Xóa nội dung tìm kiếm" className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800"><X size={16} /></button>}
-          </label>
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <label className="flex min-h-10 items-center gap-2 text-sm font-medium text-neutral-800">
-              Lọc danh mục
-              <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as PoiCategory | 'all')} className="min-h-10 rounded-full border border-neutral-300 bg-white px-3 text-sm text-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">
-                <option value="all">Tất cả</option>
-                {categories.map((category) => <option key={category} value={category}>{categoryLabels[category]}</option>)}
-              </select>
+            <label className="mb-3 mt-1 flex h-10 items-center gap-2.5 rounded-full bg-neutral-100/90 px-3.5 focus-within:ring-2 focus-within:ring-neutral-800 transition-all">
+              <Search size={15} className="shrink-0 text-neutral-400" aria-hidden="true" />
+              <span className="sr-only">Tìm trong bộ sưu tập</span>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={`Tìm trong ${selectedCollection?.name ?? 'bộ sưu tập'}...`}
+                className="min-w-0 flex-1 bg-transparent text-xs text-neutral-950 outline-none placeholder:text-neutral-400 font-normal"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  aria-label="Xóa nội dung tìm kiếm"
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200 transition-colors"
+                >
+                  <X size={13} />
+                </button>
+              )}
             </label>
-            <span className="text-sm text-neutral-600">{filteredCollectionPlaces.length} địa điểm</span>
-          </div>
+            <div className="mb-4 flex items-center justify-between gap-3 text-xs">
+              <label className="flex items-center gap-2 text-neutral-600 font-medium">
+                <span>Lọc danh mục:</span>
+                <select
+                  value={categoryFilter}
+                  onChange={(event) => setCategoryFilter(event.target.value as PoiCategory | 'all')}
+                  className="h-8 rounded-full border border-neutral-200 bg-white px-2.5 text-xs text-neutral-800 outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 cursor-pointer"
+                >
+                  <option value="all">Tất cả</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>{categoryLabels[category]}</option>
+                  ))}
+                </select>
+              </label>
+              <span className="text-neutral-400 text-xs font-medium">{filteredCollectionPlaces.length} địa điểm</span>
+            </div>
           </>
         )}
 
@@ -432,11 +525,36 @@ export default function SavedPlacesView({
               <button type="button" onClick={() => { setSelectedCollectionId(null); setTab('places'); }} className="mt-4 min-h-11 rounded-full bg-neutral-900 px-5 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">Xem địa điểm đã lưu</button>
             </div>
           ) : (
-            <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${isCollectionDetail ? '' : 'xl:grid-cols-3'}`}>
+            <div className="grid grid-cols-2 gap-3.5">
               {filteredCollectionPlaces.map((poi, index) => (
-                <div key={poi.id} className="min-w-0">
-                  <PoiCard poi={poi} index={index} compact showSavedCount active={poi.id === selectedPoiId} favorite={savedIds.has(poi.id)} favoritePending={pendingIds.has(poi.id)} isAdded={addedTrips?.has(poi.id)} showAddToTrip={Boolean(onToggleAddTrip)} onClick={() => setSelectedPoiId(poi.id)} onHover={() => undefined} onToggleFavorite={(_id, currentPoi) => { if (currentPoi) openCollectionPicker(currentPoi); }} onToggleAddTrip={onToggleAddTrip} />
-                  <button type="button" onClick={() => void removeFromCollection(poi.id)} className="mt-2 min-h-10 rounded-full px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">Bỏ khỏi bộ sưu tập này</button>
+                <div key={poi.id} className="relative group min-w-0">
+                  <PoiCard
+                    poi={poi}
+                    index={index}
+                    compact
+                    showSavedCount={false}
+                    active={poi.id === selectedPoiId}
+                    favorite={savedIds.has(poi.id)}
+                    favoritePending={pendingIds.has(poi.id)}
+                    isAdded={addedTrips?.has(poi.id)}
+                    showAddToTrip={Boolean(onToggleAddTrip)}
+                    onClick={() => setSelectedPoiId(poi.id)}
+                    onHover={() => undefined}
+                    onToggleFavorite={(_id, currentPoi) => { if (currentPoi) openCollectionPicker(currentPoi); }}
+                    onToggleAddTrip={onToggleAddTrip}
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void removeFromCollection(poi.id);
+                    }}
+                    title="Bỏ khỏi bộ sưu tập này"
+                    aria-label={`Bỏ ${poi.name} khỏi bộ sưu tập`}
+                    className="absolute top-2.5 left-2.5 z-10 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-neutral-500 hover:text-rose-600 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer backdrop-blur-xs"
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -489,48 +607,48 @@ export default function SavedPlacesView({
         )}
       </div>
 
-      {isCollectionDetail && showCollectionMap && (
-        <aside className={`${mobileMapOpen ? 'fixed inset-0 z-[100] block bg-white p-3 lg:relative lg:inset-auto lg:z-auto lg:flex lg:p-4' : 'hidden lg:flex'} relative min-h-0 flex-1`} aria-label="Bản đồ địa điểm trong bộ sưu tập">
-          <button type="button" onClick={() => { setMobileMapOpen(false); if (window.matchMedia('(min-width: 1024px)').matches) setShowCollectionMap(false); }} aria-label="Ẩn bản đồ" className="absolute right-6 top-6 z-[500] flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-800 shadow-card hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 lg:right-7 lg:top-7">
-            <X size={19} aria-hidden="true" />
-          </button>
-          {collectionMapPlaces.length > 0 ? (
-            <>
-              <PoiMap
-                pois={collectionMapPlaces}
-                selectedPoiId={selectedPoiId}
-                hoveredPoiId={null}
-                onSelectPoi={setSelectedPoiId}
-                onHoverPoi={() => undefined}
-                favorites={savedIds}
-                pendingFavorites={pendingIds}
-                onToggleFavorite={(_id, currentPoi) => { if (currentPoi) openCollectionPicker(currentPoi); }}
-                addedTrips={addedTrips}
-                onToggleAddTrip={onToggleAddTrip}
-                hideTopControls
-                savedHeartMarkers
-                hideFloatingPreview
-              />
-              {collectionMapPlaces.length < normalizedCollectionPlaces.length && (
-                <p className="absolute left-4 top-4 z-[500] max-w-[calc(100%-5rem)] rounded-xl bg-white/95 px-3 py-2 text-sm text-neutral-800 shadow-card" role="status">
-                  Một số địa điểm chưa có tọa độ hợp lệ nên không hiển thị trên bản đồ.
+      {/* 2. CỘT PHẢI: BẢN ĐỒ BỘ SƯU TẬP (ĐỒNG BỘ 100% TRANG EXPLORE) */}
+      {isCollectionDetail && (
+        <div className="flex-1 h-full min-w-0 p-3 select-none relative">
+          <div className="w-full h-full rounded-[24px] overflow-hidden border border-gray-100 shadow-sm relative bg-[#f8f9fa]">
+            {collectionMapPlaces.length > 0 ? (
+              <>
+                <PoiMap
+                  pois={collectionMapPlaces}
+                  selectedPoiId={selectedPoiId}
+                  hoveredPoiId={null}
+                  onSelectPoi={setSelectedPoiId}
+                  onHoverPoi={() => undefined}
+                  favorites={savedIds}
+                  pendingFavorites={pendingIds}
+                  onToggleFavorite={(_id, currentPoi) => { if (currentPoi) openCollectionPicker(currentPoi); }}
+                  addedTrips={addedTrips}
+                  onToggleAddTrip={onToggleAddTrip}
+                  hideTopControls
+                  savedHeartMarkers
+                  hideFloatingPreview
+                />
+                {collectionMapPlaces.length < normalizedCollectionPlaces.length && (
+                  <p className="absolute left-4 top-4 z-[500] max-w-[calc(100%-5rem)] rounded-xl bg-white/95 px-3 py-2 text-xs text-neutral-800 shadow-card" role="status">
+                    Một số địa điểm chưa có tọa độ hợp lệ nên không hiển thị trên bản đồ.
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="flex h-full min-h-64 w-full flex-col items-center justify-center px-6 text-center">
+                <MapIcon size={24} className="mb-3 text-neutral-400" aria-hidden="true" />
+                <h2 className="text-sm font-semibold text-neutral-900">
+                  {normalizedCollectionPlaces.length === 0 ? 'Bộ sưu tập chưa có địa điểm' : 'Chưa có tọa độ để hiển thị bản đồ'}
+                </h2>
+                <p className="mt-1 max-w-sm text-xs text-neutral-500">
+                  {normalizedCollectionPlaces.length === 0
+                    ? 'Thêm địa điểm vào bộ sưu tập để xem vị trí trên bản đồ.'
+                    : 'Các địa điểm vẫn có trong danh sách, nhưng chưa có tọa độ hợp lệ.'}
                 </p>
-              )}
-            </>
-          ) : (
-            <div className="flex h-full min-h-64 w-full flex-col items-center justify-center rounded-2xl bg-neutral-50 px-6 text-center">
-              <MapIcon size={24} className="mb-3 text-neutral-600" aria-hidden="true" />
-              <h2 className="text-base font-semibold text-neutral-950">
-                {normalizedCollectionPlaces.length === 0 ? 'Bộ sưu tập chưa có địa điểm' : 'Chưa có tọa độ để hiển thị bản đồ'}
-              </h2>
-              <p className="mt-1 max-w-sm text-sm text-neutral-700">
-                {normalizedCollectionPlaces.length === 0
-                  ? 'Thêm địa điểm vào bộ sưu tập để xem vị trí trên bản đồ.'
-                  : 'Các địa điểm vẫn có trong danh sách, nhưng chưa có tọa độ hợp lệ.'}
-              </p>
-            </div>
-          )}
-        </aside>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {selectedPoi && !isCollectionDetail && (

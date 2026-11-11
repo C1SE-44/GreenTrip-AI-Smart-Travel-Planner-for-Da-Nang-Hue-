@@ -156,6 +156,7 @@ POI_COLUMNS = {
     "is_local_business", "green_score", "is_active", "sub_category",
     "budget_tier", "vibes", "ai_metadata", "average_visit_minutes",
     "popularity_score",
+    "best_time", "opening_hours",
 }
 CATEGORY_COLUMNS = {"category_id", "name"}
 CITY_COLUMNS = {"city_id", "name", "code"}
@@ -181,6 +182,27 @@ def test_repository_filters_using_resolved_city_ids(
     assert "p.city_id = ANY(%s)" in select_sql
     assert select_params == (expected_ids,)
     assert "JOIN public.cities AS ci ON ci.city_id = p.city_id" in select_sql
+    assert "AS best_time" in select_sql
+    assert "AS opening_hours" in select_sql
+
+
+def test_recommendation_response_preserves_scheduling_metadata() -> None:
+    poi = make_poi("schedule-ready")
+    poi.update({
+        "best_time": ["morning", "afternoon"],
+        "opening_hours": {"monday": "09:00-17:00"},
+        "average_visit_minutes": 75,
+    })
+
+    response = service._recommend_by_ideas_and_taxonomy(
+        [poi],
+        RecommendationRequest(interests=["culture"], top_k=1),
+    )
+
+    assert response.data[0].best_time == ["morning", "afternoon"]
+    assert response.data[0].opening_hours == {"monday": "09:00-17:00"}
+    assert response.data[0].average_visit_minutes == 75
+    assert response.data[0].sub_category == "heritage"
 
 
 def test_unknown_destination_fails_instead_of_returning_cross_city_pois() -> None:
@@ -389,3 +411,19 @@ def test_database_failure_is_propagated_without_mock_recommendations(
     monkeypatch.setattr(service, "list_recommendation_pois", fail)
     with pytest.raises(RecommendationRepositoryError, match="database unavailable"):
         service.get_poi_recommendations(make_request(), object())
+
+
+def test_csv_fallback_keeps_missing_poi_coordinates_unknown(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    csv_path = tmp_path / "pois.csv"
+    csv_path.write_text(
+        "osm_id,name,category_name,city_name,latitude,longitude\n"
+        "place-1,Quán chưa xác minh,Ẩm thực,Đà Nẵng,,\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(repository, "_CSV_PATH", csv_path)
+
+    pois = repository._load_pois_from_csv("Đà Nẵng")
+
+    assert len(pois) == 1
+    assert pois[0]["lat"] is None
+    assert pois[0]["lng"] is None

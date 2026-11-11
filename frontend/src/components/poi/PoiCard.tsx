@@ -150,7 +150,7 @@ export default function PoiCard({
           </button>
         )}
 
-        {/* Nút tim và "+" ở góc trên: Nền trắng đục nổi bật, viền nhẹ, tooltip rõ ràng (vùng chạm >= 40px) */}
+        {/* Nút tim và "+" ở góc trên: Nền trắng đục nổi bật, viền nhẹ, tooltip rõ ràng */}
         <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
           <button
             type="button"

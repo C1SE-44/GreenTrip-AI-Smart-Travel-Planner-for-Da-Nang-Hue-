@@ -1,5 +1,6 @@
 import type { CopilotSuggestedPoi } from '@/services/copilotService';
 import type { ExtractedTripIntent } from '@/utils/vietnamesePromptExtractor';
+import type { RestPeriod } from '@/services/tripService';
 
 export interface BudgetSummary {
   lodging: string;
@@ -72,6 +73,8 @@ export interface CopilotDayOutline {
     isEcoCertified?: boolean;
   };
   stops: CopilotStop[];
+  rest_periods?: RestPeriod[];
+  assistant_tip?: string;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../lib/api';
+import type { CopilotStop } from '@/components/planner/copilotTripData';
 
 export interface TripParametersPayload {
   destination: string;
@@ -44,7 +45,21 @@ export interface DailyItineraryOutline {
   day: number;
   theme: string;
   focus_city: string;
-  suggested_activities: string[];
+  suggested_activities?: string[];
+  rest_periods?: RestPeriod[];
+  assistant_tip?: string;
+  hotel?: {
+    name: string;
+    checkInNote: string;
+    isEcoCertified?: boolean;
+  };
+  stops?: CopilotStop[];
+}
+
+export interface RestPeriod {
+  time_range: string;
+  activity: string;
+  duration_minutes: number;
 }
 
 export interface ValidatedTripData {

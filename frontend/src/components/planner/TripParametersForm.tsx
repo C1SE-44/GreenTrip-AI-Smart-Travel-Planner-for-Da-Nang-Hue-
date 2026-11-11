@@ -13,7 +13,8 @@ import {
   Plus, 
   Leaf,
   Compass,
-  Check
+  Check,
+  Coffee,
 } from 'lucide-react';
 import { RecommendationCardSkeleton } from '@/components/ui/Skeleton';
 import ExplanationModal from '@/components/poi/ExplanationModal';
@@ -1157,12 +1158,28 @@ export default function TripParametersForm() {
                     </div>
 
                     <ul className="space-y-1 pl-4 text-xs text-stone-600">
-                      {item.suggested_activities.map((act, actIdx) => (
+                      {(item.suggested_activities || []).map((act, actIdx) => (
                         <li key={actIdx} className="list-disc leading-relaxed">
                           {act}
                         </li>
                       ))}
                     </ul>
+
+                    {item.rest_periods?.map((period, periodIdx) => (
+                      <div key={`${item.day}-rest-${periodIdx}`} className="mt-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3">
+                        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-amber-950">
+                          <Coffee size={15} aria-hidden="true" />
+                          Khoảng nghỉ gợi ý · {period.time_range} · {period.duration_minutes} phút
+                        </p>
+                        <p className="mt-1 text-sm leading-relaxed text-amber-950">{period.activity}</p>
+                      </div>
+                    ))}
+                    {item.assistant_tip && (
+                      <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm leading-relaxed text-emerald-950">
+                        <span className="font-semibold">Lời khuyên của GreenTrip: </span>{item.assistant_tip}
+                      </p>
+                    )}
+
                   </div>
                 ))}
               </div>

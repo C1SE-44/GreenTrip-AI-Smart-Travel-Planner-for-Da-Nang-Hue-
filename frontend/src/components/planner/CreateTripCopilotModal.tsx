@@ -10,7 +10,6 @@ export interface CreateTripCopilotModalProps {
   onCreated?: (trip: UserTrip) => void;
 }
 
-
 import {
   buildDefaultMindtripItinerary,
   buildDefaultMindtripConversation,
@@ -19,6 +18,13 @@ import {
 import { extractTripIntentFromPrompt, type ExtractedTripIntent } from '@/utils/vietnamesePromptExtractor';
 
 export { buildDefaultMindtripItinerary, buildDefaultMindtripConversation };
+
+function estimatePacing(days: number): { level: 'Relaxed' | 'Balanced' | 'Fast'; label: string } {
+  const pointsPerDay = 4 / days;
+  if (pointsPerDay <= 3) return { level: 'Relaxed', label: '🌿 Thong thả' };
+  if (pointsPerDay <= 5) return { level: 'Balanced', label: '⚖️ Cân bằng' };
+  return { level: 'Fast', label: '⚡ Dày đặc' };
+}
 
 export default function CreateTripCopilotModal({
   isOpen,
@@ -38,10 +44,22 @@ export default function CreateTripCopilotModal({
   // 2. WHEN STATE (Khi: Ngày tháng vs Linh hoạt)
   const [whenTab, setWhenTab] = useState<'dates' | 'flex'>('dates');
   
-  // Tab Ngày tháng: Range selection (mặc định mẫu 2 - 5 tháng 11 năm 2026 như ảnh minh họa)
-  const [calendarBaseMonth, setCalendarBaseMonth] = useState<Date>(new Date(2026, 10, 1));
-  const [rangeStart, setRangeStart] = useState<Date | null>(new Date(2026, 10, 2));
-  const [rangeEnd, setRangeEnd] = useState<Date | null>(new Date(2026, 10, 5));
+  // Khởi tạo lịch ở tuần tới để ngày mặc định không bị backend từ chối theo thời gian thực.
+  const [calendarBaseMonth, setCalendarBaseMonth] = useState<Date>(() => {
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    return new Date(nextWeek.getFullYear(), nextWeek.getMonth(), 1);
+  });
+  const [rangeStart, setRangeStart] = useState<Date | null>(() => {
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    return nextWeek;
+  });
+  const [rangeEnd, setRangeEnd] = useState<Date | null>(() => {
+    const tripEnd = new Date();
+    tripEnd.setDate(tripEnd.getDate() + 10);
+    return tripEnd;
+  });
 
   // Tab Linh hoạt: Số ngày và chọn 3 tháng
   const [flexibleDays, setFlexibleDays] = useState(4);
@@ -292,6 +310,7 @@ export default function CreateTripCopilotModal({
         ),
         matchedPois: validatedData.matched_pois || [],
         costBreakdown: validatedData.cost_breakdown,
+        pacingLevel: validatedData.pacing_level,
         pacingLabel: validatedData.pacing_label,
       };
 
@@ -310,6 +329,7 @@ export default function CreateTripCopilotModal({
       const coverImage = normDest === 'Huế'
         ? 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=800&q=80'
         : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80';
+      const pacing = estimatePacing(validDays);
 
       const newTrip: UserTrip = {
         id: 'trip_' + Date.now(),
@@ -323,6 +343,8 @@ export default function CreateTripCopilotModal({
         status: 'upcoming',
         prompt: tripPrompt.trim(),
         totalBudget: estimatedBudget,
+        pacingLevel: pacing.level,
+        pacingLabel: pacing.label,
         itineraryOutline: buildDefaultMindtripItinerary(normDest, validDays),
         copilotChatHistory: buildDefaultMindtripConversation(
           normDest,

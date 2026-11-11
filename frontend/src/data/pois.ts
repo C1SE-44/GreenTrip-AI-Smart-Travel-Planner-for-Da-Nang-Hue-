@@ -87,6 +87,7 @@ export interface Poi {
   rating: number;
   matchScore?: number;
   visitDuration: string;
+  average_visit_minutes?: number | null;
   ecoScore: number;
   openHours?: string | null;
   estimatedCost?: number | null;
@@ -139,6 +140,7 @@ export interface BackendPoiItem {
   social_links?: Record<string, string> | null;
   opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
+  matchScore?: number;
   saved_count?: number | null;
 }
 
@@ -500,6 +502,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoord
     description: (item.description ?? '').trim() || 'Địa điểm đáng ghé thăm trong hành trình của bạn.',
     rating,
     visitDuration,
+    average_visit_minutes: item.average_visit_minutes ?? null,
     ecoScore,
     openHours: statusOpenHours || item.open_hours?.trim() || (category === 'quan-an' ? '09:30 – 21:30' : '07:30 – 17:30'),
     estimatedCost,

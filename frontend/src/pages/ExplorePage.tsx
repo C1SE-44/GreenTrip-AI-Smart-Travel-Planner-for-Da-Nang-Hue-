@@ -1,4 +1,4 @@
-import { Leaf, Compass } from 'lucide-react';
+import { Leaf, Compass, Utensils, Landmark, Church, Mountain, CalendarPlus, PlusSquare } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
@@ -24,6 +24,8 @@ import ExploreFilterModal, {
   VIBES_BY_CATEGORY,
 } from '@/components/poi/ExploreFilterModal';
 import QuickFilterBar from '@/components/poi/QuickFilterBar';
+import type { DailyItineraryOutline, MatchedPOI, CostBreakdown } from '@/services/tripService';
+import type { CopilotDayOutline } from '@/components/planner/copilotTripData';
 import {
   computePoiWeightedScore,
   ECO_PRIORITY_WEIGHT_MAP,
@@ -54,10 +56,12 @@ export interface UserTrip {
   status?: string;
   prompt?: string;
   totalBudget?: number;
-  itineraryOutline?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
-  matchedPois?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
-  costBreakdown?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  itineraryOutline?: CopilotDayOutline[];
+  matchedPois?: MatchedPOI[];
+  costBreakdown?: CostBreakdown;
+  pacingLevel?: 'Relaxed' | 'Balanced' | 'Fast';
   pacingLabel?: string;
+  customIdeas?: Array<{ id: string; name: string; city: PoiCity; address?: string }>;
   ideas?: string[];
   copilotChatHistory?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   savedPlaces?: string[];
@@ -106,11 +110,11 @@ const SUB_CHIPS_CONFIG: Record<string, { id: string; label: string }[]> = {
   ],
 };
 
-const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
-  'quan-an': { icon: 'ph-fork-knife', label: 'Quán ăn' },
-  'di-tich': { icon: 'ph-landmark', label: 'Di tích' },
-  'chua': { icon: 'ph-hands-praying', label: 'Chùa & Tâm linh' },
-  'canh-quan': { icon: 'ph-mountains', label: 'Cảnh quan' },
+const CATEGORY_META: Record<PoiCategory, { icon: typeof Compass; label: string }> = {
+  'quan-an': { icon: Utensils, label: 'Quán ăn' },
+  'di-tich': { icon: Landmark, label: 'Di tích' },
+  'chua': { icon: Church, label: 'Chùa & Tâm linh' },
+  'canh-quan': { icon: Mountain, label: 'Cảnh quan' },
 };
 
 
@@ -266,13 +270,15 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'explore' | 'trips' | 'saved' }) {
   const navigate = useNavigate();
   const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
+  const favorites = savedIds;
   const [viewMode, setViewMode] = useState<'explore' | 'trips' | 'saved'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
+  const [selectedTripForDetails, setSelectedTripForDetails] = useState<UserTrip | null>(null);
+  const [pendingTripPoiIds, setPendingTripPoiIds] = useState<string[] | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
   const [addToTripSelection, setAddToTripSelection] = useState<AddToTripSelection | null>(null);
   const [pendingAddToTripPoiIds, setPendingAddToTripPoiIds] = useState<string[] | null>(null);
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
-  const [selectedTripForDetails, setSelectedTripForDetails] = useState<UserTrip | null>(null);
 
   useEffect(() => {
     setViewMode(initialView);
@@ -323,6 +329,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [activeTab, setActiveTab] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
@@ -791,6 +798,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     return allPois.find((poi) => poi.id === selectedPoiId) || null;
   }, [allPois, selectedPoiId]);
 
+
   const currentCityLabel = cityFilter === 'all' ? 'Tất cả địa điểm' : cityFilter;
 
   return (
@@ -871,14 +879,14 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               { 
                 key: 'explore', 
                 onClick: () => { setViewMode('explore'); navigate('/explore'); }, 
-                icon: viewMode === 'explore' ? 'ph-fill ph-compass' : 'ph ph-compass', 
+                icon: Compass,
                 label: 'Khám phá', 
                 active: viewMode === 'explore' 
               },
               { 
                 key: 'saved', 
                 onClick: () => navigate('/saved'),
-                icon: viewMode === 'saved' ? 'ph-fill ph-heart text-[#b45309]' : 'ph ph-heart', 
+                icon: viewMode === 'saved' ? 'ph-fill ph-heart text-[#b45309]' : 'ph ph-heart',
                 label: 'Đã lưu', 
                 active: viewMode === 'saved',
                 badge: savedIds.size > 0 ? String(savedIds.size) : undefined
@@ -890,7 +898,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   setActiveOverviewTrip(null);
                   navigate('/planner'); 
                 }, 
-                icon: viewMode === 'trips' ? 'ph-fill ph-calendar-plus' : 'ph ph-calendar-plus', 
+                icon: CalendarPlus,
                 label: 'Lịch trình', 
                 active: viewMode === 'trips',
                 badge: userTrips.length > 0 ? String(userTrips.length) : undefined
@@ -898,7 +906,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               { 
                 key: 'create',
                 onClick: () => setIsCreateTripModalOpen(true),
-                icon: 'ph ph-plus-square', 
+                icon: PlusSquare,
                 label: 'Tạo chuyến đi' 
               },
             ].map((item) => {
@@ -906,7 +914,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 <div className={`flex items-center py-0.5 text-black transition-colors group/item relative ${item.active ? 'font-semibold' : ''}`}>
                   {/* Khung icon cố định 36x36px ở tọa độ không đổi */}
                   <div className="w-9 h-9 flex items-center justify-center shrink-0 relative">
-                    <i className={`${item.icon} text-[23px] text-black ${item.active ? '' : 'group-hover/item:opacity-75'} transition-opacity`}></i>
+                    <item.icon size={23} strokeWidth={2} className={`text-black ${item.active ? '' : 'group-hover/item:opacity-75'} transition-opacity`} aria-hidden="true" />
                     {item.badge && (
                       <span className="absolute -top-1 -right-1 bg-[#b45309] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
                         {item.badge}
@@ -1036,7 +1044,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
             trip={activeOverviewTrip}
             allPois={allPois}
             onBack={() => setActiveOverviewTrip(null)}
-            onOpenItineraryDetails={() => setSelectedTripForDetails(activeOverviewTrip)}
             onUpdateTrip={(updatedTrip) => {
               setActiveOverviewTrip(updatedTrip);
               setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
@@ -1650,7 +1657,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           }}
         />
       )}
-
       <AddToTripModal
         isOpen={addToTripSelection !== null}
         poiIds={addToTripSelection?.poiIds ?? []}
@@ -1868,7 +1874,7 @@ function PoiCard({
         </div>
 
         <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-normal">
-          <i className={`ph ${CATEGORY_META[poi.category]?.icon || 'ph-map-pin'} text-gray-400 text-[14px] shrink-0`}></i>
+          {(() => { const CategoryIcon = CATEGORY_META[poi.category]?.icon || Compass; return <CategoryIcon size={14} className="shrink-0 text-gray-600" aria-hidden="true" />; })()}
           <span className="truncate">{CATEGORY_META[poi.category]?.label || 'Điểm tham quan'}</span>
         </div>
 

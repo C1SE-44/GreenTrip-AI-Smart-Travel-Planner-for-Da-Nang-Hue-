@@ -315,3 +315,62 @@ def test_validate_parameters_dynamic_percentage_breakdown() -> None:
     pct_lux = res_lux.json()["data"]["cost_breakdown"]["percentage_breakdown"]
     # Accommodation is prioritized in luxury tier
     assert pct_lux["accommodation"] >= 45
+
+
+
+def test_validate_parameters_with_budget_tier_only() -> None:
+    """Kiểm tra tạo chuyến đi chỉ với Budget Tier (không cần nhập tổng số tiền cứng)"""
+    # 1. Budget tier: ~500k/người/ngày * 3 ngày * 2 người = 3.000.000 VND
+    res_tier_budget = client.post(
+        "/trips/validate-parameters",
+        json={
+            "destination": "Đà Nẵng",
+            "days": 3,
+            "num_people": 2,
+            "budget_tier": "budget",
+            "preferences": ["nature", "food"],
+        },
+    )
+    assert res_tier_budget.status_code == 200
+    data_b = res_tier_budget.json()["data"]
+    assert data_b["budget_tier"] == "budget"
+    assert data_b["total_budget"] == 3000000.0
+    assert data_b["daily_budget_per_person"] == 500000.0
+
+    # 2. Luxury tier: ~3.000.000 VND/người/ngày * 2 ngày * 1 người = 6.000.000 VND
+    res_tier_lux = client.post(
+        "/trips/validate-parameters",
+        json={
+            "destination": "Huế",
+            "days": 2,
+            "num_people": 1,
+            "budget_tier": "luxury",
+            "preferences": ["culture"],
+        },
+    )
+    assert res_tier_lux.status_code == 200
+    data_l = res_tier_lux.json()["data"]
+    assert data_l["budget_tier"] == "luxury"
+    assert data_l["total_budget"] == 6000000.0
+    assert data_l["daily_budget_per_person"] == 3000000.0
+
+
+def test_validate_parameters_with_category_tiers() -> None:
+    """Kiểm tra phân loại ngân sách độc lập theo từng hạng mục (Ăn uống, Lưu trú, Hoạt động)"""
+    payload = {
+        "destination": "Đà Nẵng & Huế",
+        "days": 4,
+        "num_people": 2,
+        "budget_tier": "standard",
+        "dining_tier": "budget",
+        "lodging_tier": "luxury",
+        "activities_tier": "standard",
+        "preferences": ["food", "culture"],
+    }
+    res = client.post("/trips/validate-parameters", json=payload)
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["budget_tier"] == "standard"
+    assert data["dining_tier"] == "budget"
+    assert data["lodging_tier"] == "luxury"
+    assert data["activities_tier"] == "standard"

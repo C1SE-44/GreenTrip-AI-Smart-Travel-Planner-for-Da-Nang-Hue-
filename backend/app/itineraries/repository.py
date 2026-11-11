@@ -300,12 +300,6 @@ def seed_sample_itineraries():
                     _insert_itinerary_day(cursor, conn, f"{itin_7d}-d{d_num}", itin_7d, d_num, f"Hành trình Ngày {d_num}", "Đà Nẵng" if d_num <= 3 else "Huế")
                     _insert_itinerary_stop(cursor, conn, f"{itin_7d}-d{d_num}-s1", f"{itin_7d}-d{d_num}", "poi_cau_rong" if d_num % 2 == 1 else "poi_dai_noi", 1, "09:00", f"Điểm 1 Ngày {d_num}")
                     _insert_itinerary_stop(cursor, conn, f"{itin_7d}-d{d_num}-s2", f"{itin_7d}-d{d_num}", "poi_my_khe" if d_num % 2 == 1 else "poi_thien_mu", 2, "14:00", f"Điểm 2 Ngày {d_num}")
-            if not cursor.fetchone():
-                _insert_itinerary(cursor, conn, itin_7d, "Miền Trung Huyền Diệu 7 Ngày", "Đà Nẵng & Huế", 7, "PUBLISHED")
-                for d_num in range(1, 8):
-                    _insert_itinerary_day(cursor, conn, f"{itin_7d}-d{d_num}", itin_7d, d_num, f"Hành trình Ngày {d_num}", "Đà Nẵng" if d_num <= 3 else "Huế")
-                    _insert_itinerary_stop(cursor, conn, f"{itin_7d}-d{d_num}-s1", f"{itin_7d}-d{d_num}", "poi_cau_rong" if d_num % 2 == 1 else "poi_dai_noi", 1, "09:00", f"Điểm 1 Ngày {d_num}")
-                    _insert_itinerary_stop(cursor, conn, f"{itin_7d}-d{d_num}-s2", f"{itin_7d}-d{d_num}", "poi_my_khe" if d_num % 2 == 1 else "poi_thien_mu", 2, "14:00", f"Điểm 2 Ngày {d_num}")
 
             conn.commit()
     except Exception as exc:

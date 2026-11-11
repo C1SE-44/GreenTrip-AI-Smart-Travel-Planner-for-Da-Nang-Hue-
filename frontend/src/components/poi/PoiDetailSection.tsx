@@ -12,8 +12,10 @@ import {
 interface PoiDetailSectionProps {
   poi: Poi;
   isFavorite: boolean;
+  isFavoritePending?: boolean;
+  showAddToTrip?: boolean;
   onClose: () => void;
-  onToggleFavorite: (id: string) => void;
+  onToggleFavorite: (id: string, poi?: Poi) => void;
   onViewOnMap?: () => void;
   isAddedToTrip?: boolean;
   onToggleAddTrip?: (id: string) => void;
@@ -38,6 +40,8 @@ function formatPriceRange(poi: Poi): string {
 export default function PoiDetailSection({
   poi,
   isFavorite,
+  isFavoritePending = false,
+  showAddToTrip = true,
   onClose,
   onToggleFavorite,
   onViewOnMap,
@@ -219,8 +223,10 @@ export default function PoiDetailSection({
           <button
             type="button"
             aria-pressed={isFavorite}
-            onClick={() => onToggleFavorite(poi.id)}
-            className={`flex items-center gap-1.5 px-3 min-h-[40px] border rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+            aria-busy={isFavoritePending}
+            disabled={isFavoritePending}
+            onClick={() => onToggleFavorite(poi.id, poi)}
+            className={`flex items-center gap-1.5 px-3 min-h-[40px] border rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
               isFavorite
                 ? 'bg-[#fef3c7] border-[#b45309]/30 text-[#b45309]'
                 : 'border-neutral-200 text-neutral-800 hover:bg-neutral-50'
@@ -236,7 +242,7 @@ export default function PoiDetailSection({
             type="button"
             aria-pressed={isAdded}
             onClick={handleToggleAddTrip}
-            className={`flex items-center gap-1.5 px-3.5 min-h-[40px] border rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+            className={`${showAddToTrip ? '' : 'hidden'} flex items-center gap-1.5 px-3.5 min-h-[40px] border rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
               isAdded
                 ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
                 : 'bg-[#102b21] border-[#102b21] text-white hover:bg-[#194332]'

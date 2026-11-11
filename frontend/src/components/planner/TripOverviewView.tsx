@@ -41,6 +41,7 @@ import PoiMap from '@/components/poi/PoiMap';
 import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import ExplanationModal from '@/components/poi/ExplanationModal';
+import { useSavedPlaces } from '@/context/SavedPlacesContext';
 
 export interface TripOverviewViewProps {
   trip: UserTrip;
@@ -114,6 +115,8 @@ export interface CategoryBudgets {
   activities: string;
 }
 
+type RecommendedPoi = Poi & { matchScore?: number };
+
 export function parseCategoryBudgets(raw?: string): CategoryBudgets {
   const def: CategoryBudgets = { dining: 'any', lodging: 'any', activities: 'any' };
   if (!raw) return def;
@@ -167,6 +170,10 @@ export default function TripOverviewView({
   onOpenItineraryDetails,
   onUpdateTrip,
 }: TripOverviewViewProps) {
+  const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
+  const handleOpenSavedCollections = (_poiId: string, poi?: Poi) => {
+    if (poi) openCollectionPicker(poi);
+  };
   // Bộ dữ liệu POI hoàn chỉnh từ Explore / backend
   const [loadedPois, setLoadedPois] = useState<Poi[]>([]);
 
@@ -248,9 +255,10 @@ export default function TripOverviewView({
 
   // ─── DANH SÁCH Ý TƯỞNG (IDEAS / WISHLIST) CỦA CHUYẾN ĐI ───
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => trip.ideas || []);
+  const [tripSavedPlaces, setTripSavedPlaces] = useState<string[]>(() => trip.savedPlaces || []);
 
   // ─── STATE CHO GỢI Ý ĐỊA ĐIỂM (TOP 10 TỐI ƯU THEO BACKEND PB09) ───
-  const [recommendedPois, setRecommendedPois] = useState<Poi[]>([]);
+  const [recommendedPois, setRecommendedPois] = useState<RecommendedPoi[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [recommendationTitle, setRecommendationTitle] = useState('Gợi ý cho bạn');
   const [recommendationSubtitle, setRecommendationSubtitle] = useState('Theo gu và hành trình của bạn.');
@@ -276,10 +284,9 @@ export default function TripOverviewView({
   const [isMapExpanded, setIsMapExpanded] = useState(false);
 
   useEffect(() => {
-    if (trip.ideas) {
-      setTripIdeas(trip.ideas);
-    }
-  }, [trip.ideas]);
+    setTripIdeas(trip.ideas ?? []);
+    setTripSavedPlaces(trip.savedPlaces ?? []);
+  }, [trip.ideas, trip.savedPlaces]);
 
   // Tự động tải thông tin chi tiết đầy đủ cho các POIs trong ý tưởng nếu chưa có trong allPois
   useEffect(() => {
@@ -407,7 +414,7 @@ export default function TripOverviewView({
     if (fullPoi) {
       return {
         ...fullPoi,
-        matchScore: recPoi?.matchScore ?? fullPoi.matchScore,
+        matchScore: recPoi?.matchScore ?? (fullPoi as RecommendedPoi).matchScore,
       };
     }
     const ideaPoi = ideaPois.find((p) => p.id === selectedMapPoiId || p.name.toLowerCase() === selectedMapPoiId.toLowerCase());
@@ -445,7 +452,7 @@ export default function TripOverviewView({
         if (isCancelled) return;
 
         if (res && res.data && res.data.length > 0) {
-          const mapped: Poi[] = res.data.map((item, idx) => {
+          const mapped: RecommendedPoi[] = res.data.map((item, idx) => {
             const foundLocal = allPois.find(
               (p) => p.id === item.poi_id || p.name.toLowerCase() === item.name.toLowerCase()
             );
@@ -546,7 +553,28 @@ export default function TripOverviewView({
 
   // ─── LỌC POIS CHO MODAL "THÊM VÀO CHUYẾN ĐI" (ADD TO TRIP MODAL) ───
   const modalFilteredPois = useMemo(() => {
-    let list = allPois;
+    let list: Poi[] = modalTab === 'saved'
+      ? tripSavedPlaces.map((savedPlaceId) => {
+        const savedPoi = allPois.find(
+          (poi) => poi.id === savedPlaceId || poi.name.toLowerCase() === savedPlaceId.toLowerCase(),
+        );
+        if (savedPoi) return savedPoi;
+
+        return {
+          id: savedPlaceId,
+          name: savedPlaceId,
+          category: 'canh-quan',
+          city: isHue(trip.destination) ? 'Huế' : 'Đà Nẵng',
+          lat: 16.0544,
+          lng: 108.2022,
+          image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+          description: 'Địa điểm bạn đã lưu cho chuyến đi này.',
+          rating: 0,
+          visitDuration: '1–2 giờ',
+          ecoScore: 0,
+        };
+      })
+      : allPois;
 
     // 1. Lọc theo Thành phố
     if (modalCity === 'Đà Nẵng') {
@@ -581,13 +609,8 @@ export default function TripOverviewView({
       );
     }
 
-    // 4. Tab "Đã lưu" (Saved)
-    if (modalTab === 'saved') {
-      list = list.filter((p) => tripIdeas.includes(p.id) || tripIdeas.some((id) => id.toLowerCase() === p.name.toLowerCase()));
-    }
-
     return list;
-  }, [allPois, modalCity, modalCategory, modalSearch, modalTab, tripIdeas]);
+  }, [allPois, modalCity, modalCategory, modalSearch, modalTab, tripSavedPlaces, trip.destination]);
 
   // Tiêu đề lớn hiển thị (1 dòng rút gọn chuẩn Mindtrip)
   const displayTitle = `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}`;
@@ -1231,8 +1254,9 @@ export default function TripOverviewView({
                       window.dispatchEvent(new Event('resize'));
                     }, 200);
                   }}
-                  favorites={new Set(tripIdeas)}
-                  onToggleFavorite={handleToggleIdea}
+                  favorites={savedIds}
+                  pendingFavorites={pendingIds}
+                  onToggleFavorite={handleOpenSavedCollections}
                   addedTrips={new Set(tripIdeas)}
                   onToggleAddTrip={handleToggleIdea}
                 />
@@ -1973,9 +1997,9 @@ export default function TripOverviewView({
                   }`}
                 >
                   <span>Đã lưu</span>
-                  {tripIdeas.length > 0 && (
+                  {tripSavedPlaces.length > 0 && (
                     <span className="w-4.5 h-4.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center">
-                      {tripIdeas.length}
+                      {tripSavedPlaces.length}
                     </span>
                   )}
                 </button>
@@ -2117,7 +2141,7 @@ export default function TripOverviewView({
                   <div className="mt-4 shrink-0">
                     <h4 className="font-bold text-[16px] text-gray-950 tracking-tight">
                       {modalTab === 'saved'
-                        ? 'Địa điểm đã lưu'
+                        ? 'Địa điểm đã lưu cho chuyến đi'
                         : modalCategory === 'quan-an' || modalCategory === 'restaurants'
                         ? 'Quán ăn'
                         : modalCategory === 'di-tich' || modalCategory === 'experiences'
@@ -2137,7 +2161,7 @@ export default function TripOverviewView({
                     {modalFilteredPois.length === 0 ? (
                       <div className="col-span-full py-16 text-center text-gray-500 text-sm">
                         {modalTab === 'saved'
-                          ? 'Chưa có địa điểm nào được lưu vào Ý tưởng. Hãy chuyển sang tab Tìm kiếm để thêm nhé!'
+                          ? 'Chưa có địa điểm nào được lưu cho chuyến đi này. Thêm địa điểm từ bộ sưu tập Đã lưu để xem tại đây.'
                           : 'Không tìm thấy địa điểm phù hợp với bộ lọc hiện tại.'}
                       </div>
                     ) : (
@@ -2186,7 +2210,7 @@ export default function TripOverviewView({
                                 ) : (
                                   <>
                                     <Plus size={13} strokeWidth={2.5} />
-                                    <span>Thêm</span>
+                                  <span>Thêm vào Ý tưởng</span>
                                   </>
                                 )}
                               </button>
@@ -2473,10 +2497,11 @@ export default function TripOverviewView({
         >
           <PoiDetailSection
             poi={selectedPoi}
-            isFavorite={tripIdeas.includes(selectedPoi.id)}
+            isFavorite={savedIds.has(selectedPoi.id)}
+            isFavoritePending={pendingIds.has(selectedPoi.id)}
             isAddedToTrip={tripIdeas.includes(selectedPoi.id)}
             onClose={() => setSelectedMapPoiId(null)}
-            onToggleFavorite={handleToggleIdea}
+            onToggleFavorite={handleOpenSavedCollections}
             onToggleAddTrip={handleToggleIdea}
             onViewOnMap={() => {
               setHoveredMapPoiId(selectedPoi.id);

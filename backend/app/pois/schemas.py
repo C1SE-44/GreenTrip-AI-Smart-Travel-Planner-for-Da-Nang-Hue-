@@ -33,6 +33,7 @@ class POIResponse(BaseModel):
     social_links: dict[str, Any] | None = None
     opening_hours: dict[str, Any] | None = None
     email: str | None = None
+    saved_count: int = 0
 
 
 class PaginationMetadata(BaseModel):

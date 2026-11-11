@@ -739,7 +739,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   const modalFilteredPois = useMemo(() => {
     let list: Poi[] = [];
 
-    // Tab "Đã thích" (Favorites từ Thiện's SavedPlacesContext)
+    // Tab "Đã thích" (Favorites từ Thiện's SavedPlacesContext & trip.savedPlaces)
     if (modalTab === 'saved') {
       let favSet = new Set<string>();
       try {
@@ -748,8 +748,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       } catch (e) {
         console.error(e);
       }
+      const tripSavedSet = new Set<string>(trip.savedPlaces || []);
       const poisFromAll = allPois.filter(
-        (p) => savedIds.has(String(p.id)) || savedIds.has(p.name) || favSet.has(String(p.id)) || favSet.has(p.name)
+        (p) => savedIds.has(String(p.id)) || savedIds.has(p.name) || favSet.has(String(p.id)) || favSet.has(p.name) || tripSavedSet.has(String(p.id))
       );
       const normalizedBackendPlaces = (places || [])
         .map((item) => normalizePoi(item, true))
@@ -793,7 +794,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     }
 
     return list;
-  }, [allPois, places, savedIds, modalCity, modalCategory, modalSearch, modalTab, tripIdeas, isDaNang, isHue]);
+  }, [allPois, places, savedIds, modalCity, modalCategory, modalSearch, modalTab, tripIdeas, isDaNang, isHue, trip.savedPlaces]);
 
   // Tiêu đề lớn hiển thị (ưu tiên tên riêng người dùng đặt, nếu không fallback theo điểm đến)
   const cleanTitle = trip.title?.trim();

@@ -184,7 +184,7 @@ export default function PoiCard({
                 ? 'bg-emerald-700 text-white ring-1 ring-emerald-800' 
                 : 'bg-white/90 hover:bg-white text-neutral-800 hover:text-emerald-700 hover:scale-105'
             }`}
-            title={isAdded ? "Đã thêm vào chuyến đi (Bấm để bỏ)" : "Thêm vào chuyến đi"}
+            title={isAdded ? "Đã lưu trong chuyến đi · Bấm để quản lý" : "Thêm vào chuyến đi"}
           >
             <i className={`ph ${isAdded ? 'ph-check text-[18px] font-bold' : 'ph-plus text-[18px]'}`} aria-hidden="true"></i>
           </button>
@@ -282,7 +282,7 @@ export default function PoiCard({
               }`}
             >
               <i className={`ph ${isAdded ? 'ph-check' : 'ph-plus'} text-sm`} aria-hidden="true"></i>
-              {isAdded ? 'Đã thêm vào chuyến đi' : '+ Thêm vào chuyến đi'}
+              {isAdded ? 'Đã lưu trong chuyến đi' : '+ Thêm vào chuyến đi'}
             </button>
             <button
               type="button"

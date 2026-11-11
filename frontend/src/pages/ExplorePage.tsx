@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
 import CreateTripMindtripModal from '@/components/planner/CreateTripMindtripModal';
+import AddToTripModal from '@/components/planner/AddToTripModal';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
@@ -57,6 +58,12 @@ export interface UserTrip {
   costBreakdown?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   pacingLabel?: string;
   ideas?: string[];
+  savedPlaces?: string[];
+}
+
+interface AddToTripSelection {
+  poiIds: string[];
+  label?: string;
 }
 
 
@@ -219,6 +226,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [viewMode, setViewMode] = useState<'explore' | 'trips' | 'saved'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
+  const [addToTripSelection, setAddToTripSelection] = useState<AddToTripSelection | null>(null);
+  const [pendingAddToTripPoiIds, setPendingAddToTripPoiIds] = useState<string[] | null>(null);
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
   const [selectedTripForDetails, setSelectedTripForDetails] = useState<UserTrip | null>(null);
 
@@ -267,28 +276,17 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     }
   }, [userTrips]);
 
+  const addedTrips = useMemo(
+    () => new Set(userTrips.flatMap((trip) => trip.savedPlaces ?? [])),
+    [userTrips],
+  );
+
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [activeTab, setActiveTab] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
-  const [addedTrips, setAddedTrips] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('greentrip_added_trips');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('greentrip_added_trips', JSON.stringify(Array.from(addedTrips)));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [addedTrips]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
@@ -307,13 +305,43 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     }, 320);
   };
 
-  const toggleAddTrip = (id: string) => {
-    setAddedTrips((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+  const toggleAddTrip = (id: string) => setAddToTripSelection({
+    poiIds: [id],
+    label: allPois.find((poi) => poi.id === id)?.name,
+  });
+
+  const addAlbumToTrip = (poiIds: string[], albumName: string) => {
+    const uniquePoiIds = Array.from(new Set(poiIds));
+    if (uniquePoiIds.length === 0) return;
+    setAddToTripSelection({
+      poiIds: uniquePoiIds,
+      label: `Toàn bộ album “${albumName}” · ${uniquePoiIds.length} địa điểm`,
     });
+  };
+
+  const toggleTripSavedPlaces = (tripId: string, poiIds: string[], allPlacesAlreadySaved: boolean) => {
+    if (poiIds.length === 0) return;
+    const updateSavedPlaces = (trip: UserTrip): UserTrip => {
+      const savedPlaces = new Set(trip.savedPlaces ?? []);
+      poiIds.forEach((poiId) => {
+        if (allPlacesAlreadySaved) savedPlaces.delete(poiId);
+        else savedPlaces.add(poiId);
+      });
+      return {
+        ...trip,
+        savedPlaces: Array.from(savedPlaces),
+      };
+    };
+
+    setUserTrips((prev) => prev.map((trip) => trip.id === tripId ? updateSavedPlaces(trip) : trip));
+    setActiveOverviewTrip((current) => current?.id === tripId ? updateSavedPlaces(current) : current);
+    setSelectedTripForDetails((current) => current?.id === tripId ? updateSavedPlaces(current) : current);
+  };
+
+  const createTripForPois = (poiIds: string[]) => {
+    setAddToTripSelection(null);
+    setPendingAddToTripPoiIds(poiIds);
+    setIsCreateTripModalOpen(true);
   };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1190,7 +1218,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         </main>
         )
       ) : viewMode === 'saved' ? (
-        <SavedPlacesView addedTrips={addedTrips} onToggleAddTrip={toggleAddTrip} />
+        <SavedPlacesView addedTrips={addedTrips} onToggleAddTrip={toggleAddTrip} onAddAlbumToTrip={addAlbumToTrip} />
       ) : (
         <>
       {/* 2. MIDDLE LIST (EXPLORE): Khi thu gọn sidebar, phần giữa to rộng hơn (715px) có hiệu ứng chuyển động mượt mà, map chỉ nhích nhẹ */}
@@ -1539,33 +1567,18 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       {isCreateTripModalOpen && (
         <CreateTripMindtripModal
           isOpen={isCreateTripModalOpen}
-          onClose={() => setIsCreateTripModalOpen(false)}
-          onCreateTrip={(newTrip) => {
-            const trip: UserTrip = {
-              ...newTrip,
-              id: newTrip.id || `trip-${Date.now()}`,
-              image:
-                newTrip.coverImage ||
-                newTrip.image ||
-                (newTrip.destination === 'Huế'
-                  ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
-                  : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
-              tags: newTrip.tags || [
-                newTrip.destination,
-                newTrip.startDate || '4 ngày • Tháng 12',
-                `${newTrip.peopleCount} du khách`,
-                'Ngân sách',
-              ],
-            };
-            setUserTrips((prev) => [trip, ...prev]);
-            setActiveOverviewTrip(trip);
-            setViewMode('trips');
+          onClose={() => {
             setIsCreateTripModalOpen(false);
+            setPendingAddToTripPoiIds(null);
           }}
-          onCreated={(newTrip) => {
+          onCreateTrip={(newTrip) => {
+            const savedPlaces = pendingAddToTripPoiIds
+              ? Array.from(new Set([...(newTrip.savedPlaces ?? []), ...pendingAddToTripPoiIds]))
+              : newTrip.savedPlaces;
             const trip: UserTrip = {
               ...newTrip,
               id: newTrip.id || `trip-${Date.now()}`,
+              savedPlaces,
               image:
                 newTrip.coverImage ||
                 newTrip.image ||
@@ -1580,12 +1593,25 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               ],
             };
             setUserTrips((prev) => [trip, ...prev]);
-            setActiveOverviewTrip(trip);
-            setViewMode('trips');
+            if (!pendingAddToTripPoiIds) {
+              setActiveOverviewTrip(trip);
+              setViewMode('trips');
+            }
+            setPendingAddToTripPoiIds(null);
             setIsCreateTripModalOpen(false);
           }}
         />
       )}
+
+      <AddToTripModal
+        isOpen={addToTripSelection !== null}
+        poiIds={addToTripSelection?.poiIds ?? []}
+        selectionLabel={addToTripSelection?.label}
+        trips={userTrips}
+        onToggleTrip={toggleTripSavedPlaces}
+        onCreateTrip={createTripForPois}
+        onClose={() => setAddToTripSelection(null)}
+      />
     </div>
   );
 }

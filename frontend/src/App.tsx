@@ -4,10 +4,12 @@ import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import ExplorePage from '@/pages/ExplorePage';
 import LandingPage from '@/pages/LandingPage';
 import PlannerPage from '@/pages/PlannerPage';
+import { SavedPlacesProvider } from '@/context/SavedPlacesContext';
 
 function App() {
   return (
     <BrowserRouter>
+      <SavedPlacesProvider>
       <Routes>
         {/* Landing Page & Auth Modal Overlay Routes */}
         <Route
@@ -51,6 +53,7 @@ function App() {
 
         {/* Explore page - Now has its own Sidebar layout */}
         <Route path="/explore" element={<ExplorePage initialView="explore" />} />
+        <Route path="/saved" element={<ExplorePage initialView="saved" />} />
 
         {/* Trip Planner page */}
         <Route path="/planner" element={<ExplorePage initialView="trips" />} />
@@ -59,6 +62,7 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </SavedPlacesProvider>
     </BrowserRouter>
   );
 }

@@ -34,6 +34,7 @@ import {
 import type { UserTrip } from '@/pages/ExplorePage';
 import PlannerCopilotDrawer from './PlannerCopilotDrawer';
 import { buildDefaultMindtripItinerary } from './CreateTripCopilotModal';
+import type { CopilotDayOutline, CopilotStop } from './copilotTripData';
 import type { CopilotSuggestedPoi } from '@/services/copilotService';
 import { 
   pois as defaultAllPois, 
@@ -44,12 +45,13 @@ import {
   type Poi,
   type PoiCity
 } from '@/data/pois';
-import { getPois } from '@/services/poi';
+import { getPois, getPoisByIds } from '@/services/poi';
 import { fetchJson } from '@/lib/api';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import ExplanationModal from '@/components/poi/ExplanationModal';
+import { useSavedPlaces } from '@/context/SavedPlacesContext';
 
 export interface TripOverviewViewProps {
   trip: UserTrip;
@@ -58,6 +60,34 @@ export interface TripOverviewViewProps {
   onOpenItineraryDetails: () => void;
   onUpdateTrip?: (updatedTrip: UserTrip) => void;
 }
+
+// Bản đồ thông tin đối sánh nhanh cho các POI phổ biến khi tải bất đồng bộ
+const KNOWN_POI_FALLBACKS: Record<string, Partial<Poi>> = {
+  '029a28df-b091-49d9-a911-738572c72464': {
+    name: 'Nhà Hàng Bếp Cuốn Đà Nẵng',
+    category: 'quan-an',
+    city: 'Đà Nẵng',
+    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80',
+    description: 'Ẩm thực Việt truyền thống chuẩn MICHELIN Bib Gourmand.',
+    rating: 4.8,
+  },
+  'd58fe815-4aa1-45b2-831a-11b97e130918': {
+    name: 'Đi Lạc Coffee – Specialty Roastery',
+    category: 'quan-an',
+    city: 'Đà Nẵng',
+    image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80',
+    description: 'Không gian cà phê đặc sản rang xay thủ công.',
+    rating: 4.7,
+  },
+  'bfed964e-ff10-44f4-8654-2136245ab062': {
+    name: 'Nhà Thờ Giáo Xứ An Hải',
+    category: 'chua',
+    city: 'Đà Nẵng',
+    image: 'https://images.unsplash.com/photo-1548625361-195972855799?auto=format&fit=crop&w=800&q=80',
+    description: 'Công trình kiến trúc tôn giáo và đền thánh lịch sử tại Sơn Trà.',
+    rating: 4.6,
+  },
+};
 
 // 5 lựa chọn ngân sách chuẩn Mindtrip theo ảnh người dùng gửi
 const BUDGET_OPTIONS = [
@@ -94,6 +124,8 @@ export interface CategoryBudgets {
   lodging: string;
   activities: string;
 }
+
+type RecommendedPoi = Poi & { matchScore?: number };
 
 export function parseCategoryBudgets(raw?: string): CategoryBudgets {
   const def: CategoryBudgets = { dining: 'any', lodging: 'any', activities: 'any' };
@@ -148,6 +180,10 @@ export default function TripOverviewView({
   onOpenItineraryDetails,
   onUpdateTrip,
 }: TripOverviewViewProps) {
+  const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
+  const handleOpenSavedCollections = (_poiId: string, poi?: Poi) => {
+    if (poi) openCollectionPicker(poi);
+  };
   // Bộ dữ liệu POI hoàn chỉnh từ Explore / backend
   const [loadedPois, setLoadedPois] = useState<Poi[]>([]);
 
@@ -173,6 +209,7 @@ export default function TripOverviewView({
       ? loadedPois 
       : (allPoisProp && allPoisProp.length > 0 ? allPoisProp : defaultAllPois);
   }, [loadedPois, allPoisProp]);
+
   // ─── STATE CỦA 4 POPUP ĐIỀU CHỈNH THÔNG SỐ CHUYẾN ĐI ───
   // 1. Popup Ở đâu
   const [showWhereModal, setShowWhereModal] = useState(false);
@@ -230,9 +267,10 @@ export default function TripOverviewView({
 
   // ─── DANH SÁCH Ý TƯỞNG (IDEAS / WISHLIST) CỦA CHUYẾN ĐI ───
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => trip.ideas || []);
+  const [tripSavedPlaces, setTripSavedPlaces] = useState<string[]>(() => trip.savedPlaces || []);
 
   // ─── STATE CHO GỢI Ý ĐỊA ĐIỂM (TOP 10 TỐI ƯU THEO BACKEND PB09) ───
-  const [recommendedPois, setRecommendedPois] = useState<Poi[]>([]);
+  const [recommendedPois, setRecommendedPois] = useState<RecommendedPoi[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [recommendationTitle, setRecommendationTitle] = useState('Gợi ý cho bạn');
   const [recommendationSubtitle, setRecommendationSubtitle] = useState('Theo gu và hành trình của bạn.');
@@ -249,6 +287,8 @@ export default function TripOverviewView({
   const [modalSearch, setModalSearch] = useState('');
   const [modalCategory, setModalCategory] = useState<ModalCategoryType>('for-you');
   const [customIdeaInput, setCustomIdeaInput] = useState('');
+
+  const selectedBudgetTier = trip.budgetTier || 'standard';
 
   // State bản đồ & chọn POI chi tiết
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
@@ -323,7 +363,7 @@ export default function TripOverviewView({
   const activeItinerary = useMemo(() => {
     const defaultData = buildDefaultMindtripItinerary(trip.destination || 'Đà Nẵng & Huế', trip.daysCount || 4);
     if (Array.isArray(trip.itineraryOutline) && trip.itineraryOutline.length > 0) {
-      return trip.itineraryOutline.map((dayItem: any, idx: number) => {
+      return trip.itineraryOutline.map((dayItem: CopilotDayOutline, idx: number) => {
         const defDay = defaultData[idx] || defaultData[0];
         return {
           ...dayItem,
@@ -336,10 +376,32 @@ export default function TripOverviewView({
   }, [trip.itineraryOutline, trip.destination, trip.daysCount]);
 
   useEffect(() => {
-    if (trip.ideas) {
-      setTripIdeas(trip.ideas);
-    }
-  }, [trip.ideas]);
+    setTripIdeas(trip.ideas ?? []);
+    setTripSavedPlaces(trip.savedPlaces ?? []);
+  }, [trip.ideas, trip.savedPlaces]);
+
+  // Tự động tải thông tin chi tiết đầy đủ cho các POIs trong ý tưởng nếu chưa có trong allPois
+  useEffect(() => {
+    if (!tripIdeas || tripIdeas.length === 0) return;
+    const currentKnown = new Set(allPois.map((p) => String(p.id)));
+    const missingIds = tripIdeas.filter((id) => !id.startsWith('custom-') && !currentKnown.has(String(id)));
+    if (missingIds.length === 0) return;
+
+    getPoisByIds(missingIds)
+      .then((items) => {
+        if (items && items.length > 0) {
+          const normalized = normalizePois(items);
+          setLoadedPois((prev) => {
+            const map = new Map(prev.map((p) => [String(p.id), p]));
+            normalized.forEach((p) => map.set(String(p.id), p));
+            return Array.from(map.values());
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('TripOverviewView: could not fetch missing idea POIs:', err);
+      });
+  }, [tripIdeas, allPois]);
 
   const handleToggleIdea = (poiId: string) => {
     setTripIdeas((prev) => {
@@ -364,10 +426,10 @@ export default function TripOverviewView({
       ? trip.itineraryOutline
       : activeItinerary;
 
-    const nextItinerary = baseItinerary.map((dayItem: any) => {
+    const nextItinerary = baseItinerary.map((dayItem: CopilotDayOutline) => {
       if (dayItem.day === dayNumber) {
         const nextStops = Array.isArray(dayItem.stops)
-          ? dayItem.stops.filter((s: any) => s.id !== stopId)
+          ? dayItem.stops.filter((s: CopilotStop) => s.id !== stopId)
           : [];
         return { ...dayItem, stops: nextStops };
       }
@@ -390,7 +452,7 @@ export default function TripOverviewView({
     const nextIdeas = tripIdeas.includes(poi.id) ? tripIdeas : [...tripIdeas, poi.id];
     setTripIdeas(nextIdeas);
 
-    const nextItinerary = baseItinerary.map((dayItem: any) => {
+    const nextItinerary = baseItinerary.map((dayItem: CopilotDayOutline) => {
       if (dayItem.day === dayNumber) {
         const existingStops = Array.isArray(dayItem.stops) ? [...dayItem.stops] : [];
         const newStopObj = {
@@ -454,26 +516,48 @@ export default function TripOverviewView({
     return tripIdeas.map((id) => {
       // 1. Tìm trong allPois
       const foundInAll = allPois.find(
-        (p) => p.id === id || p.name.toLowerCase() === id.toLowerCase()
+        (p) => String(p.id) === String(id) || p.name.toLowerCase() === String(id).toLowerCase()
       );
       if (foundInAll) return foundInAll;
 
       // 2. Tìm trong recommendedPois
       const foundInRec = recommendedPois.find(
-        (p) => p.id === id || p.name.toLowerCase() === id.toLowerCase()
+        (p) => String(p.id) === String(id) || p.name.toLowerCase() === String(id).toLowerCase()
       );
       if (foundInRec) return foundInRec;
 
-      // 3. Fallback cho custom idea hoặc POI thêm từ bên ngoài
-      const cleanName = id.startsWith('custom-') ? id.replace(/^custom-\d+-?/, '') || id : id;
+      // 3. Tìm trong từ điển ánh xạ nhanh các POI nổi tiếng
+      if (KNOWN_POI_FALLBACKS[id]) {
+        const k = KNOWN_POI_FALLBACKS[id];
+        return {
+          id,
+          name: k.name || 'Điểm đến hấp dẫn',
+          category: k.category || ('canh-quan' as const),
+          city: (k.city || (isHue(trip.destination) ? 'Huế' : 'Đà Nẵng')) as PoiCity,
+          lat: 16.0544,
+          lng: 108.2022,
+          image: k.image || getDeterministicImage(k.name || id, id, k.category || 'canh-quan', k.city),
+          description: k.description || 'Địa điểm ẩm thực / tham quan bạn đã lưu.',
+          rating: k.rating || 4.7,
+          visitDuration: '1–2 giờ',
+          ecoScore: 85,
+        };
+      }
+
+      // 4. Fallback cho custom idea hoặc POI thêm từ bên ngoài
+      const cleanName = id.startsWith('custom-') 
+        ? (id.replace(/^custom-\d+-?/, '') || id)
+        : (id.length > 20 && id.includes('-') ? 'Điểm đến trải nghiệm' : id);
+      const cat = 'canh-quan' as const;
+      const targetCity = (isHue(trip.destination) ? 'Huế' : 'Đà Nẵng') as PoiCity;
       return {
         id,
         name: cleanName,
-        category: 'canh-quan' as const,
-        city: (isHue(trip.destination) ? 'Huế' : 'Đà Nẵng') as PoiCity,
+        category: cat,
+        city: targetCity,
         lat: 16.0544,
         lng: 108.2022,
-        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80',
+        image: getDeterministicImage(cleanName, id, cat, targetCity),
         description: 'Địa điểm bạn đã thêm vào ý tưởng chuyến đi.',
         rating: 4.8,
         visitDuration: '1–2 giờ',
@@ -497,7 +581,7 @@ export default function TripOverviewView({
       return {
         ...fullPoi,
         gallery: fullPoi.gallery || recPoi?.gallery,
-        matchScore: recPoi?.matchScore ?? fullPoi.matchScore,
+        matchScore: recPoi?.matchScore ?? (fullPoi as RecommendedPoi).matchScore,
       };
     }
     const ideaPoi = ideaPois.find((p) => p.id === selectedMapPoiId || p.name.toLowerCase() === selectedMapPoiId.toLowerCase());
@@ -535,7 +619,7 @@ export default function TripOverviewView({
         if (isCancelled) return;
 
         if (res && res.data && res.data.length > 0) {
-          const mapped: Poi[] = res.data.map((item, idx) => {
+          const mapped: RecommendedPoi[] = res.data.map((item, idx) => {
             const foundLocal = allPois.find(
               (p) => p.id === item.poi_id || p.name.toLowerCase() === item.name.toLowerCase() || p.cleanTitle?.toLowerCase() === item.name.toLowerCase() || p.cleanName?.toLowerCase() === item.name.toLowerCase()
             );
@@ -646,7 +730,28 @@ export default function TripOverviewView({
 
   // ─── LỌC POIS CHO MODAL "THÊM VÀO CHUYẾN ĐI" (ADD TO TRIP MODAL) ───
   const modalFilteredPois = useMemo(() => {
-    let list = allPois;
+    let list: Poi[] = modalTab === 'saved'
+      ? tripSavedPlaces.map((savedPlaceId) => {
+        const savedPoi = allPois.find(
+          (poi) => poi.id === savedPlaceId || poi.name.toLowerCase() === savedPlaceId.toLowerCase(),
+        );
+        if (savedPoi) return savedPoi;
+
+        return {
+          id: savedPlaceId,
+          name: savedPlaceId,
+          category: 'canh-quan',
+          city: isHue(trip.destination) ? 'Huế' : 'Đà Nẵng',
+          lat: 16.0544,
+          lng: 108.2022,
+          image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+          description: 'Địa điểm bạn đã lưu cho chuyến đi này.',
+          rating: 0,
+          visitDuration: '1–2 giờ',
+          ecoScore: 0,
+        };
+      })
+      : allPois;
 
     // 1. Lọc theo Thành phố
     if (modalCity === 'Đà Nẵng') {
@@ -681,13 +786,8 @@ export default function TripOverviewView({
       );
     }
 
-    // 4. Tab "Đã lưu" (Saved)
-    if (modalTab === 'saved') {
-      list = list.filter((p) => tripIdeas.includes(p.id) || tripIdeas.some((id) => id.toLowerCase() === p.name.toLowerCase()));
-    }
-
     return list;
-  }, [allPois, modalCity, modalCategory, modalSearch, modalTab, tripIdeas]);
+  }, [allPois, modalCity, modalCategory, modalSearch, modalTab, tripSavedPlaces, trip.destination]);
 
   // Tiêu đề lớn hiển thị (1 dòng rút gọn chuẩn Mindtrip)
   const displayTitle = `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}`;
@@ -872,7 +972,7 @@ export default function TripOverviewView({
       ? trip.itineraryOutline
       : activeItinerary;
 
-    const nextItinerary = baseItinerary.map((dayItem: any) => {
+    const nextItinerary = baseItinerary.map((dayItem: CopilotDayOutline) => {
           if (dayItem.day === dayIndex) {
             const slotLabel = slot === 'dinner' ? 'Bữa tối' : slot === 'breakfast' ? 'Bữa sáng' : slot === 'afternoon' ? 'Buổi chiều' : 'Bữa trưa';
             const catLower = (newPoi.category || '').toLowerCase();
@@ -903,7 +1003,7 @@ export default function TripOverviewView({
               image: newPoi.image_url,
               greenScore: newPoi.green_score || 90,
             };
-            const slotIndex = existingStops.findIndex((s: any) => {
+            const slotIndex = existingStops.findIndex((s: CopilotStop) => {
               const time = (s.timeSlot || '').toLowerCase();
               if (slot === 'dinner') return time.includes('18:') || time.includes('19:') || time.includes('tối');
               if (slot === 'breakfast') return time.includes('08:') || time.includes('09:') || time.includes('sáng');
@@ -921,7 +1021,7 @@ export default function TripOverviewView({
 
     // 3. Cập nhật matchedPois nếu có
     const nextMatched = Array.isArray(trip.matchedPois) ? [...trip.matchedPois] : [];
-    if (!nextMatched.some((p: any) => p.name === newPoi.name || p.id === newPoi.id)) {
+    if (!nextMatched.some((p: { id?: string | number; name?: string }) => p.name === newPoi.name || p.id === newPoi.id)) {
       nextMatched.push({
         name: newPoi.name,
         category: newPoi.category,
@@ -1112,7 +1212,7 @@ export default function TripOverviewView({
                   <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider shrink-0 mr-1 hidden sm:inline">
                     Ngày:
                   </span>
-                  {activeItinerary.map((dayItem: any) => {
+                  {activeItinerary.map((dayItem: CopilotDayOutline) => {
                     const isDayActive = activeDayTab === dayItem.day;
                     return (
                       <button
@@ -1162,7 +1262,7 @@ export default function TripOverviewView({
               {/* Danh sách Timeline chi tiết từng ngày */}
               <div className="flex-1 overflow-y-auto auto-hide-scrollbar p-4 sm:p-6 space-y-6">
                 <div className="max-w-[680px] mx-auto w-full space-y-6">
-                    {activeItinerary.map((dayItem: any) => (
+                    {activeItinerary.map((dayItem: CopilotDayOutline) => (
                       <div key={dayItem.day} id={`day-section-${dayItem.day}`} className="space-y-3 pt-1">
                         {/* Day Header */}
                         <div className="flex items-center justify-between pb-2 border-b border-gray-100">
@@ -1228,12 +1328,12 @@ export default function TripOverviewView({
 
                         {/* Stops in Day */}
                         <div className="space-y-2.5 pl-2 sm:pl-3 relative before:absolute before:left-[19px] sm:before:left-[23px] before:top-4 before:bottom-4 before:w-[2px] before:bg-gradient-to-b before:from-emerald-400 before:via-neutral-300 before:to-emerald-500">
-                          {Array.isArray(dayItem.stops) && dayItem.stops.map((stop: any, stopIdx: number) => {
+                          {Array.isArray(dayItem.stops) && dayItem.stops.map((stop: CopilotStop, stopIdx: number) => {
                             const fullPoi = allPois.find((p) => p.id === stop.poiId || p.name.toLowerCase() === stop.name.toLowerCase() || p.cleanTitle?.toLowerCase() === stop.name.toLowerCase());
                             const displayImg = fullPoi?.image || stop.image || 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
                             const displayScore = fullPoi?.ecoScore || stop.greenScore || 90;
                             const isCheckedIn = checkedInStopIds.includes(stop.id);
-                            const isFirstPending = !isCheckedIn && !dayItem.stops.slice(0, stopIdx).some((s: any) => !checkedInStopIds.includes(s.id));
+                            const isFirstPending = !isCheckedIn && !dayItem.stops.slice(0, stopIdx).some((s: CopilotStop) => !checkedInStopIds.includes(s.id));
 
                             return (
                               <React.Fragment key={stop.id || stopIdx}>
@@ -1479,8 +1579,9 @@ export default function TripOverviewView({
                         window.dispatchEvent(new Event('resize'));
                       }, 200);
                     }}
-                    favorites={new Set(tripIdeas)}
-                    onToggleFavorite={handleToggleIdea}
+                    favorites={savedIds}
+                    pendingFavorites={pendingIds}
+                    onToggleFavorite={handleOpenSavedCollections}
                     addedTrips={new Set(tripIdeas)}
                     onToggleAddTrip={handleToggleIdea}
                   />
@@ -2225,9 +2326,9 @@ export default function TripOverviewView({
                   }`}
                 >
                   <span>Đã lưu</span>
-                  {tripIdeas.length > 0 && (
+                  {tripSavedPlaces.length > 0 && (
                     <span className="w-4.5 h-4.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center">
-                      {tripIdeas.length}
+                      {tripSavedPlaces.length}
                     </span>
                   )}
                 </button>
@@ -2369,7 +2470,7 @@ export default function TripOverviewView({
                   <div className="mt-4 shrink-0">
                     <h4 className="font-bold text-[16px] text-gray-950 tracking-tight">
                       {modalTab === 'saved'
-                        ? 'Địa điểm đã lưu'
+                        ? 'Địa điểm đã lưu cho chuyến đi'
                         : modalCategory === 'quan-an' || modalCategory === 'restaurants'
                         ? 'Quán ăn'
                         : modalCategory === 'di-tich' || modalCategory === 'experiences'
@@ -2389,7 +2490,7 @@ export default function TripOverviewView({
                     {modalFilteredPois.length === 0 ? (
                       <div className="col-span-full py-16 text-center text-gray-500 text-sm">
                         {modalTab === 'saved'
-                          ? 'Chưa có địa điểm nào được lưu vào Ý tưởng. Hãy chuyển sang tab Tìm kiếm để thêm nhé!'
+                          ? 'Chưa có địa điểm nào được lưu cho chuyến đi này. Thêm địa điểm từ bộ sưu tập Đã lưu để xem tại đây.'
                           : 'Không tìm thấy địa điểm phù hợp với bộ lọc hiện tại.'}
                       </div>
                     ) : (
@@ -2449,7 +2550,7 @@ export default function TripOverviewView({
                                 ) : (
                                   <>
                                     <Plus size={13} strokeWidth={2.5} />
-                                    <span>Thêm</span>
+                                  <span>Thêm vào Ý tưởng</span>
                                   </>
                                 )}
                               </button>
@@ -2784,10 +2885,11 @@ export default function TripOverviewView({
         >
           <PoiDetailSection
             poi={selectedPoi}
-            isFavorite={tripIdeas.includes(selectedPoi.id)}
+            isFavorite={savedIds.has(selectedPoi.id)}
+            isFavoritePending={pendingIds.has(selectedPoi.id)}
             isAddedToTrip={tripIdeas.includes(selectedPoi.id)}
             onClose={() => setSelectedMapPoiId(null)}
-            onToggleFavorite={handleToggleIdea}
+            onToggleFavorite={handleOpenSavedCollections}
             onToggleAddTrip={handleToggleIdea}
             onViewOnMap={() => {
               setHoveredMapPoiId(selectedPoi.id);

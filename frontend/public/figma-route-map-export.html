@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GreenTrip AI — Figma Route Map Frames Export</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #0F172A; }
+    h1, h2, h3, h4, .font-heading { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="p-8 text-slate-800">
+
+  <div class="max-w-[1500px] mx-auto mb-8 bg-slate-900 border border-slate-800 p-6 rounded-2xl text-white flex items-center justify-between shadow-2xl">
+    <div>
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold mb-2">
+        <i class="ph-bold ph-tree-evergreen"></i> GreenTrip AI · Design System v2
+      </div>
+      <h1 class="text-2xl font-bold text-white tracking-tight">Bộ Thiết Kế Figma: Route Map với Numbered Markers & Day Tabs</h1>
+      <p class="text-slate-400 text-sm mt-1">Được thiết kế chuẩn Auto-Layout, tỷ lệ 60-30-10 và WCAG 2.2 AA. Bạn có thể copy trực tiếp vào Figma.</p>
+    </div>
+    <div class="text-right">
+      <span class="text-xs text-slate-400 block">Liên kết file Figma:</span>
+      <span class="text-xs font-mono text-emerald-400 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 mt-1 inline-block">
+        J8xtGW3mDktovwTacPRDzU (Lợi Trần's team library)
+      </span>
+    </div>
+  </div>
+
+  <div class="space-y-12 max-w-[1500px] mx-auto">
+
+    <!-- FRAME 1: DESKTOP ROUTE MAP (1440 x 900) -->
+    <div>
+      <div class="flex items-center justify-between mb-3 text-slate-300">
+        <h2 class="text-lg font-bold flex items-center gap-2">
+          <span class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs">F1</span>
+          Frame 1: Desktop Route Map (1440 × 900 px)
+        </h2>
+        <span class="text-xs text-slate-400">Desktop Viewport · Tỷ lệ 65% Map / 35% Itinerary</span>
+      </div>
+
+      <div class="w-[1440px] h-[900px] bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-700 flex flex-col relative select-none mx-auto">
+        
+        <header class="h-16 px-8 border-b border-zinc-100 flex items-center justify-between bg-white z-10 shrink-0">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-[#102B21] flex items-center justify-center text-white text-base">
+              <i class="ph-fill ph-leaf"></i>
+            </div>
+            <span class="text-xl font-bold tracking-tight text-zinc-950 font-heading">greentrip</span>
+          </div>
+          <nav class="flex items-center gap-8 text-[14px] font-medium text-zinc-600">
+            <a href="#" class="text-zinc-950 font-bold">Khám phá</a>
+            <a href="#" class="text-emerald-800 font-bold flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Lịch trình chuyến đi
+            </a>
+            <a href="#" class="hover:text-zinc-950 transition">Địa điểm đã lưu</a>
+          </nav>
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-semibold text-zinc-500">Du khách</span>
+            <div class="w-9 h-9 rounded-full bg-zinc-900 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+              L
+            </div>
+          </div>
+        </header>
+
+        <div class="h-[74px] px-8 border-b border-zinc-100 flex items-center justify-between bg-white shrink-0">
+          <div>
+            <h2 class="text-xl font-bold text-zinc-950 tracking-tight font-heading">Lịch trình: Cố đô Huế & Thành phố Đà Nẵng</h2>
+            <div class="flex items-center gap-2 mt-1 text-xs text-zinc-500">
+              <span class="font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">🌿 3 Ngày · 8 Điểm dừng · Ưu tiên Xanh 70%</span>
+              <span>·</span>
+              <span>Khởi hành: 08:30 sáng</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 bg-zinc-100 p-1.5 rounded-full border border-zinc-200">
+            <button class="px-5 py-2 rounded-full bg-zinc-950 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+              <i class="ph-fill ph-calendar-check text-emerald-400"></i> Ngày 1 (3 điểm)
+            </button>
+            <button class="px-5 py-2 rounded-full hover:bg-white text-zinc-600 text-xs font-semibold transition">
+              Ngày 2 (3 điểm)
+            </button>
+            <button class="px-5 py-2 rounded-full hover:bg-white text-zinc-600 text-xs font-semibold transition">
+              Ngày 3 (2 điểm)
+            </button>
+          </div>
+        </div>
+
+        <div class="flex-1 flex overflow-hidden">
+          
+          <div class="flex-[65] bg-[#E9EBE8] relative overflow-hidden flex flex-col justify-between p-6">
+            
+            <div class="absolute inset-0 opacity-40 pointer-events-none">
+              <svg width="100%" height="100%" viewBox="0 0 936 760" fill="none">
+                <path d="M0,0 L936,0 L936,760 L0,760 Z" fill="#E8ECE9"/>
+                <path d="M550,0 C620,120 700,300 680,480 C660,620 780,700 936,760 L936,0 Z" fill="#CFE2FE" opacity="0.6"/>
+                <path d="M120,80 Q280,220 320,380 T520,580" stroke="#CBD5E1" stroke-width="14"/>
+                <path d="M120,80 Q280,220 320,380 T520,580" stroke="#FFFFFF" stroke-width="8"/>
+                <path d="M320,380 L620,280" stroke="#FFFFFF" stroke-width="6"/>
+              </svg>
+            </div>
+
+            <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 936 760">
+              <path d="M 240 180 Q 320 230 420 310 Q 480 370 540 460" 
+                    fill="none" 
+                    stroke="#059669" 
+                    stroke-width="5" 
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-dasharray="8 8"/>
+            </svg>
+
+            <div class="absolute top-6 right-6 z-20 flex flex-col gap-2">
+              <button class="w-10 h-10 rounded-xl bg-white shadow-md border border-zinc-200 flex items-center justify-center text-zinc-800 hover:bg-zinc-50">
+                <i class="ph-bold ph-plus"></i>
+              </button>
+              <button class="w-10 h-10 rounded-xl bg-white shadow-md border border-zinc-200 flex items-center justify-center text-zinc-800 hover:bg-zinc-50">
+                <i class="ph-bold ph-minus"></i>
+              </button>
+              <button class="w-10 h-10 rounded-xl bg-white shadow-md border border-zinc-200 flex items-center justify-center text-zinc-800 hover:bg-zinc-50">
+                <i class="ph-bold ph-crosshair"></i>
+              </button>
+            </div>
+
+            <!-- MARKER 1 -->
+            <div class="absolute left-[240px] top-[180px] -translate-x-1/2 -translate-y-full z-20 group cursor-pointer">
+              <div class="flex flex-col items-center">
+                <div class="px-3 py-1 rounded-full bg-zinc-950 text-white text-[11px] font-bold shadow-lg mb-1 flex items-center gap-1.5 whitespace-nowrap">
+                  <span>1. Đại Nội Huế</span>
+                </div>
+                <div class="w-9 h-9 rounded-full bg-[#102B21] border-3 border-white text-white font-extrabold text-sm flex items-center justify-center shadow-lg group-hover:scale-110 transition">
+                  1
+                </div>
+                <div class="w-2 h-2 bg-[#102B21] rotate-45 -mt-1"></div>
+              </div>
+            </div>
+
+            <!-- MARKER 2 -->
+            <div class="absolute left-[420px] top-[310px] -translate-x-1/2 -translate-y-full z-20 group cursor-pointer">
+              <div class="flex flex-col items-center">
+                <div class="px-3 py-1 rounded-full bg-zinc-950 text-white text-[11px] font-bold shadow-lg mb-1 flex items-center gap-1.5 whitespace-nowrap">
+                  <span>2. Chùa Thiên Mụ</span>
+                </div>
+                <div class="w-9 h-9 rounded-full bg-[#102B21] border-3 border-white text-white font-extrabold text-sm flex items-center justify-center shadow-lg group-hover:scale-110 transition">
+                  2
+                </div>
+                <div class="w-2 h-2 bg-[#102B21] rotate-45 -mt-1"></div>
+              </div>
+            </div>
+
+            <!-- MARKER 3 (SELECTED) -->
+            <div class="absolute left-[540px] top-[460px] -translate-x-1/2 -translate-y-full z-30 group cursor-pointer">
+              <div class="flex flex-col items-center">
+                <div class="px-3.5 py-1.5 rounded-full bg-emerald-700 text-white text-xs font-bold shadow-xl mb-1 flex items-center gap-1.5 whitespace-nowrap animate-bounce">
+                  <i class="ph-fill ph-map-pin"></i> 3. Lăng Khải Định (Đang chọn)
+                </div>
+                <div class="w-11 h-11 rounded-full bg-emerald-600 border-4 border-white text-white font-black text-base flex items-center justify-center shadow-2xl ring-4 ring-emerald-500/40">
+                  3
+                </div>
+                <div class="w-3 h-3 bg-emerald-600 rotate-45 -mt-1.5"></div>
+              </div>
+            </div>
+
+            <div class="z-20 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-zinc-200/80 shadow-md max-w-xs text-xs space-y-1.5">
+              <div class="font-bold text-zinc-900 flex items-center gap-1.5">
+                <i class="ph-bold ph-info text-emerald-700"></i> Chú thích hành trình
+              </div>
+              <div class="flex items-center gap-2 text-zinc-600">
+                <span class="w-3 h-3 rounded-full bg-[#102B21]"></span> Điểm đến theo thứ tự ngày
+              </div>
+              <div class="flex items-center gap-2 text-zinc-600">
+                <span class="w-3 h-3 rounded-full bg-emerald-600 ring-2 ring-emerald-300"></span> Điểm đang xem chi tiết
+              </div>
+              <div class="flex items-center gap-2 text-zinc-600">
+                <span class="w-6 h-0.5 bg-emerald-600 border-b border-dashed"></span> Tuyến đường xe máy / ô tô tối ưu
+              </div>
+            </div>
+
+          </div>
+
+          <aside class="flex-[35] bg-white border-l border-zinc-200 flex flex-col justify-between overflow-y-auto">
+            
+            <div class="p-6 space-y-5">
+              <div class="flex items-center justify-between border-b border-zinc-100 pb-3">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                  <i class="ph-fill ph-list-numbers text-emerald-600"></i> Lịch trình Ngày 1
+                </h3>
+                <span class="text-xs font-semibold text-zinc-500">Cố đô Huế</span>
+              </div>
+
+              <div class="space-y-3 relative">
+
+                <div class="p-4 rounded-2xl border border-zinc-200 bg-white hover:border-zinc-300 transition shadow-xs flex items-start gap-3.5">
+                  <div class="w-7 h-7 rounded-full bg-[#102B21] text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                    1
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <h4 class="font-bold text-sm text-zinc-900 truncate">Đại Nội Huế (Hoàng Thành)</h4>
+                      <span class="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md">Di tích</span>
+                    </div>
+                    <p class="text-xs text-zinc-500 mt-1 flex items-center gap-2">
+                      <span><i class="ph ph-clock"></i> 08:30 sáng</span>
+                      <span>·</span>
+                      <span>Tham quan ~120 phút</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 pl-6 py-1 text-xs text-zinc-400 font-medium">
+                  <div class="w-0.5 h-6 bg-zinc-200 ml-1"></div>
+                  <span class="text-[11px] bg-zinc-50 border border-zinc-200 px-2.5 py-0.5 rounded-full text-zinc-600">
+                    🚕 4.2 km · ~12 phút di chuyển
+                  </span>
+                </div>
+
+                <div class="p-4 rounded-2xl border border-zinc-200 bg-white hover:border-zinc-300 transition shadow-xs flex items-start gap-3.5">
+                  <div class="w-7 h-7 rounded-full bg-[#102B21] text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                    2
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <h4 class="font-bold text-sm text-zinc-900 truncate">Chùa Thiên Mụ</h4>
+                      <span class="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md">Tâm linh</span>
+                    </div>
+                    <p class="text-xs text-zinc-500 mt-1 flex items-center gap-2">
+                      <span><i class="ph ph-clock"></i> 11:00 trưa</span>
+                      <span>·</span>
+                      <span>Tham quan ~60 phút</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 pl-6 py-1 text-xs text-zinc-400 font-medium">
+                  <div class="w-0.5 h-6 bg-zinc-200 ml-1"></div>
+                  <span class="text-[11px] bg-zinc-50 border border-zinc-200 px-2.5 py-0.5 rounded-full text-zinc-600">
+                    🚕 9.8 km · ~22 phút di chuyển
+                  </span>
+                </div>
+
+                <div class="p-4 rounded-2xl border-2 border-emerald-600 bg-emerald-50/50 shadow-sm flex items-start gap-3.5 relative">
+                  <div class="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                    3
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <h4 class="font-bold text-sm text-zinc-950 truncate">Lăng Khải Định (Ứng Lăng)</h4>
+                      <span class="text-[11px] font-bold text-white bg-emerald-600 px-2 py-0.5 rounded-md">Đang chọn</span>
+                    </div>
+                    <p class="text-xs text-zinc-600 mt-1 flex items-center gap-2">
+                      <span><i class="ph-fill ph-clock text-emerald-700"></i> 14:00 chiều</span>
+                      <span>·</span>
+                      <span>Tham quan ~90 phút</span>
+                    </p>
+                    <div class="mt-2 text-[11px] text-emerald-900 font-medium bg-emerald-100/70 p-2 rounded-xl">
+                      Kiến trúc giao thoa Đông - Tây độc đáo trên sườn núi Châu Chữ.
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="p-6 bg-zinc-50 border-t border-zinc-200">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-bold uppercase tracking-wider text-zinc-700">Tổng kết Ngày 1</span>
+                <span class="text-[11px] text-emerald-700 font-semibold bg-emerald-100 px-2 py-0.5 rounded-full">Tối ưu hoàn tất</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-white p-2.5 rounded-xl border border-zinc-200">
+                  <span class="text-zinc-400 block text-[11px]">Tổng quãng đường</span>
+                  <span class="font-bold text-zinc-900 text-sm">14.0 km</span>
+                </div>
+                <div class="bg-white p-2.5 rounded-xl border border-zinc-200">
+                  <span class="text-zinc-400 block text-[11px]">Thời gian di chuyển</span>
+                  <span class="font-bold text-zinc-900 text-sm">~34 phút</span>
+                </div>
+              </div>
+              <button class="w-full mt-3 h-10 rounded-full bg-[#102B21] text-white text-xs font-bold hover:bg-emerald-900 transition flex items-center justify-center gap-2">
+                <i class="ph-bold ph-navigation-arrow"></i> Bắt đầu điều hướng ngày 1
+              </button>
+            </div>
+
+          </aside>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- FRAME 2 & 3: MOBILE & POPOVER DETAIL -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      
+      <div>
+        <div class="flex items-center justify-between mb-3 text-slate-300">
+          <h2 class="text-lg font-bold flex items-center gap-2">
+            <span class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs">F2</span>
+            Frame 2: Mobile Route Map (390 × 844 px)
+          </h2>
+          <span class="text-xs text-slate-400">Mobile-First View</span>
+        </div>
+
+        <div class="w-[390px] h-[844px] bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-700 flex flex-col relative mx-auto">
+          
+          <div class="h-14 px-4 border-b border-zinc-100 flex items-center justify-between bg-white z-20 shrink-0">
+            <button class="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-700">
+              <i class="ph-bold ph-arrow-left"></i>
+            </button>
+            <h3 class="font-bold text-sm text-zinc-950 font-heading">Lịch trình Ngày 1</h3>
+            <button class="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-700">
+              <i class="ph-bold ph-share-network"></i>
+            </button>
+          </div>
+
+          <div class="px-4 py-2 bg-white border-b border-zinc-100 flex items-center gap-2 overflow-x-auto z-20 shrink-0">
+            <button class="px-4 py-1.5 rounded-full bg-zinc-950 text-white text-xs font-bold whitespace-nowrap shadow-xs">
+              Ngày 1 (3 điểm)
+            </button>
+            <button class="px-4 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-xs font-semibold whitespace-nowrap">
+              Ngày 2 (3 điểm)
+            </button>
+            <button class="px-4 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-xs font-semibold whitespace-nowrap">
+              Ngày 3 (2 điểm)
+            </button>
+          </div>
+
+          <div class="flex-1 bg-[#E8ECE9] relative">
+            <div class="absolute inset-0 flex items-center justify-center opacity-30">
+              <i class="ph ph-map-trifold text-9xl text-zinc-400"></i>
+            </div>
+
+            <div class="absolute left-[30%] top-[25%] flex flex-col items-center">
+              <div class="w-8 h-8 rounded-full bg-[#102B21] border-2 border-white text-white font-bold text-xs flex items-center justify-center shadow-md">1</div>
+            </div>
+            <div class="absolute left-[55%] top-[45%] flex flex-col items-center">
+              <div class="w-8 h-8 rounded-full bg-[#102B21] border-2 border-white text-white font-bold text-xs flex items-center justify-center shadow-md">2</div>
+            </div>
+            <div class="absolute left-[40%] top-[70%] flex flex-col items-center">
+              <div class="w-10 h-10 rounded-full bg-emerald-600 border-3 border-white text-white font-black text-sm flex items-center justify-center shadow-xl ring-3 ring-emerald-500/40">3</div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-t-3xl border-t border-zinc-200 shadow-2xl p-4 z-30 space-y-3">
+            <div class="w-10 h-1 bg-zinc-300 rounded-full mx-auto mb-1"></div>
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold text-xs uppercase tracking-wider text-zinc-800">Điểm dừng Ngày 1 (3 Điểm)</h4>
+              <span class="text-xs font-bold text-emerald-700">14.0 km</span>
+            </div>
+            
+            <div class="space-y-2 max-h-48 overflow-y-auto">
+              <div class="p-2.5 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-between text-xs">
+                <span class="font-semibold text-zinc-900">1. Đại Nội Huế</span>
+                <span class="text-zinc-500">08:30 · 120p</span>
+              </div>
+              <div class="p-2.5 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-between text-xs">
+                <span class="font-semibold text-zinc-900">2. Chùa Thiên Mụ</span>
+                <span class="text-zinc-500">11:00 · 60p</span>
+              </div>
+              <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs font-bold text-emerald-950">
+                <span>3. Lăng Khải Định</span>
+                <span class="text-emerald-700">14:00 · 90p</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-3 text-slate-300">
+          <h2 class="text-lg font-bold flex items-center gap-2">
+            <span class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs">F3</span>
+            Frame 3: Selected Marker / POI Detail State
+          </h2>
+          <span class="text-xs text-slate-400">Interactive Popover Preview</span>
+        </div>
+
+        <div class="w-[390px] h-[844px] bg-slate-800/60 backdrop-blur-md rounded-3xl overflow-hidden shadow-2xl border border-slate-700 flex items-center justify-center p-4 mx-auto">
+          
+          <div class="w-full bg-white rounded-3xl shadow-2xl border border-zinc-100 overflow-hidden animate-fadeIn">
+            
+            <div class="h-44 bg-zinc-200 relative">
+              <img src="/images/khai_dinh.jpg" 
+                   alt="Lăng Khải Định" 
+                   class="w-full h-full object-cover"
+                   onerror="this.src='https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=600&q=80'"/>
+              <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20"></div>
+              
+              <div class="absolute top-3 left-3 bg-zinc-950/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Điểm dừng #3
+              </div>
+
+              <button class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition">
+                <i class="ph-bold ph-x"></i>
+              </button>
+
+              <div class="absolute bottom-3 left-3 right-3 text-white">
+                <span class="text-[11px] font-semibold text-emerald-300">Di tích lịch sử & Văn hóa</span>
+                <h3 class="text-lg font-bold font-heading leading-tight">Lăng Khải Định (Ứng Lăng)</h3>
+              </div>
+            </div>
+
+            <div class="p-5 space-y-4">
+              
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-zinc-50 p-2.5 rounded-xl border border-zinc-100">
+                  <span class="text-zinc-400 block text-[11px]">Giờ đến dự kiến</span>
+                  <span class="font-bold text-zinc-900 text-sm">14:00 chiều</span>
+                </div>
+                <div class="bg-zinc-50 p-2.5 rounded-xl border border-zinc-100">
+                  <span class="text-zinc-400 block text-[11px]">Thời lượng đề xuất</span>
+                  <span class="font-bold text-zinc-900 text-sm">90 phút</span>
+                </div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100 text-xs text-emerald-950 flex items-center justify-between">
+                <span>Từ điểm trước (Chùa Thiên Mụ):</span>
+                <span class="font-bold text-emerald-800">9.8 km · 22 phút</span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button class="flex-1 h-11 rounded-full bg-[#102B21] text-white text-xs font-bold hover:bg-emerald-900 transition flex items-center justify-center gap-1.5">
+                  <i class="ph-bold ph-eye"></i> Xem hồ sơ chi tiết
+                </button>
+                <button class="h-11 px-4 rounded-full border border-zinc-200 text-zinc-700 text-xs font-bold hover:bg-zinc-50 transition flex items-center justify-center">
+                  <i class="ph-fill ph-heart text-amber-600"></i>
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>

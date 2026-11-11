@@ -17,6 +17,13 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const getReturnTo = () => {
+    const candidate = (location.state as { returnTo?: unknown } | null)?.returnTo;
+    return typeof candidate === 'string' && candidate.startsWith('/') && !candidate.startsWith('//')
+      ? candidate
+      : '/explore';
+  };
+
   const [authModal, setAuthModal] = useState<{
     isOpen: boolean;
     mode: 'login' | 'register';
@@ -96,7 +103,7 @@ export default function Navbar() {
     if (!hasCompleted) {
       setIsOnboardingOpen(true);
     } else {
-      navigate('/explore');
+      navigate(getReturnTo());
     }
   };
 
@@ -109,7 +116,7 @@ export default function Navbar() {
     setIsOnboardingOpen(false);
     localStorage.setItem('greentrip_onboarding_completed', 'true');
     if (location.pathname === '/onboarding' || location.pathname === '/register' || location.pathname === '/login') {
-      navigate('/explore');
+      navigate(getReturnTo());
     }
   };
 

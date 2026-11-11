@@ -14,6 +14,7 @@ export interface CreateTripCopilotModalProps {
 import {
   buildDefaultMindtripItinerary,
   buildDefaultMindtripConversation,
+  type CopilotDayOutline,
 } from './copilotTripData';
 import { extractTripIntentFromPrompt, type ExtractedTripIntent } from '@/utils/vietnamesePromptExtractor';
 
@@ -277,7 +278,7 @@ export default function CreateTripCopilotModal({
         prompt: tripPrompt.trim(),
         totalBudget: estimatedBudget,
         itineraryOutline: (validatedData.itinerary_outline && validatedData.itinerary_outline.length > 0)
-          ? validatedData.itinerary_outline.map((d: any, idx: number) => ({
+          ? (validatedData.itinerary_outline as unknown as CopilotDayOutline[]).map((d: CopilotDayOutline, idx: number) => ({
               ...d,
               stops: d.stops || buildDefaultMindtripItinerary(normDest, validDays)[idx]?.stops || [],
             }))

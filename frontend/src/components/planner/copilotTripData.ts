@@ -50,6 +50,7 @@ export interface CopilotTripMessage {
 
 export interface CopilotStop {
   id: string;
+  poiId?: string;
   timeSlot: string;
   name: string;
   category: string;
@@ -64,6 +65,7 @@ export interface CopilotDayOutline {
   day: number;
   theme: string;
   focus_city: string;
+  suggested_activities?: string[];
   hotel?: {
     name: string;
     checkInNote: string;
@@ -520,7 +522,7 @@ export const buildDefaultCopilotConversation = (
  * Used for legacy trips or dynamic itinerary summary responses in chat.
  */
 export function buildDayNarrativesFromOutline(
-  outline: CopilotDayOutline[] | any[],
+  outline: CopilotDayOutline[],
   startDateStr?: string
 ): DayNarrative[] {
   if (!outline || outline.length === 0) return [];
@@ -546,7 +548,7 @@ export function buildDayNarrativesFromOutline(
     }
   }
 
-  return outline.map((dayItem: any, idx: number) => {
+  return outline.map((dayItem: CopilotDayOutline, idx: number) => {
     const curDate = new Date(baseDate);
     curDate.setDate(baseDate.getDate() + idx);
     const dayName = daysOfWeek[curDate.getDay()];
@@ -557,7 +559,7 @@ export function buildDayNarrativesFromOutline(
     const weather = weathers[idx % weathers.length];
     const stops = dayItem.stops || [];
     const experienceCount = stops.length || 4;
-    const highlights = stops.map((s: any) => s.name).join(' • ');
+    const highlights = stops.map((s: CopilotStop) => s.name).join(' • ');
     const image =
       stops[0]?.image ||
       'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
@@ -572,7 +574,7 @@ export function buildDayNarrativesFromOutline(
       experienceCount,
       highlights,
       image,
-      items: stops.map((stop: any, sIdx: number) => ({
+      items: stops.map((stop: CopilotStop, sIdx: number) => ({
         slotTitle: (sIdx + 1) + ') ' + (stop.timeSlot || '09:00 - 11:00') + ' ' + stop.name,
         transit: stop.distanceKm ? ('~' + stop.distanceKm + ' km') : 'Tản bộ',
         cost: stop.estimatedCost || 'Miễn phí',

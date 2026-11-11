@@ -1,12 +1,16 @@
-import { Leaf } from 'lucide-react';
+import { Leaf, Compass } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
 import CreateTripCopilotModal from '@/components/planner/CreateTripCopilotModal';
+import AddToTripModal from '@/components/planner/AddToTripModal';
+import ItineraryRouteMap from '@/components/planner/ItineraryRouteMap';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
+import SavedPlacesView from '@/components/saved/SavedPlacesView';
+import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
@@ -56,6 +60,12 @@ export interface UserTrip {
   pacingLabel?: string;
   ideas?: string[];
   copilotChatHistory?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  savedPlaces?: string[];
+}
+
+interface AddToTripSelection {
+  poiIds: string[];
+  label?: string;
 }
 
 
@@ -212,11 +222,55 @@ function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {
   });
 }
 
+export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
+  {
+    id: 'sample-danang-hue-3d',
+    title: 'Hành trình Xanh Đà Nẵng - Huế (3 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 10 – 12 tháng 11',
+    peopleCount: 2,
+    daysCount: 3,
+    tags: ['Đà Nẵng & Huế', '3 Ngày', 'Lộ trình tối ưu OSRM', 'Xanh'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+    ideas: [
+      '029a28df-b091-49d9-a911-738572c72464',
+      'd58fe815-4aa1-45b2-831a-11b97e130918',
+      'bfed964e-ff10-44f4-8654-2136245ab062',
+    ],
+  },
+  {
+    id: 'sample-danang-hue-5d',
+    title: 'Đà Nẵng - Huế Trọn Vẹn (5 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 15 – 19 tháng 11',
+    peopleCount: 2,
+    daysCount: 5,
+    tags: ['Đà Nẵng & Huế', '5 Ngày', 'Di sản & Biển xanh'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'sample-central-vietnam-7d',
+    title: 'Khám phá Miền Trung Huyền Diệu (7 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 20 – 26 tháng 11',
+    peopleCount: 4,
+    daysCount: 7,
+    tags: ['Miền Trung', '7 Ngày', 'Tour gia đình'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800&auto=format&fit=crop&q=80',
+  },
+];
+
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'explore' | 'trips' | 'saved' }) {
   const navigate = useNavigate();
+  const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
   const [viewMode, setViewMode] = useState<'explore' | 'trips' | 'saved'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
+  const [addToTripSelection, setAddToTripSelection] = useState<AddToTripSelection | null>(null);
+  const [pendingAddToTripPoiIds, setPendingAddToTripPoiIds] = useState<string[] | null>(null);
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
   const [selectedTripForDetails, setSelectedTripForDetails] = useState<UserTrip | null>(null);
 
@@ -224,25 +278,30 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     setViewMode(initialView);
   }, [initialView]);
 
+  useEffect(() => {
+    if (initialView !== 'saved') return;
+    const checkSavedPageAccess = () => {
+      if (!(localStorage.getItem('access_token') || sessionStorage.getItem('access_token'))) {
+        navigate('/login', { state: { returnTo: '/saved' }, replace: true });
+      }
+    };
+    checkSavedPageAccess();
+    window.addEventListener('auth-change', checkSavedPageAccess);
+    return () => window.removeEventListener('auth-change', checkSavedPageAccess);
+  }, [initialView, navigate]);
+
   const [userTrips, setUserTrips] = useState<UserTrip[]>(() => {
+    let savedTrips: UserTrip[] = [];
     try {
       const raw = localStorage.getItem('greentrip_user_trips');
-      if (raw) return JSON.parse(raw);
+      if (raw) savedTrips = JSON.parse(raw);
     } catch (e) {
       console.error(e);
     }
-    return [
-      {
-        id: 'trip-danang-default',
-        title: 'Chuyến đi Đà Nẵng, tháng 11 năm 2026',
-        destination: 'Đà Nẵng',
-        startDate: 'Ngày 2 – 5 tháng 11',
-        peopleCount: 1,
-        tags: ['Đà Nẵng', 'Ngày 2 – 5 tháng 11', 'Ai', 'Ngân sách'],
-        createdAt: '2026-11-01',
-        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
-      },
-    ];
+
+    const savedIds = new Set(savedTrips.map((t) => t.id));
+    const missingSamples = SEEDED_SAMPLE_TRIPS.filter((s) => !savedIds.has(s.id));
+    return [...savedTrips, ...missingSamples];
   });
 
   useEffect(() => {
@@ -253,45 +312,27 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     }
   }, [userTrips]);
 
+  const addedTrips = useMemo(
+    () => new Set(userTrips.flatMap((trip) => trip.savedPlaces ?? [])),
+    [userTrips],
+  );
+
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [activeTab, setActiveTab] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('greentrip_favorites');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
-  const [addedTrips, setAddedTrips] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('greentrip_added_trips');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('greentrip_favorites', JSON.stringify(Array.from(favorites)));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [favorites]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('greentrip_added_trips', JSON.stringify(Array.from(addedTrips)));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [addedTrips]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (initialView !== 'saved') return;
+    const media = window.matchMedia('(max-width: 767px)');
+    const updateSidebar = () => setIsSidebarCollapsed(media.matches);
+    updateSidebar();
+    media.addEventListener('change', updateSidebar);
+    return () => media.removeEventListener('change', updateSidebar);
+  }, [initialView]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => !prev);
@@ -300,13 +341,43 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     }, 320);
   };
 
-  const toggleAddTrip = (id: string) => {
-    setAddedTrips((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+  const toggleAddTrip = (id: string) => setAddToTripSelection({
+    poiIds: [id],
+    label: allPois.find((poi) => poi.id === id)?.name,
+  });
+
+  const addAlbumToTrip = (poiIds: string[], albumName: string) => {
+    const uniquePoiIds = Array.from(new Set(poiIds));
+    if (uniquePoiIds.length === 0) return;
+    setAddToTripSelection({
+      poiIds: uniquePoiIds,
+      label: `Toàn bộ album “${albumName}” · ${uniquePoiIds.length} địa điểm`,
     });
+  };
+
+  const toggleTripSavedPlaces = (tripId: string, poiIds: string[], allPlacesAlreadySaved: boolean) => {
+    if (poiIds.length === 0) return;
+    const updateSavedPlaces = (trip: UserTrip): UserTrip => {
+      const savedPlaces = new Set(trip.savedPlaces ?? []);
+      poiIds.forEach((poiId) => {
+        if (allPlacesAlreadySaved) savedPlaces.delete(poiId);
+        else savedPlaces.add(poiId);
+      });
+      return {
+        ...trip,
+        savedPlaces: Array.from(savedPlaces),
+      };
+    };
+
+    setUserTrips((prev) => prev.map((trip) => trip.id === tripId ? updateSavedPlaces(trip) : trip));
+    setActiveOverviewTrip((current) => current?.id === tripId ? updateSavedPlaces(current) : current);
+    setSelectedTripForDetails((current) => current?.id === tripId ? updateSavedPlaces(current) : current);
+  };
+
+  const createTripForPois = (poiIds: string[]) => {
+    setAddToTripSelection(null);
+    setPendingAddToTripPoiIds(poiIds);
+    setIsCreateTripModalOpen(true);
   };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -534,9 +605,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
   const filteredPois = useMemo(() => {
     const matched = allPois.filter((poi) => {
-      if (viewMode === 'saved' && !favorites.has(poi.id)) {
-        return false;
-      }
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
       let matchCat = true;
       if (categoryFilter === 'di-tich') {
@@ -690,7 +758,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       }
       return a.name.localeCompare(b.name, 'vi');
     });
-  }, [allPois, search, cityFilter, categoryFilter, filterValues, viewMode, favorites]);
+  }, [allPois, search, cityFilter, categoryFilter, filterValues]);
 
   // Đếm số lượng filter đang active chuẩn Mindtrip
   const activeFilterCount = useMemo(() => {
@@ -722,15 +790,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     if (!selectedPoiId) return null;
     return allPois.find((poi) => poi.id === selectedPoiId) || null;
   }, [allPois, selectedPoiId]);
-
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
 
   const currentCityLabel = cityFilter === 'all' ? 'Tất cả địa điểm' : cityFilter;
 
@@ -818,11 +877,11 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               },
               { 
                 key: 'saved', 
-                onClick: () => setViewMode('saved'), 
+                onClick: () => navigate('/saved'),
                 icon: viewMode === 'saved' ? 'ph-fill ph-heart text-[#b45309]' : 'ph ph-heart', 
                 label: 'Đã lưu', 
                 active: viewMode === 'saved',
-                badge: favorites.size > 0 ? String(favorites.size) : undefined
+                badge: savedIds.size > 0 ? String(savedIds.size) : undefined
               },
               { 
                 key: 'trips', 
@@ -975,8 +1034,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         activeOverviewTrip ? (
           <TripOverviewView
             trip={activeOverviewTrip}
-            onBack={() => setActiveOverviewTrip(null)}
             allPois={allPois}
+            onBack={() => setActiveOverviewTrip(null)}
             onOpenItineraryDetails={() => setSelectedTripForDetails(activeOverviewTrip)}
             onUpdateTrip={(updatedTrip) => {
               setActiveOverviewTrip(updatedTrip);
@@ -1206,6 +1265,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           </div>
         </main>
         )
+      ) : viewMode === 'saved' ? (
+        <SavedPlacesView addedTrips={addedTrips} onToggleAddTrip={toggleAddTrip} onAddAlbumToTrip={addAlbumToTrip} />
       ) : (
         <>
       {/* 2. MIDDLE LIST (EXPLORE): Khi thu gọn sidebar, phần giữa to rộng hơn (715px) có hiệu ứng chuyển động mượt mà, map chỉ nhích nhẹ */}
@@ -1451,11 +1512,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                     poi={poi}
                     index={idx}
                     active={poi.id === selectedPoiId}
-                    favorite={favorites.has(poi.id)}
+                    favorite={savedIds.has(poi.id)}
+                    favoritePending={pendingIds.has(poi.id)}
                     isAdded={addedTrips.has(poi.id)}
                     onClick={() => handleSelectPoi(poi.id)}
                     onHover={setHoveredPoiId}
-                    onToggleFavorite={toggleFavorite}
+                    onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
                     onToggleAddTrip={toggleAddTrip}
                   />
                 </div>
@@ -1506,8 +1568,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                   window.dispatchEvent(new Event("resize"));
                 }, 200);
               }}
-              favorites={favorites}
-              onToggleFavorite={toggleFavorite}
+              favorites={savedIds}
+              pendingFavorites={pendingIds}
+              onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
               addedTrips={addedTrips}
               onToggleAddTrip={toggleAddTrip}
             />
@@ -1521,9 +1584,10 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           >
             <PoiDetailSection
               poi={selectedPoi}
-              isFavorite={favorites.has(selectedPoi.id)}
+              isFavorite={savedIds.has(selectedPoi.id)}
+              isFavoritePending={pendingIds.has(selectedPoi.id)}
               onClose={() => setSelectedPoiId(null)}
-              onToggleFavorite={toggleFavorite}
+              onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
               onViewOnMap={() => setSelectedPoiId(null)}
             />
           </div>
@@ -1551,33 +1615,18 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       {isCreateTripModalOpen && (
         <CreateTripCopilotModal
           isOpen={isCreateTripModalOpen}
-          onClose={() => setIsCreateTripModalOpen(false)}
-          onCreateTrip={(newTrip) => {
-            const trip: UserTrip = {
-              ...newTrip,
-              id: newTrip.id || `trip-${Date.now()}`,
-              image:
-                newTrip.coverImage ||
-                newTrip.image ||
-                (newTrip.destination === 'Huế'
-                  ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
-                  : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
-              tags: newTrip.tags || [
-                newTrip.destination,
-                newTrip.startDate || '4 ngày • Tháng 12',
-                `${newTrip.peopleCount} du khách`,
-                'Ngân sách',
-              ],
-            };
-            setUserTrips((prev) => [trip, ...prev]);
-            setActiveOverviewTrip(trip);
-            setViewMode('trips');
+          onClose={() => {
             setIsCreateTripModalOpen(false);
+            setPendingAddToTripPoiIds(null);
           }}
-          onCreated={(newTrip) => {
+          onCreateTrip={(newTrip) => {
+            const savedPlaces = pendingAddToTripPoiIds
+              ? Array.from(new Set([...(newTrip.savedPlaces ?? []), ...pendingAddToTripPoiIds]))
+              : newTrip.savedPlaces;
             const trip: UserTrip = {
               ...newTrip,
               id: newTrip.id || `trip-${Date.now()}`,
+              savedPlaces,
               image:
                 newTrip.coverImage ||
                 newTrip.image ||
@@ -1592,11 +1641,70 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
               ],
             };
             setUserTrips((prev) => [trip, ...prev]);
-            setActiveOverviewTrip(trip);
-            setViewMode('trips');
+            if (!pendingAddToTripPoiIds) {
+              setActiveOverviewTrip(trip);
+              setViewMode('trips');
+            }
+            setPendingAddToTripPoiIds(null);
             setIsCreateTripModalOpen(false);
           }}
         />
+      )}
+
+      <AddToTripModal
+        isOpen={addToTripSelection !== null}
+        poiIds={addToTripSelection?.poiIds ?? []}
+        selectionLabel={addToTripSelection?.label}
+        trips={userTrips}
+        onToggleTrip={toggleTripSavedPlaces}
+        onCreateTrip={createTripForPois}
+        onClose={() => setAddToTripSelection(null)}
+      />
+
+      {/* 6. Itinerary Route Map Details Modal with Numbered Markers */}
+      {selectedTripForDetails && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 lg:p-6 animate-fadeIn"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-3xl w-full max-w-7xl h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-neutral-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 bg-neutral-50/90">
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg shadow-xs">
+                  📍
+                </span>
+                <div>
+                  <h2 className="text-lg font-bold text-neutral-900 tracking-tight">
+                    {selectedTripForDetails.title || 'Lịch trình chi tiết & Lộ trình di chuyển'}
+                  </h2>
+                  <p className="text-xs text-neutral-500">
+                    Bản đồ điểm đến đánh số thứ tự (Numbered Markers) & Lộ trình tối ưu theo từng ngày
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTripForDetails(null)}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-neutral-200/80 text-neutral-600 transition cursor-pointer"
+                aria-label="Đóng bản đồ lộ trình"
+              >
+                <i className="ph ph-x text-lg"></i>
+              </button>
+            </div>
+
+            {/* Modal Body: ItineraryRouteMap */}
+            <div className="flex-1 overflow-hidden p-4 bg-neutral-100">
+              <ItineraryRouteMap
+                itineraryId={selectedTripForDetails.id}
+                totalDays={selectedTripForDetails.daysCount || selectedTripForDetails.flexibleDays || 3}
+                className="h-full"
+                showStopsList={true}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1631,6 +1739,7 @@ function PoiCard({
   poi,
   active = false,
   favorite = false,
+  favoritePending = false,
   isAdded = false,
   onClick,
   onHover,
@@ -1641,10 +1750,11 @@ function PoiCard({
   index?: number;
   active?: boolean;
   favorite?: boolean;
+  favoritePending?: boolean;
   isAdded?: boolean;
   onClick: () => void;
   onHover: (id: string | null) => void;
-  onToggleFavorite: (id: string) => void;
+  onToggleFavorite: (id: string, poi?: Poi) => void;
   onToggleAddTrip?: (id: string) => void;
 }) {
   const [imgIdx, setImgIdx] = useState(0);
@@ -1704,11 +1814,16 @@ function PoiCard({
         {/* Nút tim và "+" ở góc trên (giữ nguyên khi hover, chuyển trạng thái khi đã lưu / thêm) */}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
           <button
+            type="button"
+            aria-label={favorite ? `Bỏ lưu ${poi.name}` : `Lưu ${poi.name}`}
+            aria-pressed={favorite}
+            aria-busy={favoritePending}
+            disabled={favoritePending}
             onClick={(e) => {
               e.stopPropagation();
-              onToggleFavorite(poi.id);
+              onToggleFavorite(poi.id, poi);
             }}
-            className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
+            className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
               favorite ? 'bg-white text-[#b45309]' : 'bg-black/35 hover:bg-black/55 text-white'
             }`}
             title="Lưu yêu thích"

@@ -31,4 +31,5 @@ class POI:
     website_url: str | None = None
     social_links: dict[str, Any] | None = None
     opening_hours: dict[str, Any] | None = None
-    email: str | None = None
+    email: str | None = None
+    saved_count: int = 0

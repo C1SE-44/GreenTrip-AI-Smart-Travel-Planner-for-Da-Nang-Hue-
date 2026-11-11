@@ -17,6 +17,20 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _SQLITE_DB_PATH = _PROJECT_ROOT / "data" / "greentrip_local.db"
 
 
+def _sqlite_custom_like(pattern: Any, string: Any) -> bool:
+    if string is None or pattern is None:
+        return False
+    parts = []
+    for segment in str(pattern).split("%"):
+        subparts = [re.escape(s) for s in segment.split("_")]
+        parts.append(".".join(subparts))
+    regex_str = ".*".join(parts)
+    try:
+        return bool(re.search(f"^{regex_str}$", str(string), re.IGNORECASE | re.DOTALL))
+    except Exception:
+        return False
+
+
 class SQLiteCursorWrapper:
     """Adapter bọc cursor của SQLite để tương thích hoàn toàn với các truy vấn psycopg."""
 
@@ -28,18 +42,49 @@ class SQLiteCursorWrapper:
         clean_query = re.sub(r"\bpublic\.", "", query, flags=re.IGNORECASE)
         # 1b. Bỏ typecast postgres như ::text, ::jsonb, ::geometry
         clean_query = re.sub(r"::\w+", "", clean_query)
-        # 2. Chuyển đổi tham số %s của postgres sang ? của sqlite
-        clean_query = clean_query.replace("%s", "?")
-        # 3. Chuẩn hóa giá trị boolean nếu có
+        # 1c. Chuyển đổi ILIKE của PostgreSQL sang LIKE của SQLite
+        clean_query = re.sub(r"\bILIKE\b", "LIKE", clean_query, flags=re.IGNORECASE)
+        # 1d. Chuyển đổi %% của psycopg sang % cho sqlite
+        clean_query = clean_query.replace("%%", "%")
+        # 1e. Chuyển đổi (SELECT ... LIMIT N) UNION ALL sang SELECT * FROM (SELECT ... LIMIT N) cho SQLite
+        clean_query = re.sub(r"\(\s*(SELECT[\s\S]*?LIMIT\s+\d+)\s*\)", r"SELECT * FROM (\1)", clean_query, flags=re.IGNORECASE)
+        # 1f. Chuyển đổi jsonb extraction ->> sang json_extract cho SQLite
+        clean_query = re.sub(r"(\w+)\.ai_metadata->>'(\w+)'", r"json_extract(\1.ai_metadata, '$.\2')", clean_query)
+        # 1g. Chuẩn hóa giá trị boolean nếu có
         clean_query = clean_query.replace("TRUE", "1").replace("FALSE", "0")
 
-        try:
-            if params is not None:
-                if isinstance(params, (list, tuple)):
-                    # Flatten params if necessary
-                    self._cursor.execute(clean_query, tuple(params))
+        # 2. Xử lý tham số %s và = ANY(%s)
+        new_params = []
+        if params is not None:
+            param_list = list(params) if isinstance(params, (list, tuple)) else [params]
+            param_idx = 0
+            pattern = re.compile(r"(\=\s*ANY\s*\(\s*%s\s*\)|%s)", re.IGNORECASE)
+
+            def replacer(match: re.Match) -> str:
+                nonlocal param_idx
+                token = match.group(0)
+                val = param_list[param_idx] if param_idx < len(param_list) else None
+                param_idx += 1
+                if "ANY" in token.upper():
+                    if isinstance(val, (list, tuple)) and len(val) > 0:
+                        placeholders = ", ".join(["?"] * len(val))
+                        new_params.extend(val)
+                        return f"IN ({placeholders})"
+                    else:
+                        return "IN (NULL)"
                 else:
-                    self._cursor.execute(clean_query, (params,))
+                    new_params.append(val)
+                    return "?"
+
+            clean_query = pattern.sub(replacer, clean_query)
+            params_to_pass = tuple(new_params)
+        else:
+            clean_query = clean_query.replace("%s", "?")
+            params_to_pass = None
+
+        try:
+            if params_to_pass is not None:
+                self._cursor.execute(clean_query, params_to_pass)
             else:
                 self._cursor.execute(clean_query)
         except sqlite3.IntegrityError as err:
@@ -101,7 +146,7 @@ class SQLiteConnectionWrapper:
 
 
 def _ensure_sqlite_tables(conn: sqlite3.Connection):
-    """Tự động khởi tạo bảng users và email_otps nếu chưa có trong CSDL cục bộ."""
+    """Tự động khởi tạo bảng users, email_otps, cities, poi_categories, pois nếu chưa có trong CSDL cục bộ."""
     conn.execute("""
     CREATE TABLE IF NOT EXISTS users (
         user_id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
@@ -127,6 +172,136 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """)
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS cities (
+        city_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL
+    );
+    """)
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS poi_categories (
+        category_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL
+    );
+    """)
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS pois (
+        poi_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        category_id TEXT,
+        city_id TEXT,
+        sub_category TEXT,
+        image_url TEXT,
+        gallery_urls TEXT,
+        green_score REAL DEFAULT 85,
+        satisfaction_score REAL DEFAULT 4.8,
+        popularity_score REAL DEFAULT 90,
+        address TEXT,
+        description TEXT,
+        estimated_cost REAL,
+        ai_metadata TEXT,
+        is_active INTEGER DEFAULT 1,
+        cuisine TEXT,
+        indoor_outdoor TEXT,
+        latitude REAL,
+        longitude REAL
+    );
+    """)
+
+    cur = conn.cursor()
+    cur.execute("SELECT count(*) FROM cities")
+    if cur.fetchone()[0] == 0:
+        cur.executemany("INSERT INTO cities (city_id, name) VALUES (?, ?)", [
+            ("887a5372-9e6f-48a7-bf50-1e6ef9f2ebce", "Da Nang"),
+            ("8b55ab4c-ba9b-4d33-b1ce-d15fb33f7f22", "Hue"),
+        ])
+
+    cur.execute("SELECT count(*) FROM poi_categories")
+    if cur.fetchone()[0] == 0:
+        cur.executemany("INSERT INTO poi_categories (category_id, name) VALUES (?, ?)", [
+            ("addc2e2e-69b6-4811-984d-8f88b50cd333", "Ẩm thực và quán ăn"),
+            ("dcc56ade-20c6-4128-a598-3d15ffe157d7", "Quán cafe giải khát"),
+            ("54da4319-c68b-4e42-a488-8ccdfba2b71c", "Di tích lịch sử và văn hóa"),
+            ("5615f7b6-ec5a-4cc5-9171-af200a866b96", "Cảnh quan và thiên nhiên"),
+            ("6131c4fb-b007-4669-98f2-9b00e32e44d9", "Tâm linh & Tôn giáo"),
+        ])
+
+    cur.execute("SELECT count(*) FROM pois")
+    if cur.fetchone()[0] == 0:
+        csv_path = _PROJECT_ROOT / "data" / "processed" / "all_pois_cleaned.csv"
+        if csv_path.exists():
+            import csv
+            import json
+            try:
+                with open(csv_path, mode="r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for r in reader:
+                        pid = r.get("\ufeffpoi_id") or r.get("poi_id")
+                        if not pid:
+                            continue
+                        name = r.get("name", "")
+                        city_raw = r.get("city", "").lower()
+                        city_id = "8b55ab4c-ba9b-4d33-b1ce-d15fb33f7f22" if ("hue" in city_raw or "huế" in city_raw) else "887a5372-9e6f-48a7-bf50-1e6ef9f2ebce"
+
+                        cat_raw = r.get("category", "").lower()
+                        if "cà phê" in cat_raw or "cafe" in cat_raw:
+                            cat_id = "dcc56ade-20c6-4128-a598-3d15ffe157d7"
+                        elif "di tích" in cat_raw or "văn hóa" in cat_raw or "lịch sử" in cat_raw:
+                            cat_id = "54da4319-c68b-4e42-a488-8ccdfba2b71c"
+                        elif "tâm linh" in cat_raw or "chùa" in cat_raw:
+                            cat_id = "6131c4fb-b007-4669-98f2-9b00e32e44d9"
+                        elif "cảnh quan" in cat_raw or "thiên nhiên" in cat_raw or "sinh thái" in cat_raw:
+                            cat_id = "5615f7b6-ec5a-4cc5-9171-af200a866b96"
+                        else:
+                            cat_id = "addc2e2e-69b6-4811-984d-8f88b50cd333"
+
+                        sub_cat = r.get("sub_category", "")
+                        try:
+                            gs = float(r.get("green_score", 0.85))
+                            if gs <= 1.0:
+                                gs = gs * 100
+                        except (ValueError, TypeError):
+                            gs = 85.0
+
+                        try:
+                            sat = float(r.get("satisfaction_score", 4.8))
+                        except (ValueError, TypeError):
+                            sat = 4.8
+
+                        try:
+                            cost = float(r.get("estimated_cost", 0))
+                        except (ValueError, TypeError):
+                            cost = 50000.0
+
+                        cuisine = None
+                        if "chay" in name.lower() or "vegan" in name.lower() or sub_cat == "vegetarian":
+                            cuisine = "plant_based_vegan"
+
+                        indoor = "indoor" if sub_cat in [
+                            "museum", "museums_galleries", "indoor_attraction", "coffee", "vegetarian", "specialty_restaurant"
+                        ] else "outdoor"
+
+                        ai_meta = json.dumps({
+                            "price_range_display": r.get("price_range_display", "35.000 – 120.000 ₫/người"),
+                            "rainy_day_friendly": "true" if indoor == "indoor" else "false",
+                        })
+
+                        cur.execute("""
+                            INSERT OR REPLACE INTO pois (
+                                poi_id, name, category_id, city_id, sub_category,
+                                image_url, green_score, satisfaction_score, popularity_score,
+                                address, description, estimated_cost, ai_metadata,
+                                is_active, cuisine, indoor_outdoor, latitude, longitude
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            pid, name, cat_id, city_id, sub_cat,
+                            r.get("image_url", ""), gs, sat, 95.0,
+                            r.get("address", ""), r.get("description", ""), cost, ai_meta,
+                            1, cuisine, indoor, float(r.get("latitude") or 0), float(r.get("longitude") or 0)
+                        ))
+            except Exception as e:
+                logger.warning("Không thể nạp POIs vào CSDL SQLite: %s", e)
+
     conn.commit()
 
 
@@ -161,5 +336,6 @@ def get_connection() -> Any:
         str(_SQLITE_DB_PATH),
         check_same_thread=False,
     )
+    sqlite_conn.create_function("like", 2, _sqlite_custom_like)
     _ensure_sqlite_tables(sqlite_conn)
     return SQLiteConnectionWrapper(sqlite_conn)

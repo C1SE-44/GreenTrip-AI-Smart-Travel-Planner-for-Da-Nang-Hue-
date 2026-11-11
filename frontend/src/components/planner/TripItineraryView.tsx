@@ -230,7 +230,7 @@ export default function TripItineraryView({
   const [isMapExpanded, setIsMapExpanded] = useState(false);
 
   // Bộ lọc xem ngày nổi trên Bản đồ (đặt góc trên bên phải)
-  const [mapDayFilter, setMapDayFilter] = useState<number | 'all'>('all');
+  const [mapDayFilter, setMapDayFilter] = useState<number | 'all'>(1);
   const [showDayFilterDropdown, setShowDayFilterDropdown] = useState(false);
 
   // Thao tác nhanh cho từng thẻ Ideas & Ngày
@@ -823,24 +823,30 @@ export default function TripItineraryView({
 
   // Tọa độ vẽ đường Polyline thực tế (chuẩn OSRM / backend)
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
+  const [routeDurationText, setRouteDurationText] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     let isMounted = true;
     if (currentFilteredStops.length < 2) {
       setRouteCoordinates([]);
+      setRouteDurationText(undefined);
       return;
     }
 
     const dayNum = typeof mapDayFilter === 'number' ? mapDayFilter : undefined;
     getRoutePositionsForStops(currentFilteredStops, trip.id, dayNum)
-      .then((coords) => {
+      .then((res) => {
         if (isMounted) {
+          const coords = Array.isArray(res) ? res : res.coordinates;
+          const durText = Array.isArray(res) ? undefined : res.durationText;
           setRouteCoordinates(coords);
+          setRouteDurationText(durText);
         }
       })
       .catch(() => {
         if (isMounted) {
           setRouteCoordinates(currentFilteredStops.map((s) => [s.latitude, s.longitude]));
+          setRouteDurationText(undefined);
         }
       });
 
@@ -2010,6 +2016,7 @@ export default function TripItineraryView({
                     onToggleAddTrip={(id) => handleToggleIdeaInTrip(id)}
                     routeCoordinates={routeCoordinates}
                     numberedOrderMap={numberedOrderMap}
+                    routeDurationText={routeDurationText}
                   />
                 </div>
               </div>

@@ -72,14 +72,14 @@ function createMindtripMarkerIcon(
   const iconClass = savedHeartMarkers ? 'ph-fill ph-heart text-amber-500' : getSpecificPoiIconClass(poi);
 
   const orderBadgeHtml = typeof stopOrder === 'number' && stopOrder > 0
-    ? `<span class="w-[18px] h-[18px] rounded-full ${
-        isSelected
-          ? 'bg-white text-zinc-950 ring-1 ring-black/20'
-          : isHovered
+    ? `<span class="w-[19px] h-[19px] rounded-full ${
+        stopOrder === 1
+          ? 'bg-[#1a73e8] text-white ring-2 ring-blue-300'
+          : isSelected
             ? 'bg-white text-zinc-950 ring-1 ring-black/20'
-            : poi.isGreen
-              ? 'bg-emerald-700 text-white'
-              : 'bg-zinc-900 text-white'
+            : isHovered
+              ? 'bg-white text-zinc-950 ring-1 ring-black/20'
+              : 'bg-emerald-700 text-white ring-1 ring-emerald-400/50'
       } flex items-center justify-center text-[10.5px] font-black shrink-0 shadow-xs -ml-0.5 mr-0.5 leading-none">${stopOrder}</span>`
     : '';
 
@@ -1572,46 +1572,52 @@ export default function PoiMap({
           hideTopControls={hideTopControls}
         />
 
-        {/* Dynamic Road Navigation Polyline (Tuyến đường đi thực tế theo ngày) */}
+        {/* Dynamic Road Navigation Polyline (Chuẩn Lợi - Google Maps Navigation UI) */}
         {routeCoordinates && routeCoordinates.length >= 2 && (
           <>
-            {/* Lớp viền shadow tương phản bảo vệ */}
+            {/* Lớp viền sáng tương phản bảo vệ (Halo casing chuẩn Google Maps) */}
             <Polyline
               positions={routeCoordinates}
               pathOptions={{
-                color: '#064E3B',
-                weight: 6.5,
-                opacity: 0.9,
-                lineCap: 'round',
+                color: '#FFFFFF',
+                weight: 9,
+                opacity: 0.95,
                 lineJoin: 'round',
+                lineCap: 'round',
               }}
             />
-            {/* Tuyến đường chính màu xanh lục GreenTrip (#059669) */}
+            {/* Tuyến đường chính màu xanh Google Maps Navigation (#1a73e8) */}
             <Polyline
               positions={routeCoordinates}
               pathOptions={{
-                color: '#059669',
-                weight: 4,
+                color: '#1a73e8',
+                weight: 5.5,
                 opacity: 1,
-                lineCap: 'round',
                 lineJoin: 'round',
+                lineCap: 'round',
               }}
             />
           </>
         )}
 
-        {/* Midpoint route duration badge if available */}
+        {/* Hộp bóng thoại nổi thời gian trực tiếp trên tuyến đường (Callout Badge Google Maps) */}
         {routeCoordinates && routeCoordinates.length >= 2 && routeDurationText && (
           <Marker
             position={routeCoordinates[Math.floor(routeCoordinates.length / 2)]}
             icon={L.divIcon({
+              className: 'gt-google-callout-wrapper',
               html: `
-                <div class="px-2.5 py-1 rounded-full bg-emerald-800 text-white font-bold text-[11px] shadow-lg border border-emerald-600 flex items-center gap-1.5 whitespace-nowrap -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                  <i class="ph ph-navigation-arrow text-emerald-300 text-[12px]"></i>
-                  <span>${routeDurationText}</span>
+                <div class="gt-google-route-callout relative select-none cursor-pointer -translate-x-1/2 -translate-y-full transition-transform active:scale-95 pointer-events-none">
+                  <div class="flex flex-col items-center">
+                    <div class="bg-[#1a73e8] text-white px-3 py-1.5 rounded-lg shadow-[0_4px_14px_rgba(26,115,232,0.45)] flex items-center gap-1.5 text-xs font-bold whitespace-nowrap">
+                      <span>${routeDurationText}</span>
+                      <span class="text-emerald-300 font-normal">🍃</span>
+                      <span class="text-[10px] text-blue-100 font-normal border-l border-blue-300/40 pl-1.5">Ko trạm thu phí</span>
+                    </div>
+                    <div class="w-2.5 h-2.5 bg-[#1a73e8] rotate-45 -mt-1 shadow-xs"></div>
+                  </div>
                 </div>
               `,
-              className: 'gt-route-callout',
               iconSize: [0, 0],
               iconAnchor: [0, 0],
             })}

@@ -92,6 +92,7 @@ export default function TripCalendarView({
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(1);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
 
   // Danh sách ý tưởng (Ideas) của chuyến đi
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => {
@@ -279,7 +280,7 @@ export default function TripCalendarView({
         {/* ════════════════════════════════════════════════════════
             CỘT TRÁI: BẢNG LỊCH THỜI GIAN BIỂU (GOOGLE CALENDAR STYLE)
         ════════════════════════════════════════════════════════ */}
-        <div className="w-[580px] lg:w-[640px] xl:w-[700px] shrink-0 h-full flex flex-col bg-white border-r border-gray-100 select-none overflow-hidden">
+        <div className={`${isMapExpanded ? 'hidden' : 'w-[560px] lg:w-[620px] xl:w-[660px] shrink-0'} h-full flex flex-col bg-white border-r border-gray-100 select-none overflow-hidden transition-[width] duration-300 ease-in-out`}>
           {/* Header Lịch: Calendar + Điều hướng ngày */}
           <div className="px-6 pt-5 pb-3 shrink-0 flex items-center justify-between border-b border-gray-100">
             <div>
@@ -458,7 +459,13 @@ export default function TripCalendarView({
                 onSelectPoi={(id) => setSelectedMapPoiId(id)}
                 onHoverPoi={setHoveredStopId}
                 showMapLoader={false}
-                isExpanded={false}
+                isExpanded={isMapExpanded}
+                onToggleExpand={() => {
+                  setIsMapExpanded((prev) => !prev);
+                  setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                  }, 200);
+                }}
                 favorites={savedIds}
                 pendingFavorites={pendingIds}
                 onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}

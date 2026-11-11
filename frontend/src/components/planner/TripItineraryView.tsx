@@ -229,6 +229,7 @@ export default function TripItineraryView({
   const [showDistances, setShowDistances] = useState(true);
   const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
 
   // Bộ lọc xem ngày nổi trên Bản đồ (đặt góc trên bên phải)
   const [mapDayFilter, setMapDayFilter] = useState<number | 'all'>('all');
@@ -962,7 +963,7 @@ export default function TripItineraryView({
         {/* ════════════════════════════════════════════════════════
             CỘT: Ý TƯỞNG + LỊCH THEO NGÀY (THỦ CÔNG CHUẨN)
         ════════════════════════════════════════════════════════ */}
-        <div className={`${isDrawerMode ? 'w-full' : 'w-[560px] lg:w-[620px] xl:w-[680px] shrink-0 border-r border-gray-100'} flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 auto-hide-scrollbar`}>
+        <div className={`${isDrawerMode ? 'w-full' : (isMapExpanded ? 'hidden' : 'w-[560px] lg:w-[620px] xl:w-[660px] shrink-0')} flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 border-r border-gray-100 auto-hide-scrollbar select-none transition-[width] duration-300 ease-in-out`}>
           {/* ────────────────────────────────────────────────────────
               1. PHẦN Ý TƯỞNG (CHUẨN MINDTRIP ẢNH 3, 4 - BỘ LỌC BÊN PHẢI)
           ──────────────────────────────────────────────────────── */}
@@ -1855,7 +1856,13 @@ export default function TripItineraryView({
                     onSelectPoi={(id) => setSelectedMapPoiId(id)}
                     onHoverPoi={(id) => setHoveredStopId(id)}
                     showMapLoader={false}
-                    isExpanded={false}
+                    isExpanded={isMapExpanded}
+                    onToggleExpand={() => {
+                      setIsMapExpanded((prev) => !prev);
+                      setTimeout(() => {
+                        window.dispatchEvent(new Event('resize'));
+                      }, 200);
+                    }}
                     favorites={savedIds}
                     pendingFavorites={pendingIds}
                     onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}

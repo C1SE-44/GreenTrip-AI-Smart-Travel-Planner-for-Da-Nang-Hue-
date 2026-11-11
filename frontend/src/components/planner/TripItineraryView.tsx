@@ -54,6 +54,7 @@ import {
   distanceKm,
   minutesFromTime,
   updateDateRangeWithDays,
+  getRoutePositionsForStops,
   type TripItinerary,
   type ItineraryDay,
   type ItineraryStop,
@@ -779,6 +780,74 @@ export default function TripItineraryView({
     });
     return stopsPois;
   }, [plan.days, mapDayFilter, allPois]);
+
+  // Danh sách stops hợp lệ (có tọa độ) theo ngày đang chọn hoặc tất cả các ngày
+  const currentFilteredStops = useMemo(() => {
+    const displayedDays =
+      mapDayFilter === 'all'
+        ? plan.days
+        : plan.days.filter((d) => d.day_number === mapDayFilter);
+
+    const stopsList: { latitude: number; longitude: number; poi_id?: string; stop_id: string; title: string }[] = [];
+    displayedDays.forEach((day) => {
+      day.stops.forEach((stop) => {
+        if (stop.stop_type === 'rest') return;
+        const matched = allPois.find((p) => p.id === stop.poi_id);
+        const lat = matched?.lat ?? stop.latitude;
+        const lng = matched?.lng ?? stop.longitude;
+        if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
+          stopsList.push({
+            stop_id: stop.stop_id,
+            poi_id: stop.poi_id || stop.stop_id,
+            title: stop.title,
+            latitude: lat,
+            longitude: lng,
+          });
+        }
+      });
+    });
+    return stopsList;
+  }, [plan.days, mapDayFilter, allPois]);
+
+  // Bảng đánh số thứ tự (Numbered Markers 1, 2, 3...) theo ngày
+  const numberedOrderMap = useMemo(() => {
+    const orderMap = new Map<string, number>();
+    currentFilteredStops.forEach((s, idx) => {
+      const order = idx + 1;
+      if (s.poi_id) orderMap.set(String(s.poi_id), order);
+      if (s.stop_id) orderMap.set(String(s.stop_id), order);
+      if (s.title) orderMap.set(s.title, order);
+    });
+    return orderMap;
+  }, [currentFilteredStops]);
+
+  // Tọa độ vẽ đường Polyline thực tế (chuẩn OSRM / backend)
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (currentFilteredStops.length < 2) {
+      setRouteCoordinates([]);
+      return;
+    }
+
+    const dayNum = typeof mapDayFilter === 'number' ? mapDayFilter : undefined;
+    getRoutePositionsForStops(currentFilteredStops, trip.id, dayNum)
+      .then((coords) => {
+        if (isMounted) {
+          setRouteCoordinates(coords);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setRouteCoordinates(currentFilteredStops.map((s) => [s.latitude, s.longitude]));
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentFilteredStops, trip.id, mapDayFilter]);
 
   const isDaNang = useCallback((c?: string) => /da\s*nang|đà\s*nẵng/i.test(c || ''), []);
   const isHue = useCallback((c?: string) => /hue|huế/i.test(c || ''), []);
@@ -1939,6 +2008,8 @@ export default function TripItineraryView({
                     onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}
                     addedTrips={new Set(tripIdeas)}
                     onToggleAddTrip={(id) => handleToggleIdeaInTrip(id)}
+                    routeCoordinates={routeCoordinates}
+                    numberedOrderMap={numberedOrderMap}
                   />
                 </div>
               </div>

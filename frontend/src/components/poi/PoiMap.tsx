@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import type { Poi } from '@/data/pois';
 import { categoryLabels, getGalleryImages, cleanPoiName, getSpecificPoiIconClass, isCuratedHighlight } from '@/data/pois';
@@ -23,6 +23,9 @@ interface PoiMapProps {
   showMapLoader?: boolean;
   savedHeartMarkers?: boolean;
   hideFloatingPreview?: boolean;
+  routeCoordinates?: [number, number][];
+  numberedOrderMap?: Map<string, number>;
+  routeDurationText?: string;
 }
 
 interface MarkerOffset {
@@ -61,11 +64,24 @@ function createMindtripMarkerIcon(
   showLabel: boolean = true,
   isNewEntrance: boolean = false,
   entranceDelayMs: number = 0,
-  savedHeartMarkers: boolean = false
+  savedHeartMarkers: boolean = false,
+  stopOrder?: number
 ): L.DivIcon {
   const isHighlighted = isSelected || isHovered;
   const displayName = cleanPoiName(poi.name);
   const iconClass = savedHeartMarkers ? 'ph-fill ph-heart text-amber-500' : getSpecificPoiIconClass(poi);
+
+  const orderBadgeHtml = typeof stopOrder === 'number' && stopOrder > 0
+    ? `<span class="w-[18px] h-[18px] rounded-full ${
+        isSelected
+          ? 'bg-white text-zinc-950 ring-1 ring-black/20'
+          : isHovered
+            ? 'bg-white text-zinc-950 ring-1 ring-black/20'
+            : poi.isGreen
+              ? 'bg-emerald-700 text-white'
+              : 'bg-zinc-900 text-white'
+      } flex items-center justify-center text-[10.5px] font-black shrink-0 shadow-xs -ml-0.5 mr-0.5 leading-none">${stopOrder}</span>`
+    : '';
 
   let pinHtml = '';
   let labelHtml = '';
@@ -81,6 +97,7 @@ function createMindtripMarkerIcon(
           ? 'bg-emerald-700 text-white shadow-[0_4px_16px_rgba(4,120,87,0.45)] ring-2 ring-emerald-500/50'
           : 'bg-black text-white shadow-[0_4px_16px_rgba(0,0,0,0.35)] ring-2 ring-black/20'
       } rounded-full flex items-center gap-1.5 z-[9999] pointer-events-auto transition-transform scale-105">
+        ${orderBadgeHtml}
         <i class="${iconClass} text-[16px] text-white"></i>
         <img src="${poi.image}" referrerpolicy="no-referrer" class="w-5 h-5 rounded-full object-cover ring-1 ring-white/60" alt="" />
         <span class="text-[12px] font-bold text-white whitespace-nowrap leading-none pl-0.5">${displayName}</span>
@@ -106,6 +123,7 @@ function createMindtripMarkerIcon(
             ? 'bg-white text-zinc-950 shadow-[0_2px_8px_rgba(0,0,0,0.14)] border border-zinc-200/90 ring-1 ring-emerald-500/30'
             : 'bg-white text-zinc-950 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-200/90'
       } flex items-center gap-1.5 shrink-0 transition-all duration-150 pointer-events-auto">
+        ${orderBadgeHtml}
         <i class="${iconClass} text-[14px] ${isHovered ? 'text-white' : isEcoHigh ? 'text-emerald-700' : 'text-zinc-950'}"></i>
         <span class="text-[11px] font-bold leading-none ${isHovered ? 'text-white' : 'text-zinc-800'}">${priceTier}</span>
       </div>
@@ -821,6 +839,7 @@ function DynamicMarkersLayer({
   selectedPoiId,
   hoveredPoiId,
   savedHeartMarkers = false,
+  numberedOrderMap,
   onSelectPoi,
   onHoverMapPin,
   onMarkerHover,
@@ -834,6 +853,7 @@ function DynamicMarkersLayer({
   selectedPoiId: string | null;
   hoveredPoiId: string | null;
   savedHeartMarkers?: boolean;
+  numberedOrderMap?: Map<string, number>;
   onSelectPoi: (id: string) => void;
   onHoverMapPin: (id: string | null) => void;
   onMarkerHover?: (id: string, isEnter: boolean) => void;
@@ -934,7 +954,7 @@ function DynamicMarkersLayer({
       ? pois.filter((p) => paddedBounds.contains([p.lat, p.lng]))
       : pois;
 
-    return selectMustTryViewportPois(
+    const basePois = selectMustTryViewportPois(
       inViewCandidates,
       paddedBounds,
       pois,
@@ -942,7 +962,22 @@ function DynamicMarkersLayer({
       null, // Không cho hoveredPoiId làm thay đổi danh sách 20 điểm Must-Try!
       20
     );
-  }, [pois, viewportBounds, map, selectedPoiId]);
+
+    if (numberedOrderMap && numberedOrderMap.size > 0) {
+      const activeOrderPois = pois.filter((p) => numberedOrderMap.has(String(p.id)) || numberedOrderMap.has(p.name));
+      const mergedSet = new Set(basePois.map((p) => p.id));
+      const combined = [...basePois];
+      activeOrderPois.forEach((p) => {
+        if (!mergedSet.has(p.id)) {
+          mergedSet.add(p.id);
+          combined.push(p);
+        }
+      });
+      return combined;
+    }
+
+    return basePois;
+  }, [pois, viewportBounds, map, selectedPoiId, numberedOrderMap]);
 
   // Danh sách POI hiển thị: Nếu điểm đang hover nằm ngoài Top 20, chỉ bổ sung riêng điểm đó mà không làm xáo trộn 20 điểm sẵn có
   const displayedPois = useMemo(() => {
@@ -1237,6 +1272,7 @@ function DynamicMarkersLayer({
         const isHovered = poi.id === hoveredPoiId;
         const isHighlighted = isSelected || isHovered;
         const offset = offsets[poi.id] || { position: 'right', yOffset: 0 };
+        const stopOrder = numberedOrderMap?.get(String(poi.id)) ?? numberedOrderMap?.get(poi.name) ?? numberedOrderMap?.get(cleanPoiName(poi.name));
         
         // Tiêu chuẩn Mindtrip:
         // - Zoom >= 12.0: Hiện nhãn cho các điểm tiêu biểu và các điểm ngoài rìa (đã qua thuật toán chấm điểm ưu tiên & chống va chạm)
@@ -1253,8 +1289,8 @@ function DynamicMarkersLayer({
           <Marker
             key={poi.id}
             position={[poi.lat, poi.lng]}
-            zIndexOffset={isSelected ? 9999 : isHovered ? 9000 : 50}
-            icon={createMindtripMarkerIcon(isSelected, isHovered, poi, offset, showLabel, isNewEntrance, entranceDelayMs, savedHeartMarkers)}
+            zIndexOffset={isSelected ? 9999 : isHovered ? 9000 : typeof stopOrder === 'number' ? 100 + stopOrder : 50}
+            icon={createMindtripMarkerIcon(isSelected, isHovered, poi, offset, showLabel, isNewEntrance, entranceDelayMs, savedHeartMarkers, stopOrder)}
             eventHandlers={{
               click: () => onSelectPoi(poi.id),
               mouseover: () => {
@@ -1291,6 +1327,36 @@ function MapClickHandler({ onDismiss }: { onDismiss: () => void }) {
   return null;
 }
 
+function RouteAutoFitter({ routeCoordinates }: { routeCoordinates?: [number, number][] }) {
+  const map = useMap();
+  const prevKeyRef = useRef<string>('');
+
+  useEffect(() => {
+    if (!map || !routeCoordinates || routeCoordinates.length < 2) return;
+    const first = routeCoordinates[0];
+    const last = routeCoordinates[routeCoordinates.length - 1];
+    const key = `${routeCoordinates.length}-${first[0].toFixed(4)}-${first[1].toFixed(4)}-${last[0].toFixed(4)}-${last[1].toFixed(4)}`;
+    if (prevKeyRef.current === key) return;
+    prevKeyRef.current = key;
+
+    try {
+      const bounds = L.latLngBounds(routeCoordinates);
+      if (bounds.isValid()) {
+        map.flyToBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 15,
+          duration: 0.6,
+          easeLinearity: 0.25,
+        });
+      }
+    } catch {
+      // safe fallback
+    }
+  }, [map, routeCoordinates]);
+
+  return null;
+}
+
 export default function PoiMap({
   pois,
   selectedPoiId,
@@ -1309,6 +1375,9 @@ export default function PoiMap({
   showMapLoader = true,
   savedHeartMarkers = false,
   hideFloatingPreview = false,
+  routeCoordinates,
+  numberedOrderMap,
+  routeDurationText,
 }: PoiMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const [hoveredMapPinId, setHoveredMapPinId] = useState<string | null>(null);
@@ -1495,6 +1564,7 @@ export default function PoiMap({
 
         <MapResizeListener />
         <MapAutoFitter pois={pois} />
+        <RouteAutoFitter routeCoordinates={routeCoordinates} />
         
         <MapControlsLayer 
           isExpanded={isExpanded}
@@ -1502,11 +1572,59 @@ export default function PoiMap({
           hideTopControls={hideTopControls}
         />
 
+        {/* Dynamic Road Navigation Polyline (Tuyến đường đi thực tế theo ngày) */}
+        {routeCoordinates && routeCoordinates.length >= 2 && (
+          <>
+            {/* Lớp viền shadow tương phản bảo vệ */}
+            <Polyline
+              positions={routeCoordinates}
+              pathOptions={{
+                color: '#064E3B',
+                weight: 6.5,
+                opacity: 0.9,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+            {/* Tuyến đường chính màu xanh lục GreenTrip (#059669) */}
+            <Polyline
+              positions={routeCoordinates}
+              pathOptions={{
+                color: '#059669',
+                weight: 4,
+                opacity: 1,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+          </>
+        )}
+
+        {/* Midpoint route duration badge if available */}
+        {routeCoordinates && routeCoordinates.length >= 2 && routeDurationText && (
+          <Marker
+            position={routeCoordinates[Math.floor(routeCoordinates.length / 2)]}
+            icon={L.divIcon({
+              html: `
+                <div class="px-2.5 py-1 rounded-full bg-emerald-800 text-white font-bold text-[11px] shadow-lg border border-emerald-600 flex items-center gap-1.5 whitespace-nowrap -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                  <i class="ph ph-navigation-arrow text-emerald-300 text-[12px]"></i>
+                  <span>${routeDurationText}</span>
+                </div>
+              `,
+              className: 'gt-route-callout',
+              iconSize: [0, 0],
+              iconAnchor: [0, 0],
+            })}
+            interactive={false}
+          />
+        )}
+
         <DynamicMarkersLayer
           pois={pois}
           selectedPoiId={selectedPoiId}
           hoveredPoiId={hoveredPoiId || hoveredMapPinId}
           savedHeartMarkers={savedHeartMarkers}
+          numberedOrderMap={numberedOrderMap}
           onSelectPoi={(id) => {
             cancelAutoCloseTimer();
             onSelectPoi(id);

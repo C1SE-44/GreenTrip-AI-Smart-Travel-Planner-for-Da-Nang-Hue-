@@ -2,6 +2,116 @@ import { fetchJson } from '@/lib/api';
 import type { Poi } from '@/data/pois';
 import type { UserTrip } from '@/pages/ExplorePage';
 
+export interface RouteStop {
+  order: number;
+  poi_id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface RouteGeometry {
+  type: 'LineString';
+  coordinates: [number, number][]; // GeoJSON format: [longitude, latitude]
+}
+
+export interface DayRouteResponse {
+  itinerary_id: string;
+  day_number: number;
+  total_days?: number;
+  total_stops: number;
+  stops: RouteStop[];
+  route: RouteGeometry;
+  distance_meters: number;
+  duration_seconds: number;
+  is_fallback?: boolean;
+  routing_provider?: string;
+}
+
+/**
+ * Fetch ordered route geometry and stops for a specific day of an itinerary.
+ * Backend endpoint: GET /api/itineraries/{itinerary_id}/days/{day_number}/route
+ */
+export async function fetchDayRoute(
+  itineraryId: string,
+  dayNumber: number,
+  signal?: AbortSignal
+): Promise<DayRouteResponse> {
+  const cleanItinId = encodeURIComponent(itineraryId.trim());
+  return fetchJson<DayRouteResponse>(
+    `/api/itineraries/${cleanItinId}/days/${dayNumber}/route`,
+    { signal }
+  );
+}
+
+/**
+ * Tính toán tọa độ đường đi (Leaflet [lat, lng]) từ danh sách điểm dừng qua GreenTrip BE hoặc OSRM
+ */
+export async function getRoutePositionsForStops(
+  stops: { latitude?: number | null; longitude?: number | null; poi_id?: string | null; stop_id?: string; title?: string; name?: string }[],
+  itineraryId?: string,
+  dayNumber?: number
+): Promise<[number, number][]> {
+  const validStops = stops
+    .filter((s) => s.latitude != null && s.longitude != null && Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
+    .map((s, idx) => ({
+      order: idx + 1,
+      poi_id: s.poi_id || s.stop_id || `stop-${idx}`,
+      name: s.title || s.name || `Điểm ${idx + 1}`,
+      latitude: Number(s.latitude),
+      longitude: Number(s.longitude),
+    }));
+
+  if (validStops.length < 2) {
+    return validStops.map((s) => [s.latitude, s.longitude]);
+  }
+
+  // 1. Thử gọi backend /api/itineraries/{id}/days/{day}/route nếu có itineraryId và dayNumber
+  if (itineraryId && typeof dayNumber === 'number' && dayNumber >= 1) {
+    try {
+      const resp = await fetchDayRoute(itineraryId, dayNumber);
+      if (resp?.route?.coordinates && resp.route.coordinates.length >= 2) {
+        return resp.route.coordinates.map(([lng, lat]) => [lat, lng]);
+      }
+    } catch {
+      // Tiếp tục fallback
+    }
+  }
+
+  // 2. Thử gọi backend /api/itineraries/compute với danh sách stops
+  try {
+    const computed = await fetchJson<DayRouteResponse>('/api/itineraries/compute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stops: validStops }),
+    });
+    if (computed?.route?.coordinates && computed.route.coordinates.length >= 2) {
+      return computed.route.coordinates.map(([lng, lat]) => [lat, lng]);
+    }
+  } catch {
+    // Tiếp tục OSRM public
+  }
+
+  // 3. Gọi OSRM public trực tiếp từ trình duyệt
+  try {
+    const coordsStr = validStops.map((s) => `${s.longitude.toFixed(6)},${s.latitude.toFixed(6)}`).join(';');
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
+    const res = await fetch(osrmUrl);
+    if (res.ok) {
+      const data = await res.json();
+      const coords = data?.routes?.[0]?.geometry?.coordinates;
+      if (Array.isArray(coords) && coords.length >= 2) {
+        return coords.map(([lng, lat]: [number, number]) => [lat, lng]);
+      }
+    }
+  } catch {
+    // Fallback đường nối thẳng
+  }
+
+  // 4. Fallback đường nối thẳng
+  return validStops.map((s) => [s.latitude, s.longitude]);
+}
+
 export type ItineraryStopType = 'poi' | 'rest' | 'custom';
 
 export interface ItineraryStop {

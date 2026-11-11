@@ -205,6 +205,47 @@ function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {
   });
 }
 
+export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
+  {
+    id: 'sample-danang-hue-3d',
+    title: 'Hành trình Xanh Đà Nẵng - Huế (3 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 10 – 12 tháng 11',
+    peopleCount: 2,
+    daysCount: 3,
+    tags: ['Đà Nẵng & Huế', '3 Ngày', 'Lộ trình tối ưu OSRM', 'Xanh'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+    ideas: [
+      '029a28df-b091-49d9-a911-738572c72464',
+      'd58fe815-4aa1-45b2-831a-11b97e130918',
+      'bfed964e-ff10-44f4-8654-2136245ab062',
+    ],
+  },
+  {
+    id: 'sample-danang-hue-5d',
+    title: 'Đà Nẵng - Huế Trọn Vẹn (5 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 15 – 19 tháng 11',
+    peopleCount: 2,
+    daysCount: 5,
+    tags: ['Đà Nẵng & Huế', '5 Ngày', 'Di sản & Biển xanh'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'sample-central-vietnam-7d',
+    title: 'Khám phá Miền Trung Huyền Diệu (7 Ngày)',
+    destination: 'Đà Nẵng & Huế',
+    startDate: 'Ngày 20 – 26 tháng 11',
+    peopleCount: 4,
+    daysCount: 7,
+    tags: ['Miền Trung', '7 Ngày', 'Tour gia đình'],
+    createdAt: '2026-11-08',
+    image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800&auto=format&fit=crop&q=80',
+  },
+];
+
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'home' | 'explore' | 'trips' | 'saved' }) {
   const navigate = useNavigate();
   const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
@@ -232,12 +273,13 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [initialView, navigate]);
 
   const [userTrips, setUserTrips] = useState<UserTrip[]>(() => {
+    let savedTrips: UserTrip[] = [];
     try {
       const raw = localStorage.getItem('greentrip_user_trips');
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          return parsed.map((t: UserTrip) => {
+          savedTrips = parsed.map((t: UserTrip) => {
             const rawTitle = (t.title || '').trim();
             const isBadTitle = !rawTitle || rawTitle.length <= 3 || ['ư', 'a', 'ơi', 'alo'].includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().startsWith('bắt đầu');
             return isBadTitle ? { ...t, title: `Chuyến đi ${t.destination || 'Đà Nẵng & Huế'}` } : t;
@@ -247,18 +289,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     } catch (e) {
       console.error(e);
     }
-    return [
-      {
-        id: 'trip-danang-default',
-        title: 'Chuyến đi Đà Nẵng, tháng 11 năm 2026',
-        destination: 'Đà Nẵng',
-        startDate: 'Ngày 2 – 5 tháng 11',
-        peopleCount: 1,
-        tags: ['Đà Nẵng', 'Ngày 2 – 5 tháng 11', 'Ai', 'Ngân sách'],
-        createdAt: '2026-11-01',
-        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
-      },
-    ];
+    const savedIds = new Set(savedTrips.map((t) => t.id));
+    const missingSamples = SEEDED_SAMPLE_TRIPS.filter((s) => !savedIds.has(s.id));
+    return savedTrips.length > 0 ? [...savedTrips, ...missingSamples] : SEEDED_SAMPLE_TRIPS;
   });
 
   useEffect(() => {

@@ -916,32 +916,32 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     }
 
     sections['food'] = {
-      title: 'Ẩm thực & Quán ăn Must-Try',
-      subtitle: 'Hương vị bản địa xứ Quảng - Đà Thành và Cố đô Huế đạt chuẩn Michelin & Xanh',
+      title: 'Ẩm thực',
+      subtitle: '',
       total: allFood.length,
       items: topFood,
       categoryKey: 'quan-an' as PoiCategoryFilter,
     };
 
     sections['heritage'] = {
-      title: 'Di tích & Biểu tượng lịch sử Must-Try',
-      subtitle: 'Khám phá các di sản cố đô, danh thắng và công trình biểu tượng vượt thời gian',
+      title: 'Di tích',
+      subtitle: '',
       total: allHeritage.length,
       items: topHeritage,
       categoryKey: 'di-tich' as PoiCategoryFilter,
     };
 
     sections['nature'] = {
-      title: 'Cảnh quan & Thiên nhiên xanh Must-Try',
-      subtitle: 'Những bãi biển cát trắng, bán đảo Sơn Trà và sinh thái nguyên sơ',
+      title: 'Thiên nhiên',
+      subtitle: '',
       total: allNature.length,
       items: topNature,
       categoryKey: 'canh-quan' as PoiCategoryFilter,
     };
 
     sections['temples'] = {
-      title: 'Chùa chiền & Điểm đến tâm linh Must-Try',
-      subtitle: 'Chiêm bái các cổ tự linh thiêng và danh lam chốn tổ thanh tịnh',
+      title: 'Tâm linh',
+      subtitle: '',
       total: allTemples.length,
       items: topTemples,
       categoryKey: 'chua' as PoiCategoryFilter,
@@ -1906,14 +1906,10 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 const items = sec.items.slice(0, 4);
                 if (items.length === 0) return null;
                 return (
-                  <section key={secKey} className="space-y-5">
-                    <div className="flex items-baseline justify-between border-b border-gray-100 pb-2.5">
-                      <div>
-                        <h3 className="text-[18px] font-bold text-gray-950 tracking-tight">{sec.title}</h3>
-                        <p className="text-[13px] text-gray-500 font-normal mt-0.5">{sec.subtitle}</p>
-                      </div>
-                      <span className="text-[12px] font-medium text-gray-400">4 / {sec.total}</span>
-                    </div>
+                  <section key={secKey}>
+                    <h3 className="text-[22px] font-bold text-gray-950 tracking-tight mb-4">
+                      {sec.title}
+                    </h3>
 
                     <div className="grid grid-cols-2 gap-[32px]">
                       {items.map((poi, idx) => (
@@ -1937,14 +1933,14 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                       ))}
                     </div>
 
-                    <div className="pt-1">
+                    {/* Nút Xem thêm bo tròn ở giữa chuẩn Mindtrip */}
+                    <div className="flex justify-center pt-6 pb-2">
                       <button
                         type="button"
                         onClick={() => handleTabChange(sec.categoryKey as ExploreTabId)}
-                        className="w-full h-[46px] rounded-xl border border-gray-200 hover:border-black bg-white hover:bg-gray-50 text-[13.5px] font-semibold text-gray-900 transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                        className="h-[42px] px-8 rounded-full border border-gray-300 hover:border-black bg-white hover:bg-gray-50 text-[14px] font-medium text-gray-900 transition-all shadow-2xs flex items-center justify-center cursor-pointer active:scale-95"
                       >
-                        <span>Xem thêm {sec.total > 4 ? `${sec.total} ` : ''}{sec.title.split('&')[0].trim()}</span>
-                        <i className="ph ph-arrow-right text-[14px]"></i>
+                        Xem thêm
                       </button>
                     </div>
                   </section>

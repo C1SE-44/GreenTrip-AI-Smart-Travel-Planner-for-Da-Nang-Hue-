@@ -799,7 +799,28 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   // Tiêu đề lớn hiển thị (ưu tiên tên riêng người dùng đặt, nếu không fallback theo điểm đến)
   const cleanTitle = trip.title?.trim();
   const isGibberish = !cleanTitle || cleanTitle.length < 3 || cleanTitle.toLowerCase() === 'ư' || cleanTitle.toLowerCase() === 'a';
-  const displayTitle = isGibberish ? `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}` : cleanTitle;
+  const rawDest = trip.destination || 'Đà Nẵng & Huế';
+  // Chuẩn hóa tên chuyến đi theo Mindtrip: "Chuyến đi Đà Nẵng, Tháng 11 2026", bỏ hoàn toàn "(3 ngày)"
+  const displayTitle = isGibberish
+    ? `Chuyến đi ${rawDest}, Tháng 11 2026`
+    : cleanTitle.replace(/\s*\(\d+\s*ngày\)/gi, '');
+
+  // Chuẩn hóa "Bắt đầu từ ngày..." cho viên thuốc metadata (ví dụ: "Bắt đầu từ 10 thg 11")
+  const formatStartingDate = (dateStr?: string) => {
+    if (!dateStr) return 'Bắt đầu từ 10 thg 11';
+    const match = dateStr.match(/(\d+)\s*[-–]\s*\d+\s+(?:tháng|thg)\s*(\d+)/i);
+    if (match) return `Bắt đầu từ ${match[1]} thg ${match[2]}`;
+    const dayMatch = dateStr.match(/(\d+)/);
+    if (dayMatch) return `Bắt đầu từ ${dayMatch[1]} thg 11`;
+    return 'Bắt đầu từ 10 thg 11';
+  };
+
+  // Chuẩn hóa ngày phụ đề dưới tên: "Từ ngày 10 – 12 tháng 11, 2026"
+  const formatSubtitleDate = (dateStr?: string) => {
+    if (!dateStr) return 'Từ ngày 10 – 12 tháng 11, 2026';
+    if (dateStr.toLowerCase().startsWith('từ')) return `${dateStr}, 2026`;
+    return `Từ ngày ${dateStr}, 2026`;
+  };
 
   // Rút gọn ngày bắt đầu cho viên thuốc metadata (ví dụ: "Từ 2 thg 11")
   const formatDateBrief = (dateStr?: string) => {
@@ -1175,33 +1196,33 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
               </div>
               <span className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">
-                Chuyến đi {trip.destination}, {formatDateBrief(trip.startDate) || 'Tháng 11 2026'}
+                {formatSubtitleDate(trip.startDate)}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Ở GIỮA: CÁC VIÊN THUỐC TRẠNG THÁI (STATUS PILLS) */}
-        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+        {/* Ở GIỮA: MỘT THANH VIÊN THUỐC LIỀN KHỐI PHÂN ĐOẠN (SEGMENTED PILL) CHUẨN MINDTRIP */}
+        <div className="hidden sm:flex items-center rounded-full border border-gray-200/90 bg-white h-8 text-[12px] font-medium text-gray-800 shadow-2xs divide-x divide-gray-200 overflow-hidden shrink-0">
           {/* 1. Ở đâu / Điểm đến */}
           <button
             type="button"
             onClick={() => setShowWhereModal(true)}
-            className="h-8 px-3 rounded-full border border-gray-200/90 hover:border-gray-400 bg-white text-gray-800 text-[12px] font-medium transition cursor-pointer flex items-center gap-1 shadow-2xs group"
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
             title="Bấm để thay đổi điểm đến"
           >
             <span className="truncate max-w-[130px]">{trip.destination}</span>
             <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
           </button>
 
-          {/* 2. Khi nào / Ngày bắt đầu */}
+          {/* 2. Khi nào / Bắt đầu từ... */}
           <button
             type="button"
             onClick={() => setShowWhenModal(true)}
-            className="h-8 px-3 rounded-full border border-gray-200/90 hover:border-gray-400 bg-white text-gray-800 text-[12px] font-medium transition cursor-pointer flex items-center gap-1 shadow-2xs group"
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
             title="Bấm để thay đổi ngày và thời gian"
           >
-            <span className="truncate">{formatDateBrief(trip.startDate)}</span>
+            <span className="truncate">{formatStartingDate(trip.startDate)}</span>
             <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
           </button>
 
@@ -1209,7 +1230,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           <button
             type="button"
             onClick={() => setShowWhoModal(true)}
-            className="h-8 px-3 rounded-full border border-gray-200/90 hover:border-gray-400 bg-white text-gray-800 text-[12px] font-medium transition cursor-pointer flex items-center gap-1 shadow-2xs group"
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
             title="Bấm để thay đổi số lượng người đi"
           >
             <span className="truncate">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</span>
@@ -1220,43 +1241,31 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           <button
             type="button"
             onClick={() => setShowBudgetModal(true)}
-            className="h-8 px-3 rounded-full border border-gray-200/90 hover:border-gray-400 bg-white text-gray-700 hover:text-black text-[12px] font-medium transition cursor-pointer flex items-center gap-1 shadow-2xs group"
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-700 hover:text-black transition cursor-pointer flex items-center gap-1 group"
             title="Bấm để thay đổi phạm vi ngân sách"
           >
-            <span className="truncate">{budgetBriefText || '$$$$'}</span>
+            <span className="truncate">{budgetBriefText || '$$'}</span>
             <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
           </button>
         </div>
 
-        {/* BÊN PHẢI: NÚT THAY THẾ CHO [Trip 25] CỦA MINDTRIP -> [💡 Ý tưởng (X)] & [+] */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Nút Ý tưởng (Trip Ideas) - Bấm vào gọi lại drawer ý tưởng đã làm */}
+        {/* BÊN PHẢI: NÚT [💡 Ý tưởng  21] & [Kế hoạch chi tiết] (ĐÃ BỎ NÚT + DƯ THỪA) */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Nút Ý tưởng - Chuẩn thiết kế Mindtrip: [ 💡 Ý tưởng    21 ] */}
           <button
             type="button"
             onClick={() => {
               setShowItineraryDrawer(false);
               setShowIdeasView(true);
             }}
-            className="h-8 px-3.5 rounded-full border border-gray-200 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[12.5px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 group"
+            className="h-8 pl-3 pr-2.5 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[12.5px] font-semibold transition flex items-center gap-2.5 shadow-2xs cursor-pointer active:scale-95 group"
             title="Xem danh sách địa điểm đã lưu trong ý tưởng của chuyến đi"
           >
-            <Lightbulb size={14} className="text-amber-500 shrink-0" />
+            <Lightbulb size={15} className="text-gray-900 shrink-0" />
             <span>Ý tưởng</span>
-            <span className={`min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-extrabold flex items-center justify-center ${
-              tripIdeas.length > 0 ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
+            <span className="min-w-[20px] h-[20px] px-1.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-bold flex items-center justify-center">
               {tripIdeas.length}
             </span>
-          </button>
-
-          {/* Nút Thêm địa điểm nhanh (+) */}
-          <button
-            type="button"
-            onClick={() => setShowAddIdeasModal(true)}
-            className="w-8 h-8 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shadow-2xs"
-            title="Thêm địa điểm vào ý tưởng"
-          >
-            <Plus size={16} />
           </button>
 
           {/* Nút CTA chuyển bước sang Kế hoạch chi tiết */}
@@ -1269,7 +1278,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 setShowItineraryDrawer(true);
               }
             }}
-            className="h-8 px-3.5 rounded-full bg-black hover:bg-neutral-800 text-white font-bold text-[12px] transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 group ml-0.5"
+            className="h-8 px-3.5 rounded-full bg-black hover:bg-neutral-800 text-white font-bold text-[12px] transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 group"
             title="Chuyển sang bước lên kế hoạch chi tiết theo ngày"
           >
             <Compass size={14} className="text-emerald-400 shrink-0" />
@@ -1286,32 +1295,31 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         {/* ────── CỘT GIỮA: AI COPILOT CHAT WORKSPACE (CHIỀU RỘNG CHUẨN EXPLORE) ────── */}
         <div 
           className={`${
-            isMapExpanded ? 'hidden' : 'w-[560px] lg:w-[620px] xl:w-[660px] shrink-0'
-          } h-full bg-white flex flex-col justify-between pl-6 lg:pl-[36px] pr-5 pt-3.5 pb-5 border-r border-gray-100 select-none transition-[width] duration-300 ease-in-out`}
+            isMapExpanded ? 'hidden' : 'w-[650px] shrink-0'
+          } h-full bg-white flex flex-col justify-between pl-6 lg:pl-[36px] pr-6 pt-4 pb-5 select-none transition-[width] duration-300 ease-in-out`}
         >
           {/* Header Chat: Chats 1 chuẩn Mindtrip */}
-          <div className="flex items-center justify-between mb-2 shrink-0">
+          <div className="flex items-center justify-between mb-3 shrink-0">
             <h3 className="text-[15px] font-bold text-gray-950 tracking-tight flex items-center gap-1.5">
               <span>Chats</span>
-              <span className="text-gray-400 font-normal text-xs">1</span>
+              <span className="text-gray-400 font-normal text-xs">{chatMessages.length > 0 ? chatMessages.length : 1}</span>
               <span className="sr-only">Đoạn chat (1)</span>
             </h3>
-            <span className="text-[11px] text-gray-400 font-medium">Hỏi AI để gợi ý & đồng bộ ý tưởng lên bản đồ</span>
           </div>
 
-          {/* Luồng tin nhắn chat (cuộn độc lập bên trong) */}
-          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3.5 auto-hide-scrollbar">
-            {/* Trạng thái chào mừng tự nhiên khi chưa có tin nhắn (không dùng thành phần mô phỏng giả tạo) */}
+          {/* Luồng tin nhắn chat (cuộn mượt, ẩn hoàn toàn thanh kéo trượt) */}
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-3.5 no-scrollbar">
+            {/* Trạng thái chào mừng tự nhiên ngắn gọn, tinh tế */}
             {chatMessages.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12 text-gray-400">
-                <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center text-gray-800 mb-3 shadow-2xs">
-                  <Sparkles size={20} className="text-emerald-600" />
+              <div className="h-full flex flex-col items-center justify-center text-center px-4 py-8 text-gray-400">
+                <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-800 mb-2.5 shadow-2xs border border-gray-100">
+                  <Sparkles size={18} className="text-emerald-600" />
                 </div>
-                <h4 className="text-[15px] font-bold text-gray-950 tracking-tight">
+                <h4 className="text-[14px] font-bold text-gray-950 tracking-tight">
                   Trợ lý GreenTrip AI
                 </h4>
-                <p className="text-xs text-gray-500 max-w-[320px] mt-1 leading-relaxed">
-                  Hãy hỏi bất kỳ điều gì để tìm kiếm quán ăn, điểm check-in xanh và gợi ý ý tưởng cho chuyến đi <strong className="text-gray-800">{trip.destination}</strong>.
+                <p className="text-[12px] text-gray-500 max-w-[280px] mt-1 leading-relaxed">
+                  Gợi ý địa điểm xanh, ẩm thực bản địa và tối ưu chuyến đi {trip.destination}.
                 </p>
               </div>
             )}
@@ -1448,17 +1456,17 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             <div ref={chatEndRef} />
           </div>
 
-          {/* Chip gợi ý câu hỏi (3 chip ngắn ≤ 22 ký tự, đặt sát ngay trên ô nhập) */}
+          {/* Chip gợi ý câu hỏi (gọn gàng, không có icon bóng đèn thô) */}
           <div className="flex flex-wrap gap-1.5 w-full pt-2 pb-2 shrink-0">
             {quickPrompts.slice(0, 3).map((q, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => handleSendChatMessage(q)}
-                className="text-xs bg-gray-50 hover:bg-gray-100 hover:border-gray-300 border border-gray-200/80 rounded-full px-3 py-1.5 text-gray-700 transition cursor-pointer active:scale-95 truncate max-w-full"
+                className="text-[11.5px] bg-gray-50 hover:bg-gray-100 border border-gray-200/70 rounded-full px-3 py-1.5 text-gray-700 transition cursor-pointer active:scale-95 truncate max-w-full font-medium"
                 title={q}
               >
-                💡 {q}
+                {q.replace(/^(💡|🌱|📍)\s*/, '')}
               </button>
             ))}
           </div>
@@ -1526,13 +1534,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           </div>
         </div>
 
-        {/* ────── CỘT PHẢI: MAP SECTION CHUẨN TRANG EXPLORE (FLEX-1, PADDING & BORDER KHỚP 100%) ────── */}
+        {/* ────── CỘT PHẢI: MAP SECTION CHUẨN TRANG EXPLORE (FLEX-1, P-3, ROUNDED-[24PX]) ────── */}
         <section 
-          className="flex-1 h-full relative bg-white overflow-hidden" 
+          className="flex-1 h-full min-w-0 p-3 select-none relative bg-white overflow-hidden" 
           data-purpose="right-panel-container"
         >
-          <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] py-4 pb-6">
-            <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
+          <div className="w-full h-full rounded-[24px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
               <PoiMap
                 pois={relevantPois}
                 selectedPoiId={selectedMapPoiId}
@@ -1554,7 +1561,6 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 onToggleAddTrip={handleToggleIdea}
               />
             </div>
-          </div>
         </section>
       </div>
 

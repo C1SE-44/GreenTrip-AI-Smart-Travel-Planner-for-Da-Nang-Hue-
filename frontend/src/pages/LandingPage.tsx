@@ -36,7 +36,7 @@ export default function LandingPage() {
         </span>
       ),
       desc: "Hãy chia sẻ những điều quan trọng với bạn. Trợ lý du lịch cá nhân của bạn sẽ ghi nhớ cách bạn thích đi du lịch, vì vậy bạn không cần phải bắt đầu lại từ đầu mỗi lần. Và bạn càng sử dụng nhiều, hệ thống càng giỏi hơn trong việc tìm kiếm những địa điểm thực sự phù hợp với bạn.",
-      img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80",
+      img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=75",
       widgets: (
         <>
           <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
@@ -119,7 +119,7 @@ export default function LandingPage() {
         </span>
       ),
       desc: "Trợ lý du lịch có thể giúp bạn sắp xếp thứ tự điểm đến, phương tiện và nhà hàng — tự động tính toán bằng thuật toán vận trù học để tối ưu chi phí và thời gian. Khi bạn đã sẵn sàng, hãy tự tin khởi hành với một lịch trình không có góc chết.",
-      img: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80",
+      img: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=75",
       widgets: (
         <>
           <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
@@ -202,7 +202,7 @@ export default function LandingPage() {
         </span>
       ),
       desc: "Trợ lý du lịch luôn để mắt đến các chi tiết để bạn không cần bận tâm. Từ việc đánh giá Eco Score của từng địa điểm đến các cảnh báo thay đổi lịch trình linh hoạt, giúp chuyến đi miền Trung của bạn luôn trọn vẹn và bền vững.",
-      img: "https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&q=80",
+      img: "https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=1200&q=75",
       widgets: (
         <>
           <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
@@ -278,8 +278,9 @@ export default function LandingPage() {
       <section className="relative flex min-h-screen flex-col items-center justify-end overflow-hidden pb-12 text-center bg-white">
         <div className="absolute top-0 left-0 right-0 h-[80vh] z-0">
           <img
-            src="https://images.unsplash.com/photo-1471922694854-ff1b63b20054?auto=format&fit=crop&q=80"
+            src="https://images.unsplash.com/photo-1471922694854-ff1b63b20054?auto=format&fit=crop&w=1600&q=75"
             alt="Mặt nước biển từ trên cao"
+            decoding="async"
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-x-0 bottom-0 h-[30vh] bg-gradient-to-t from-white via-white/90 to-transparent" />
@@ -526,7 +527,9 @@ export default function LandingPage() {
                   <div className="absolute left-[10%] w-[42%] rotate-[-6deg] translate-y-0 z-0">
                     <div className="bg-white p-1.5 rounded-2xl shadow-xl border border-gray-100">
                       <img
-                        src="https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&q=80"
+                        src="https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=75"
+                        loading="lazy"
+                        decoding="async"
                         className="aspect-square w-full object-cover rounded-xl bg-gray-100"
                       />
                       <div className="px-2 py-2 flex justify-between items-center">
@@ -548,7 +551,9 @@ export default function LandingPage() {
                   <div className="absolute left-[30%] w-[42%] rotate-[12deg] translate-y-6 z-10">
                     <div className="bg-white p-1.5 rounded-2xl shadow-2xl border border-gray-100">
                       <img
-                        src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80"
+                        src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=75"
+                        loading="lazy"
+                        decoding="async"
                         className="aspect-square w-full object-cover rounded-xl bg-gray-100"
                       />
                       <div className="px-2 py-2 flex justify-between items-center">
@@ -594,7 +599,7 @@ export default function LandingPage() {
                 title: "Cầu Rồng phun lửa",
                 location: "Đà Nẵng, Việt Nam",
                 tag: "Biểu tượng",
-                img: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80",
+                img: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=75",
                 count: "12 điểm",
               },
               {
@@ -608,7 +613,7 @@ export default function LandingPage() {
                 title: "Phố cổ Hội An về đêm",
                 location: "Hội An, Việt Nam",
                 tag: "Phố lồng đèn",
-                img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80",
+                img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=75",
                 count: "15 điểm",
               },
               {
@@ -622,7 +627,7 @@ title: 'Bà Nà Hills & Cầu Vàng',
                 title: "Lăng Cô & Đèo Hải Vân",
                 location: "Thừa Thiên Huế",
                 tag: "Thiên nhiên",
-                img: "https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&q=80",
+                img: "https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=1200&q=75",
                 count: "5 điểm",
               },
             ].map((item, i) => (
@@ -672,8 +677,10 @@ title: 'Bà Nà Hills & Cầu Vàng',
         <div className="relative mx-auto max-w-[1260px] overflow-hidden rounded-[40px] text-white text-center flex flex-col justify-center min-h-[680px] p-12 md:p-20 shadow-2xl">
           <div className="absolute inset-0 z-0">
             <img
-              src="https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&q=80"
+              src="https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=1400&q=75"
               alt="Resort Pool"
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"></div>

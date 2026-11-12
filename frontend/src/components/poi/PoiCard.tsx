@@ -94,6 +94,17 @@ export interface PoiCardProps {
   };
 }
 
+function getCardOptimizedImageUrl(url: string | undefined): string {
+  if (!url) return '';
+  if (url.includes('googleusercontent.com') && url.includes('=w')) {
+    return url.replace(/=w\d+-h\d+[^&]*/, '=w600-h450-k-no');
+  }
+  if (url.includes('unsplash.com') && !url.includes('w=')) {
+    return `${url}&w=600&auto=format&fit=crop&q=80`;
+  }
+  return url;
+}
+
 export default function PoiCard({
   poi,
   active = false,
@@ -167,8 +178,10 @@ export default function PoiCard({
             : ''
       }`}>
         <img
-          src={gallery[imgIdx] || poi.image}
+          src={getCardOptimizedImageUrl(gallery[imgIdx] || poi.image)}
           alt={poi.name}
+          loading="lazy"
+          decoding="async"
           referrerPolicy="no-referrer"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           onError={(e) => {

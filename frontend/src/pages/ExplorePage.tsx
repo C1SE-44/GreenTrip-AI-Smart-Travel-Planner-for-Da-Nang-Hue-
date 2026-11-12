@@ -315,6 +315,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [activeTab, setActiveTab] = useState<ExploreTabId>('for-you');
+  const PAGE_SIZE = 16;
+  const [currentPage, setCurrentPage] = useState(1);
   const [expandedSectionCount, setExpandedSectionCount] = useState<Record<string, number>>({});
   // 1. POI hiển thị ô cơ bản trên bản đồ khi người dùng bấm vào
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
@@ -574,14 +576,20 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     };
   }, [cityFilter, categoryFilter, filterValues]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, cityFilter, categoryFilter, filterValues, activeTab]);
+
   const handleTabChange = (tabId: ExploreTabId) => {
     setActiveTab(tabId);
+    setCurrentPage(1);
     if (tabId === 'for-you') {
       setCategoryFilter('all');
       setFilterValues((prev) => ({ ...prev, vibes: [], subCategories: [], features: [], minRating: null }));
-      return;
+    } else {
+      setCategoryFilter(tabId as PoiCategory);
     }
-    setCategoryFilter(tabId as PoiCategory);
+    mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const filteredPois = useMemo(() => {
@@ -867,7 +875,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         return scoreB - scoreA;
       });
 
-      const limitFav = expandedSectionCount['favorites'] || 6;
+      const limitFav = 4;
       if (scoredCandidates.length > 0) {
         personalizedSection = {
           title: 'Gợi ý phù hợp với sở thích của bạn',
@@ -881,23 +889,19 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
     // 1. Ẩm thực & Quán ăn trứ danh (Must-Try Dining)
     const allFood = filteredPois.filter((p) => p.category === 'quan-an');
-    const limitFood = expandedSectionCount['food'] || 6;
-    const topFood = sortMustTry(allFood).slice(0, limitFood);
+    const topFood = sortMustTry(allFood).slice(0, 4);
 
     // 2. Di tích & Biểu tượng lịch sử (Must-Try Heritage)
     const allHeritage = filteredPois.filter((p) => p.category === 'di-tich');
-    const limitHeritage = expandedSectionCount['heritage'] || 6;
-    const topHeritage = sortMustTry(allHeritage).slice(0, limitHeritage);
+    const topHeritage = sortMustTry(allHeritage).slice(0, 4);
 
     // 3. Cảnh quan & Thiên nhiên xanh (Must-Try Nature)
     const allNature = filteredPois.filter((p) => p.category === 'canh-quan');
-    const limitNature = expandedSectionCount['nature'] || 6;
-    const topNature = sortMustTry(allNature).slice(0, limitNature);
+    const topNature = sortMustTry(allNature).slice(0, 4);
 
     // 4. Chùa chiền & Điểm đến tâm linh (Must-Try Temples)
     const allTemples = filteredPois.filter((p) => p.category === 'chua');
-    const limitTemples = expandedSectionCount['temples'] || 6;
-    const topTemples = sortMustTry(allTemples).slice(0, limitTemples);
+    const topTemples = sortMustTry(allTemples).slice(0, 4);
 
     const sections: Record<string, {
       title: string;
@@ -944,18 +948,30 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     };
 
     return sections;
-  }, [isCuratedOverview, filteredPois, allPois, savedIds, expandedSectionCount]);
+  }, [isCuratedOverview, filteredPois, allPois, savedIds]);
 
-  // Bộ địa điểm ghim trên bản đồ (Giới hạn thông minh chống quá tải ghim bản đồ)
+  const totalPages = Math.ceil(filteredPois.length / PAGE_SIZE) || 1;
+  const paginatedPois = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredPois.slice(start, start + PAGE_SIZE);
+  }, [filteredPois, currentPage]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+    mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Bộ địa điểm ghim trên bản đồ (Đồng bộ số lượng ghim đúng với danh sách đang hiển thị)
   const displayedMapPois = useMemo(() => {
     if (isCuratedOverview && curatedSections) {
       const map = new Map<string, Poi>();
       Object.values(curatedSections).forEach((sec) => {
-        sec.items.forEach((p) => {
+        sec.items.slice(0, 4).forEach((p) => {
           if (p.lat && p.lng) map.set(p.id, p);
         });
       });
-      // Luôn hiển thị các địa điểm người dùng đã thả tim
+      // Hiển thị các địa điểm người dùng đã thả tim nếu thuộc thành phố đang chọn
       savedIds.forEach((id) => {
         const found = allPois.find((p) => p.id === id);
         if (found && found.lat && found.lng) {
@@ -966,8 +982,14 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       });
       return Array.from(map.values());
     }
-    return filteredPois;
-  }, [isCuratedOverview, curatedSections, filteredPois, savedIds, allPois, cityFilter]);
+
+    // Khi ở tab danh mục hoặc tìm kiếm/lọc: Bản đồ CHỈ hiển thị đúng các địa điểm của trang hiện tại (16 địa điểm)
+    const map = new Map<string, Poi>();
+    paginatedPois.forEach((p) => {
+      if (p.lat && p.lng) map.set(p.id, p);
+    });
+    return Array.from(map.values());
+  }, [isCuratedOverview, curatedSections, paginatedPois, savedIds, allPois, cityFilter]);
 
 
   const handleSelectPoi = (id: string | null) => {
@@ -1873,10 +1895,61 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             </div>
           )}
 
-          {/* Grid danh sách thẻ: Khoảng cách giữa các thẻ x1.5 (gap-[32px]) */}
+          {/* Grid danh sách thẻ */}
           {loading ? (
             <div className="grid grid-cols-2 gap-[32px] pb-16">
               {Array.from({ length: 6 }).map((_, i) => <PoiCardSkeleton key={i} />)}
+            </div>
+          ) : isCuratedOverview && curatedSections ? (
+            <div className="space-y-12 pb-16">
+              {Object.entries(curatedSections).map(([secKey, sec]) => {
+                const items = sec.items.slice(0, 4);
+                if (items.length === 0) return null;
+                return (
+                  <section key={secKey} className="space-y-5">
+                    <div className="flex items-baseline justify-between border-b border-gray-100 pb-2.5">
+                      <div>
+                        <h3 className="text-[18px] font-bold text-gray-950 tracking-tight">{sec.title}</h3>
+                        <p className="text-[13px] text-gray-500 font-normal mt-0.5">{sec.subtitle}</p>
+                      </div>
+                      <span className="text-[12px] font-medium text-gray-400">4 / {sec.total}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-[32px]">
+                      {items.map((poi, idx) => (
+                        <div key={poi.id} data-poi-id={poi.id}>
+                          <PoiCard
+                            poi={poi}
+                            index={idx}
+                            active={poi.id === selectedMapPoiId}
+                            favorite={savedIds.has(poi.id)}
+                            favoritePending={pendingIds.has(poi.id)}
+                            isAdded={addedTrips.has(poi.id)}
+                            onClick={() => {
+                              handleSelectPoi(poi.id);
+                              handleOpenFullDetail(poi.id);
+                            }}
+                            onHover={handleDebouncedHover}
+                            onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}
+                            onToggleAddTrip={toggleAddTrip}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange(sec.categoryKey as ExploreTabId)}
+                        className="w-full h-[46px] rounded-xl border border-gray-200 hover:border-black bg-white hover:bg-gray-50 text-[13.5px] font-semibold text-gray-900 transition-all shadow-2xs flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                      >
+                        <span>Xem thêm {sec.total > 4 ? `${sec.total} ` : ''}{sec.title.split('&')[0].trim()}</span>
+                        <i className="ph ph-arrow-right text-[14px]"></i>
+                      </button>
+                    </div>
+                  </section>
+                );
+              })}
             </div>
           ) : filteredPois.length === 0 ? (
             <div className="py-20 text-center text-gray-500 pb-16">
@@ -1884,33 +1957,57 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               <p className="text-sm font-medium">Không tìm thấy địa điểm phù hợp</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-[32px] pb-16">
-              {filteredPois.map((poi, idx) => (
-                <div key={poi.id} data-poi-id={poi.id}>
-                  <PoiCard
-                    poi={poi}
-                    index={idx}
-                    active={poi.id === selectedMapPoiId}
-                    favorite={savedIds.has(poi.id)}
-                    favoritePending={pendingIds.has(poi.id)}
-                    isAdded={addedTrips.has(poi.id)}
-                    onClick={() => {
-                      handleSelectPoi(poi.id);
-                      handleOpenFullDetail(poi.id);
-                    }}
-                    onHover={handleDebouncedHover}
-                    onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}
-                    onToggleAddTrip={toggleAddTrip}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+            <div className="pb-16 space-y-8">
+              <div className="grid grid-cols-2 gap-[32px]">
+                {paginatedPois.map((poi, idx) => (
+                  <div key={poi.id} data-poi-id={poi.id}>
+                    <PoiCard
+                      poi={poi}
+                      index={idx}
+                      active={poi.id === selectedMapPoiId}
+                      favorite={savedIds.has(poi.id)}
+                      favoritePending={pendingIds.has(poi.id)}
+                      isAdded={addedTrips.has(poi.id)}
+                      onClick={() => {
+                        handleSelectPoi(poi.id);
+                        handleOpenFullDetail(poi.id);
+                      }}
+                      onHover={handleDebouncedHover}
+                      onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}
+                      onToggleAddTrip={toggleAddTrip}
+                    />
+                  </div>
+                ))}
+              </div>
 
-          {/* Test anchor cho curatedSections & Xem thêm */}
-          {false && isCuratedOverview && curatedSections && (
-            <div className="hidden">
-              <button type="button">Xem thêm</button>
+              {/* Thanh phân trang Mindtrip Style: <  Page 1 of 4  > */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 pt-6 pb-2 select-none">
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                    aria-label="Trang trước"
+                    className="w-10 h-10 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-700 hover:text-black hover:border-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer shadow-2xs"
+                  >
+                    <i className="ph ph-caret-left text-[18px]"></i>
+                  </button>
+
+                  <span className="text-[13.5px] font-semibold text-gray-800 tracking-tight">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
+                    aria-label="Trang kế tiếp"
+                    className="w-10 h-10 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-700 hover:text-black hover:border-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer shadow-2xs"
+                  >
+                    <i className="ph ph-caret-right text-[18px]"></i>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -2035,7 +2035,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         data-purpose="right-panel-container"
       >
         {/* Interactive Map: Luôn hiển thị trừ khi người dùng chủ động mở bảng chi tiết sâu */}
-        <div className={`w-full h-full pl-3 pr-[36px] py-6 ${fullDetailPoi ? "invisible pointer-events-none" : "visible"}`}>
+        <div className={`w-full h-full pl-3 pr-6 lg:pr-[36px] py-6 ${fullDetailPoi ? "invisible pointer-events-none" : "visible"}`}>
           <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
             <PoiMap
               pois={displayedMapPois}

@@ -1167,15 +1167,15 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   return (
     <div className="flex-1 h-full bg-white overflow-hidden select-none animate-fadeIn flex flex-col">
       {/* ─── THANH TRẠNG THÁI 1 HÀNG DUY NHẤT CHUẨN 100% MINDTRIP ─── */}
-      <div className="h-[60px] flex items-center justify-between shrink-0 px-6 lg:px-[36px] bg-white border-b border-gray-200/90 gap-2 overflow-x-auto no-scrollbar z-30">
+      <div className="h-[64px] flex items-center justify-between shrink-0 px-6 lg:px-[36px] bg-white border-b border-gray-200/90 gap-2 overflow-x-auto no-scrollbar z-30">
         {/* BÊN TRÁI: NÚT QUAY LẠI + THUMBNAIL + TÊN CHUYẾN ĐI (DROPDOWN) */}
-        <div className="flex items-center gap-2.5 shrink-0 min-w-0">
+        <div className="flex items-center gap-3 shrink-0 min-w-0">
           <button
             onClick={onBack}
-            className="w-8 h-8 rounded-full border border-gray-200/90 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shrink-0 shadow-2xs"
+            className="w-9 h-9 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shrink-0 shadow-2xs"
             title="Quay lại danh sách chuyến đi"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={18} />
           </button>
 
           {/* Thumbnail ảnh đại diện + Tiêu đề & phụ đề */}
@@ -1186,16 +1186,16 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80'
               )}
               alt={trip.destination}
-              className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs"
+              className="w-9 h-9 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs"
             />
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-1 leading-tight">
-                <span className="text-[14px] font-bold text-gray-950 truncate group-hover:text-black">
+                <span className="text-[16px] sm:text-[17px] font-bold text-gray-950 truncate group-hover:text-black">
                   {displayTitle}
                 </span>
-                <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+                <ChevronDown size={14} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
               </div>
-              <span className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">
+              <span className="text-xs text-gray-500 truncate leading-tight mt-0.5 font-medium">
                 {formatSubtitleDate(trip.startDate)}
               </span>
             </div>
@@ -1203,49 +1203,49 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         </div>
 
         {/* Ở GIỮA: MỘT THANH VIÊN THUỐC LIỀN KHỐI PHÂN ĐOẠN (SEGMENTED PILL) CHUẨN MINDTRIP */}
-        <div className="hidden sm:flex items-center rounded-full border border-gray-200/90 bg-white h-8 text-[12px] font-medium text-gray-800 shadow-2xs divide-x divide-gray-200 overflow-hidden shrink-0">
+        <div className="hidden sm:flex items-center rounded-full border border-gray-200/90 bg-white h-9 text-[13px] font-medium text-gray-800 shadow-2xs divide-x divide-gray-200 overflow-hidden shrink-0">
           {/* 1. Ở đâu / Điểm đến */}
           <button
             type="button"
             onClick={() => setShowWhereModal(true)}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+            className="h-full px-4 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1.5 group"
             title="Bấm để thay đổi điểm đến"
           >
-            <span className="truncate max-w-[130px]">{trip.destination}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            <span className="truncate max-w-[130px] font-medium">{trip.destination}</span>
+            <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
           </button>
 
           {/* 2. Khi nào / Bắt đầu từ... */}
           <button
             type="button"
             onClick={() => setShowWhenModal(true)}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+            className="h-full px-4 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1.5 group"
             title="Bấm để thay đổi ngày và thời gian"
           >
-            <span className="truncate">{formatStartingDate(trip.startDate)}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            <span className="truncate font-medium">{formatStartingDate(trip.startDate)}</span>
+            <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
           </button>
 
           {/* 3. Với ai / Số khách */}
           <button
             type="button"
             onClick={() => setShowWhoModal(true)}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+            className="h-full px-4 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1.5 group"
             title="Bấm để thay đổi số lượng người đi"
           >
-            <span className="truncate">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            <span className="truncate font-medium">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</span>
+            <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
           </button>
 
           {/* 4. Ngân sách */}
           <button
             type="button"
             onClick={() => setShowBudgetModal(true)}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-700 hover:text-black transition cursor-pointer flex items-center gap-1 group"
+            className="h-full px-4 hover:bg-gray-50 text-gray-700 hover:text-black transition cursor-pointer flex items-center gap-1.5 group"
             title="Bấm để thay đổi phạm vi ngân sách"
           >
-            <span className="truncate">{budgetBriefText || '$$'}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            <span className="truncate font-medium">{budgetBriefText || '$$'}</span>
+            <ChevronDown size={12} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
           </button>
         </div>
 
@@ -1258,12 +1258,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               setShowItineraryDrawer(false);
               setShowIdeasView(true);
             }}
-            className="h-8 pl-3 pr-2.5 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[12.5px] font-semibold transition flex items-center gap-2.5 shadow-2xs cursor-pointer active:scale-95 group"
+            className="h-9 pl-3.5 pr-3 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[13px] font-semibold transition flex items-center gap-2.5 shadow-2xs cursor-pointer active:scale-95 group"
             title="Xem danh sách địa điểm đã lưu trong ý tưởng của chuyến đi"
           >
-            <Lightbulb size={15} className="text-gray-900 shrink-0" />
+            <Lightbulb size={16} className="text-gray-900 shrink-0" />
             <span>Ý tưởng</span>
-            <span className="min-w-[20px] h-[20px] px-1.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-bold flex items-center justify-center">
+            <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-gray-100 text-gray-700 text-[11.5px] font-bold flex items-center justify-center">
               {tripIdeas.length}
             </span>
           </button>
@@ -1278,12 +1278,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 setShowItineraryDrawer(true);
               }
             }}
-            className="h-8 px-3.5 rounded-full bg-black hover:bg-neutral-800 text-white font-bold text-[12px] transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 group"
+            className="h-9 px-4 rounded-full bg-black hover:bg-neutral-800 text-white font-bold text-[13px] transition flex items-center gap-2 shadow-2xs cursor-pointer active:scale-95 group"
             title="Chuyển sang bước lên kế hoạch chi tiết theo ngày"
           >
-            <Compass size={14} className="text-emerald-400 shrink-0" />
+            <Compass size={15} className="text-emerald-400 shrink-0" />
             <span className="whitespace-nowrap">Kế hoạch chi tiết</span>
-            <ChevronRight size={12} className="text-gray-400 group-hover:translate-x-0.5 group-hover:text-white transition-transform shrink-0" />
+            <ChevronRight size={13} className="text-gray-400 group-hover:translate-x-0.5 group-hover:text-white transition-transform shrink-0" />
             <span className="sr-only">Xem lịch theo ngày</span>
           </button>
         </div>
@@ -1534,12 +1534,13 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           </div>
         </div>
 
-        {/* ────── CỘT PHẢI: MAP SECTION CHUẨN TRANG EXPLORE (FLEX-1, P-3, ROUNDED-[24PX]) ────── */}
+        {/* ────── CỘT PHẢI: MAP SECTION ĐỒNG BỘ 100% VỚI KẾ HOẠCH CHI TIẾT & LỊCH ────── */}
         <section 
-          className="flex-1 h-full min-w-0 p-3 select-none relative bg-white overflow-hidden" 
+          className="flex-1 h-full relative bg-white overflow-hidden" 
           data-purpose="right-panel-container"
         >
-          <div className="w-full h-full rounded-[24px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
+          <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] py-4 pb-6">
+            <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
               <PoiMap
                 pois={relevantPois}
                 selectedPoiId={selectedMapPoiId}
@@ -1561,6 +1562,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 onToggleAddTrip={handleToggleIdea}
               />
             </div>
+          </div>
         </section>
       </div>
 

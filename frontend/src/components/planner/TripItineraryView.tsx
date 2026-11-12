@@ -994,12 +994,12 @@ export default function TripItineraryView({
           </div>
         </header>
       ) : (
-        <header className="h-[60px] px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
+        <header className="h-[64px] px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={onBack}
-              className="w-8 h-8 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-black transition cursor-pointer shrink-0"
+              className="w-9 h-9 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-black transition cursor-pointer shrink-0"
               title="Quay lại chuyến đi"
             >
               <ChevronLeft size={18} />
@@ -1010,7 +1010,7 @@ export default function TripItineraryView({
                 : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80'
               )}
               alt={trip.destination}
-              className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
+              className="w-9 h-9 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
             />
             <div className="min-w-0">
               <h1 className="font-extrabold text-[16px] sm:text-[18px] text-gray-950 truncate leading-snug">
@@ -1082,7 +1082,7 @@ export default function TripItineraryView({
         {/* ════════════════════════════════════════════════════════
             CỘT: Ý TƯỞNG + LỊCH THEO NGÀY (THỦ CÔNG CHUẨN)
         ════════════════════════════════════════════════════════ */}
-        <div className={`${isDrawerMode ? 'w-full' : (isMapExpanded ? 'hidden' : 'w-[560px] lg:w-[620px] xl:w-[660px] shrink-0')} flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 border-r border-gray-100 auto-hide-scrollbar select-none transition-[width] duration-300 ease-in-out`}>
+        <div className={`${isDrawerMode ? 'w-full' : (isMapExpanded ? 'hidden' : 'w-[650px] shrink-0')} flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 border-r border-gray-100 auto-hide-scrollbar select-none transition-[width] duration-300 ease-in-out`}>
           {/* ────────────────────────────────────────────────────────
               1. PHẦN Ý TƯỞNG (CHUẨN MINDTRIP ẢNH 3, 4 - BỘ LỌC BÊN PHẢI)
           ──────────────────────────────────────────────────────── */}

@@ -238,12 +238,12 @@ export default function TripCalendarView({
   return (
     <div className="flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn">
       {/* ─── HEADER: TIÊU ĐỀ CHUYẾN ĐI & NÚT QUAY LẠI ─── */}
-      <header className="h-[60px] px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
+      <header className="h-[64px] px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
             onClick={onBack}
-            className="w-8 h-8 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-black transition cursor-pointer shrink-0"
+            className="w-9 h-9 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-black transition cursor-pointer shrink-0"
             title="Quay lại danh sách chuyến đi"
           >
             <ChevronLeft size={18} />
@@ -254,7 +254,7 @@ export default function TripCalendarView({
               : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80'
             )}
             alt={trip.destination}
-            className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
+            className="w-9 h-9 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
           />
           <div className="min-w-0">
             <h1 className="font-extrabold text-[16px] sm:text-[18px] text-gray-950 truncate leading-snug">
@@ -309,7 +309,7 @@ export default function TripCalendarView({
         {/* ════════════════════════════════════════════════════════
             CỘT TRÁI: BẢNG LỊCH THỜI GIAN BIỂU (GOOGLE CALENDAR STYLE)
         ════════════════════════════════════════════════════════ */}
-        <div className={`${isMapExpanded ? 'hidden' : 'w-[560px] lg:w-[620px] xl:w-[660px] shrink-0'} h-full flex flex-col bg-white border-r border-gray-100 select-none overflow-hidden transition-[width] duration-300 ease-in-out`}>
+        <div className={`${isMapExpanded ? 'hidden' : 'w-[650px] shrink-0'} h-full flex flex-col bg-white border-r border-gray-100 select-none overflow-hidden transition-[width] duration-300 ease-in-out`}>
           {/* Header Lịch: Calendar + Điều hướng ngày */}
           <div className="px-6 pt-5 pb-3 shrink-0 flex items-center justify-between border-b border-gray-100">
             <div>

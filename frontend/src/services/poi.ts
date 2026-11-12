@@ -207,7 +207,8 @@ export async function getPois(params: GetPoisParams = {}): Promise<PaginatedPois
     query.set('page', String(params.page));
   }
   if (params.limit !== undefined && params.limit > 0) {
-    query.set('limit', String(params.limit));
+    const safeLimit = Math.min(Math.floor(params.limit), 100);
+    query.set('limit', String(safeLimit));
   }
   if (params.category && params.category !== 'all') {
     query.set('category', params.category);
@@ -256,15 +257,18 @@ export async function getPois(params: GetPoisParams = {}): Promise<PaginatedPois
  * Đảm bảo 100% tất cả 482 POIs (bao gồm Cầu Rồng, Chùa Linh Ứng, Ngũ Hành Sơn...) đều được kích hoạt.
  */
 export async function getAllPois(params: GetPoisParams = {}): Promise<PaginatedPoisResponse> {
-  const firstPage = await getPois({ ...params, page: 1, limit: params.limit ?? 500 });
+  const pageSize =
+    params.limit !== undefined && params.limit > 0
+      ? Math.min(Math.floor(params.limit), 100)
+      : 100;
+  const firstPage = await getPois({ ...params, page: 1, limit: pageSize });
   const items = [...(firstPage.items ?? [])];
   const totalPages = firstPage.pagination?.total_pages ?? 1;
 
   if (totalPages > 1 && items.length < (firstPage.pagination?.total ?? 0)) {
-    const remainingLimit = firstPage.pagination?.limit ?? 100;
     const remainingPages = await Promise.all(
       Array.from({ length: totalPages - 1 }, (_, index) =>
-        getPois({ ...params, page: index + 2, limit: remainingLimit }),
+        getPois({ ...params, page: index + 2, limit: pageSize }),
       ),
     );
     for (const page of remainingPages) {

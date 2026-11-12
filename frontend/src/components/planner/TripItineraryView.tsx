@@ -994,15 +994,15 @@ export default function TripItineraryView({
           </div>
         </header>
       ) : (
-        <header className="h-[64px] px-6 lg:px-[36px] bg-white flex items-center justify-between shrink-0 z-30">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="h-[56px] px-6 lg:px-[36px] bg-white border-b border-gray-200/80 flex items-center justify-between shrink-0 z-30">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
               onClick={onBack}
-              className="w-9 h-9 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-black transition cursor-pointer shrink-0"
+              className="w-8 h-8 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-black transition cursor-pointer shrink-0 shadow-2xs"
               title="Quay lại chuyến đi"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} />
             </button>
             <img
               src={trip.image || (trip.destination === 'Huế' 
@@ -1010,43 +1010,43 @@ export default function TripItineraryView({
                 : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80'
               )}
               alt={trip.destination}
-              className="w-9 h-9 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
+              className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
             />
             <div className="min-w-0">
-              <h1 className="font-extrabold text-[16px] sm:text-[18px] text-gray-950 truncate leading-snug">
+              <h1 className="font-extrabold text-[14px] sm:text-[15px] text-gray-950 truncate leading-snug">
                 {displayTitle}
               </h1>
-              <p className="text-xs text-gray-500 mt-0.5 font-medium truncate">
+              <p className="text-[11px] text-gray-500 font-medium truncate">
                 {displaySubtitle}
               </p>
             </div>
           </div>
 
           {/* Nút hành động phải: Chuyển sang Lịch + Trạng thái lưu & Nút Xong */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             {onNavigateToCalendar && (
               <button
                 type="button"
                 onClick={onNavigateToCalendar}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 hover:border-black text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer shadow-2xs group"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 hover:border-black text-[11.5px] font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer shadow-2xs group"
                 title="Chuyển sang chế độ xem dạng Lịch"
               >
-                <CalendarIcon size={13} className="text-blue-600" />
+                <CalendarIcon size={12} className="text-blue-600" />
                 <span>Xem dạng Lịch</span>
-                <ChevronRight size={12} className="text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+                <ChevronRight size={11} className="text-gray-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
             )}
 
-            <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium">
+            <div className="text-[11px] text-gray-500 hidden sm:flex items-center gap-1 font-medium">
               {isSaving ? (
                 <span className="flex items-center gap-1 text-amber-700">
-                  <RefreshCw size={12} className="animate-spin" /> Đang lưu...
+                  <RefreshCw size={11} className="animate-spin" /> Đang lưu...
                 </span>
               ) : hasUnsavedChanges ? (
                 <span className="text-gray-400">Chưa lưu</span>
               ) : (
                 <span className="text-emerald-700 flex items-center gap-1">
-                  <Check size={13} /> Đã lưu
+                  <Check size={12} /> Đã lưu
                 </span>
               )}
             </div>
@@ -1054,7 +1054,7 @@ export default function TripItineraryView({
             <button
               type="button"
               onClick={handleDone}
-              className="h-9 px-5 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95"
+              className="h-8 px-4 rounded-full bg-black hover:bg-neutral-800 text-white text-[12px] font-bold transition cursor-pointer shadow-xs active:scale-95"
               title="Lưu lịch trình và quay lại tổng quan"
             >
               Xong
@@ -1911,8 +1911,8 @@ export default function TripItineraryView({
         ════════════════════════════════════════════════════════ */}
         {!isDrawerMode && (
           <section className="flex-1 h-full relative bg-white overflow-hidden" data-purpose="right-panel-container">
-            <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] py-4 pb-6">
-              <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
+            <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] pt-0 pb-3">
+              <div className="w-full h-full rounded-b-[20px] rounded-t-none overflow-hidden border border-t-0 border-gray-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
                 {/* Bộ chọn xem đường đi theo ngày dạng Dropdown dọc (Chuẩn yêu cầu: "thay cái dãy ngày, thành kiểu xem đường đi của ngày, khi mở thì sẽ hiện hàng dọc ngày nào ngày nào") */}
                 <div className="absolute top-3.5 right-3.5 z-[400] flex flex-col items-end">
                   <button

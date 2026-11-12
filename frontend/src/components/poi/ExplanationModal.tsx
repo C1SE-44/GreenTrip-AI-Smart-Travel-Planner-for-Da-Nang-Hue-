@@ -186,7 +186,7 @@ export default function ExplanationModal({
                 className="mb-2 flex items-center gap-1.5 text-[13px] font-bold text-emerald-900"
               >
                 <i className="ph ph-sparkle text-emerald-600" aria-hidden="true" />
-                Lý do AI gợi ý
+                Lý do gợi ý cho bạn
               </h3>
               <p className="rounded-xl bg-emerald-50 px-4 py-3 text-[13px] leading-relaxed text-emerald-950">
                 {explanationSnippet}

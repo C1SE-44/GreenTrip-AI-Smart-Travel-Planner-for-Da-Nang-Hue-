@@ -16,6 +16,7 @@ import {
   Heart,
   Info,
   ChevronRight,
+  Car,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import {
@@ -402,7 +403,7 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
           <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center shrink-0">
             <Sparkles size={12} className="text-white" />
           </div>
-          <span className="font-bold text-[13.5px] text-neutral-900 tracking-tight">Trợ lý du lịch AI</span>
+          <span className="font-bold text-[13.5px] text-neutral-900 tracking-tight">Đoạn chat (1) • Trợ lý AI</span>
           <span className="text-neutral-300">•</span>
 
           {/* Compact Day Context Selector */}
@@ -943,11 +944,22 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask GreenTrip..."
+            placeholder="Bắt đầu một cuộc trò chuyện mới cho chuyến đi này..."
             disabled={isLoading}
             className="flex-1 text-[13.5px] text-neutral-900 placeholder:text-neutral-400 bg-transparent focus:outline-none py-1"
             aria-label="Ask GreenTrip"
           />
+
+          <button
+            type="button"
+            onClick={() => {
+              handleSendMessage('Tư vấn phương tiện di chuyển xanh tiết kiệm CO2 cho chuyến đi');
+            }}
+            className="w-8 h-8 rounded-full hover:bg-neutral-100 text-neutral-500 hover:text-emerald-700 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
+            title="Phương tiện di chuyển xanh"
+          >
+            <Car size={16} />
+          </button>
 
           {/* Microphone Icon Button */}
           <button

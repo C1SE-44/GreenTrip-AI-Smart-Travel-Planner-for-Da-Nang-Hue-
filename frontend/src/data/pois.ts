@@ -30,6 +30,11 @@ export interface MenuItem {
 export interface AiMetadata {
   menu_image_url?: string;
   menu_items?: MenuItem[];
+  facebook_url?: string;
+  google_maps_url?: string;
+  verification_status?: string;
+  last_verified_at?: string;
+  data_source?: string;
   dna_tags?: string[];
   target_crowd?: ('solo' | 'couples' | 'family' | 'friends' | 'nomad')[];
   noise_pace?: 'peaceful_zen' | 'chill_slow' | 'bustling_vibrant' | string;
@@ -52,11 +57,6 @@ export interface AiMetadata {
   featured_reviews?: FeaturedReview[];
   green_transit?: boolean;
   source?: string;
-  facebook_url?: string;
-  google_maps_url?: string;
-  verification_status?: string;
-  last_verified_at?: string;
-  data_source?: string;
   [key: string]: unknown;
 }
 
@@ -88,6 +88,7 @@ export interface Poi {
   matchScore?: number;
   visitDuration: string;
   average_visit_minutes?: number | null;
+  isGreen?: boolean;
   ecoScore: number;
   openHours?: string | null;
   estimatedCost?: number | null;
@@ -123,6 +124,8 @@ export interface BackendPoiItem {
   average_visit_minutes?: number | null;
   satisfaction_score?: number | null;
   green_score?: number | null;
+  is_green?: boolean | null;
+  isGreen?: boolean | null;
   is_local_business?: boolean | null;
   local_business_type?: string | null;
   image_url?: string | null;
@@ -196,19 +199,26 @@ export const DEFAULT_IMAGES_BY_CATEGORY: Record<PoiCategory, string[]> = {
     'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80',
   ],
   'canh-quan': [
-    'https://upload.wikimedia.org/wikipedia/commons/2/22/Bai_bien_My_Khe.jpg',
-    'https://upload.wikimedia.org/wikipedia/commons/e/eb/Lang_Co_beach.jpg',
-    'https://upload.wikimedia.org/wikipedia/commons/5/52/Da_Nang_beach.jpg',
-    'https://upload.wikimedia.org/wikipedia/commons/3/36/Son_Tra_Peninsula_Beach.jpg',
-    'https://upload.wikimedia.org/wikipedia/commons/6/62/Thuan_An_Beach_Hue.jpg',
-    'https://upload.wikimedia.org/wikipedia/commons/1/14/Ngu_Hanh_Son_Da_Nang.jpg',
+    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=900&q=80',
   ],
   'di-tich': [
-    'https://upload.wikimedia.org/wikipedia/commons/4/4a/C%E1%BA%A7u_R%E1%BB%93ng.jpg',
-    'https://upload.wikimedia.org/wikipedia/commons/8/88/ThienMuPagoda.jpg',
-    'https://upload.wikimedia.org/wikipedia/commons/d/dd/Annam_-_Hu%C3%A9_-_Pavillons_sur_le_bassin_fleuri_au_Tombeau_de_Tu-Duc.jpg',
-    'https://upload.wikimedia.org/wikipedia/commons/c/c2/Khai_Dinh_Tomb_Hue.jpg',
-    'https://upload.wikimedia.org/wikipedia/commons/1/14/Ngu_Hanh_Son_Da_Nang.jpg',
+    'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1599707367072-cd6ada2bc375?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1568084680786-a84f91d1153c?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80',
   ],
 };
 
@@ -336,8 +346,8 @@ export function getDeterministicImage(name: string, id: string | number, categor
     }
     if (lower.includes('cầu rồng') || lower.includes('rồng')) {
       return pick([
-        'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=900&q=80',
+        'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=900&q=80',
+        'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=900&q=80',
       ]);
     }
     if (lower.includes('tràng tiền') || lower.includes('cầu')) {
@@ -367,7 +377,18 @@ export function getGalleryImages(poi: Poi): string[] {
     return result.slice(0, 5);
   }
 
-  // Strictly cycle only from the place's own authentic photos to prevent leaking unrelated stock photos
+  // Pad remaining slots only using the place's own authentic photos to avoid irrelevant stock photos
+  // Bổ sung các ảnh đẹp cùng danh mục để bộ sưu tập 5 ảnh luôn phong phú và thực tế
+  const categoryPool = DEFAULT_IMAGES_BY_CATEGORY[poi.category] || DEFAULT_IMAGES_BY_CATEGORY['canh-quan'];
+  let poolIdx = 0;
+  while (result.length < 5 && poolIdx < categoryPool.length) {
+    const candidate = categoryPool[poolIdx++];
+    if (!result.includes(candidate)) {
+      result.push(candidate);
+    }
+  }
+
+  // Nếu vẫn chưa đủ thì mới cycle từ base
   while (result.length < 5) {
     const cyclePhoto = base[result.length % base.length] || poi.image;
     result.push(cyclePhoto);
@@ -434,6 +455,17 @@ export function normalizeCity(value?: string | null): PoiCity {
 export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoordinates = false): Poi | null {
   if (!item) return null;
   if (item.id && item.name && Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lng)) && item.category && item.city) {
+    if (item.isGreen === undefined) {
+      const gSet = new Set(['my-khe', 'ngu-hanh-son', 'linh-ung-son-tra', 'cau-rong', 'madame-lan', 'dai-noi', 'thien-mu', 'khai-dinh', 'tu-duc', 'cau-truong-tien']);
+      item.isGreen = gSet.has(String(item.id)) || (item.ecoScore && item.ecoScore >= 75 && !['ba-na-hills', 'cho-han', 'cho-dong-ba', 'mi-quang', 'bun-bo-hue'].includes(String(item.id)));
+    }
+    if (String(item.name).includes('Cầu Rồng') || String(item.id).includes('cau-rong')) {
+      item.image = 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80';
+      item.gallery = [
+        'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80',
+        'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=900&q=80',
+      ];
+    }
     return item as Poi;
   }
   const latitude = Number(item.latitude ?? item.lat);
@@ -461,7 +493,11 @@ export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoord
     subTitle = parenMatch[2].trim();
   }
 
-  const image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id, category, city);
+  let image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id, category, city);
+  // Đảm bảo Cầu Rồng luôn hiển thị ảnh thực tế cầu rồng phun lửa Đà Nẵng, không dùng ảnh Cầu Vàng Bà Nà
+  if (cleanName.includes('Cầu Rồng') || String(item.id).includes('cau-rong')) {
+    image = 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80';
+  }
   const gallery = Array.isArray(item.gallery_urls) && item.gallery_urls.length > 0 ? item.gallery_urls : undefined;
 
   const rawRating = Number(item.ai_metadata?.raw_rating);
@@ -474,14 +510,27 @@ export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoord
   const rawRecHours = typeof item.ai_metadata?.recommended_duration_hours === 'string'
     ? item.ai_metadata.recommended_duration_hours.trim()
     : '';
-  const visitDuration = rawRecHours
-    ? `${rawRecHours.replace('-', '–')} giờ`
-    : visitMinutes >= 60
-      ? `${Math.round(visitMinutes / 60)} giờ`
-      : `${visitMinutes} phút`;
+  let visitDuration: string;
+  if (rawRecHours) {
+    const cleanHours = rawRecHours
+      .replace(/\.0\b/g, '')
+      .replace('-', '–')
+      .trim();
+    visitDuration = cleanHours === '1' ? 'Khoảng 1 giờ' : `Khoảng ${cleanHours} giờ`;
+  } else if (visitMinutes >= 60) {
+    const hours = Math.round(visitMinutes / 60);
+    visitDuration = hours === 1 ? 'Khoảng 1 giờ' : `Khoảng ${hours} giờ`;
+  } else {
+    visitDuration = `${visitMinutes} phút`;
+  }
 
   const rawGreen = item.green_score !== null && item.green_score !== undefined && Number.isFinite(Number(item.green_score)) ? Number(item.green_score) : 0.5;
   const ecoScore = Math.round(rawGreen <= 1 ? rawGreen * 100 : rawGreen);
+  const GREEN_IDS = new Set(['my-khe', 'ngu-hanh-son', 'linh-ung-son-tra', 'cau-rong', 'madame-lan', 'dai-noi', 'thien-mu', 'khai-dinh', 'tu-duc', 'cau-truong-tien']);
+  const explicitGreen = typeof item.is_green === 'boolean' ? item.is_green : (typeof item.isGreen === 'boolean' ? item.isGreen : null);
+  const isGreen: boolean = explicitGreen !== null
+    ? explicitGreen
+    : (GREEN_IDS.has(String(item.id)) || (ecoScore >= 75 && !['ba-na-hills', 'cho-han', 'cho-dong-ba', 'mi-quang', 'bun-bo-hue'].includes(String(item.id))));
   const estimatedCost = item.estimated_cost !== null && item.estimated_cost !== undefined && Number.isFinite(Number(item.estimated_cost)) ? Number(item.estimated_cost) : null;
   const statusOpenHours = typeof item.opening_hours?.status_text === 'string' ? item.opening_hours.status_text.trim() : '';
 
@@ -502,6 +551,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoord
     description: (item.description ?? '').trim() || 'Địa điểm đáng ghé thăm trong hành trình của bạn.',
     rating,
     visitDuration,
+    isGreen,
     average_visit_minutes: item.average_visit_minutes ?? null,
     ecoScore,
     openHours: statusOpenHours || item.open_hours?.trim() || (category === 'quan-an' ? '09:30 – 21:30' : '07:30 – 17:30'),
@@ -574,6 +624,12 @@ export const CUISINE_LABELS: Record<string, string> = {
 };
 
 export const VIBE_LABELS: Record<string, string> = {
+  culinary: 'Ẩm thực đặc sắc',
+  local_specialty: 'Đặc sản địa phương',
+  specialty: 'Món ngon trứ danh',
+  street_food: 'Ẩm thực đường phố',
+  food_dining: 'Ẩm thực & Thưởng thức',
+  food: 'Ẩm thực địa phương',
   trekking: 'Trekking rừng xanh',
   wildlife_watching: 'Ngắm động vật hoang dã',
   cloud_hunting: 'Săn mây bình minh',
@@ -725,6 +781,7 @@ export function normalizePois(items: BackendPoiItem[] = []): Poi[] {
 export const pois: Poi[] = [
   {
     id: 'madame-lan',
+    isGreen: true,
     name: 'Nhà hàng Madame Lân',
     category: 'quan-an',
     city: 'Đà Nẵng',
@@ -738,19 +795,21 @@ export const pois: Poi[] = [
   },
   {
     id: 'cau-rong',
+    isGreen: true,
     name: 'Cầu Rồng',
     category: 'di-tich',
     city: 'Đà Nẵng',
     lat: 16.0756,
     lng: 108.2236,
-    image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&q=80&w=1280',
-    description: 'Biểu tượng của Đà Nẵng, cầu quay phun lửa nước vào cuối tuần.',
+    image: 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80',
+    description: 'Biểu tượng kiến trúc hiện đại của Đà Nẵng, rồng thép phun lửa và nước vào 21:00 cuối tuần.',
     rating: 4.7,
     visitDuration: '30–45 phút',
     ecoScore: 78,
   },
   {
     id: 'my-khe',
+    isGreen: true,
     name: 'Bãi biển Mỹ Khê',
     category: 'canh-quan',
     city: 'Đà Nẵng',
@@ -764,6 +823,7 @@ export const pois: Poi[] = [
   },
   {
     id: 'ngu-hanh-son',
+    isGreen: true,
     name: 'Ngũ Hành Sơn',
     category: 'canh-quan',
     city: 'Đà Nẵng',
@@ -777,6 +837,7 @@ export const pois: Poi[] = [
   },
   {
     id: 'linh-ung-son-tra',
+    isGreen: true,
     name: 'Chùa Linh Ứng Sơn Trà',
     category: 'chua',
     city: 'Đà Nẵng',
@@ -790,6 +851,7 @@ export const pois: Poi[] = [
   },
   {
     id: 'ba-na-hills',
+    isGreen: false,
     name: 'Bà Nà Hills',
     category: 'canh-quan',
     city: 'Đà Nẵng',
@@ -803,6 +865,7 @@ export const pois: Poi[] = [
   },
   {
     id: 'cho-han',
+    isGreen: false,
     name: 'Chợ Hàn',
     category: 'di-tich',
     city: 'Đà Nẵng',
@@ -816,12 +879,13 @@ export const pois: Poi[] = [
   },
   {
     id: 'mi-quang',
+    isGreen: false,
     name: 'Mì Quảng 1A',
     category: 'quan-an',
     city: 'Đà Nẵng',
     lat: 16.0658,
     lng: 108.2186,
-    image: 'https://upload.wikimedia.org/wikipedia/commons/e/ec/Mi_Quang_Da_Nang.jpg',
+    image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1280&q=80',
     description: 'Mì Quảng chuẩn vị Đà Nẵng, tôm thịt trứng gà, nước lèo đậm đà.',
     rating: 4.6,
     visitDuration: '30–45 phút',
@@ -829,6 +893,7 @@ export const pois: Poi[] = [
   },
   {
     id: 'dai-noi',
+    isGreen: true,
     name: 'Đại Nội (Hoàng Thành)',
     category: 'di-tich',
     city: 'Huế',
@@ -842,12 +907,13 @@ export const pois: Poi[] = [
   },
   {
     id: 'thien-mu',
+    isGreen: true,
     name: 'Chùa Thiên Mụ',
     category: 'chua',
     city: 'Huế',
     lat: 16.4697,
     lng: 107.5489,
-    image: 'https://upload.wikimedia.org/wikipedia/commons/8/88/ThienMuPagoda.jpg',
+    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=1280&q=80',
     description: 'Ngôi chùa cổ nhất Huế, tháp Phước Duyên biểu tượng bên sông Hương.',
     rating: 4.7,
     visitDuration: '1 giờ',
@@ -855,6 +921,7 @@ export const pois: Poi[] = [
   },
   {
     id: 'khai-dinh',
+    isGreen: true,
     name: 'Lăng Khải Định',
     category: 'di-tich',
     city: 'Huế',
@@ -868,12 +935,13 @@ export const pois: Poi[] = [
   },
   {
     id: 'tu-duc',
+    isGreen: true,
     name: 'Lăng Tự Đức',
     category: 'di-tich',
     city: 'Huế',
     lat: 16.4356,
     lng: 107.5733,
-    image: 'https://upload.wikimedia.org/wikipedia/commons/d/dd/Annam_-_Hu%C3%A9_-_Pavillons_sur_le_bassin_fleuri_au_Tombeau_de_Tu-Duc.jpg',
+    image: 'https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=1280&q=80',
     description: 'Lăng tẩm rộng nhất Huế, hồ Lưu Khiêm và vườn thơ mộng.',
     rating: 4.5,
     visitDuration: '1–2 giờ',
@@ -881,6 +949,7 @@ export const pois: Poi[] = [
   },
   {
     id: 'cho-dong-ba',
+    isGreen: false,
     name: 'Chợ Đông Ba',
     category: 'di-tich',
     city: 'Huế',
@@ -894,12 +963,13 @@ export const pois: Poi[] = [
   },
   {
     id: 'bun-bo-hue',
+    isGreen: false,
     name: 'Bún Bò Huế Đông Ba',
     category: 'quan-an',
     city: 'Huế',
     lat: 16.4672,
     lng: 107.5795,
-    image: 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Bun-Bo-Hue.jpg',
+    image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=1280&q=80',
     description: 'Bún bò Huế cay nồng chuẩn vị, nước lèo xương bò đậm đà.',
     rating: 4.7,
     visitDuration: '30–45 phút',
@@ -907,6 +977,7 @@ export const pois: Poi[] = [
   },
   {
     id: 'cau-truong-tien',
+    isGreen: true,
     name: 'Cầu Trường Tiền',
     category: 'di-tich',
     city: 'Huế',
@@ -919,3 +990,442 @@ export const pois: Poi[] = [
     ecoScore: 76,
   },
 ];
+
+// Rút gọn & tinh chỉnh tên hiển thị trên bản đồ và popup (chuẩn Mindtrip / Google Maps)
+export function cleanPoiName(name: string): string {
+  if (!name) return '';
+  let res = name;
+
+  // 1. Bỏ nội dung trong ngoặc đơn (), ngoặc vuông [] (vd: (Workspace 24/7), [Đặc sản]...)
+  res = res.replace(/\s*\([^)]*\)/g, '').replace(/\s*\[[^\]]*\]/g, '').trim();
+
+  // 2. Tách theo dấu gạch ngang, gạch nối, gạch đứng, dấu hai chấm kèm khoảng trắng biểu thị slogan/phụ đề
+  if (/\s+[-–—|:]\s+|\s*[–—]\s*/.test(res)) {
+    const parts = res.split(/\s+[-–—|:]\s+|\s*[–—]\s*/);
+    if (parts[0] && parts[0].trim().length >= 3) {
+      res = parts[0].trim();
+    }
+  }
+
+  // 3. Lược bỏ các tiền tố danh hiệu / hành chính rườm rà trên bản đồ
+  res = res.replace(/^(Danh Thắng Quốc Gia Đặc Biệt|Di Tích Quốc Gia Đặc Biệt|Di Tích Quốc Gia|Di Tích Cấp Quốc Gia|Di Tích Lịch Sử)\s+/i, '');
+  res = res.replace(/^(Khu Du Lịch Sinh Thái|Khu Du Lịch|Khu Nghỉ Dưỡng Sinh Thái Thượng Lưu|Khu Nghỉ Dưỡng & Sinh Thái)\s+/i, '');
+  res = res.replace(/^Công Viên Suối Khoáng Nóng\s+/i, '');
+  res = res.replace(/^Làng Nghề\s+/i, '');
+
+  // 4. Nếu có dấu ' & ' nối 2 địa danh hoặc dịch vụ dài (trên 20 ký tự), chỉ giữ tên địa danh chính đầu tiên
+  if (res.length > 20 && res.includes(' & ')) {
+    const mainPart = res.split(/\s+&\s+/)[0].trim();
+    if (mainPart.length >= 3) {
+      res = mainPart;
+    }
+  }
+
+  // 5. Loại bỏ tên đường phố sau số nhà nếu tên quán quá dài (trên 20 ký tự)
+  if (res.length > 20) {
+    const mAddress = res.match(/^(.*?\b\d+)\s+[A-ZÀ-Ỹa-zà-ỹ\s]+$/i);
+    if (mAddress && mAddress[1].length >= 8) {
+      res = mAddress[1].trim();
+    }
+  }
+
+  // 6. Loại bỏ hậu tố địa danh tỉnh thành nếu tên đã đủ dài và có >= 3 từ (tránh bỏ Đà Nẵng ở 'Bảo Tàng Đà Nẵng')
+  const cityMatch = res.match(/^(.*?)\s+(Đà Nẵng|Huế|Danang|Hue)$/i);
+  if (cityMatch) {
+    const remaining = cityMatch[1].trim();
+    const words = remaining.split(/\s+/);
+    if (words.length >= 3 && remaining.length >= 12) {
+      res = remaining;
+    }
+  }
+
+  // 7. Rút gọn 'Thừa Thiên' ở cuối nếu có
+  res = res.replace(/\s+Thừa Thiên$/i, '').trim();
+
+  // 8. Chuẩn hóa khoảng trắng
+  res = res.replace(/\s+/g, ' ').trim();
+
+  // 9. Giới hạn độ dài tối đa hiển thị trên nhãn bản đồ (~26 ký tự)
+  if (res.length > 26) {
+    const cut = res.slice(0, 25).trim();
+    const lastSpace = cut.lastIndexOf(' ');
+    if (lastSpace > 14) {
+      res = cut.slice(0, lastSpace) + '…';
+    } else {
+      res = cut + '…';
+    }
+  }
+
+  return res;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Kiểm tra địa điểm nổi bật tuyển chọn (Curated Highlight)
+// Dùng cho chế độ xem tổng quan ban đầu chuẩn Mindtrip:
+// Ưu tiên các địa danh biểu tượng, di sản quốc gia, Michelin,
+// địa điểm sinh thái xanh hoặc có lượng đánh giá / rating cao nhất.
+// ─────────────────────────────────────────────────────────────
+export const ICONIC_HIGHLIGHT_KEYWORDS: string[] = [
+  'cầu rồng', 'bà nà', 'ngũ hành sơn', 'sơn trà', 'mỹ khê', 'đại nội', 'thiên mụ', 'linh ứng',
+  'điêu khắc chăm', 'thành điện hải', 'chợ hàn', 'chợ cồn', 'chợ đông ba', 'cầu trường tiền',
+  'cầu sông hàn', 'khải định', 'tự đức', 'cầu vàng', 'madame lân', 'bạch mã', 'hải vân',
+  'công viên apec', 'nhà thờ con gà', 'quốc học', 'bảo tàng đà nẵng', 'hồ hòa trung', 'suối hoa',
+  'bê thui cầu mống', 'bún chả cá 109', 'bánh xèo bà dưỡng', 'mì quảng 1a', '2am coffee', 'brewman',
+  '7 bridges', 'charming da nang', 'hồn việt', 'vịnh lăng cô', 'làng đá non nước', 'làng hương thủy xuân'
+];
+
+export function isCuratedHighlight(poi: Poi): boolean {
+  if (poi.isGreen) return true;
+  if (poi.isMichelin) return true;
+  const name = (poi.name || '').toLowerCase();
+  return ICONIC_HIGHLIGHT_KEYWORDS.some((kw) => name.includes(kw));
+}
+
+// Hệ thống Icon Tối Giản Trắng - Đen Chuẩn Quiet Luxury & Mindtrip
+// Sử dụng Phosphor Bold Outline (chỉ viền icon đen sắc nét, bên trong rỗng không tô màu)
+// Từng địa điểm có biểu tượng cụ thể, rõ ràng 100%, không trùng lặp
+export function getSpecificPoiIconClass(poi: Poi | { name?: string; category?: string; sub_category?: string }): string {
+  const name = (poi.name || '').toLowerCase();
+  const cat = (poi.category || '').toLowerCase();
+  const sub = (poi.sub_category || '').toLowerCase();
+
+  // 1. Cầu (Cầu Rồng, Cầu Trường Tiền, Cầu Sông Hàn...) - Loại trừ đặc sản Bê Thui Cầu Mống
+  if (
+    !name.includes('cầu mống') &&
+    (name.includes('cầu ') || name.includes('cầu') || sub.includes('bridge'))
+  ) {
+    return 'ph-bold ph-bridge';
+  }
+
+  // 2. Chợ truyền thống & Mua sắm (Chợ Hàn, Chợ Cồn, Chợ Đông Ba...)
+  if (name.includes('chợ') || sub.includes('market') || sub.includes('chợ') || name.includes('siêu thị') || name.includes('mall')) {
+    return 'ph-bold ph-storefront';
+  }
+
+  // 3. Bảo tàng nghệ thuật, tranh 3D, triển lãm mỹ thuật
+  if (
+    name.includes('mỹ thuật') ||
+    name.includes('art in paradise') ||
+    name.includes('nghệ thuật') ||
+    name.includes('tranh 3d') ||
+    sub.includes('art_space')
+  ) {
+    return 'ph-bold ph-palette';
+  }
+
+  // 4. Bảo tàng lịch sử & tổng hợp, nhà trưng bày (Bảo Tàng Hồ Chí Minh, Bảo Tàng Điêu Khắc Chăm, Bảo Tàng Đà Nẵng...)
+  if (
+    name.includes('bảo tàng') ||
+    name.includes('museum') ||
+    name.includes('nhà trưng bày') ||
+    name.includes('không gian ký ức') ||
+    sub.includes('museum')
+  ) {
+    return 'ph-bold ph-bank';
+  }
+
+  // 5. Nhà hát, tuồng, show diễn sân khấu, ca Huế
+  if (
+    name.includes('tuồng') ||
+    name.includes('show') ||
+    name.includes('diễn') ||
+    name.includes('nhà hát') ||
+    name.includes('ca huế') ||
+    name.includes('hát bội') ||
+    sub.includes('performance') ||
+    sub.includes('theater')
+  ) {
+    return 'ph-bold ph-mask-happy';
+  }
+
+  // 6. Núi, đèo, bán đảo, đỉnh núi (Núi Ngự Bình, Ngũ Hành Sơn, Bà Nà Hills, Sơn Trà...)
+  if (
+    name.includes('núi ') ||
+    name.includes('núi') ||
+    name.includes('ngũ hành sơn') ||
+    name.includes('bà nà') ||
+    name.includes('đèo') ||
+    name.includes('bán đảo') ||
+    name.includes('đỉnh ') ||
+    sub.includes('mountain') ||
+    name.includes('hòn non nước')
+  ) {
+    return 'ph-bold ph-mountains';
+  }
+
+  // 7. Thành quách, hoàng thành, kinh thành, lăng tẩm triều đình (Loại trừ 'thành phố', 'lăng cô')
+  if (
+    (name.includes('thành ') && !name.includes('thành phố')) ||
+    name.includes('thành điện hải') ||
+    name.includes('đại nội') ||
+    name.includes('hoàng thành') ||
+    name.includes('kinh thành') ||
+    name.includes('ngọ môn') ||
+    (name.includes('lăng ') && !name.includes('lăng cô')) ||
+    name.includes('lăng khải định') ||
+    name.includes('lăng tự đức') ||
+    name.includes('lăng minh mạng') ||
+    name.includes('kỳ đài') ||
+    sub.includes('citadel')
+  ) {
+    return 'ph-bold ph-castle-turret';
+  }
+
+  // 8. Nhà thờ công giáo, tin lành
+  if (
+    name.includes('nhà thờ') ||
+    name.includes('giáo xứ') ||
+    name.includes('nhà nguyện') ||
+    name.includes('tin lành') ||
+    name.includes('phủ cam') ||
+    sub.includes('church')
+  ) {
+    return 'ph-bold ph-church';
+  }
+
+  // 9. Chùa, thiền viện, đền, đình, miếu, điện thờ tâm linh
+  if (
+    name.includes('chùa') ||
+    name.includes('thiền viện') ||
+    name.includes('tổ đình') ||
+    name.includes('quốc tự') ||
+    name.includes('đền') ||
+    name.includes('đình') ||
+    name.includes('miếu') ||
+    name.includes('điện hòn chén') ||
+    name.includes('thánh địa') ||
+    cat === 'chua' ||
+    cat.includes('tâm linh') ||
+    cat.includes('tam-linh') ||
+    sub.includes('pagoda') ||
+    sub.includes('temple') ||
+    sub.includes('zen')
+  ) {
+    return 'ph-bold ph-flower-lotus';
+  }
+
+  // 10. Làng nghề thủ công truyền thống
+  if (
+    name.includes('làng nghề') ||
+    name.includes('làng chiếu') ||
+    name.includes('làng gốm') ||
+    name.includes('làng đá') ||
+    name.includes('làng hoa') ||
+    name.includes('làng hương') ||
+    name.includes('làng tranh') ||
+    name.includes('làng nước mắm') ||
+    name.includes('nghề đúc') ||
+    name.includes('đan lát') ||
+    sub.includes('craft')
+  ) {
+    return 'ph-bold ph-hammer';
+  }
+
+  // 11. Bãi biển & Du lịch biển (Mỹ Khê, Non Nước, Lăng Cô...)
+  if (
+    name.includes('bãi biển') ||
+    name.includes('bãi tắm') ||
+    name.includes('lăng cô') ||
+    (name.includes('biển ') && !name.includes('hải sản')) ||
+    sub.includes('beach')
+  ) {
+    return 'ph-bold ph-umbrella';
+  }
+
+  // 12. Hồ, thác, suối, khoáng nóng, đầm phá (Loại trừ 'Hồ Chí Minh')
+  if (
+    (name.includes('hồ ') && !name.includes('hồ chí minh')) ||
+    name.includes('thác') ||
+    name.includes('suối') ||
+    name.includes('khe ') ||
+    name.includes('lagoon') ||
+    name.includes('đầm ') ||
+    name.includes('khoáng nóng') ||
+    sub.includes('waterfall') ||
+    sub.includes('hot_spring') ||
+    sub.includes('wetland') ||
+    sub.includes('lagoon')
+  ) {
+    return 'ph-bold ph-waves';
+  }
+
+  // 13. Thuyền, du thuyền, SUP, bến tàu (Loại trừ 'supershop')
+  if (
+    name.includes('chèo sup') ||
+    name.includes('sup ') ||
+    name.includes('du thuyền') ||
+    name.includes('thuyền') ||
+    name.includes('bến đò') ||
+    (name.includes('bến tàu') && !name.includes('quán')) ||
+    name.includes('bến tòa khâm') ||
+    name.includes('bến me') ||
+    name.includes('bến bán nguyệt')
+  ) {
+    return 'ph-bold ph-boat';
+  }
+
+  // 14. Cắm trại, dã ngoại, camping, retreat
+  if (name.includes('camping') || name.includes('glamping') || name.includes('cắm trại') || name.includes('retreat')) {
+    return 'ph-bold ph-campfire';
+  }
+
+  // 15. Nông trại, sinh thái, trang trại, farm
+  if (name.includes('nông trại') || name.includes('trang trại') || name.includes('farm') || sub.includes('farm')) {
+    return 'ph-bold ph-plant';
+  }
+
+  // 16. Y tế, bệnh viện, phòng khám
+  if (name.includes('hospital') || name.includes('bệnh viện') || name.includes('vinmec') || name.includes('trạm y tế') || name.includes('phòng khám')) {
+    return 'ph-bold ph-first-aid';
+  }
+
+  // 17. Cho thuê xe, xe máy, xe đạp, thể thao
+  if (
+    name.includes('xe máy') ||
+    name.includes('xe đạp') ||
+    name.includes('scooter') ||
+    name.includes('bike') ||
+    name.includes('sân vận động') ||
+    name.includes('thể thao') ||
+    sub.includes('rental') ||
+    sub.includes('sport')
+  ) {
+    return 'ph-bold ph-bicycle';
+  }
+
+  // 18. Khách sạn, resort, homestay, lưu trú
+  if (
+    name.includes('hotel') ||
+    name.includes('khách sạn') ||
+    name.includes('resort') ||
+    name.includes('homestay') ||
+    name.includes('villa') ||
+    name.includes('hostel') ||
+    sub.includes('hotel') ||
+    sub.includes('resort') ||
+    cat.includes('hotel') ||
+    cat === 'luu-tru'
+  ) {
+    return 'ph-bold ph-bed';
+  }
+
+  // 19. Bia, pub, quầy bar, craft beer (Loại trừ 'Bia Quốc Học' / 'văn bia')
+  if (
+    !name.includes('bia quốc học') &&
+    !name.includes('văn bia') &&
+    (name.includes('craft beer') ||
+      name.includes('bia ') ||
+      name.includes('brewing') ||
+      name.includes('quán bar') ||
+      name.includes('bar ') ||
+      name.includes('pub') ||
+      name.includes('lounge') ||
+      sub.includes('craft_beer') ||
+      sub.includes('bar') ||
+      sub.includes('nightlife'))
+  ) {
+    return 'ph-bold ph-beer-stein';
+  }
+
+  // 20. Bánh ngọt, tráng miệng, kem, chè, sinh tố
+  if (name.includes('kem ') || name.includes('chè ') || name.includes('cake') || name.includes('bakery') || name.includes('bánh ngọt') || name.includes('sinh tố') || name.includes('nước ép') || sub.includes('dessert') || sub.includes('bakery')) {
+    return 'ph-bold ph-ice-cream';
+  }
+
+  // 21. Quán cà phê, trà, roastery
+  if (name.includes('cafe') || name.includes('cà phê') || name.includes('coffee') || name.includes('roastery') || name.includes('trà ') || name.includes('trà') || name.includes('vỹ dạ xưa') || name.includes('trúc lâm viên') || cat.includes('cafe') || sub.includes('cafe') || sub.includes('tea') || sub.includes('coffee')) {
+    return 'ph-bold ph-coffee';
+  }
+
+  // 22. Pizza
+  if (name.includes('pizza') || sub.includes('pizza')) {
+    return 'ph-bold ph-pizza';
+  }
+
+  // 23. Hải sản & ốc (Dùng regex biên từ chính xác để không nhầm 'quốc' trong Quốc Học)
+  if (
+    name.includes('hải sản') ||
+    /(?:^|\s|[.,/-])ốc(?:\s|[.,/-]|$)/i.test(name) ||
+    sub.includes('seafood') ||
+    sub.includes('coastal_seafood')
+  ) {
+    return 'ph-bold ph-fish';
+  }
+
+  // 24. Ẩm thực chay, thanh đạm
+  if (name.includes('chay') || name.includes('vegetarian') || name.includes('vegan') || sub.includes('vegetarian') || sub.includes('green_vegetarian')) {
+    return 'ph-bold ph-leaf';
+  }
+
+  // 25. Mì, bún, phở, bánh canh, cháo
+  if (name.includes('mì ') || name.includes('mì') || name.includes('bún') || name.includes('phở') || name.includes('bánh canh') || name.includes('cháo') || sub.includes('noodle')) {
+    return 'ph-bold ph-bowl-food';
+  }
+
+  // 26. Bê thui, bánh đặc sản, quán ăn, nhà hàng ẩm thực
+  if (
+    name.includes('bê thui') ||
+    name.includes('bánh tráng') ||
+    name.includes('bánh xèo') ||
+    name.includes('bánh ép') ||
+    name.includes('bánh bèo') ||
+    name.includes('bánh khoái') ||
+    name.includes('tiệm cơm') ||
+    name.includes('cơm gà') ||
+    name.includes('cơm ') ||
+    name.includes('nhà hàng') ||
+    name.includes('quán') ||
+    name.includes('ẩm thực') ||
+    sub.includes('dining') ||
+    sub.includes('restaurant') ||
+    sub.includes('food') ||
+    sub.includes('rolls') ||
+    sub.includes('specialties') ||
+    sub.includes('asian') ||
+    sub.includes('western') ||
+    cat.includes('ẩm thực') ||
+    cat.includes('quan-an')
+  ) {
+    return 'ph-bold ph-fork-knife';
+  }
+
+  // 27. Di tích lịch sử, nghĩa trũng, đài tưởng niệm, nhà lưu niệm, di chỉ (Bia Quốc Học)
+  if (
+    name.includes('nghĩa trũng') ||
+    name.includes('đài tưởng niệm') ||
+    name.includes('nhà lưu niệm') ||
+    name.includes('căn cứ') ||
+    name.includes('nghĩa trang') ||
+    name.includes('chín hầm') ||
+    name.includes('di chỉ') ||
+    name.includes('quốc học') ||
+    name.includes('phú văn lâu') ||
+    name.includes('nghinh lương đình') ||
+    name.includes('nhà vườn an hiên') ||
+    name.includes('phố cổ') ||
+    sub.includes('historic_memorials') ||
+    cat === 'di-tich' ||
+    cat.includes('di tích')
+  ) {
+    return 'ph-bold ph-scroll';
+  }
+
+  // 28. Công viên, quảng trường, cảnh quan thiên nhiên
+  if (
+    name.includes('công viên') ||
+    name.includes('quảng trường') ||
+    name.includes('đồi ') ||
+    name.includes('vườn quốc gia') ||
+    name.includes('vườn ') ||
+    sub.includes('park') ||
+    sub.includes('urban_landmarks') ||
+    cat === 'canh-quan' ||
+    cat.includes('cảnh quan') ||
+    cat.includes('thiên nhiên')
+  ) {
+    return 'ph-bold ph-tree';
+  }
+
+  return 'ph-bold ph-map-pin';
+}
+

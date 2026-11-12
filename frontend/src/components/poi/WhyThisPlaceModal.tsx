@@ -85,9 +85,16 @@ export default function WhyThisPlaceModal({
   if (!isOpen || !poi) return null;
 
   const displayName = poi.cleanTitle || poi.cleanName || poi.name;
+  const isCafe = Boolean(
+    poi.sub_category?.includes('cafe') || 
+    poi.sub_category?.includes('coffee') || 
+    /coffee|cafe|cà phê|tiệm trà|workspace/i.test(poi.name)
+  );
   const categoryLabel = poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category]
     ? SUB_CATEGORY_LABELS[poi.sub_category]
-    : categoryLabels[poi.category] || 'Điểm tham quan';
+    : isCafe
+      ? 'Quán cà phê'
+      : categoryLabels[poi.category] || 'Điểm tham quan';
 
   const hasGraphFacts = Boolean(factsResponse && factsResponse.facts.length > 0);
   const graphFacts = factsResponse?.facts || [];
@@ -133,13 +140,13 @@ export default function WhyThisPlaceModal({
                 id="why-place-title"
                 className="text-base sm:text-lg font-bold text-neutral-900 leading-snug flex items-center gap-2"
               >
-                <span>Vì sao AI gợi ý điểm đến này?</span>
+                <span>Vì sao địa điểm này phù hợp với bạn?</span>
                 <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-full px-2 py-0.5">
-                  Explainable AI
+                  Gợi ý minh bạch
                 </span>
               </h2>
               <p className="text-xs text-neutral-500 font-normal">
-                Minh bạch thuật toán & Dẫn chứng tri thức từ GreenTrip AI
+                Minh bạch tiêu chí gợi ý & Dẫn chứng từ GreenTrip
               </p>
             </div>
           </div>
@@ -216,7 +223,7 @@ export default function WhyThisPlaceModal({
                 </div>
               </div>
               <div className="bg-emerald-800/60 rounded-xl p-2.5 border border-emerald-700/50">
-                <div className="text-emerald-300 font-semibold mb-0.5">2. Thuật toán AI</div>
+                <div className="text-emerald-300 font-semibold mb-0.5">2. Tiêu chí tương thích</div>
                 <div className="text-white font-medium text-[11px]">
                   Cân bằng Đa mục tiêu Xanh & Chi phí
                 </div>

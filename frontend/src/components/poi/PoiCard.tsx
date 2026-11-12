@@ -11,6 +11,50 @@ const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
   'canh-quan': { icon: 'ph-mountains', label: 'Cảnh quan' },
 };
 
+
+function getShortLocation(poi: Poi): string {
+  if (poi.address) {
+    const cleaned = poi.address
+      .replace(/\b\d{4,6}\b/g, '')
+      .replace(/,\s*Việt Nam$/i, '')
+      .trim();
+    const rawParts = cleaned.split(',').map((s) => s.trim()).filter(Boolean);
+    const parts = rawParts.map((s) =>
+      s
+        .replace(/^(phường|quận|huyện|thị xã|thành phố|tp\.|tp|tỉnh)\s+/i, '')
+        .trim()
+    ).filter(Boolean);
+
+    if (parts.length >= 2) {
+      return `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`;
+    }
+  }
+  const area = poi.ai_metadata?.area?.trim();
+  if (area) {
+    const cleanArea = area.replace(/^(phường|quận|huyện|thị xã)\s+/i, '').trim();
+    return `${cleanArea}, ${poi.city}`;
+  }
+  return poi.city;
+}
+
+function getPriceTierDisplay(poi: Poi): string {
+  const display = poi.ai_metadata?.price_range_display?.toLowerCase() || '';
+  if (display.includes('miễn phí') || poi.estimatedCost === 0) {
+    return '$';
+  }
+  const cost = poi.estimatedCost ?? 0;
+  if (cost > 0) {
+    if (cost < 50000) return '$';
+    if (cost <= 150000) return '$$';
+    if (cost <= 400000) return '$$$';
+    return '$$$$';
+  }
+  if (display.includes('$$$$')) return '$$$$';
+  if (display.includes('$$$')) return '$$$';
+  if (display.includes('$$')) return '$$';
+  return '$$';
+}
+
 function formatCompactPrice(poi: Poi): string {
   const display = poi.ai_metadata?.price_range_display?.trim();
   if (display) {
@@ -41,6 +85,7 @@ export interface PoiCardProps {
   onHover: (id: string | null) => void;
   onToggleFavorite: (id: string, poi?: Poi) => void;
   onToggleAddTrip?: (id: string) => void;
+  showExplanation?: boolean;
   recommendation?: {
     matchScore: number;
     greenScore: number | null;
@@ -63,6 +108,7 @@ export default function PoiCard({
   onToggleFavorite,
   onToggleAddTrip,
   recommendation,
+  showExplanation = false,
 }: PoiCardProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [isCardHovered, setIsCardHovered] = useState(false);
@@ -70,9 +116,21 @@ export default function PoiCard({
 
   const gallery = useMemo(() => getGalleryImages(poi), [poi]);
 
+  const isCafe = Boolean(
+    poi.sub_category?.includes('cafe') || 
+    poi.sub_category?.includes('coffee') || 
+    /coffee|cafe|cà phê|tiệm trà|workspace/i.test(poi.name)
+  );
+
   const categoryLabel = poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category]
     ? SUB_CATEGORY_LABELS[poi.sub_category]
-    : CATEGORY_META[poi.category]?.label || categoryLabels[poi.category] || 'Điểm tham quan';
+    : isCafe
+      ? 'Quán cà phê'
+      : CATEGORY_META[poi.category]?.label || categoryLabels[poi.category] || 'Điểm tham quan';
+
+  const categoryIcon = isCafe
+    ? 'ph-coffee'
+    : (CATEGORY_META[poi.category]?.icon || 'ph-map-pin');
 
   const isEcoLocal = Boolean(
     recommendation &&
@@ -102,7 +160,11 @@ export default function PoiCard({
     >
       {/* 1. Card Image Box */}
       <div className={`relative w-full ${compact ? 'aspect-[1.35/1] rounded-2xl' : 'aspect-[1.05/1] rounded-[20px]'} overflow-hidden bg-neutral-100 shadow-sm transition-all duration-200 isolate ${
-        active ? 'ring-2 ring-emerald-900' : ''
+        active 
+          ? (poi.isGreen ? 'ring-2 ring-emerald-600 shadow-md' : 'ring-2 ring-neutral-900') 
+          : poi.isGreen && isCardHovered
+            ? 'ring-2 ring-emerald-500/50 shadow-md'
+            : ''
       }`}>
         <img
           src={gallery[imgIdx] || poi.image}
@@ -150,8 +212,8 @@ export default function PoiCard({
           </button>
         )}
 
-        {/* Nút tim và "+" ở góc trên: Nền trắng đục nổi bật, viền nhẹ, tooltip rõ ràng */}
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
+        {/* Nút tim và "+" ở góc trên: Tim không nền, "+" vòng tròn mờ, kích thước x0.6 (32px), gap x0.83, tâm cách góc ≈0.12 */}
+        <div className="absolute top-[22px] right-[22px] flex items-center gap-[5px] z-10">
           <button
             type="button"
             aria-label={favorite ? `Bỏ lưu ${poi.name}` : `Lưu ${poi.name}`}
@@ -162,14 +224,10 @@ export default function PoiCard({
               e.stopPropagation();
               onToggleFavorite(poi.id, poi);
             }}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
-              favorite 
-                ? 'bg-white text-rose-600 ring-1 ring-rose-200' 
-                : 'bg-white/90 hover:bg-white text-neutral-700 hover:text-rose-600 hover:scale-105'
-            }`}
+            className="w-[32px] h-[32px] flex items-center justify-center cursor-pointer transition-transform active:scale-90 focus-visible:outline-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] bg-transparent border-0 shadow-none"
             title={favorite ? "Bỏ lưu khỏi danh sách Đã lưu" : "Lưu vào danh sách Đã lưu"}
           >
-            <i className={`ph ${favorite ? 'ph-fill ph-heart text-[18px] text-rose-600' : 'ph-heart text-[18px]'}`} aria-hidden="true"></i>
+            <i className={`ph ${favorite ? 'ph-fill ph-heart text-[22px] text-rose-500' : 'ph-heart text-[22px] text-white'}`} aria-hidden="true"></i>
           </button>
           <button
             type="button"
@@ -179,14 +237,14 @@ export default function PoiCard({
               e.stopPropagation();
               onToggleAddTrip?.(poi.id);
             }}
-            className={`${showAddToTrip ? '' : 'hidden'} w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+            className={`${showAddToTrip ? '' : 'hidden'} w-[32px] h-[32px] rounded-full border border-white/40 flex items-center justify-center transition-all cursor-pointer active:scale-90 focus-visible:outline-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] ${
               isAdded 
-                ? 'bg-emerald-700 text-white ring-1 ring-emerald-800' 
-                : 'bg-white/90 hover:bg-white text-neutral-800 hover:text-emerald-700 hover:scale-105'
+                ? 'bg-white text-black' 
+                : 'bg-black/35 hover:bg-black/55 text-white backdrop-blur-xs'
             }`}
             title={isAdded ? "Đã lưu trong chuyến đi · Bấm để quản lý" : "Thêm vào chuyến đi"}
           >
-            <i className={`ph ${isAdded ? 'ph-check text-[18px] font-bold' : 'ph-plus text-[18px]'}`} aria-hidden="true"></i>
+            <i className={`ph ${isAdded ? 'ph-check text-[14px] font-bold' : 'ph-plus text-[14px]'}`} aria-hidden="true"></i>
           </button>
         </div>
 
@@ -198,17 +256,23 @@ export default function PoiCard({
           </div>
         )}
 
-        {!poi.isMichelin && !recommendation && poi.ecoScore >= 80 && (
-          <div className="absolute top-3 left-3 z-10 bg-emerald-950/85 text-emerald-50 text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm backdrop-blur-xs flex items-center gap-1">
-            <span aria-hidden="true">🌿</span>
-            <span>{poi.ecoScore} Điểm Xanh</span>
+        {!poi.isMichelin && !recommendation && poi.isGreen && (
+          <div 
+            className="absolute top-[22px] left-[22px] z-10 w-[32px] h-[32px] rounded-full bg-black/35 backdrop-blur-xs flex items-center justify-center text-emerald-400 drop-shadow-md cursor-help border border-white/25"
+            title="Địa điểm xanh: Thân thiện môi trường"
+          >
+            <i className="ph ph-leaf text-[15px]" aria-hidden="true"></i>
+            <span className="sr-only">Địa điểm xanh</span>
           </div>
         )}
 
-        {recommendation && (
+        {showExplanation && recommendation && (
           <div className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-6rem)] flex-col items-start gap-1.5">
-            <span className="rounded-full bg-emerald-800 px-2.5 py-1 text-xs font-bold text-white shadow-md">
-              {Math.round(recommendation.matchScore)}% Phù hợp
+            <span 
+              className="rounded-full bg-emerald-800 px-2.5 py-1 text-xs font-bold text-white shadow-md cursor-help"
+              title={`Độ tương thích ${Math.round(recommendation.matchScore)}% dựa trên điểm đến, ngân sách và sở thích của bạn`}
+            >
+              {Math.round(recommendation.matchScore)}% Phù hợp gu
             </span>
             {isEcoLocal && (
               <span className="rounded-full border border-emerald-100/70 bg-emerald-950/85 px-2.5 py-1 text-xs font-semibold text-emerald-50 shadow-md backdrop-blur-sm">
@@ -231,35 +295,38 @@ export default function PoiCard({
         </div>
       </div>
 
-      {/* 2. Card Details: Tên, loại hình, địa chỉ, giá & rating */}
-      <div className={`${compact ? 'mt-2 space-y-0.5' : 'mt-2.5 space-y-1'}`}>
-        <div className="flex items-center justify-between gap-2 min-w-0">
-          <h3 className={`font-bold ${compact ? 'text-sm' : 'text-[15px]'} text-neutral-950 tracking-tight truncate leading-snug group-hover:text-emerald-900`} title={poi.name}>
+      {/* 2. Card Details: Khoảng cách ảnh→tên x1.3 (mt-[22px]), 4 dòng text chuẩn Mindtrip */}
+      <div className={`${compact ? 'mt-2 space-y-0.5' : 'mt-[22px] space-y-1'}`}>
+        {/* Dòng 1: Tên (cho phép 2 dòng, min-h-[2.5rem]) + rating nằm góc phải */}
+        <div className="flex items-start justify-between gap-2 min-w-0">
+          <h3 className={`font-bold ${compact ? 'text-sm' : 'text-[15px]'} text-neutral-950 tracking-tight line-clamp-2 min-h-[2.5rem] leading-snug group-hover:text-emerald-900`} title={poi.name}>
             {poi.cleanTitle || poi.cleanName || poi.name}
           </h3>
           {poi.rating > 0 && (
-            <span className="text-xs font-semibold text-neutral-800 shrink-0 flex items-center gap-0.5">
+            <span className="text-xs font-semibold text-neutral-800 shrink-0 flex items-center gap-0.5 pt-0.5">
               <span className="text-amber-500" aria-hidden="true">★</span>
               <span>{poi.rating.toFixed(1)}</span>
               {reviewCount && (
-                <span className="text-neutral-600 font-normal">({reviewCount.toLocaleString('vi-VN')})</span>
+                <span className="text-neutral-500 font-normal">({reviewCount.toLocaleString('vi-VN')})</span>
               )}
             </span>
           )}
         </div>
 
-        <div className={`flex items-center gap-1.5 ${compact ? 'text-xs' : 'text-[13px]'} text-neutral-600 font-normal min-w-0`}>
-          <i className={`ph ${CATEGORY_META[poi.category]?.icon || 'ph-map-pin'} text-neutral-600 text-[14px] shrink-0`} aria-hidden="true"></i>
+        {/* Dòng 2: Loại hình kèm icon */}
+        <div className={`flex items-center gap-1.5 ${compact ? 'text-xs' : 'text-[13px]'} text-neutral-500 font-medium truncate`}>
+          <i className={`ph ${categoryIcon} text-neutral-500 text-[14px] shrink-0`} aria-hidden="true"></i>
           <span className="truncate">{categoryLabel}</span>
-          <span className="text-neutral-400" aria-hidden="true">·</span>
-          <span className="truncate">{locationLabel}</span>
         </div>
 
-        <div className="flex items-center justify-between gap-2 text-xs text-neutral-600 min-w-0">
-          <span className="truncate" title={poi.address || locationLabel}>
-            {poi.address || `${poi.city}, Việt Nam`}
-          </span>
-          <span className="shrink-0 font-semibold text-emerald-800">{formattedCost}</span>
+        {/* Dòng 3: Khu vực ngắn (rút gọn 2 đoạn cuối địa chỉ) */}
+        <div className={`${compact ? 'text-xs' : 'text-[13px]'} text-neutral-500 font-normal truncate`}>
+          {getShortLocation(poi)}
+        </div>
+
+        {/* Dòng 4: Giá $ / $$ / $$$ / $$$$ */}
+        <div className={`${compact ? 'text-xs' : 'text-[13px]'} text-neutral-500 font-normal`}>
+          {getPriceTierDisplay(poi)}
         </div>
 
         {showSavedCount && typeof poi.savedCount === 'number' && (
@@ -269,7 +336,7 @@ export default function PoiCard({
           </p>
         )}
 
-        {recommendation && (
+        {showExplanation && recommendation && (
           <div className="pt-1.5" onClick={(event) => event.stopPropagation()}>
             <button
               type="button"
@@ -291,12 +358,12 @@ export default function PoiCard({
               onClick={() => setIsExplanationModalOpen(true)}
               className="mt-1 flex min-h-[40px] w-full items-center justify-center gap-1 rounded-full text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-50 hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
             >
-              <i className="ph ph-sparkle" aria-hidden="true"></i>
-              Lý do AI gợi ý · Vì sao nơi này?
+              <i className="ph ph-sparkle text-emerald-700" aria-hidden="true"></i>
+              Vì sao nơi này phù hợp với bạn?
             </button>
           </div>
         )}
-        {!recommendation && (
+        {showExplanation && !recommendation && (
           <button
             type="button"
             aria-haspopup="dialog"

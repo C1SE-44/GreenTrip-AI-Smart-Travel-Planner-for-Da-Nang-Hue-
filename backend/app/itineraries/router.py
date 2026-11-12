@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Path, status
+from pydantic import BaseModel
 
-from app.itineraries.schemas import DayRouteResponse
+from app.itineraries.schemas import DayRouteResponse, RouteStop
 from app.itineraries.service import (
     DayNotFoundError,
     InvalidPoiCoordinatesError,
@@ -82,3 +83,32 @@ def get_day_route(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error calculating route geometry",
         ) from exc
+
+
+class ComputeRouteRequest(BaseModel):
+    stops: list[RouteStop]
+
+
+@router.post(
+    "/compute",
+    response_model=DayRouteResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Tính toán hình học tuyến đường theo danh sách điểm dừng bất kỳ",
+)
+def compute_route(payload: ComputeRouteRequest) -> DayRouteResponse:
+    from app.itineraries import routing_service
+    route_geom, distance_m, duration_s, is_fallback, provider = routing_service.compute_route_geometry(
+        payload.stops
+    )
+    return DayRouteResponse(
+        itinerary_id="dynamic",
+        day_number=1,
+        total_days=1,
+        total_stops=len(payload.stops),
+        stops=payload.stops,
+        route=route_geom,
+        distance_meters=distance_m,
+        duration_seconds=duration_s,
+        is_fallback=is_fallback,
+        routing_provider=provider,
+    )

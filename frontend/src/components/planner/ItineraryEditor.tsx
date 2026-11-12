@@ -965,7 +965,7 @@ export default function ItineraryEditor({ trip, ideas, recommendations = [], rec
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-950"><Sparkles size={14} aria-hidden="true" />Trợ lý GreenTrip gợi ý</p>
                   {visitStops.length > 0 && <p className="mt-1 text-sm leading-relaxed text-emerald-950"><span className="font-semibold">Vì sao gợi ý ngày này?</span> {dayScheduleReason}</p>}
                   {dayOutline?.assistant_tip && <p className="mt-1 text-sm leading-relaxed text-emerald-950">{dayOutline.assistant_tip}</p>}
-                  {dayOutline?.rest_periods?.map((period, index) => {
+                  {dayOutline?.rest_periods?.map((period: RestPeriod, index: number) => {
                     const isScheduled = restExistsInPeriod(day, period.time_range);
                     return (
                       <div key={`${day.day_id}-rest-tip-${index}`} className="mt-2 rounded-lg border border-emerald-200 bg-white/80 px-3 py-2">

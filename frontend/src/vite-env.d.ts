@@ -6,3 +6,5 @@ declare module 'figma' {
   export default figma;
 }
 
+declare module 'morphicons/react';
+declare module 'three';

@@ -31,10 +31,13 @@ function cleanDescription(text?: string | null): string {
 
 function formatPriceRange(poi: Poi): string {
   const display = poi.ai_metadata?.price_range_display?.trim();
-  if (display) return display;
+  if (display) {
+    if (/^miễn phí/i.test(display)) return 'Miễn phí';
+    return `${display} (Tham khảo)`;
+  }
   if (poi.estimatedCost == null) return 'Miễn phí hoặc tùy dịch vụ tại chỗ';
   if (poi.estimatedCost === 0) return 'Miễn phí tham quan';
-  return `Khoảng ${new Intl.NumberFormat('vi-VN').format(poi.estimatedCost)} ₫/người`;
+  return `Khoảng ${new Intl.NumberFormat('vi-VN').format(poi.estimatedCost)} ₫/người (Ước tính)`;
 }
 
 export default function PoiDetailSection({
@@ -75,8 +78,7 @@ export default function PoiDetailSection({
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
-
-  useEffect(() => {
+    useEffect(() => {
     if (!isMenuZoomOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsMenuZoomOpen(false);
@@ -87,8 +89,14 @@ export default function PoiDetailSection({
 
   const galleryImages = useMemo(() => getGalleryImages(poi), [poi]);
 
+  const isCafe = Boolean(
+    poi.sub_category?.includes('cafe') || 
+    poi.sub_category?.includes('coffee') || 
+    /coffee|cafe|cà phê|tiệm trà|workspace/i.test(poi.name)
+  );
+
   const categoryName = (poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category])
-    || categoryLabels[poi.category]
+    || (isCafe ? 'Quán cà phê' : categoryLabels[poi.category])
     || 'Điểm tham quan';
 
   const meta = poi.ai_metadata;
@@ -107,6 +115,7 @@ export default function PoiDetailSection({
   const featuredReviews: FeaturedReview[] = Array.isArray(meta?.featured_reviews)
     ? meta.featured_reviews.filter((r): r is FeaturedReview => Boolean(r && r.text))
     : [];
+
   const menuImageUrl = typeof meta?.menu_image_url === 'string' ? meta.menu_image_url.trim() : '';
   const menuItems: MenuItem[] = Array.isArray(meta?.menu_items)
     ? meta.menu_items.filter((item): item is MenuItem => Boolean(item && item.name))
@@ -142,10 +151,34 @@ export default function PoiDetailSection({
 
   const vibeBadges = useMemo(() => {
     const raw = poi.vibes || [];
-    return raw
-      .map((tag) => VIBE_LABELS[tag] || tag.replace(/_/g, ' '))
-      .filter(Boolean)
-      .slice(0, 6);
+    const seen = new Set<string>();
+    const result: string[] = [];
+
+    for (const tag of raw) {
+      const lower = tag.trim().toLowerCase();
+      let mapped = VIBE_LABELS[lower] || tag.replace(/_/g, ' ');
+
+      // Chuẩn hóa và dịch các nhãn tiếng Anh thô
+      if (lower === 'culinary' || lower === 'food' || lower === 'dining') {
+        mapped = 'Ẩm thực đặc sắc';
+      } else if (lower === 'local_specialty' || lower === 'specialty') {
+        mapped = 'Đặc sản địa phương';
+      } else if (lower === 'street_food') {
+        mapped = 'Ẩm thực đường phố';
+      }
+
+      // Bỏ qua nếu vẫn là tiếng Anh đơn thuần không có nghĩa tiếng Việt
+      if (/^[a-zA-Z\s_-]+$/.test(mapped) && !['Brunch', 'Kayak', 'SUP'].includes(mapped)) {
+        continue;
+      }
+
+      if (!seen.has(mapped)) {
+        seen.add(mapped);
+        result.push(mapped);
+      }
+    }
+
+    return result.slice(0, 6);
   }, [poi.vibes]);
 
   const formattedBestTimes = useMemo(() => {
@@ -191,34 +224,33 @@ export default function PoiDetailSection({
     >
       <style>{`
         .poi-detail-scrollbar::-webkit-scrollbar {
-          width: 6px;
+          width: 4px;
         }
         .poi-detail-scrollbar::-webkit-scrollbar-track {
           background: transparent;
         }
         .poi-detail-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(16, 43, 33, 0.2);
+          background: rgba(0, 0, 0, 0.15);
           border-radius: 9999px;
         }
         .poi-detail-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(16, 43, 33, 0.4);
+          background: rgba(0, 0, 0, 0.35);
         }
       `}</style>
 
       {/* 1. Header responsive (chuẩn 320px -> 1280px, vùng chạm >= 40px) */}
       <header className="px-4 sm:px-8 pt-4 sm:pt-6 pb-2 flex flex-wrap items-center justify-between gap-2 shrink-0 bg-white z-10 border-b border-neutral-100 sm:border-none">
-        <div className="flex items-center gap-1 sm:gap-2 text-neutral-800">
+        <div className="flex items-center gap-1 text-neutral-800">
           <button
             type="button"
             aria-label="Đóng chi tiết"
             onClick={onClose}
-            className="min-w-[40px] min-h-[40px] px-2.5 rounded-full text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 text-xs font-medium"
+            className="min-w-[40px] min-h-[40px] rounded-full text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 transition cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
             title="Đóng chi tiết"
           >
-            <svg className="w-[18px] h-[18px] stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className="hidden sm:inline">Đóng</span>
           </button>
         </div>
 
@@ -229,13 +261,13 @@ export default function PoiDetailSection({
             aria-busy={isFavoritePending}
             disabled={isFavoritePending}
             onClick={() => onToggleFavorite(poi.id, poi)}
-            className={`flex items-center gap-1.5 px-3 min-h-[40px] border rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
+            className={`flex items-center gap-1.5 px-3.5 min-h-[40px] border rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
               isFavorite
-                ? 'bg-[#fef3c7] border-[#b45309]/30 text-[#b45309]'
+                ? 'bg-rose-50 border-rose-200 text-rose-600'
                 : 'border-neutral-200 text-neutral-800 hover:bg-neutral-50'
             }`}
           >
-            <svg className={`w-3.5 h-3.5 shrink-0 ${isFavorite ? 'fill-[#b45309] stroke-[#b45309]' : 'stroke-[1.8]'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className={`w-3.5 h-3.5 shrink-0 ${isFavorite ? 'fill-rose-500 stroke-rose-500' : 'stroke-[1.8]'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span>{isFavorite ? 'Đã lưu' : 'Lưu'}</span>
@@ -248,7 +280,7 @@ export default function PoiDetailSection({
             className={`${showAddToTrip ? '' : 'hidden'} flex items-center gap-1.5 px-3.5 min-h-[40px] border rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
               isAdded
                 ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                : 'bg-[#102b21] border-[#102b21] text-white hover:bg-[#194332]'
+                : 'bg-black border-black text-white hover:bg-neutral-800'
             }`}
           >
             <span className="text-sm font-bold leading-none" aria-hidden="true">{isAdded ? '✓' : '+'}</span>
@@ -284,7 +316,7 @@ export default function PoiDetailSection({
       </header>
 
       {/* 2. Scrollable Detail Body */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-8 pt-3 sm:pt-4 pb-10 poi-detail-scrollbar">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 pt-3 sm:pt-4 pb-16 poi-detail-scrollbar">
         <h1 className="text-xl sm:text-[23px] font-bold tracking-tight text-neutral-950 mt-2 mb-2 leading-snug font-heading">
           {poi.name}
         </h1>
@@ -296,8 +328,8 @@ export default function PoiDetailSection({
               <span className="text-amber-500" aria-hidden="true">★</span>
               <span>{poi.rating.toFixed(1)}</span>
               {reviewCount && (
-                <span className="text-neutral-600 font-normal">
-                  ({reviewCount.toLocaleString('vi-VN')} đánh giá)
+                <span className="text-neutral-500 font-normal">
+                  ({reviewCount.toLocaleString('vi-VN')} đánh giá trên Google Maps)
                 </span>
               )}
             </span>
@@ -311,27 +343,17 @@ export default function PoiDetailSection({
             <span>{area ? `${area}, ${poi.city}` : `${poi.city}, Việt Nam`}</span>
           </span>
           <span className="text-neutral-300" aria-hidden="true">•</span>
-          <span className="text-neutral-600">{mindtripCategory || categoryName}</span>
-          {poi.ecoScore > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-              <span aria-hidden="true">🌿</span>
-              <span>{poi.ecoScore}/100 Điểm Xanh</span>
+          <span className="text-neutral-600">{categoryName}</span>
+          {poi.isGreen && (
+            <span 
+              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-3 py-1 text-xs font-bold text-emerald-900 shadow-2xs cursor-help"
+              title="Địa điểm du lịch xanh: Thân thiện môi trường, tiết kiệm năng lượng và bảo tồn văn hóa địa phương"
+            >
+              <span aria-hidden="true">🌱</span>
+              <span>Địa điểm xanh</span>
             </span>
           )}
         </div>
-
-        {/* Cảnh báo theo mùa / tạm ngưng đón khách nếu có */}
-        {(seasonalNote || isTempClosed) && (
-          <div className="mb-5 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-950 leading-relaxed flex items-start gap-2.5">
-            <span className="text-base leading-none mt-0.5" aria-hidden="true">⚠️</span>
-            <div>
-              <span className="font-semibold">Lưu ý hoạt động theo mùa: </span>
-              <span>
-                {seasonalNote || 'Địa điểm có thể điều chỉnh lịch đón khách theo mùa; vui lòng liên hệ điện thoại xác nhận trước khi đến.'}
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* 3A. Lưới 5 ảnh thực tế Desktop (>= 640px): Bento chuẩn Mindtrip */}
         <div
@@ -389,21 +411,21 @@ export default function PoiDetailSection({
           ))}
         </div>
 
-        {/* 4. Tabs Navigation (WCAG AA contrast >= 4.5:1, min-h-[44px]) */}
+        {/* 4. Tabs Navigation */}
         <div
           role="tablist"
           aria-label="Thông tin chi tiết địa điểm"
-          className="border-b border-neutral-200 flex items-center gap-4 sm:gap-6 mt-6 sm:mt-8 mb-6 text-sm font-semibold overflow-x-auto"
+          className="border-b border-neutral-200 flex items-center gap-4 sm:gap-6 mt-6 sm:mt-8 mb-6 text-sm overflow-x-auto"
         >
           <button
             type="button"
             role="tab"
             aria-selected={activeTab === 'overview'}
             onClick={() => setActiveTab('overview')}
-            className={`min-h-[44px] px-1 pb-2.5 whitespace-nowrap transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+            className={`min-h-[44px] px-1 pb-2.5 whitespace-nowrap transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
               activeTab === 'overview'
-                ? 'text-neutral-950 border-b-2 border-emerald-800'
-                : 'text-neutral-600 hover:text-neutral-950'
+                ? 'text-neutral-950 border-b-2 border-black font-bold'
+                : 'text-neutral-400 hover:text-neutral-800 font-medium'
             }`}
           >
             Tổng quan
@@ -414,10 +436,10 @@ export default function PoiDetailSection({
               role="tab"
               aria-selected={activeTab === 'menu'}
               onClick={() => setActiveTab('menu')}
-              className={`min-h-[44px] px-1 pb-2.5 whitespace-nowrap transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+              className={`min-h-[44px] px-1 pb-2.5 whitespace-nowrap transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
                 activeTab === 'menu'
-                  ? 'text-neutral-950 border-b-2 border-emerald-800 font-semibold'
-                  : 'text-neutral-600 hover:text-neutral-950 font-medium'
+                  ? 'text-neutral-950 border-b-2 border-black font-bold'
+                  : 'text-neutral-400 hover:text-neutral-800 font-medium'
               }`}
             >
               Thực đơn & Bảng giá
@@ -428,23 +450,23 @@ export default function PoiDetailSection({
             role="tab"
             aria-selected={activeTab === 'guides'}
             onClick={() => setActiveTab('guides')}
-            className={`min-h-[44px] px-1 pb-2.5 whitespace-nowrap transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+            className={`min-h-[44px] px-1 pb-2.5 whitespace-nowrap transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
               activeTab === 'guides'
-                ? 'text-neutral-950 border-b-2 border-emerald-800'
-                : 'text-neutral-600 hover:text-neutral-950'
+                ? 'text-neutral-950 border-b-2 border-black font-bold'
+                : 'text-neutral-400 hover:text-neutral-800 font-medium'
             }`}
           >
-            Cẩm nang xanh
+            Mẹo đi bền vững
           </button>
           <button
             type="button"
             role="tab"
             aria-selected={activeTab === 'location'}
             onClick={() => setActiveTab('location')}
-            className={`min-h-[44px] px-1 pb-2.5 whitespace-nowrap transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+            className={`min-h-[44px] px-1 pb-2.5 whitespace-nowrap transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
               activeTab === 'location'
-                ? 'text-neutral-950 border-b-2 border-emerald-800'
-                : 'text-neutral-600 hover:text-neutral-950'
+                ? 'text-neutral-950 border-b-2 border-black font-bold'
+                : 'text-neutral-400 hover:text-neutral-800 font-medium'
             }`}
           >
             Vị trí bản đồ
@@ -454,97 +476,117 @@ export default function PoiDetailSection({
         {/* 5A. Tab Tổng quan */}
         {activeTab === 'overview' && (
           <div className="space-y-6 mt-5 animate-fadeIn">
-            {/* Mô tả thực tế */}
-            <p className="text-neutral-700 text-[14.5px] leading-relaxed font-normal whitespace-pre-line">
-              {cleanDescription(poi.description)}
-            </p>
-
-            {/* Điểm nhấn Sinh thái & Hoạt động trải nghiệm */}
-            {(ecoHighlights || (poi.eco_features && poi.eco_features.length > 0) || vibeBadges.length > 0) && (
-              <div className="rounded-2xl bg-emerald-50/60 border border-emerald-200/80 p-4 sm:p-5 space-y-3">
-                <div className="flex items-center gap-2 text-sm font-bold text-emerald-950">
-                  <span aria-hidden="true">🌱</span>
-                  <h2>Điểm nhấn xanh & Trải nghiệm nổi bật</h2>
-                </div>
-                {ecoHighlights ? (
-                  <p className="text-[13.5px] text-neutral-800 leading-relaxed">{ecoHighlights}</p>
-                ) : (
-                  poi.eco_features && poi.eco_features.length > 0 && (
-                    <p className="text-[13.5px] text-neutral-800 leading-relaxed">
-                      {poi.eco_features.join(' · ')}
-                    </p>
-                  )
-                )}
-                {vibeBadges.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-0.5">
-                    {vibeBadges.map((badge) => (
-                      <span
-                        key={badge}
-                        className="inline-flex items-center rounded-full bg-white border border-emerald-200 px-3 py-1 text-xs font-medium text-emerald-900"
-                      >
-                        {badge}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Lưới thông tin thiết thực cho du khách */}
+            {/* 1. Lưới thông tin thiết thực cho du khách (Đưa lên đầu ngay dưới ảnh) */}
             <div className="space-y-3">
-              <h2 className="text-base font-bold text-neutral-950">Thông tin cần biết cho chuyến đi</h2>
+              <h2 className="text-base font-bold text-neutral-950 font-heading">Thông tin cần biết cho chuyến đi</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
-                  <div className="text-xs font-semibold text-neutral-600">📍 Địa chỉ cụ thể</div>
+                  <div className="text-xs font-semibold text-neutral-500">📍 Địa chỉ cụ thể</div>
                   <p className="text-[13.5px] font-medium text-neutral-900 leading-snug">
                     {poi.address || `${poi.city}, Việt Nam`}
                   </p>
                   {plusCode && (
-                    <p className="text-xs text-neutral-600">Mã Plus Google: {plusCode}</p>
+                    <p className="text-[11px] text-neutral-400">Mã Plus: {plusCode}</p>
                   )}
                 </div>
 
                 <div className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
-                  <div className="text-xs font-semibold text-neutral-600">🕒 Giờ mở cửa</div>
+                  <div className="text-xs font-semibold text-neutral-500">🕒 Giờ mở cửa</div>
                   <p className="text-[13.5px] font-medium text-neutral-900 leading-snug">
                     {poi.openHours || '07:30 – 17:30'}
                   </p>
-                  {liveStatus && liveStatus !== poi.openHours && (
-                    <p className="text-xs text-emerald-800 font-medium">{liveStatus}</p>
+                  {isTempClosed && (
+                    <p className="text-[11.5px] text-red-600 font-semibold flex items-center gap-1 mt-0.5">
+                      <span>⚠️</span>
+                      <span>Địa điểm đang tạm ngưng đón khách</span>
+                    </p>
+                  )}
+                  {!isTempClosed && liveStatus && liveStatus !== poi.openHours && (
+                    <p className="text-[11.5px] text-emerald-800 font-medium">{liveStatus}</p>
                   )}
                 </div>
 
                 <div className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
-                  <div className="text-xs font-semibold text-neutral-600">🎟️ Mức giá / Chi phí tham khảo</div>
-                  <p className="text-[13.5px] font-medium text-neutral-900 leading-snug">{priceDisplay}</p>
+                  <div className="text-xs font-semibold text-neutral-500">🎟️ Mức giá tham khảo</div>
+                  <p className="text-[13.5px] font-medium text-neutral-900 leading-snug">
+                    {priceDisplay}
+                  </p>
                 </div>
 
                 <div className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
-                  <div className="text-xs font-semibold text-neutral-600">⏱️ Thời lượng trải nghiệm gợi ý</div>
-                  <p className="text-[13.5px] font-medium text-neutral-900 leading-snug">{poi.visitDuration}</p>
+                  <div className="text-xs font-semibold text-neutral-500">⏱️ Thời lượng gợi ý</div>
+                  <p className="text-[13.5px] font-medium text-neutral-900 leading-snug">
+                    {poi.visitDuration}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Liên hệ & Kênh chính thức (SĐT, Website, Facebook, Google Maps) */}
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-base font-bold text-neutral-950">Liên hệ & Kênh thông tin chính thức</h2>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-xs font-medium text-emerald-900">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
-                  <span>
-                    {verificationStatus === 'VERIFIED_ACTIVE'
-                      ? `Đã đối soát Google Maps & Kênh chính thức (${lastVerifiedAt})`
-                      : `Đã đối soát dữ liệu Google Maps (${lastVerifiedAt})`}
+            {/* 2. Giới thiệu & Điểm nhấn trải nghiệm */}
+            <div className="space-y-3 pt-1">
+              <h2 className="text-base font-bold text-neutral-950 font-heading">Giới thiệu địa điểm</h2>
+              <p className="text-neutral-700 text-[14.5px] leading-relaxed font-normal whitespace-pre-line">
+                {cleanDescription(poi.description)}
+              </p>
+
+              {/* Tag trải nghiệm đã dịch tiếng Việt & chống lặp */}
+              {vibeBadges.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {vibeBadges.map((badge) => (
+                    <span
+                      key={badge}
+                      className="inline-flex items-center rounded-full bg-neutral-100 border border-neutral-200/60 px-3 py-1 text-xs font-medium text-neutral-800"
+                    >
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 3. Tiêu chí Du lịch Xanh & Bền vững (Chỉ hiện khi đạt chuẩn xanh, KHÔNG số % ảo) */}
+            {(poi.isGreen || (poi.eco_features && poi.eco_features.length > 0)) && (
+              <div className="rounded-2xl bg-neutral-50 border border-neutral-200/80 p-4 sm:p-5 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-neutral-950 font-heading">
+                  <span aria-hidden="true">🌱</span>
+                  <h2>Tiêu chuẩn Du lịch Bền vững</h2>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-xs font-semibold">
+                    <span>✓</span>
+                    <span>Đạt tiêu chuẩn Điểm đến Xanh GreenTrip</span>
                   </span>
-                </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-neutral-700 border border-neutral-200/80 text-xs font-medium">
+                    <span>✓</span>
+                    <span>Ưu tiên nông sản & văn hóa bản địa</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-neutral-700 border border-neutral-200/80 text-xs font-medium">
+                    <span>✓</span>
+                    <span>Giảm thiểu rác thải nhựa dùng một lần</span>
+                  </span>
+                  {poi.eco_features && poi.eco_features.map((feat) => (
+                    <span
+                      key={feat}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-neutral-700 border border-neutral-200/80 text-xs font-medium"
+                    >
+                      <span>✓</span>
+                      <span>{feat}</span>
+                    </span>
+                  ))}
+                </div>
               </div>
+            )}
+
+            {/* 4. Liên hệ (tiêu đề gọn, nút đen trang nhã) */}
+            <div className="space-y-3 pt-1">
+              <h2 className="text-base font-bold text-neutral-950 font-heading">Liên hệ</h2>
               <div className="flex flex-wrap items-center gap-2.5">
                 {poi.phone_number && (
                   <>
                     <a
                       href={`tel:${poi.phone_number.replace(/\s+/g, '')}`}
-                      className="inline-flex items-center gap-2 min-h-[40px] px-4 rounded-full bg-[#102b21] text-white text-xs font-semibold hover:bg-[#194332] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                      className="inline-flex items-center gap-2 min-h-[40px] px-4 rounded-full bg-black text-white text-xs font-semibold hover:bg-neutral-800 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
                     >
                       <span aria-hidden="true">📞</span>
                       <span>Gọi {poi.phone_number}</span>
@@ -552,7 +594,7 @@ export default function PoiDetailSection({
                     <button
                       type="button"
                       onClick={() => handleCopyPhone(poi.phone_number!)}
-                      className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 rounded-full border border-neutral-300 bg-white text-neutral-800 text-xs font-semibold hover:bg-neutral-50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                      className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 rounded-full border border-neutral-300 bg-white text-neutral-800 text-xs font-semibold hover:bg-neutral-50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
                     >
                       <span>{copiedPhone ? '✓ Đã sao chép SĐT' : 'Sao chép SĐT'}</span>
                     </button>
@@ -564,7 +606,7 @@ export default function PoiDetailSection({
                     href={poi.website_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full border border-emerald-300 bg-emerald-50/70 text-emerald-900 text-xs font-semibold hover:bg-emerald-100 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    className="inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full border border-neutral-300 bg-white text-neutral-900 text-xs font-semibold hover:bg-neutral-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
                   >
                     <span aria-hidden="true">🌐</span>
                     <span>Website chính thức</span>
@@ -576,7 +618,7 @@ export default function PoiDetailSection({
                     href={facebookUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full border border-neutral-300 bg-white text-neutral-800 text-xs font-semibold hover:bg-neutral-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    className="inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full border border-neutral-300 bg-white text-neutral-800 text-xs font-semibold hover:bg-neutral-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
                   >
                     <span aria-hidden="true">📘</span>
                     <span>Trang Facebook</span>
@@ -587,7 +629,7 @@ export default function PoiDetailSection({
                   href={googleMapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full border border-neutral-300 bg-white text-neutral-800 text-xs font-semibold hover:bg-neutral-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  className="inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full border border-neutral-300 bg-white text-neutral-800 text-xs font-semibold hover:bg-neutral-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
                 >
                   <span aria-hidden="true">📍</span>
                   <span>Mở trên Google Maps</span>
@@ -595,14 +637,14 @@ export default function PoiDetailSection({
               </div>
             </div>
 
-            {/* Đánh giá thực tế từ du khách */}
+            {/* 5. Đánh giá từ du khách */}
             {featuredReviews.length > 0 && (
-              <div className="space-y-3.5 pt-1">
+              <div className="space-y-3.5 pt-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-base font-bold text-neutral-950">Đánh giá thực tế từ du khách</h2>
-                  <span className="text-xs font-semibold text-neutral-700">
+                  <h2 className="text-base font-bold text-neutral-950 font-heading">Đánh giá từ du khách</h2>
+                  <span className="text-xs font-semibold text-neutral-500">
                     ★ {poi.rating.toFixed(1)} / 5.0
-                    {reviewCount ? ` · ${reviewCount.toLocaleString('vi-VN')} đánh giá` : ''}
+                    {reviewCount ? ` · Theo Google Maps (${reviewCount.toLocaleString('vi-VN')} đánh giá)` : ''}
                   </span>
                 </div>
                 <div className="space-y-3">
@@ -614,7 +656,7 @@ export default function PoiDetailSection({
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div
-                            className="w-8 h-8 rounded-full bg-emerald-900 text-white text-xs font-bold flex items-center justify-center shrink-0"
+                            className="w-8 h-8 rounded-full bg-neutral-900 text-white text-xs font-bold flex items-center justify-center shrink-0"
                             aria-hidden="true"
                           >
                             {rev.author.trim().charAt(0).toUpperCase() || 'G'}
@@ -622,12 +664,12 @@ export default function PoiDetailSection({
                           <div className="min-w-0">
                             <div className="text-[13px] font-bold text-neutral-900 truncate">{rev.author}</div>
                             {rev.relative_time && (
-                              <div className="text-xs text-neutral-600">{rev.relative_time}</div>
+                              <div className="text-xs text-neutral-500">{rev.relative_time}</div>
                             )}
                           </div>
                         </div>
                         <div
-                          className="text-xs font-semibold text-amber-600 shrink-0"
+                          className="text-xs font-semibold text-amber-500 shrink-0"
                           aria-label={`${rev.rating} trên 5 sao`}
                         >
                           {'★'.repeat(Math.max(1, Math.min(5, Math.round(rev.rating))))}
@@ -642,137 +684,10 @@ export default function PoiDetailSection({
           </div>
         )}
 
-        {/* 5B. Tab Thực đơn & Bảng giá */}
-        {activeTab === 'menu' && (
-          <div className="space-y-6 mt-5 animate-fadeIn">
-            {/* Card Mức giá & Tiêu chuẩn */}
-            <div className="rounded-2xl bg-emerald-50/70 border border-emerald-200/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
-                  Mức chi tiêu trung bình
-                </div>
-                <div className="text-lg sm:text-xl font-bold text-neutral-950 mt-0.5">
-                  {priceDisplay}
-                </div>
-              </div>
-              <div className="text-xs text-neutral-700 sm:text-right space-y-0.5">
-                <p className="font-semibold text-emerald-950">Nguyên liệu bản địa tươi sạch</p>
-                <p className="text-neutral-600">Thanh toán tiền mặt, chuyển khoản, QR Code</p>
-              </div>
-            </div>
-
-            {/* Ảnh thực đơn / Bảng giá thực tế */}
-            {menuImageUrl && (
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-bold text-neutral-950 flex items-center gap-2">
-                    <span>Ảnh bảng giá & Thực đơn thực tế</span>
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={() => setIsMenuZoomOpen(true)}
-                    className="text-xs font-semibold text-emerald-800 hover:text-emerald-900 flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 px-2.5 py-1 rounded-lg hover:bg-emerald-50 transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                    </svg>
-                    <span>Phóng to ảnh menu</span>
-                  </button>
-                </div>
-
-                <div
-                  onClick={() => setIsMenuZoomOpen(true)}
-                  className="relative rounded-2xl overflow-hidden border border-neutral-200/80 bg-neutral-900 group cursor-pointer aspect-[16/9] sm:aspect-[21/9]"
-                >
-                  <img
-                    src={menuImageUrl}
-                    alt={`Bảng giá thực đơn ${poi.name}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-95 group-hover:opacity-100"
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1200&q=80';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-end p-4">
-                    <div className="text-white">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-white mb-1">
-                        Bảng giá ghi nhận thực tế tại quán
-                      </span>
-                      <p className="text-xs text-neutral-200">Nhấn vào ảnh để xem chi tiết kích thước lớn</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Danh sách các món đặc trưng & Giá bán */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-neutral-950">
-                  Món tiêu biểu & Bảng giá chi tiết {menuItems.length > 0 ? `(${menuItems.length} món)` : ''}
-                </h2>
-              </div>
-
-              {menuItems.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {menuItems.map((dish, i) => (
-                    <div
-                      key={dish.name + i}
-                      className="rounded-xl bg-neutral-50/80 border border-neutral-200/80 p-3.5 space-y-1.5 hover:border-emerald-300 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-0.5">
-                          <span className="text-[14px] font-bold text-neutral-950 leading-snug">
-                            {dish.name}
-                          </span>
-                          {dish.category_tag && (
-                            <span className="ml-2 inline-flex items-center rounded-md bg-neutral-200/70 px-1.5 py-0.5 text-[10.5px] font-medium text-neutral-700">
-                              {dish.category_tag}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[14px] font-extrabold text-emerald-800 shrink-0">
-                          {dish.price > 0 ? `${dish.price.toLocaleString('vi-VN')} ₫` : 'Miễn phí'}
-                        </span>
-                      </div>
-                      {dish.description && (
-                        <p className="text-xs text-neutral-600 leading-relaxed">
-                          {dish.description}
-                        </p>
-                      )}
-                      {dish.is_signature && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full mt-1">
-                          ★ Món đặc trưng bán chạy
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl bg-neutral-50 border border-neutral-200/80 p-6 text-center text-sm text-neutral-600 space-y-2">
-                  <p className="font-medium text-neutral-900">Đang cập nhật danh mục món chi tiết</p>
-                  <p className="text-xs">
-                    Mức giá tham khảo: {priceDisplay}. Vui lòng liên hệ trực tiếp quán qua số điện thoại để đặt bàn hoặc xem thực đơn hôm nay.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Gợi ý kinh nghiệm gọi món */}
-            <div className="rounded-2xl bg-neutral-50 border border-neutral-200/80 p-4 space-y-2 text-xs text-neutral-700 leading-relaxed">
-              <p className="font-bold text-neutral-950 text-sm">Gợi ý từ người sành ăn bản địa:</p>
-              <p>
-                Nên gọi các món có đánh dấu đặc sản bán chạy để thưởng thức trọn vẹn phong vị miền Trung. Các quán ăn địa phương phục vụ kèm rau sống tươi sạch miễn phí; du khách ăn chay hoặc kiêng ngọt có thể dặn dò chủ quán khi gọi món.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* 5C. Tab Cẩm nang xanh (động cho từng địa điểm) */}
+        {/* 5B. Tab Cẩm nang xanh (động cho từng địa điểm) */}
         {activeTab === 'guides' && (
           <div className="space-y-4 text-sm mt-5 animate-fadeIn">
-            <h2 className="font-bold text-neutral-950 text-base">Cẩm nang tham quan & Du lịch bền vững</h2>
+            <h2 className="font-bold text-neutral-950 text-base font-heading">Mẹo trải nghiệm & Du lịch bền vững</h2>
 
             <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 space-y-2">
               <div className="font-semibold text-emerald-950 flex items-center gap-2">
@@ -860,7 +775,7 @@ export default function PoiDetailSection({
                   type="button"
                   onClick={onViewOnMap || onClose}
                   disabled={!hasCoordinates}
-                  className="inline-flex items-center gap-1.5 min-h-[40px] px-4 bg-[#102b21] text-white text-xs font-semibold rounded-full hover:bg-[#194332] transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  className="inline-flex items-center gap-1.5 min-h-[40px] px-4 bg-black text-white text-xs font-semibold rounded-full hover:bg-neutral-800 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
                 >
                   <span>{hasCoordinates ? 'Mở trên bản đồ tương tác' : 'Chưa có vị trí trên bản đồ'}</span>
                   <span aria-hidden="true">→</span>

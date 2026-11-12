@@ -251,6 +251,42 @@ export async function getPois(params: GetPoisParams = {}): Promise<PaginatedPois
   return fetchJson<PaginatedPoisResponse>(path);
 }
 
+/**
+ * Lấy toàn bộ danh sách POI (hỗ trợ tự động phân trang nếu backend giới hạn số lượng trên 1 trang).
+ * Đảm bảo 100% tất cả 482 POIs (bao gồm Cầu Rồng, Chùa Linh Ứng, Ngũ Hành Sơn...) đều được kích hoạt.
+ */
+export async function getAllPois(params: GetPoisParams = {}): Promise<PaginatedPoisResponse> {
+  const firstPage = await getPois({ ...params, page: 1, limit: params.limit ?? 500 });
+  const items = [...(firstPage.items ?? [])];
+  const totalPages = firstPage.pagination?.total_pages ?? 1;
+
+  if (totalPages > 1 && items.length < (firstPage.pagination?.total ?? 0)) {
+    const remainingLimit = firstPage.pagination?.limit ?? 100;
+    const remainingPages = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, index) =>
+        getPois({ ...params, page: index + 2, limit: remainingLimit }),
+      ),
+    );
+    for (const page of remainingPages) {
+      if (page.items) {
+        items.push(...page.items);
+      }
+    }
+  }
+
+  return {
+    items,
+    pagination: {
+      page: 1,
+      limit: items.length,
+      total: items.length,
+      total_pages: 1,
+      has_next: false,
+      has_previous: false,
+    },
+  };
+}
+
 export async function getPoisByIds(ids: string[]): Promise<BackendPoiItem[]> {
   const requestedIds = new Set(ids.map(String));
   if (requestedIds.size === 0) return [];

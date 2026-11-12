@@ -1167,7 +1167,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   return (
     <div className="flex-1 h-full bg-white overflow-hidden select-none animate-fadeIn flex flex-col">
       {/* ─── THANH TRẠNG THÁI 1 HÀNG DUY NHẤT CHUẨN 100% MINDTRIP ─── */}
-      <div className="h-[64px] flex items-center justify-between shrink-0 px-6 lg:px-[36px] bg-white border-b border-gray-200/90 gap-2 overflow-x-auto no-scrollbar z-30">
+      <div className="h-[64px] flex items-center justify-between shrink-0 px-6 lg:px-[36px] bg-white gap-2 overflow-x-auto no-scrollbar z-30">
         {/* BÊN TRÁI: NÚT QUAY LẠI + THUMBNAIL + TÊN CHUYẾN ĐI (DROPDOWN) */}
         <div className="flex items-center gap-3 shrink-0 min-w-0">
           <button

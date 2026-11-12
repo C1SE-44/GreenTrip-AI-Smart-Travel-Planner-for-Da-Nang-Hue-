@@ -238,7 +238,7 @@ export default function TripCalendarView({
   return (
     <div className="flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn">
       {/* ─── HEADER: TIÊU ĐỀ CHUYẾN ĐI & NÚT QUAY LẠI ─── */}
-      <header className="h-[64px] px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
+      <header className="h-[64px] px-6 lg:px-[36px] bg-white flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
@@ -309,9 +309,9 @@ export default function TripCalendarView({
         {/* ════════════════════════════════════════════════════════
             CỘT TRÁI: BẢNG LỊCH THỜI GIAN BIỂU (GOOGLE CALENDAR STYLE)
         ════════════════════════════════════════════════════════ */}
-        <div className={`${isMapExpanded ? 'hidden' : 'w-[650px] shrink-0'} h-full flex flex-col bg-white border-r border-gray-100 select-none overflow-hidden transition-[width] duration-300 ease-in-out`}>
+        <div className={`${isMapExpanded ? 'hidden' : 'w-[650px] shrink-0'} h-full flex flex-col bg-white select-none overflow-hidden transition-[width] duration-300 ease-in-out`}>
           {/* Header Lịch: Calendar + Điều hướng ngày */}
-          <div className="px-6 pt-5 pb-3 shrink-0 flex items-center justify-between border-b border-gray-100">
+          <div className="px-6 pt-5 pb-3 shrink-0 flex items-center justify-between">
             <div>
               <h2 className="text-[26px] font-extrabold text-gray-950 tracking-tight leading-none">
                 Calendar

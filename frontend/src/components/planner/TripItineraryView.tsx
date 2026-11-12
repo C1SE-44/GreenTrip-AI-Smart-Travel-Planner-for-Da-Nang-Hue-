@@ -994,7 +994,7 @@ export default function TripItineraryView({
           </div>
         </header>
       ) : (
-        <header className="h-[64px] px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
+        <header className="h-[64px] px-6 lg:px-[36px] bg-white flex items-center justify-between shrink-0 z-30">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
@@ -1082,7 +1082,7 @@ export default function TripItineraryView({
         {/* ════════════════════════════════════════════════════════
             CỘT: Ý TƯỞNG + LỊCH THEO NGÀY (THỦ CÔNG CHUẨN)
         ════════════════════════════════════════════════════════ */}
-        <div className={`${isDrawerMode ? 'w-full' : (isMapExpanded ? 'hidden' : 'w-[650px] shrink-0')} flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 border-r border-gray-100 auto-hide-scrollbar select-none transition-[width] duration-300 ease-in-out`}>
+        <div className={`${isDrawerMode ? 'w-full' : (isMapExpanded ? 'hidden' : 'w-[650px] shrink-0')} flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 auto-hide-scrollbar select-none transition-[width] duration-300 ease-in-out`}>
           {/* ────────────────────────────────────────────────────────
               1. PHẦN Ý TƯỞNG (CHUẨN MINDTRIP ẢNH 3, 4 - BỘ LỌC BÊN PHẢI)
           ──────────────────────────────────────────────────────── */}
@@ -1447,7 +1447,7 @@ export default function TripItineraryView({
                 </h2>
 
                 {/* Nút gạt Khoảng cách (Distances Toggle) */}
-                <div className="flex items-center gap-2 ml-2 pl-3 border-l border-gray-200">
+                <div className="flex items-center gap-2 ml-4">
                   <span className="text-xs font-semibold text-gray-600">Khoảng cách</span>
                   <button
                     type="button"
@@ -1504,7 +1504,7 @@ export default function TripItineraryView({
                 const hasLunchBreak = day.stops.some((s) => s.stop_type === 'rest');
 
                 return (
-                  <div key={day.day_id} className="border-b border-gray-100 pb-3">
+                  <div key={day.day_id} className="pb-3">
                     {/* Header Ngày: Không còn dấu cộng lặp lại, chỉ có chevron và tiêu đề ngày */}
                     <div
                       onClick={() => toggleDayCollapse(day.day_number)}

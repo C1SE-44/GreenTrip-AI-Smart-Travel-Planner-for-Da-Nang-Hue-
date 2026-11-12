@@ -6,6 +6,10 @@ import fs from 'node:fs';
 
 const parentEnvPath = fileURLToPath(new URL('../.env', import.meta.url));
 const envDir = fs.existsSync(parentEnvPath) ? '../' : '.';
+const frontendRoot = fileURLToPath(new URL('.', import.meta.url));
+const phosphorIconsRoot = fs.realpathSync(
+  fileURLToPath(new URL('./node_modules/@phosphor-icons/web', import.meta.url)),
+);
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -16,12 +20,12 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-  optimizeDeps: {
-    exclude: ['lucide-react'],
-  },
   server: {
     host: '0.0.0.0',
     port: 5173,
+    fs: {
+      allow: [frontendRoot, phosphorIconsRoot],
+    },
     watch: {
       usePolling: true,
     },

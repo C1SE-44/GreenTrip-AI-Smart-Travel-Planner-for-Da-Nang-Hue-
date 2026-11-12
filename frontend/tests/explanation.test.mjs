@@ -144,9 +144,93 @@ test('GreenTrip planner flows in a real Chromium browser', { timeout: 180000 }, 
       assert.ok(await evaluate('!document.querySelector("[role=dialog]").innerText.includes("SNIPPET A")'));
       assert.ok(await evaluate('window.explanationRequests.some(url => url.includes("22222222-2222-4222-8222-222222222222/explanation-facts"))'));
     });
+    await t.test('PB11 automatically selects ranked POIs within budget and schedules them', async () => {
+      await navigate('component=itinerary&auto-recommendations=yes');
+      await waitFor('window.itineraryRequests.some(request => request.method === "GET")');
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Sắp xếp thông minh")).click()');
+      await waitFor('window.autoSelectedIds.length === 2 && window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.some(stop => stop.title === "POI A") && window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.some(stop => stop.title === "POI B")');
+      assert.deepEqual(await evaluate('window.autoSelectedIds'), ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222']);
+      assert.ok(await evaluate('document.body.innerText.includes("ước tính 400.000 VNĐ cho 2 người")'));
+      assert.ok(await evaluate('document.body.innerText.includes("Vì sao gợi ý ngày này?") && document.body.innerText.includes("Khung giờ hiện tại:")'));
+      assert.ok(await evaluate('document.body.innerText.includes("Các điểm tập trung tại Đà Nẵng") && document.body.innerText.includes("đường chim bay")'));
+    });
+    await t.test('PB11 respects ordered best-time choices when a POI supports several periods', async () => {
+      await navigate('component=itinerary&multiple-times=yes');
+      await waitFor('window.itineraryRequests.some(request => request.method === "GET")');
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Sắp xếp thông minh")).click()');
+      await waitFor('window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.some(stop => stop.title === "POI A") && window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.some(stop => stop.title === "POI B")');
+      const scheduled = await evaluate('window.itineraryRequests.at(-1).payload.days[0].stops.filter(stop => stop.title.startsWith("POI ")).map(stop => ({ title: stop.title, start: stop.start_time, end: stop.end_time }))');
+      assert.equal(scheduled[0].start, '08:30', 'Uses the first valid period listed by the POI');
+      assert.ok(scheduled.every(stop => Number(stop.start.slice(0, 2)) < 12 || Number(stop.start.slice(0, 2)) >= 18), 'Generated hours stay within the POI supported periods');
+    });
+    await t.test('PB11 spreads three cafes instead of putting all of them in one day', async () => {
+      await navigate('component=itinerary&cafe-cap=yes');
+      await waitFor('window.itineraryRequests.some(request => request.method === "GET")');
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Sắp xếp thông minh")).click()');
+      await waitFor('window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.filter(stop => stop.stop_type === "custom").length === 2');
+      assert.ok(await evaluate('document.body.innerText.includes("Còn 1 địa điểm chưa xếp")'));
+      assert.ok(await evaluate('document.body.innerText.includes("giới hạn tối đa 2 quán cà phê mỗi ngày")'));
+    });
+    await t.test('PB11 keeps user-timed appointments fixed while optimizing nearby places', async () => {
+      await navigate('component=itinerary&preserve-timed-stops=yes');
+      await waitFor('window.itineraryRequests.some(request => request.method === "GET")');
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Sắp xếp thông minh")).click()');
+      await waitFor('window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.some(stop => stop.title === "POI A") && window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.some(stop => stop.title === "POI B")');
+      const order = await evaluate('window.itineraryRequests.at(-1).payload.days[0].stops.map(stop => ({ title: stop.title, start: stop.start_time, end: stop.end_time }))');
+      const appointmentIndex = order.findIndex(stop => stop.title === 'Cuộc hẹn cố định');
+      const firstRecommendedIndex = Math.min(...order.map((stop, index) => stop.title.startsWith('POI ') ? index : Number.POSITIVE_INFINITY));
+      assert.ok(appointmentIndex >= 0 && appointmentIndex < firstRecommendedIndex, 'Timed appointment stays ahead of newly scheduled places');
+      assert.deepEqual(order[appointmentIndex], { title: 'Cuộc hẹn cố định', start: '11:00', end: '12:00' });
+      const timedStops = order.filter(stop => stop.start && stop.end).sort((a, b) => a.start.localeCompare(b.start));
+      assert.ok(timedStops.every((stop, index) => index === 0 || timedStops[index - 1].end <= stop.start), 'Automatically scheduled visits do not overlap');
+    });
+    await t.test('PB11 offers a one-click repair after the server rejects overlapping times', async () => {
+      await navigate('component=itinerary&overlap-error=yes');
+      await waitFor('window.itineraryRequests.some(request => request.method === "GET")');
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Sắp xếp thông minh")).click()');
+      await waitFor('document.querySelector("[role=alert]")?.innerText.includes("khung giờ bị trùng")');
+      const beforeRepair = await evaluate('window.itineraryRequests.filter(request => request.method === "PUT").length');
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Sửa giờ trùng")).click()');
+      await waitFor(`window.itineraryRequests.filter(request => request.method === "PUT").length > ${beforeRepair} && !document.querySelector("[role=alert]")`);
+      const repaired = await evaluate('window.itineraryRequests.at(-1).payload.days[0].stops');
+      const cafe = repaired.find(stop => stop.title === 'Đi Lạc Coffee');
+      const restaurant = repaired.find(stop => stop.title === 'Nhà Hàng Bếp Cuốn');
+      assert.ok(cafe && restaurant, 'The repair keeps both places in the itinerary');
+      assert.equal(cafe.start_time, null, 'Only the assistant-generated conflicting time is cleared');
+      assert.equal(restaurant.start_time, '09:45', 'The manually timed appointment remains fixed');
+    });
+    await t.test('PB11 lets travelers choose a denser or more relaxed schedule', async () => {
+      await navigate('component=itinerary&auto-recommendations=yes');
+      await waitFor('window.itineraryRequests.some(request => request.method === "GET")');
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Thong thả")).click()');
+      assert.ok(await evaluate('document.body.innerText.includes("thường 2 điểm")'));
+      assert.ok(await evaluate('document.body.innerText.includes("Nhịp độ · 🌿 Thong thả")'));
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Sắp xếp thông minh")).click()');
+      await waitFor('window.itineraryRequests.at(-1)?.method === "PUT" && window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.filter(stop => stop.stop_type !== "rest").length === 2');
+
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Dày đặc")).click()');
+      assert.ok(await evaluate('document.body.innerText.includes("tới 5 điểm")'));
+      assert.ok(await evaluate('document.body.innerText.includes("Nhịp độ · ⚡ Dày đặc")'));
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Sắp xếp thông minh")).click()');
+      await waitFor('window.itineraryRequests.at(-1)?.method === "PUT" && window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.filter(stop => stop.stop_type !== "rest").length === 4');
+    });
+    await t.test('PB11 adds more suggested places at higher pacing for a multi-day trip', async () => {
+      const counts = [];
+      for (const [label, expectedDescription] of [['Thong thả', 'thường 2 điểm'], ['Cân bằng', 'thường 3 điểm'], ['Dày đặc', 'tới 5 điểm']]) {
+        await navigate('component=itinerary&many-pois=yes');
+        await waitFor('window.itineraryRequests.some(request => request.method === "GET") && window.itineraryRequests.some(request => request.method === "PUT")');
+        const before = await evaluate('window.itineraryRequests.filter(request => request.method === "PUT").length');
+        await evaluate(`([...document.querySelectorAll("button")].find(button => button.textContent.includes(${JSON.stringify(label)})).click())`);
+        assert.ok(await evaluate(`document.body.innerText.includes(${JSON.stringify(expectedDescription)})`));
+        await waitFor(`window.itineraryRequests.filter(request => request.method === "PUT").length > ${before}`);
+        counts.push(await evaluate('window.itineraryRequests.at(-1).payload.days.flatMap(day => day.stops).filter(stop => stop.stop_type !== "rest").length'));
+      }
+      assert.deepEqual(counts, [8, 12, 16], 'With enough time, budget and varied POIs, each higher pacing level raises itinerary capacity');
+      assert.ok(counts[1] > counts[0] && counts[2] > counts[1], `Higher pacing should schedule more places, got ${counts.join(' → ')}`);
+    });
     await t.test('PB11 preserves custom stops, independent rest periods and edits on repeat optimization', async () => {
       await navigate('component=itinerary');
-      await waitFor('document.body.innerText.includes("Tối ưu lịch") && window.itineraryRequests.some(request => request.method === "GET")');
+      await waitFor('document.body.innerText.includes("Sắp xếp thông minh") && window.itineraryRequests.some(request => request.method === "GET")');
       await waitFor('window.itineraryRequests.some(request => request.method === "PUT")');
       assert.ok(await evaluate('document.body.innerText.includes("Nghỉ gợi ý 09:30–10:00") && document.body.innerText.includes("Nghỉ gợi ý 12:00–14:00")'));
 
@@ -154,8 +238,8 @@ test('GreenTrip planner flows in a real Chromium browser', { timeout: 180000 }, 
       await waitFor('window.itineraryRequests.some(request => request.payload?.days?.[0]?.stops?.some(stop => stop.start_time === "12:00"))');
       assert.ok(await evaluate('[...document.querySelectorAll("button")].some(button => button.textContent.includes("Thêm khoảng nghỉ vào lịch"))'), 'Morning rest remains addable after lunch is scheduled');
 
-      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Tối ưu lịch")).click()');
-      await waitFor('document.body.innerText.includes("Đã bổ sung 2 địa điểm và 1 khoảng nghỉ")');
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Sắp xếp thông minh")).click()');
+      await waitFor('document.body.innerText.includes("Đã xếp 2 địa điểm")');
       await waitFor('window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.filter(stop => stop.stop_type === "custom").length === 2 && window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.filter(stop => stop.stop_type === "rest").length === 2');
 
       await evaluate(`(() => {
@@ -173,7 +257,7 @@ test('GreenTrip planner flows in a real Chromium browser', { timeout: 180000 }, 
       await waitFor('window.itineraryRequests.at(-1)?.payload?.days?.[0]?.stops?.some(stop => stop.stop_type === "custom" && stop.city === "Huế" && stop.address === "Khu vực kiểm thử" && stop.comment === "Ghé vào buổi sáng")');
 
       const previousWrites = await evaluate('window.itineraryRequests.filter(request => request.method === "PUT").length');
-      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Tối ưu lịch")).click()');
+      await evaluate('[...document.querySelectorAll("button")].find(button => button.textContent.includes("Sắp xếp thông minh")).click()');
       await waitFor(`window.itineraryRequests.filter(request => request.method === "PUT").length > ${previousWrites}`);
       assert.equal(await evaluate('window.itineraryRequests.at(-1).payload.days[0].stops.filter(stop => stop.stop_type === "custom").length'), 2);
       assert.equal(await evaluate('window.itineraryRequests.at(-1).payload.days[0].stops.filter(stop => stop.stop_type === "rest").length'), 2);

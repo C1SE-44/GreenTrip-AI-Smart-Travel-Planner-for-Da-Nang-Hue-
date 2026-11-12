@@ -2296,7 +2296,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     try {
                       const rawFav = localStorage.getItem('greentrip_favorites');
                       if (rawFav) count = Math.max(count, (JSON.parse(rawFav) as string[]).length);
-                    } catch {}
+                    } catch {
+                      // ignore
+                    }
                     return count > 0 ? (
                       <span className="w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
                         {count}

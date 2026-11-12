@@ -76,7 +76,7 @@ export const ThreeElevationWave: React.FC<ThreeElevationWaveProps> = ({
 
     // 4. Animation loop
     let animId: number;
-    let clock = new THREE.Clock();
+    const clock = new THREE.Clock();
 
     const animate = () => {
       animId = requestAnimationFrame(animate);

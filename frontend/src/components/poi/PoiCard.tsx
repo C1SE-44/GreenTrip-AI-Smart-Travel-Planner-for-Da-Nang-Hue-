@@ -242,7 +242,7 @@ export default function PoiCard({
                 ? 'bg-white text-black' 
                 : 'bg-black/35 hover:bg-black/55 text-white backdrop-blur-xs'
             }`}
-            title={isAdded ? "Đã thêm vào chuyến đi (Bấm để bỏ)" : "Thêm vào chuyến đi"}
+            title={isAdded ? "Đã lưu trong chuyến đi · Bấm để quản lý" : "Thêm vào chuyến đi"}
           >
             <i className={`ph ${isAdded ? 'ph-check text-[14px] font-bold' : 'ph-plus text-[14px]'}`} aria-hidden="true"></i>
           </button>
@@ -329,6 +329,13 @@ export default function PoiCard({
           {getPriceTierDisplay(poi)}
         </div>
 
+        {showSavedCount && typeof poi.savedCount === 'number' && (
+          <p className="flex min-h-6 items-center gap-1.5 pt-0.5 text-xs text-neutral-700" aria-label={`Đã lưu bởi ${poi.savedCount} người`}>
+            <Heart size={14} className="shrink-0 fill-rose-600 text-rose-600" aria-hidden="true" />
+            <span>Đã lưu bởi {poi.savedCount.toLocaleString('vi-VN')} người</span>
+          </p>
+        )}
+
         {showExplanation && recommendation && (
           <div className="pt-1.5" onClick={(event) => event.stopPropagation()}>
             <button
@@ -342,7 +349,7 @@ export default function PoiCard({
               }`}
             >
               <i className={`ph ${isAdded ? 'ph-check' : 'ph-plus'} text-sm`} aria-hidden="true"></i>
-              {isAdded ? 'Đã thêm vào chuyến đi' : '+ Thêm vào chuyến đi'}
+              {isAdded ? 'Đã lưu trong chuyến đi' : '+ Thêm vào chuyến đi'}
             </button>
             <button
               type="button"

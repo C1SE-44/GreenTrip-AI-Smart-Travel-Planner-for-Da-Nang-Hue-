@@ -1,11 +1,11 @@
-﻿import asyncio
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db.neo4j import close_driver, get_driver
+from app.db import neo4j
 from app.auth.router import router as auth_router
 from app.pois.router import router as pois_router
 from app.trips.router import router as trips_router
@@ -21,11 +21,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         await asyncio.to_thread(seed_sample_itineraries)
     except Exception as e:
         print(f"Warning: could not seed sample itineraries: {e}")
-    get_driver()
     try:
         yield
     finally:
-        close_driver()
+        neo4j.close_driver()
 
 
 app = FastAPI(title="GreenTrip AI API", lifespan=lifespan)

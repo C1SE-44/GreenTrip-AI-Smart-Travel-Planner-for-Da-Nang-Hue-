@@ -441,7 +441,10 @@ def generate_smart_recommendations(
 
 def validate_and_process_trip_parameters(params: TripParametersRequest) -> ValidatedTripData:
     daily_budget = round(params.total_budget / (params.days * params.num_people), 2)
-    budget_tier = determine_budget_tier(daily_budget)
+    budget_tier = params.budget_tier if params.budget_tier is not None else determine_budget_tier(daily_budget)
+    dining_tier = params.dining_tier or budget_tier
+    lodging_tier = params.lodging_tier or budget_tier
+    activities_tier = params.activities_tier or budget_tier
 
     points_per_day = len(params.preferences) / params.days
     if points_per_day <= 3:
@@ -506,6 +509,9 @@ def validate_and_process_trip_parameters(params: TripParametersRequest) -> Valid
         total_budget=params.total_budget,
         daily_budget_per_person=daily_budget,
         budget_tier=budget_tier,
+        dining_tier=dining_tier,
+        lodging_tier=lodging_tier,
+        activities_tier=activities_tier,
         pacing_level=pacing_level,
         pacing_label=pacing_label,
         pacing_desc=pacing_desc,
@@ -591,39 +597,53 @@ def detect_copilot_intent(message: str) -> str:
 
     # 6. POI advice / landmark feasibility inquiry intent
     advice_keywords = [
-        "có nên đi", "mấy giờ", "vé vào", "giá vé", "có gì chơi",
-        "kinh nghiệm đi", "mặc gì", "check in", "đẹp không", "thời gian tham quan",
-        "cầu rồng", "bà nà", "chùa linh ứng", "ngũ hành sơn", "đại nội",
-        "chùa thiên mụ", "lăng khải định", "lăng tự đức", "bán đảo sơn trà",
-        "đèo hải vân", "chợ hàn", "chợ đầm", "chợ cồn", "chợ đông ba"
+        "có nên đi", "có nên ghé", "có nên tham quan", "có gì hay", 
+        "có đáng đi", "có nên đến", "tôi có nên đi", "có nên chọn",
+        "đáng đi không", "có đẹp không", "chơi gì ở", "có gì đẹp",
+        "thế nào", "review", "kinh nghiệm đi"
+    ]
+    landmark_names = [
+        "sơn trà", "cầu rồng", "nam sơn", "linh ứng", "ngũ hành sơn",
+        "bàn cờ", "bà nà", "đại nội", "thiên mụ", "khải định",
+        "tự đức", "từ hiếu", "tam giang", "mỹ khê", "hải vân"
     ]
     if any(k in msg for k in advice_keywords):
         return "poi_advice"
+    if any(lm in msg for lm in landmark_names) and any(q in msg for q in ["không", "sao", "nên", "thế nào", "?", "gì"]):
+        return "poi_advice"
 
-    # 7. Practical Travel Tips, Transit & Green Mobility Guide
-    tips_keywords = [
-        "mẹo", "kinh nghiệm", "tip", "tips", "di chuyển", "xe buýt", "xe bus",
-        "taxi", "xe máy", "thuê xe", "thời tiết", "mùa nào đẹp", "trang phục",
-        "hành lý", "chuẩn bị gì", "lưu ý", "an toàn", "chặt chém", "văn hóa",
-        "ứng xử", "sim", "đổi tiền", "xanh", "bền vững"
-    ]
-    if any(k in msg for k in tips_keywords):
-        return "travel_tips"
-
-    # 8. Night activities & Eco-Nightlife
+    # 7. Night eco activities intent
     night_keywords = [
-        "buổi tối", "về đêm", "chơi đêm", "ban đêm", "phố đi bộ", 
-        "chợ đêm", "ngắm cảnh đêm", "du thuyền", "night", "nightlife"
+        "buổi tối", "tối nay", "về đêm", "ban đêm", "đi chơi đêm", 
+        "hoạt động đêm", "trải nghiệm đêm", "ngắm cảnh đêm", 
+        "phun lửa", "sông hàn", "ca huế", "sông hương", "chợ đêm", "night"
     ]
     if any(k in msg for k in night_keywords):
         return "night_eco_activities"
 
-    return "smart_concierge"
+    # 8. Travel Tips, Budget, Transport & Souvenirs
+    tips_keywords = [
+        "chi phí", "ngân sách", "bao nhiêu tiền", "tiết kiệm", "kinh nghiệm",
+        "thời tiết", "mùa nào", "chuẩn bị gì", "hành lý", "mua quà", "làm quà",
+        "quà lưu niệm", "chợ hàn", "chợ cồn", "chợ đông ba", "phương tiện",
+        "di chuyển", "xe buýt", "xe bus", "taxi điện", "thuê xe", "xe máy",
+        "gia đình", "trẻ em", "em bé", "người già", "người lớn tuổi"
+    ]
+    if any(k in msg for k in tips_keywords):
+        return "travel_tips_budget"
+        
+    return "general_chat"
 
 
-def process_copilot_chat(request: CopilotChatRequest, connection: Connection) -> CopilotChatResponse:
-    ctx = request.trip_context
+def process_copilot_chat(
+    request: CopilotChatRequest,
+    connection: Connection,
+) -> CopilotChatResponse:
+    """
+    Main entrypoint for In-Planner Copilot Chat (PB14 - MindTrip-grade Local Concierge).
+    """
     intent = detect_copilot_intent(request.message)
+    ctx = request.trip_context
 
     if intent == "culinary_guide":
         (
@@ -660,7 +680,7 @@ def process_copilot_chat(request: CopilotChatRequest, connection: Connection) ->
         return CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
-            target_slot=ctx.current_slot or "morning",
+            target_slot=ctx.current_slot or "afternoon",
             suggested_pois=suggested_pois,
             action_type=action_type,
             next_suggested_prompts=next_prompts,
@@ -669,7 +689,7 @@ def process_copilot_chat(request: CopilotChatRequest, connection: Connection) ->
             budget_impact_summary=budget_impact,
         )
 
-    if intent == "travel_tips":
+    if intent == "travel_tips_budget":
         (
             reply_text,
             suggested_pois,
@@ -682,7 +702,7 @@ def process_copilot_chat(request: CopilotChatRequest, connection: Connection) ->
         return CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
-            target_slot=None,
+            target_slot=ctx.current_slot or "morning",
             suggested_pois=suggested_pois,
             action_type=action_type,
             next_suggested_prompts=next_prompts,
@@ -779,7 +799,7 @@ def process_copilot_chat(request: CopilotChatRequest, connection: Connection) ->
             green_impact_summary="Khám phá phố đi bộ và phương tiện công cộng về đêm giúp giảm phát thải, tận hưởng không khí trong lành của thành phố.",
         )
 
-    # Universal Smart Concierge
+    # Universal Smart Concierge: Warm, deeply grounded, no more dry boilerplate!
     (
         reply_text,
         suggested_pois,

@@ -85,11 +85,11 @@ export interface Poi {
   gallery?: string[];
   description: string;
   rating: number;
+  matchScore?: number;
   visitDuration: string;
   average_visit_minutes?: number | null;
-  isGreen: boolean;
+  isGreen?: boolean;
   ecoScore: number;
-  matchScore?: number;
   openHours?: string | null;
   estimatedCost?: number | null;
   isLocalBusiness?: boolean;
@@ -143,6 +143,7 @@ export interface BackendPoiItem {
   social_links?: Record<string, string> | null;
   opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
+  matchScore?: number;
   saved_count?: number | null;
 }
 
@@ -534,7 +535,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoord
   const statusOpenHours = typeof item.opening_hours?.status_text === 'string' ? item.opening_hours.status_text.trim() : '';
 
   return {
-    id: String(item.id),
+    id: String(item.id ?? (item as unknown as { poi_id?: string | number }).poi_id ?? ''),
     name: rawName,
     cleanName,
     cleanTitle,
@@ -551,6 +552,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoord
     rating,
     visitDuration,
     isGreen,
+    average_visit_minutes: item.average_visit_minutes ?? null,
     ecoScore,
     openHours: statusOpenHours || item.open_hours?.trim() || (category === 'quan-an' ? '09:30 – 21:30' : '07:30 – 17:30'),
     estimatedCost,

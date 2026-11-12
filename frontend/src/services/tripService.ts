@@ -1,9 +1,14 @@
 import { API_BASE_URL } from '../lib/api';
+import type { CopilotStop } from '@/components/planner/copilotTripData';
 
 export interface TripParametersPayload {
   destination: string;
   days: number;
-  total_budget: number;
+  total_budget?: number;
+  budget_tier?: 'budget' | 'standard' | 'luxury';
+  dining_tier?: 'budget' | 'standard' | 'luxury';
+  lodging_tier?: 'budget' | 'standard' | 'luxury';
+  activities_tier?: 'budget' | 'standard' | 'luxury';
   num_people: number;
   start_date?: string | null;
   preferences?: string[];
@@ -40,9 +45,15 @@ export interface DailyItineraryOutline {
   day: number;
   theme: string;
   focus_city: string;
-  suggested_activities: string[];
+  suggested_activities?: string[];
   rest_periods?: RestPeriod[];
   assistant_tip?: string;
+  hotel?: {
+    name: string;
+    checkInNote: string;
+    isEcoCertified?: boolean;
+  };
+  stops?: CopilotStop[];
 }
 
 export interface RestPeriod {
@@ -58,6 +69,9 @@ export interface ValidatedTripData {
   total_budget: number;
   daily_budget_per_person: number;
   budget_tier: 'budget' | 'standard' | 'luxury';
+  dining_tier?: string;
+  lodging_tier?: string;
+  activities_tier?: string;
   pacing_level: 'Relaxed' | 'Balanced' | 'Fast';
   pacing_label: string;
   pacing_desc: string;

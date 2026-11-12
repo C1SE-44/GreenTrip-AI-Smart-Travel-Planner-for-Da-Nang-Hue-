@@ -132,13 +132,16 @@ export default function PoiDetailSection({
     ? poi.opening_hours.live_status.trim()
     : '';
   const priceDisplay = formatPriceRange(poi);
+  const hasCoordinates = Number.isFinite(poi.lat) && Number.isFinite(poi.lng);
 
   const facebookUrl = poi.social_links?.facebook?.trim()
     || (typeof meta?.facebook_url === 'string' ? meta.facebook_url.trim() : '')
     || '';
   const googleMapsUrl = poi.social_links?.google_maps?.trim()
     || (typeof meta?.google_maps_url === 'string' ? meta.google_maps_url.trim() : '')
-    || `https://www.google.com/maps/search/?api=1&query=${poi.lat},${poi.lng}`;
+    || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      hasCoordinates ? `${poi.lat},${poi.lng}` : [poi.name, poi.address, poi.city].filter(Boolean).join(', '),
+    )}`;
   const verificationStatus = typeof meta?.verification_status === 'string'
     ? meta.verification_status.trim()
     : '';
@@ -255,7 +258,7 @@ export default function PoiDetailSection({
           <button
             type="button"
             aria-pressed={isFavorite}
-aria-busy={isFavoritePending}
+            aria-busy={isFavoritePending}
             disabled={isFavoritePending}
             onClick={() => onToggleFavorite(poi.id, poi)}
             className={`flex items-center gap-1.5 px-3.5 min-h-[40px] border rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
@@ -288,8 +291,9 @@ aria-busy={isFavoritePending}
             type="button"
             aria-label="Xem vị trí bản đồ"
             onClick={onViewOnMap || onClose}
-            className="min-w-[40px] min-h-[40px] rounded-full border border-neutral-200 flex items-center justify-center text-neutral-700 hover:bg-neutral-50 hover:text-neutral-950 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-            title="Xem vị trí bản đồ"
+            disabled={!hasCoordinates}
+            className="min-w-[40px] min-h-[40px] rounded-full border border-neutral-200 flex items-center justify-center text-neutral-700 hover:bg-neutral-50 hover:text-neutral-950 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            title={hasCoordinates ? 'Xem vị trí bản đồ' : 'Chưa có tọa độ chính xác'}
           >
             <svg className="w-4 h-4 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeLinecap="round" strokeLinejoin="round" />
@@ -762,7 +766,7 @@ aria-busy={isFavoritePending}
               <div>
                 <p className="font-bold text-neutral-950">Tọa độ địa lý (WGS84):</p>
                 <p className="text-neutral-700 font-mono text-xs mt-1">
-                  {poi.lat.toFixed(6)}, {poi.lng.toFixed(6)}
+                  {hasCoordinates ? `${poi.lat.toFixed(6)}, ${poi.lng.toFixed(6)}` : 'Chưa có tọa độ chính xác'}
                 </p>
               </div>
 
@@ -770,9 +774,10 @@ aria-busy={isFavoritePending}
                 <button
                   type="button"
                   onClick={onViewOnMap || onClose}
-                  className="inline-flex items-center gap-1.5 min-h-[40px] px-4 bg-black text-white text-xs font-semibold rounded-full hover:bg-neutral-800 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+                  disabled={!hasCoordinates}
+                  className="inline-flex items-center gap-1.5 min-h-[40px] px-4 bg-black text-white text-xs font-semibold rounded-full hover:bg-neutral-800 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
                 >
-                  <span>Mở trên bản đồ tương tác</span>
+                  <span>{hasCoordinates ? 'Mở trên bản đồ tương tác' : 'Chưa có vị trí trên bản đồ'}</span>
                   <span aria-hidden="true">→</span>
                 </button>
                 <a

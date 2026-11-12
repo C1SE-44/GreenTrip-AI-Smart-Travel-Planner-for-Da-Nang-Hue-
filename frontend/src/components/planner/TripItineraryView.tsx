@@ -193,7 +193,9 @@ export default function TripItineraryView({
         const parsed = JSON.parse(rawFav) as string[];
         count = Math.max(count, parsed.length);
       }
-    } catch {}
+    } catch {
+      // ignore parsing errors
+    }
     return count;
   }, [savedIds]);
 
@@ -1162,6 +1164,7 @@ export default function TripItineraryView({
                           key={item.id}
                           type="button"
                           onClick={() => {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             setIdeasFilter(item.id as any);
                             setShowIdeasFilterMenu(false);
                           }}

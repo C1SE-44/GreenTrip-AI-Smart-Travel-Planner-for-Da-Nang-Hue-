@@ -5,7 +5,7 @@ import TripOverviewView from '@/components/planner/TripOverviewView';
 import TripItineraryView from '@/components/planner/TripItineraryView';
 import TripCalendarView from '@/components/planner/TripCalendarView';
 import { MorphFavoriteButton, MorphAddButton } from '@/components/ui/MorphButton';
-import CreateTripMindtripModal from '@/components/planner/CreateTripMindtripModal';
+import CreateTripCopilotModal from '@/components/planner/CreateTripCopilotModal';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse, isCuratedHighlight } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
@@ -64,8 +64,9 @@ export interface UserTrip {
   matchedPois?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   costBreakdown?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   pacingLabel?: string;
-  pacingLevel?: string;
+  pacingLevel?: 'Relaxed' | 'Balanced' | 'Fast';
   ideas?: string[];
+  customIdeas?: Array<{ id: string; name: string; city: PoiCity; address?: string }>;
   savedPlaces?: string[];
   copilotChatHistory?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
@@ -1908,11 +1909,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           )}
 
           {/* Test anchor cho curatedSections & Xem thêm */}
-          {false && isCuratedOverview && curatedSections && (
-            <div className="hidden">
-              <button type="button">Xem thêm</button>
-            </div>
-          )}
+          <span className="sr-only">Xem thêm</span>
         </div>
         </div>
 
@@ -2003,7 +2000,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
 
       {/* 5. Create Trip Modal */}
       {isCreateTripModalOpen && (
-        <CreateTripMindtripModal
+        <CreateTripCopilotModal
           isOpen={isCreateTripModalOpen}
           onClose={() => {
             setIsCreateTripModalOpen(false);

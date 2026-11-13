@@ -1467,7 +1467,10 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   return (
                     <div
                       key={poi.id}
-                      onClick={() => setSelectedMapPoiId(poi.id)}
+                      onClick={() => {
+                        setSelectedMapPoiId(poi.id);
+                        setHoveredMapPoiId(poi.id);
+                      }}
                       onMouseEnter={() => handleDebouncedHover(poi.id)}
                       onMouseLeave={() => handleDebouncedHover(null)}
                       className={`group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 border bg-white flex flex-col shadow-2xs hover:shadow-md ${

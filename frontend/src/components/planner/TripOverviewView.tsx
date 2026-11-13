@@ -1349,9 +1349,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             isMapExpanded ? 'hidden' : 'w-[650px] shrink-0'
           } h-full bg-white flex flex-col justify-between pl-6 lg:pl-[36px] pr-6 pt-3 pb-4 select-none transition-[width] duration-300 ease-in-out relative border-r border-gray-100`}
         >
-          {/* ─── TẦNG 2: THANH ĐIỀU HƯỚNG 3 CHẾ ĐỘ & HÀNH ĐỘNG CỦA CỘT TRÁI ─── */}
-          <div className="flex items-center justify-between pb-3 border-b border-gray-100 shrink-0 gap-2">
-            {/* 3 Tab: [ 💡 Ý tưởng | 🧭 Lịch trình | 📊 Tổng quan ] */}
+          {/* ─── TẦNG 2: THANH ĐIỀU HƯỚNG 3 CHẾ ĐỘ & HÀNH ĐỘNG CỦA CỘT TRÁI (DÙNG WHITESPACE, BỎ BORDER) ─── */}
+          <div className="flex items-center justify-between pb-2 shrink-0 gap-2">
+            {/* 3 Tab: [ 💡 Ý tưởng | 🧭 Lịch trình | 📅 Lịch ] */}
             <div className="flex items-center rounded-full bg-gray-100 p-0.5 text-[12px] font-semibold text-gray-600 shadow-2xs">
               <button
                 type="button"
@@ -1383,8 +1383,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 onClick={() => onNavigateToTab?.('calendar')}
                 className="flex items-center gap-1.5 px-3 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
               >
-                <span>📊</span>
-                <span>Tổng quan</span>
+                <span>📅</span>
+                <span>Lịch</span>
               </button>
             </div>
 
@@ -1395,7 +1395,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 setModalTab('search');
                 setShowAddIdeasModal(true);
               }}
-              className="h-8 px-3 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[12px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+              className="h-8 px-3.5 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[12px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
               title="Thêm địa điểm vào chuyến đi"
             >
               <Plus size={13} className="text-gray-900 shrink-0" />
@@ -1404,12 +1404,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           </div>
 
           {/* Tiêu đề danh sách địa điểm */}
-          <div className="flex items-center justify-between pt-2.5 pb-1.5 shrink-0">
+          <div className="flex items-center justify-between pt-2 pb-1 shrink-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-[14.5px] font-bold text-gray-950 tracking-tight">
+              <h3 className="text-[16px] font-bold text-gray-950 tracking-tight">
                 Địa điểm đã chọn
               </h3>
-              <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-semibold">
                 {ideaPois.length} địa điểm
               </span>
             </div>
@@ -1417,41 +1417,41 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           </div>
 
           {/* Nội dung danh sách địa điểm ý tưởng dạng Card ngang compact */}
-          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-2.5 py-1">
+          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-3 py-1">
             {ideaPois.length === 0 ? (
-              /* Trạng thái trống đẹp mắt chuẩn Mindtrip */
-              <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center py-8 px-4">
-                <div className="relative w-56 h-40 mb-5 flex items-center justify-center select-none pointer-events-none">
+              /* Trạng thái trống gọn gàng, cân đối */
+              <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center py-6 px-4">
+                <div className="relative w-48 h-32 mb-3.5 flex items-center justify-center select-none pointer-events-none">
                   {/* Left card */}
-                  <div className="absolute w-[95px] h-[120px] bg-white p-2 rounded-2xl shadow-lg border border-gray-100 transform -rotate-12 -translate-x-10 translate-y-2 z-0">
+                  <div className="absolute w-[85px] h-[105px] bg-white p-1.5 rounded-2xl shadow-md border border-gray-100 transform -rotate-12 -translate-x-8 translate-y-1 z-0">
                     <img
                       src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80"
                       alt="Biển Mỹ Khê"
-                      className="w-full h-[85px] object-cover rounded-xl"
+                      className="w-full h-[75px] object-cover rounded-xl"
                     />
                   </div>
                   {/* Right card */}
-                  <div className="absolute w-[95px] h-[120px] bg-white p-2 rounded-2xl shadow-lg border border-gray-100 transform rotate-12 translate-x-10 translate-y-1 z-0">
+                  <div className="absolute w-[85px] h-[105px] bg-white p-1.5 rounded-2xl shadow-md border border-gray-100 transform rotate-12 translate-x-8 translate-y-0 z-0">
                     <img
                       src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=300&q=80"
                       alt="Cầu Rồng"
-                      className="w-full h-[85px] object-cover rounded-xl"
+                      className="w-full h-[75px] object-cover rounded-xl"
                     />
                   </div>
                   {/* Center card */}
-                  <div className="relative z-10 w-[100px] h-[125px] bg-white p-2 rounded-2xl shadow-xl border border-gray-200 transform -rotate-2">
+                  <div className="relative z-10 w-[90px] h-[110px] bg-white p-1.5 rounded-2xl shadow-lg border border-gray-200 transform -rotate-1">
                     <img
                       src="https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=300&q=80"
                       alt="Đại Nội Huế"
-                      className="w-full h-[90px] object-cover rounded-xl"
+                      className="w-full h-[80px] object-cover rounded-xl"
                     />
                   </div>
                 </div>
 
-                <h3 className="text-[18px] font-bold text-gray-950 mb-1.5">
+                <h3 className="text-[17px] font-bold text-gray-950 mb-1">
                   Thêm địa điểm bạn muốn đến.
                 </h3>
-                <p className="text-[13px] text-gray-500 max-w-xs mb-6 leading-relaxed">
+                <p className="text-[13px] text-gray-500 max-w-xs mb-4 leading-relaxed">
                   Có ý tưởng gì không? Thêm vào đây. Hãy xem đây là danh sách "có thể ghé thăm" của bạn.
                 </p>
                 <button
@@ -1482,16 +1482,16 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     }}
                     onMouseEnter={() => handleDebouncedHover(poi.id)}
                     onMouseLeave={() => handleDebouncedHover(null)}
-                    className={`group relative p-2.5 rounded-2xl border bg-white flex items-center gap-3 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs ${
+                    className={`group relative p-3 rounded-2xl bg-white flex items-center gap-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs border ${
                       isSelected
                         ? 'ring-2 ring-black border-transparent bg-gray-50/50'
                         : isHovered
-                        ? 'border-gray-400 bg-gray-50/30'
-                        : 'border-gray-200/80 hover:border-gray-300'
+                        ? 'border-gray-300 bg-gray-50/30'
+                        : 'border-gray-100/90 hover:border-gray-200'
                     }`}
                   >
                     {/* Thumbnail vuông nhỏ bo góc 64x64 */}
-                    <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-gray-100 bg-gray-100 relative">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-gray-100/70 bg-gray-50 relative">
                       <img
                         src={img}
                         alt={poi.name}
@@ -1505,7 +1505,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     {/* Thông tin ở giữa */}
                     <div className="flex-1 min-w-0 pr-1">
                       <div className="flex items-center gap-1.5">
-                        <h4 className="font-bold text-[13.5px] text-gray-950 truncate leading-snug group-hover:text-black" title={poi.name}>
+                        <h4 className="font-bold text-[14px] text-gray-950 truncate leading-snug group-hover:text-black" title={poi.name}>
                           {poi.name}
                         </h4>
                         {poi.isGreen && (
@@ -1524,7 +1524,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                         )}
                       </div>
 
-                      <div className="mt-1 flex items-center gap-1 text-[11px] text-emerald-700 font-semibold">
+                      <div className="mt-1 flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
                         <Check size={11} strokeWidth={2.5} />
                         <span>Đã thêm vào chuyến đi</span>
                       </div>
@@ -1581,8 +1581,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             )}
           </div>
 
-          {/* ─── THANH HÀNH ĐỘNG DƯỚI ĐÁY: NÚT HỎI TRỢ LÝ AI + NÚT CHÍNH TẠO LỊCH TRÌNH ─── */}
-          <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-3 shrink-0 relative">
+          {/* ─── THANH HÀNH ĐỘNG DƯỚI ĐÁY: DÙNG WHITESPACE, NÚT TẠO LỊCH RÕ RÀNG TRẠNG THÁI RỖNG ─── */}
+          <div className="pt-3 flex items-center justify-between gap-3 shrink-0 relative">
             <button
               type="button"
               onClick={() => setShowCopilotDrawer(true)}
@@ -1599,10 +1599,20 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (ideaPois.length === 0) {
+                    setModalTab('search');
+                    setShowAddIdeasModal(true);
+                    return;
+                  }
                   setShowScheduleMenu((prev) => !prev);
                 }}
                 disabled={isAiScheduling}
-                className="h-10 px-5 rounded-full bg-black hover:bg-neutral-800 text-white font-bold text-[12.5px] transition flex items-center gap-2 shadow-2xs cursor-pointer active:scale-95 disabled:opacity-60"
+                className={`h-10 px-5 rounded-full font-bold text-[12.5px] transition flex items-center gap-2 shadow-2xs active:scale-95 ${
+                  ideaPois.length === 0
+                    ? 'bg-neutral-100 text-neutral-400 border border-neutral-200/60 cursor-pointer hover:bg-neutral-200/60'
+                    : 'bg-black hover:bg-neutral-800 text-white cursor-pointer'
+                } disabled:opacity-60`}
+                title={ideaPois.length === 0 ? 'Thêm ít nhất 1 địa điểm để tạo lịch trình' : 'Tạo lịch trình chuyến đi'}
               >
                 {isAiScheduling ? (
                   <>
@@ -1611,7 +1621,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   </>
                 ) : (
                   <>
-                    <Sparkles size={13} className="text-emerald-400" />
+                    <Sparkles size={13} className={ideaPois.length === 0 ? 'text-neutral-400' : 'text-emerald-400'} />
                     <span>Tạo lịch trình</span>
                     <ChevronDown size={12} className={`transition-transform duration-200 ${showScheduleMenu ? 'rotate-180' : ''}`} />
                   </>
@@ -1672,29 +1682,27 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           className="flex-1 h-full relative bg-white overflow-hidden" 
           data-purpose="right-panel-container"
         >
-          <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] pt-0 pb-3">
-            <div className="w-full h-full rounded-b-[20px] rounded-t-none overflow-hidden border border-t-0 border-gray-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
-              <PoiMap
-                pois={relevantPois}
-                selectedPoiId={selectedMapPoiId}
-                hoveredPoiId={hoveredMapPoiId}
-                onSelectPoi={setSelectedMapPoiId}
-                onHoverPoi={setHoveredMapPoiId}
-                showMapLoader={false}
-                isExpanded={isMapExpanded}
-                onToggleExpand={() => {
-                  setIsMapExpanded((prev) => !prev);
-                  setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                  }, 200);
-                }}
-                favorites={savedIds}
-                pendingFavorites={pendingIds}
-                onToggleFavorite={handleOpenSavedCollections}
-                addedTrips={new Set(tripIdeas)}
-                onToggleAddTrip={handleToggleIdea}
-              />
-            </div>
+          <div className="absolute inset-0">
+            <PoiMap
+              pois={relevantPois}
+              selectedPoiId={selectedMapPoiId}
+              hoveredPoiId={hoveredMapPoiId}
+              onSelectPoi={setSelectedMapPoiId}
+              onHoverPoi={setHoveredMapPoiId}
+              showMapLoader={false}
+              isExpanded={isMapExpanded}
+              onToggleExpand={() => {
+                setIsMapExpanded((prev) => !prev);
+                setTimeout(() => {
+                  window.dispatchEvent(new Event('resize'));
+                }, 200);
+              }}
+              favorites={savedIds}
+              pendingFavorites={pendingIds}
+              onToggleFavorite={handleOpenSavedCollections}
+              addedTrips={new Set(tripIdeas)}
+              onToggleAddTrip={handleToggleIdea}
+            />
           </div>
         </section>
       </div>

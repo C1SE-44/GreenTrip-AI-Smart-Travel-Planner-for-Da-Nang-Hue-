@@ -344,8 +344,28 @@ export interface TripItinerary {
   updated_at?: string | null;
 }
 
+export function parseDaysCountFromTrip(trip: Partial<UserTrip>): number {
+  if (trip.daysCount && trip.daysCount > 0) return trip.daysCount;
+  
+  const rawDate = trip.startDate || '';
+  const dateDaysMatch = rawDate.match(/\((\d+)\s*ngày\)/i);
+  if (dateDaysMatch) return Math.max(1, parseInt(dateDaysMatch[1], 10));
+
+  const rangeMatch = rawDate.match(/(?:Ngày\s*)?(\d+)\s*[–-]\s*(\d+)/i);
+  if (rangeMatch) {
+    const s = parseInt(rangeMatch[1], 10);
+    const e = parseInt(rangeMatch[2], 10);
+    if (e >= s) return Math.max(1, e - s + 1);
+  }
+
+  const titleMatch = (trip.title || '').match(/\((\d+)\s*ngày\)/i) || (trip.title || '').match(/(\d+)\s*ngày/i);
+  if (titleMatch) return Math.max(1, parseInt(titleMatch[1], 10));
+
+  return 3;
+}
+
 export function createEmptyItinerary(trip: UserTrip): TripItinerary {
-  const count = Math.max(1, Math.min(31, trip.daysCount || 1));
+  const count = Math.max(1, Math.min(31, parseDaysCountFromTrip(trip)));
   const start = trip.startDate && /^\d{4}-\d{2}-\d{2}$/.test(trip.startDate) ? trip.startDate : null;
   return {
     trip_id: trip.id,
@@ -546,7 +566,7 @@ export function normalizeSequence(days: ItineraryDay[]): ItineraryDay[] {
 }
 
 export function alignItineraryToTrip(itinerary: TripItinerary, trip: UserTrip): { itinerary: TripItinerary; changed: boolean; warning: string } {
-  const requestedDays = Math.max(1, Math.min(31, trip.daysCount || itinerary.days_count));
+  const requestedDays = Math.max(1, Math.min(31, parseDaysCountFromTrip(trip) || itinerary.days_count));
   const days = [...itinerary.days].sort((a, b) => a.day_number - b.day_number);
   let warning = '';
   let changed = itinerary.title !== trip.title || itinerary.destination !== trip.destination;

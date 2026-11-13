@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Plus,
   Trash2,
   Check,
@@ -239,11 +240,23 @@ export default function TripCalendarView({
   const isGibberish = !cleanTitle || cleanTitle.length <= 2 || cleanTitle.toLowerCase() === 'ư' || cleanTitle.toLowerCase() === 'a' || cleanTitle.toLowerCase().startsWith('bắt đầu');
   const displayTitle = isGibberish ? `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}` : cleanTitle;
 
+  const totalStops = plan.days.reduce((sum, d) => sum + (d.stops?.length || 0), 0);
+  const budgetBriefText = trip.budgetTier || 'Ngân sách linh hoạt';
+
+  const formatStartingDate = (dateStr?: string) => {
+    if (!dateStr) return 'Bắt đầu từ 10 thg 11';
+    const match = dateStr.match(/(\d+)\s*[-–]\s*\d+\s+(?:tháng|thg)\s*(\d+)/i);
+    if (match) return `Bắt đầu từ ${match[1]} thg ${match[2]}`;
+    const dayMatch = dateStr.match(/(\d+)/);
+    if (dayMatch) return `Bắt đầu từ ${dayMatch[1]} thg 11`;
+    return 'Bắt đầu từ 10 thg 11';
+  };
+
   return (
     <div className="flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn">
       {/* ─── HEADER: TIÊU ĐỀ CHUYẾN ĐI & NÚT QUAY LẠI ─── */}
       <header className="h-[52px] relative px-6 lg:px-[36px] bg-white border-b border-gray-200/80 flex items-center justify-between shrink-0 z-30">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0 max-w-[280px]">
           <button
             type="button"
             onClick={onBack}
@@ -270,8 +283,48 @@ export default function TripCalendarView({
           </div>
         </div>
 
+        {/* CỤM GIỮA: 4 VIÊN THUỐC ĐẶC TRƯNG CHUẨN MINDTRIP (CĂN GIỮA TUYỆT ĐỐI) */}
+        <div className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2 rounded-full border border-gray-200/90 bg-white h-8 text-[12px] font-medium text-gray-800 shadow-2xs divide-x divide-gray-200 overflow-hidden shrink-0">
+          <button
+            type="button"
+            onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+            title="Điểm đến"
+          >
+            <span className="truncate max-w-[120px] font-medium">{trip.destination}</span>
+            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+            title="Thời gian chuyến đi"
+          >
+            <span className="truncate font-medium">{formatStartingDate(trip.startDate)}</span>
+            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+            title="Số khách"
+          >
+            <span className="truncate font-medium">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</span>
+            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-700 hover:text-black transition cursor-pointer flex items-center gap-1 group"
+            title="Ngân sách"
+          >
+            <span className="truncate font-medium">{trip.budgetTier || '$$'}</span>
+            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+          </button>
+        </div>
+
         {/* Nút hành động phải */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {onNavigateToItinerary && (
             <button
               type="button"
@@ -315,7 +368,7 @@ export default function TripCalendarView({
         ════════════════════════════════════════════════════════ */}
         <div className={`${isMapExpanded ? 'hidden' : 'w-[650px] shrink-0'} h-full flex flex-col bg-white select-none overflow-hidden transition-[width] duration-300 ease-in-out border-r border-gray-100`}>
           {/* ─── TẦNG 2: THANH ĐIỀU HƯỚNG 3 CHẾ ĐỘ TRONG CỘT TRÁI ─── */}
-          <div className="px-6 pt-3 pb-2.5 border-b border-gray-100 flex items-center justify-between shrink-0 gap-2">
+          <div className="px-6 pt-3 pb-2 flex items-center justify-between shrink-0 gap-2">
             <div className="flex items-center rounded-full bg-gray-100 p-0.5 text-[12px] font-semibold text-gray-600 shadow-2xs">
               <button
                 type="button"
@@ -343,8 +396,8 @@ export default function TripCalendarView({
                 onClick={() => onNavigateToTab ? onNavigateToTab('calendar') : undefined}
                 className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-black font-bold shadow-xs transition cursor-pointer"
               >
-                <span>📊</span>
-                <span>Tổng quan</span>
+                <span>📅</span>
+                <span>Lịch</span>
               </button>
             </div>
 
@@ -352,7 +405,7 @@ export default function TripCalendarView({
               <button
                 type="button"
                 onClick={onNavigateToItinerary}
-                className="h-8 px-3 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[12px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                className="h-8 px-3.5 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[12px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
                 title="Xem chi tiết các ngày"
               >
                 <Compass size={13} className="text-emerald-600" />
@@ -361,18 +414,22 @@ export default function TripCalendarView({
             )}
           </div>
 
-          {/* Header Lịch: Calendar + Điều hướng ngày */}
-          <div className="px-6 pt-4 pb-3 shrink-0 flex items-center justify-between">
+          {/* Header Lịch: Lịch chuyến đi + Điều hướng ngày */}
+          <div className="px-6 pt-3.5 pb-2.5 shrink-0 flex items-center justify-between">
             <div>
-              <h2 className="text-[26px] font-extrabold text-gray-950 tracking-tight leading-none">
-                Calendar
+              <h2 className="text-[22px] font-bold text-gray-950 tracking-tight leading-none">
+                Lịch chuyến đi
               </h2>
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-xs font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md">
-                  {plan.days.length} days
+                  {plan.days.length} ngày
                 </span>
                 <span className="text-xs text-gray-400">•</span>
-                <span className="text-xs font-semibold text-gray-600">
+                <span className="text-xs font-medium text-gray-600">
+                  {totalStops} địa điểm
+                </span>
+                <span className="text-xs text-gray-400">•</span>
+                <span className="text-xs font-medium text-gray-600">
                   {trip.destination}
                 </span>
               </div>
@@ -447,7 +504,7 @@ export default function TripCalendarView({
             {/* Hàng all-day */}
             <div className="flex items-stretch border-b border-gray-200/90 text-xs text-gray-400 bg-gray-50/30">
               <div className="w-14 shrink-0 text-center py-1.5 text-[10.5px] font-medium border-r border-gray-100 select-none">
-                all-day
+                Cả ngày
               </div>
               <div className="flex-1 grid grid-flow-col auto-cols-fr divide-x divide-gray-100">
                 {calendarDaysMeta.map((day) => (

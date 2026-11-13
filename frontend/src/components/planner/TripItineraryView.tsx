@@ -263,6 +263,16 @@ export default function TripItineraryView({
   const [modalCategory, setModalCategory] = useState<string>('for-you');
   const [customIdeaInput, setCustomIdeaInput] = useState('');
 
+  // Chuẩn hóa ngày phụ đề dưới tên
+  const formatStartingDate = (dateStr?: string) => {
+    if (!dateStr) return 'Bắt đầu từ 10 thg 11';
+    const match = dateStr.match(/(\d+)\s*[-–]\s*\d+\s+(?:tháng|thg)\s*(\d+)/i);
+    if (match) return `Bắt đầu từ ${match[1]} thg ${match[2]}`;
+    const dayMatch = dateStr.match(/(\d+)/);
+    if (dayMatch) return `Bắt đầu từ ${dayMatch[1]} thg 11`;
+    return 'Bắt đầu từ 10 thg 11';
+  };
+
   // Tiêu đề chuyến đi rõ ràng (tự động loại bỏ chữ 'ư', câu chat hoặc chuỗi ngắn)
   const displayTitle = useMemo(() => {
     const clean = trip.title?.trim();
@@ -999,7 +1009,7 @@ export default function TripItineraryView({
         </header>
       ) : (
         <header className="h-[52px] relative px-6 lg:px-[36px] bg-white border-b border-gray-200/80 flex items-center justify-between shrink-0 z-30">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0 max-w-[280px]">
             <button
               type="button"
               onClick={onBack}
@@ -1026,8 +1036,48 @@ export default function TripItineraryView({
             </div>
           </div>
 
+          {/* CỤM GIỮA: 4 VIÊN THUỐC ĐẶC TRƯNG CHUẨN MINDTRIP (CĂN GIỮA TUYỆT ĐỐI) */}
+          <div className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2 rounded-full border border-gray-200/90 bg-white h-8 text-[12px] font-medium text-gray-800 shadow-2xs divide-x divide-gray-200 overflow-hidden shrink-0">
+            <button
+              type="button"
+              onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
+              className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+              title="Điểm đến"
+            >
+              <span className="truncate max-w-[120px] font-medium">{trip.destination}</span>
+              <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
+              className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+              title="Thời gian chuyến đi"
+            >
+              <span className="truncate font-medium">{formatStartingDate(trip.startDate)}</span>
+              <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
+              className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+              title="Số khách"
+            >
+              <span className="truncate font-medium">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</span>
+              <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
+              className="h-full px-3.5 hover:bg-gray-50 text-gray-700 hover:text-black transition cursor-pointer flex items-center gap-1 group"
+              title="Ngân sách"
+            >
+              <span className="truncate font-medium">{trip.budgetTier || '$$'}</span>
+              <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            </button>
+          </div>
+
           {/* BÊN PHẢI: Trạng thái lưu & Nút Xong */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {onNavigateToCalendar && (
               <button
                 type="button"
@@ -1089,7 +1139,7 @@ export default function TripItineraryView({
         <div className={`${isDrawerMode ? 'w-full' : (isMapExpanded ? 'hidden' : 'w-[650px] shrink-0')} flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-3.5 auto-hide-scrollbar select-none transition-[width] duration-300 ease-in-out border-r border-gray-100`}>
           {/* ─── TẦNG 2: THANH ĐIỀU HƯỚNG 3 CHẾ ĐỘ TRONG CỘT TRÁI (KHI KHÔNG PHẢI DRAWER) ─── */}
           {!isDrawerMode && (
-            <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-gray-100 shrink-0 gap-2">
+            <div className="flex items-center justify-between pb-2 mb-2 shrink-0 gap-2">
               <div className="flex items-center rounded-full bg-gray-100 p-0.5 text-[12px] font-semibold text-gray-600 shadow-2xs">
                 <button
                   type="button"
@@ -1117,8 +1167,8 @@ export default function TripItineraryView({
                   onClick={() => onNavigateToTab ? onNavigateToTab('calendar') : onNavigateToCalendar?.()}
                   className="flex items-center gap-1.5 px-3 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
                 >
-                  <span>📊</span>
-                  <span>Tổng quan</span>
+                  <span>📅</span>
+                  <span>Lịch</span>
                 </button>
               </div>
 
@@ -1129,7 +1179,7 @@ export default function TripItineraryView({
                   setModalTab('search');
                   setShowAddIdeasModal(true);
                 }}
-                className="h-8 px-3 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[12px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                className="h-8 px-3.5 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[12px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
                 title="Thêm địa điểm vào chuyến đi"
               >
                 <Plus size={13} className="text-gray-900 shrink-0" />
@@ -1291,11 +1341,11 @@ export default function TripItineraryView({
                     </button>
                   </div>
                 ) : (
-                  /* Dải thẻ ý tưởng cuộn ngang chuẩn Mindtrip (Ảnh 1, 2) */
+                  /* Dải thẻ ý tưởng cuộn ngang gọn gàng, dạng compact workspace */
                   <div className="relative group/carousel">
                     <div
                       ref={ideasCarouselRef}
-                      className="flex gap-3.5 overflow-x-auto pb-2 pt-1 no-scrollbar -mx-1 px-1 scroll-smooth"
+                      className="flex gap-2.5 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar -mx-1 px-1 scroll-smooth"
                     >
                       {filteredIdeaPois.map((poi) => {
                         const isMenuOpen = activeIdeaMenuPoiId === poi.id;
@@ -1303,59 +1353,58 @@ export default function TripItineraryView({
                         return (
                           <div
                             key={poi.id}
-                            className="w-[180px] h-[200px] shrink-0 rounded-2xl relative overflow-hidden group select-none shadow-sm hover:shadow-md transition-all border border-gray-100"
+                            className="min-w-[250px] max-w-[270px] h-[68px] shrink-0 rounded-2xl p-2 bg-white hover:bg-neutral-50/80 transition-all border border-gray-200/80 shadow-2xs flex items-center gap-2.5 relative select-none"
                           >
-                            {/* Ảnh toàn thẻ */}
+                            {/* Thumbnail ảnh nhỏ 52x52 */}
                             <img
                               src={getPoiImage(poi)}
                               alt={poi.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+                              className="w-[52px] h-[52px] rounded-xl object-cover shrink-0 pointer-events-none"
                               loading="lazy"
                             />
 
-                            {/* Nút yêu thích & Menu ... góc trên phải (Chuẩn Ảnh 1, 2) */}
-                            <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void toggleSaved(String(poi.id), poi);
-                                }}
-                                className={`w-7 h-7 rounded-full backdrop-blur-xs flex items-center justify-center transition shadow-xs cursor-pointer active:scale-90 ${
-                                  savedIds.has(String(poi.id)) || savedIds.has(poi.name)
-                                    ? 'bg-white/95 text-rose-500 hover:bg-white ring-1 ring-rose-200'
-                                    : 'bg-black/40 hover:bg-black/60 text-white'
-                                }`}
-                                title={
-                                  savedIds.has(String(poi.id)) || savedIds.has(poi.name)
-                                    ? 'Bỏ thích địa điểm'
-                                    : 'Thả tim yêu thích (Lưu vào Đã lưu)'
-                                }
+                            {/* Thông tin ở giữa */}
+                            <div className="min-w-0 flex-1">
+                              <h3
+                                className="text-[12.5px] font-bold text-gray-900 truncate leading-snug cursor-pointer hover:text-emerald-700"
+                                title={poi.name}
+                                onClick={() => setSelectedMapPoiId(poi.id)}
                               >
-                                <Heart
-                                  size={14}
-                                  className={
-                                    savedIds.has(String(poi.id)) || savedIds.has(poi.name)
-                                      ? 'fill-rose-500 text-rose-500'
-                                      : 'text-white hover:text-rose-400'
-                                  }
-                                />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveIdeaMenuPoiId(isMenuOpen ? null : poi.id);
-                                }}
-                                className="w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xs flex items-center justify-center text-white transition shadow-xs cursor-pointer"
-                                title="Tùy chọn địa điểm"
-                              >
-                                <MoreHorizontal size={14} />
-                              </button>
+                                {poi.name}
+                              </h3>
+                              <p className="text-[10.5px] text-gray-500 font-medium flex items-center gap-1 mt-0.5 truncate">
+                                {getCategoryIcon(poi.category)}
+                                <span>{formatCategoryLabel(poi.category)}</span>
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveIdeaAddDayPoiId(activeIdeaAddDayPoiId === poi.id ? null : poi.id);
+                                  }}
+                                  className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition cursor-pointer flex items-center gap-1"
+                                >
+                                  <Plus size={10} />
+                                  <span>Gán ngày</span>
+                                </button>
+                              </div>
                             </div>
 
-                            {/* Menu popover khi bấm ... (Chuẩn Ảnh 2) */}
+                            {/* Nút 3 chấm tùy chọn */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveIdeaMenuPoiId(isMenuOpen ? null : poi.id);
+                              }}
+                              className="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-black transition cursor-pointer shrink-0"
+                              title="Tùy chọn địa điểm"
+                            >
+                              <MoreHorizontal size={14} />
+                            </button>
+
+                            {/* Menu popover khi bấm ... */}
                             {isMenuOpen && (
                               <div
                                 className="absolute right-2 top-10 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 p-1.5 z-50 text-xs animate-fadeIn text-gray-800"
@@ -1438,32 +1487,42 @@ export default function TripItineraryView({
                               </div>
                             )}
 
-                            {/* Lớp gradient tối dần với Tên và Phân loại đè lên ảnh (Chuẩn Ảnh 1) */}
-                            <div className="absolute inset-x-0 bottom-0 pt-12 pb-2.5 px-3 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex flex-col justify-end pointer-events-none">
-                              <h3
-                                className="text-white font-bold text-[13.5px] leading-tight truncate drop-shadow-sm"
-                                title={poi.name}
+                            {/* Dropdown nhanh gán vào ngày khi bấm nút "+ Gán ngày" */}
+                            {activeIdeaAddDayPoiId === poi.id && (
+                              <div 
+                                className="absolute left-2 top-[72px] w-48 bg-white rounded-2xl shadow-xl border border-gray-100 p-1.5 z-50 text-xs animate-fadeIn"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                {poi.name}
-                              </h3>
-                              <p className="text-white/80 text-[11px] font-medium flex items-center gap-1 mt-0.5 truncate drop-shadow-xs">
-                                {getCategoryIcon(poi.category)}
-                                <span>{formatCategoryLabel(poi.category)}</span>
-                              </p>
-                            </div>
+                                <div className="text-[11px] font-bold text-gray-500 px-2 py-1">Chọn ngày muốn gán:</div>
+                                {plan.days.map((d) => (
+                                  <button
+                                    key={d.day_number}
+                                    type="button"
+                                    onClick={() => {
+                                      handleAddIdeaToDay(d.day_number, poi);
+                                      setActiveIdeaAddDayPoiId(null);
+                                    }}
+                                    className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-black hover:text-white text-xs font-semibold flex items-center justify-between cursor-pointer transition-colors"
+                                  >
+                                    <span>Ngày {d.day_number}</span>
+                                    <span className="text-[10px] opacity-70">{d.stops.length} điểm</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
 
-                    {/* Nút mũi tên sang phải (Chuẩn Ảnh 2) */}
+                    {/* Nút mũi tên sang phải */}
                     <button
                       type="button"
                       onClick={() => handleScrollIdeas('right')}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-gray-700 hover:text-black transition z-10 cursor-pointer opacity-90 hover:opacity-100 hover:scale-105"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-gray-700 hover:text-black transition z-10 cursor-pointer opacity-90 hover:opacity-100 hover:scale-105"
                       title="Xem tiếp các ý tưởng"
                     >
-                      <ChevronRight size={16} />
+                      <ChevronRight size={14} />
                     </button>
                   </div>
                 )}
@@ -1966,9 +2025,8 @@ export default function TripItineraryView({
         ════════════════════════════════════════════════════════ */}
         {!isDrawerMode && (
           <section className="flex-1 h-full relative bg-white overflow-hidden" data-purpose="right-panel-container">
-            <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] pt-0 pb-3">
-              <div className="w-full h-full rounded-b-[20px] rounded-t-none overflow-hidden border border-t-0 border-gray-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
-                {/* Bộ chọn xem đường đi theo ngày dạng Dropdown dọc (Chuẩn yêu cầu: "thay cái dãy ngày, thành kiểu xem đường đi của ngày, khi mở thì sẽ hiện hàng dọc ngày nào ngày nào") */}
+            <div className="absolute inset-0">
+              {/* Bộ chọn xem đường đi theo ngày dạng Dropdown dọc (Chuẩn yêu cầu: "thay cái dãy ngày, thành kiểu xem đường đi của ngày, khi mở thì sẽ hiện hàng dọc ngày nào ngày nào") */}
                 <div className="absolute top-3.5 right-3.5 z-[400] flex flex-col items-end">
                   <button
                     type="button"
@@ -2074,7 +2132,6 @@ export default function TripItineraryView({
                     routeDurationText={routeDurationText}
                   />
                 </div>
-              </div>
             </div>
           </section>
         )}

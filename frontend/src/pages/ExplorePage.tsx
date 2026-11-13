@@ -1697,15 +1697,15 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           onScroll={handleScroll}
           className="w-full h-full overflow-y-auto no-scrollbar scroll-smooth"
         >
-        {/* Top Bar: Title & Search (di chuyển theo toàn bộ luồng cuộn như landing page) */}
-        <header className="w-full bg-white pl-[36px] pr-[70px] pt-8 pb-0 space-y-3.5">
-          {/* Location Title Dropdown */}
-          <div className="relative">
+        {/* Top Bar: Title & Search */}
+        <header className="w-full bg-white pl-[36px] pr-[70px] pt-8 pb-0">
+          {/* Location Title Dropdown: Khoảng cách chuẩn 20px đến Search Box */}
+          <div className="relative mb-5">
             <div 
               onClick={() => setShowCityDropdown(!showCityDropdown)}
               className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
             >
-              <h1 className="text-[22px] font-bold tracking-tight text-gray-950 group-hover:text-black">
+              <h1 className="text-[24px] font-bold tracking-tight text-gray-950 group-hover:text-black">
                 {currentCityLabel}
               </h1>
               <i className="ph ph-caret-down font-bold text-gray-950 text-sm"></i>
@@ -1738,8 +1738,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             )}
           </div>
 
-          {/* Search Box & Filter (+25% height, scaled text & icons) */}
-          <div className="flex items-center gap-3">
+          {/* Search Box & Filter */}
+          <div className="flex items-center gap-3 mb-4">
             <div className="flex-1 relative flex items-center">
               <i className="ph ph-magnifying-glass text-gray-400 absolute left-4 text-xl"></i>
               <input
@@ -1777,8 +1777,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             </button>
           </div>
 
-          {/* Scrollable Category Tabs: Chiều cao hàng x0.86 (h-[42px]), chip chưa chọn chỉ chữ, nhãn rút gọn <= 11 ký tự */}
-          <div className="flex items-center gap-2 overflow-x-auto h-[42px] text-[13.5px] font-medium no-scrollbar">
+          {/* Scrollable Category Tabs: Kích thước và padding ổn định 100%, không bị giật chữ khi chuyển active */}
+          <div className="flex items-center gap-1.5 overflow-x-auto h-[40px] text-[13.5px] font-medium no-scrollbar">
             {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               const shortLabel = TAB_DISPLAY_LABELS[tab.id] || tab.label;
@@ -1786,10 +1786,10 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`whitespace-nowrap transition-all duration-150 cursor-pointer h-[42px] flex items-center ${
+                  className={`whitespace-nowrap transition-colors duration-150 cursor-pointer h-[36px] px-4 rounded-full flex items-center font-medium text-[13.5px] ${
                     isActive
-                      ? 'px-4.5 bg-black text-white rounded-full font-semibold shadow-xs text-[13.5px]'
-                      : 'px-3 text-neutral-600 hover:text-black font-medium text-[13.5px] bg-transparent border-0'
+                      ? 'bg-black text-white shadow-2xs'
+                      : 'text-neutral-600 hover:text-black bg-transparent hover:bg-neutral-100/60'
                   }`}
                 >
                   {shortLabel}
@@ -1798,11 +1798,10 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             })}
           </div>
 
-
         </header>
 
-        {/* Cards Scrollable Area: chip→thẻ đầu x0.24 (pt-[48px]), lề trái pl-[36px], cách map pr-[70px] */}
-        <div className="pl-[36px] pr-[70px] pt-[48px]">
+        {/* Cards Scrollable Area: Khoảng cách nhịp điệu chuẩn 32px từ tabs xuống tiêu đề nhóm */}
+        <div className="pl-[36px] pr-[70px] pt-8">
           {/* Active Filter Chips Bar (nếu có lọc kích hoạt) */}
           {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || filterValues.subCategories.length > 0 || (filterValues.features && filterValues.features.length > 0) || filterValues.timeOfDay.length > 0) && (
             <div className="flex items-center gap-2 flex-wrap mb-5 animate-fadeIn">

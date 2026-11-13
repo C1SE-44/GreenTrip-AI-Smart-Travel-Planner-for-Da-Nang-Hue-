@@ -9,6 +9,10 @@ export const ICONS = {
   check: "M20 6L9 17l-5-5",
   clock: "M12 6v6l4 2M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z",
   play: "M5 3l14 9-14 9V3z",
+  lightbulb: "M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.7 3.5 6h7c2-1.3 3.5-3.5 3.5-6a7 7 0 0 0-7-7z",
+  compass: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm4.24-14.24l-2.83 8.48-8.48 2.83 2.83-8.48 8.48-2.83z",
+  calendar: "M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-3-2v4M8 2v4M3 10h18",
+  sliders: "M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6",
 };
 
 export interface MorphFavoriteButtonProps {
@@ -170,5 +174,42 @@ export const MorphStatusBadge: React.FC<MorphStatusBadgeProps> = ({
       />
       <span>{getLabel()}</span>
     </button>
+  );
+};
+
+export interface MorphTabIconProps {
+  tab: 'ideas' | 'itinerary' | 'calendar';
+  size?: number;
+  className?: string;
+  color?: string;
+}
+
+export const MorphTabIcon: React.FC<MorphTabIconProps> = ({
+  tab,
+  size = 14,
+  className = '',
+  color,
+}) => {
+  const getIconPath = () => {
+    switch (tab) {
+      case 'ideas':
+        return ICONS.lightbulb;
+      case 'itinerary':
+        return ICONS.compass;
+      case 'calendar':
+        return ICONS.calendar;
+    }
+  };
+
+  return (
+    <span className={`inline-flex items-center justify-center shrink-0 ${className}`}>
+      <MorphIcon
+        icon={getIconPath()}
+        size={size}
+        color={color || 'currentColor'}
+        strokeWidth={2.2}
+        spring="bouncy"
+      />
+    </span>
   );
 };

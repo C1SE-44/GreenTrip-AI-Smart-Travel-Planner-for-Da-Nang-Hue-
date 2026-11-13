@@ -43,6 +43,7 @@ import {
   categoryLabels,
 } from '@/data/pois';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
+import { MorphTabIcon } from '@/components/ui/MorphButton';
 import PoiMap from '@/components/poi/PoiMap';
 import {
   createEmptyItinerary,
@@ -1038,14 +1039,14 @@ export default function TripItineraryView({
             </div>
           </div>
 
-          {/* Ở GIỮA: 3 WORKSPACE TABS [ 💡 Ý tưởng | 🧭 Lịch trình | 📅 Lịch ] */}
+          {/* Ở GIỮA: 3 WORKSPACE TABS [ 💡 Ý tưởng | 🧭 Lịch trình | 📅 Lịch ] THEO CHUẨN PILL EXPLORE & MORPHICONS */}
           <div className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2 rounded-full bg-gray-100 p-0.5 text-[12px] font-medium text-gray-600 shadow-2xs">
             <button
               type="button"
               onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : onBack()}
-              className="flex items-center gap-1.5 h-7 px-3.5 rounded-full text-neutral-600 hover:text-black hover:bg-white/60 transition cursor-pointer font-medium"
+              className="flex items-center gap-1.5 h-7 px-3.5 rounded-full text-neutral-600 hover:text-black hover:bg-white/60 transition cursor-pointer font-medium group"
             >
-              <span>💡</span>
+              <MorphTabIcon tab="ideas" size={13} className="text-neutral-500 group-hover:text-black group-hover:scale-110 transition-transform" />
               <span>Ý tưởng</span>
               <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-gray-200 text-gray-700 text-[10.5px] font-bold flex items-center justify-center">
                 {ideaPois.length}
@@ -1055,18 +1056,18 @@ export default function TripItineraryView({
             <button
               type="button"
               onClick={() => onNavigateToTab ? onNavigateToTab('itinerary') : undefined}
-              className="flex items-center gap-1.5 h-7 px-3.5 rounded-full bg-black text-white font-medium shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 h-7 px-3.5 rounded-full bg-black text-white font-medium shadow-xs transition cursor-pointer group"
             >
-              <span>🧭</span>
+              <MorphTabIcon tab="itinerary" size={13} className="text-emerald-300 group-hover:scale-110 transition-transform" />
               <span>Lịch trình</span>
             </button>
 
             <button
               type="button"
               onClick={() => onNavigateToTab ? onNavigateToTab('calendar') : onNavigateToCalendar?.()}
-              className="flex items-center gap-1.5 h-7 px-3.5 rounded-full text-neutral-600 hover:text-black hover:bg-white/60 transition cursor-pointer font-medium"
+              className="flex items-center gap-1.5 h-7 px-3.5 rounded-full text-neutral-600 hover:text-black hover:bg-white/60 transition cursor-pointer font-medium group"
             >
-              <span>📅</span>
+              <MorphTabIcon tab="calendar" size={13} className="text-neutral-500 group-hover:text-black group-hover:scale-110 transition-transform" />
               <span>Lịch</span>
             </button>
           </div>
@@ -1086,12 +1087,12 @@ export default function TripItineraryView({
                 }`}
                 title="Tùy chỉnh các thông số chuyến đi"
               >
-                <SlidersHorizontal size={13} className={showCustomSettings ? 'text-white' : 'text-gray-700'} />
+                <i className={`ph-bold ph-sliders-horizontal text-xs ${showCustomSettings ? 'text-white' : 'text-gray-700'}`}></i>
                 <span>Tùy chỉnh</span>
                 <ChevronDown size={11} className={`transition-transform duration-200 ${showCustomSettings ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Dropdown Popover 4 thông số */}
+              {/* Dropdown Popover 4 thông số với Phosphor Icons đồng bộ */}
               {showCustomSettings && (
                 <div
                   className="absolute right-0 top-10 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 animate-fadeIn"
@@ -1109,9 +1110,14 @@ export default function TripItineraryView({
                     }}
                     className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
                   >
-                    <div>
-                      <div className="text-[11px] text-gray-500 font-medium">Điểm đến</div>
-                      <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{trip.destination}</div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                        <i className="ph-fill ph-map-pin text-sm"></i>
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-gray-500 font-medium">Điểm đến</div>
+                        <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{trip.destination}</div>
+                      </div>
                     </div>
                     <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
                   </button>
@@ -1124,9 +1130,14 @@ export default function TripItineraryView({
                     }}
                     className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
                   >
-                    <div>
-                      <div className="text-[11px] text-gray-500 font-medium">Thời gian bắt đầu</div>
-                      <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{formatStartingDate(trip.startDate)}</div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+                        <i className="ph-fill ph-calendar text-sm"></i>
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-gray-500 font-medium">Thời gian bắt đầu</div>
+                        <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{formatStartingDate(trip.startDate)}</div>
+                      </div>
                     </div>
                     <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
                   </button>
@@ -1139,9 +1150,14 @@ export default function TripItineraryView({
                     }}
                     className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
                   >
-                    <div>
-                      <div className="text-[11px] text-gray-500 font-medium">Số du khách</div>
-                      <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                        <i className="ph-fill ph-users text-sm"></i>
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-gray-500 font-medium">Số du khách</div>
+                        <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</div>
+                      </div>
                     </div>
                     <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
                   </button>
@@ -1154,9 +1170,14 @@ export default function TripItineraryView({
                     }}
                     className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
                   >
-                    <div>
-                      <div className="text-[11px] text-gray-500 font-medium">Ngân sách</div>
-                      <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{trip.budgetTier || 'Ngân sách linh hoạt'}</div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
+                        <i className="ph-fill ph-wallet text-sm"></i>
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-gray-500 font-medium">Ngân sách</div>
+                        <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{trip.budgetTier || 'Ngân sách linh hoạt'}</div>
+                      </div>
                     </div>
                     <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
                   </button>
@@ -1181,10 +1202,11 @@ export default function TripItineraryView({
             <button
               type="button"
               onClick={handleDone}
-              className="h-8 px-4 rounded-full bg-black hover:bg-neutral-800 text-white text-[12px] font-bold transition cursor-pointer shadow-xs active:scale-95"
+              className="h-8 px-4 rounded-full bg-black hover:bg-neutral-800 text-white text-[12px] font-bold transition cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
               title="Đóng và lưu lịch trình"
             >
-              Đóng
+              <i className="ph-bold ph-x text-[11px]"></i>
+              <span>Đóng</span>
             </button>
           </div>
         </header>

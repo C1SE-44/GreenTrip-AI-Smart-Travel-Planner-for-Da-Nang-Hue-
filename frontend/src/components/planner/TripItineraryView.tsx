@@ -998,7 +998,7 @@ export default function TripItineraryView({
           </div>
         </header>
       ) : (
-        <header className="h-[56px] relative px-6 lg:px-[36px] bg-white border-b border-gray-200/80 flex items-center justify-between shrink-0 z-30">
+        <header className="h-[52px] relative px-6 lg:px-[36px] bg-white border-b border-gray-200/80 flex items-center justify-between shrink-0 z-30">
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"

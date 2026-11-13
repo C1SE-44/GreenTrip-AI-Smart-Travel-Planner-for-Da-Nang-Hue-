@@ -1243,13 +1243,13 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
   return (
     <div className="flex-1 h-full bg-white overflow-hidden select-none animate-fadeIn flex flex-col">
-      {/* ─── TẦNG 1: HEADER TOÀN MÀN HÌNH - THÔNG TIN CHUYẾN ĐI (CHUẨN UX THOÁNG ĐÃNG) ─── */}
+      {/* ─── THANH TRẠNG THÁI GỌN GÀNG CHUẨN MINDTRIP (THANH MẢNH, 4 MỤC Ở GIỮA) ─── */}
       <div className="h-[52px] relative flex items-center justify-between shrink-0 px-6 lg:px-[36px] bg-white border-b border-gray-200/80 z-30">
-        {/* BÊN TRÁI: NÚT QUAY LẠI + THUMBNAIL + TÊN CHUYẾN ĐI & THÔNG TIN TỔNG QUAN */}
-        <div className="flex items-center gap-3 shrink-0 min-w-0">
+        {/* BÊN TRÁI: NÚT QUAY LẠI + THUMBNAIL + TÊN CHUYẾN ĐI (1 HÀNG GỌN) */}
+        <div className="flex items-center gap-2.5 shrink-0 min-w-0">
           <button
             onClick={onBack}
-            className="w-8 h-8 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shrink-0 shadow-2xs"
+            className="w-8 h-8 rounded-full border border-gray-200/90 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shrink-0 shadow-2xs"
             title="Quay lại danh sách chuyến đi"
           >
             <ChevronLeft size={16} />
@@ -1262,50 +1262,71 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80'
             )}
             alt={trip.destination}
-            className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
+            className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs"
           />
 
-          {/* Tên chuyến đi & Subtitle tương tác phân tách bằng dấu chấm giữa */}
-          <div className="flex flex-col min-w-0">
-            <h1 className="text-[14.5px] font-extrabold text-gray-950 truncate leading-snug">
-              {displayTitle}
-            </h1>
-            <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-medium truncate">
-              <button
-                type="button"
-                onClick={() => setShowWhenModal(true)}
-                className="hover:text-black hover:underline cursor-pointer transition truncate"
-                title="Bấm để chỉnh sửa ngày đi"
-              >
-                {formatStartingDate(trip.startDate)}
-              </button>
-              <span>•</span>
-              <button
-                type="button"
-                onClick={() => setShowWhoModal(true)}
-                className="hover:text-black hover:underline cursor-pointer transition truncate"
-                title="Bấm để chỉnh sửa số khách"
-              >
-                {trip.peopleCount ? `${trip.peopleCount} khách` : '2 khách'}
-              </button>
-              <span>•</span>
-              <button
-                type="button"
-                onClick={() => setShowBudgetModal(true)}
-                className="hover:text-black hover:underline cursor-pointer transition truncate"
-                title="Bấm để chỉnh sửa mức ngân sách"
-              >
-                {budgetBriefText ? `Ngân sách ${budgetBriefText}` : 'Ngân sách linh hoạt'}
-              </button>
-            </div>
-          </div>
+          <span className="text-[14px] font-bold text-gray-950 truncate max-w-[180px] lg:max-w-[240px]">
+            {displayTitle}
+          </span>
         </div>
 
-        {/* BÊN PHẢI: GỌN GÀNG, KHÔNG NHỒI NHÉT THÔNG TIN */}
+        {/* Ở GIỮA: THANH VIÊN THUỐC 4 MỤC [ĐỊA ĐIỂM | BẮT ĐẦU TỪ | AI | TÀI CHÍNH] (CĂN GIỮA TUYỆT ĐỐI) */}
+        <div className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2 rounded-full border border-gray-200/90 bg-white h-8 text-[12px] font-medium text-gray-800 shadow-2xs divide-x divide-gray-200 overflow-hidden shrink-0">
+          {/* 1. Địa điểm */}
+          <button
+            type="button"
+            onClick={() => setShowWhereModal(true)}
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+            title="Bấm để thay đổi điểm đến"
+          >
+            <span className="truncate max-w-[120px] font-medium">{trip.destination}</span>
+            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+          </button>
+
+          {/* 2. Bắt đầu từ */}
+          <button
+            type="button"
+            onClick={() => setShowWhenModal(true)}
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+            title="Bấm để thay đổi ngày và thời gian"
+          >
+            <span className="truncate font-medium">{formatStartingDate(trip.startDate)}</span>
+            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+          </button>
+
+          {/* 3. Với ai / Số khách */}
+          <button
+            type="button"
+            onClick={() => setShowWhoModal(true)}
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
+            title="Bấm để thay đổi số lượng người đi"
+          >
+            <span className="truncate font-medium">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</span>
+            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+          </button>
+
+          {/* 4. Tài chính / Ngân sách */}
+          <button
+            type="button"
+            onClick={() => setShowBudgetModal(true)}
+            className="h-full px-3.5 hover:bg-gray-50 text-gray-700 hover:text-black transition cursor-pointer flex items-center gap-1 group"
+            title="Bấm để thay đổi phạm vi ngân sách"
+          >
+            <span className="truncate font-medium">{budgetBriefText || '$$'}</span>
+            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+          </button>
+        </div>
+
+        {/* BÊN PHẢI: GỌN GÀNG, KHÔNG BỊ CHÈN */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="text-xs text-gray-400 font-medium hidden md:block">
-            {trip.destination}
-          </div>
+          <button
+            type="button"
+            onClick={onBack}
+            className="h-8 px-4 rounded-full bg-black hover:bg-neutral-800 text-white text-[12px] font-bold transition cursor-pointer shadow-xs active:scale-95"
+            title="Xong và quay lại"
+          >
+            Xong
+          </button>
 
           {/* Hidden tags to preserve test invariants */}
           <span className="sr-only">Xem lịch theo ngày</span>

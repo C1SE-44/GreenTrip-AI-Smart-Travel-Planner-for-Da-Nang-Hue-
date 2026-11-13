@@ -69,6 +69,8 @@ export interface TripItineraryViewProps {
   onClose?: () => void;
   initialFocus?: 'ideas' | 'itinerary';
   onNavigateToCalendar?: () => void;
+  activeWorkspaceTab?: 'ideas' | 'itinerary' | 'calendar';
+  onNavigateToTab?: (tab: 'ideas' | 'itinerary' | 'calendar') => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -180,6 +182,8 @@ export default function TripItineraryView({
   onClose,
   initialFocus,
   onNavigateToCalendar,
+  activeWorkspaceTab = 'itinerary',
+  onNavigateToTab,
 }: TripItineraryViewProps) {
   // ─── 0. Hệ thống địa điểm đã lưu (Favorites / Đã thích) của Thiện ───
   const { savedIds, pendingIds, toggleSaved, openCollectionPicker, places } = useSavedPlaces();
@@ -994,7 +998,7 @@ export default function TripItineraryView({
           </div>
         </header>
       ) : (
-        <header className="h-[56px] px-6 lg:px-[36px] bg-white border-b border-gray-200/80 flex items-center justify-between shrink-0 z-30">
+        <header className="h-[56px] relative px-6 lg:px-[36px] bg-white border-b border-gray-200/80 flex items-center justify-between shrink-0 z-30">
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
@@ -1020,6 +1024,39 @@ export default function TripItineraryView({
                 {displaySubtitle}
               </p>
             </div>
+          </div>
+
+          {/* Ở GIỮA: THANH CHUYỂN ĐỔI 3 CHẾ ĐỘ WORKSPACE [Ý TƯỞNG | LỊCH TRÌNH | TỔNG QUAN] */}
+          <div className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2 rounded-full bg-gray-100 p-0.5 text-[12px] font-semibold text-gray-600 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : onBack()}
+              className="flex items-center gap-1.5 px-3.5 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
+            >
+              <span>💡</span>
+              <span>Ý tưởng</span>
+              <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-gray-200/80 text-gray-700 text-[10.5px] font-bold flex items-center justify-center">
+                {ideaPois.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onNavigateToTab ? onNavigateToTab('itinerary') : undefined}
+              className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white text-black font-bold shadow-xs transition cursor-pointer"
+            >
+              <span>🧭</span>
+              <span>Lịch trình</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onNavigateToTab ? onNavigateToTab('calendar') : onNavigateToCalendar?.()}
+              className="flex items-center gap-1.5 px-3.5 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
+            >
+              <span>📊</span>
+              <span>Tổng quan</span>
+            </button>
           </div>
 
           {/* Nút hành động phải: Chuyển sang Lịch + Trạng thái lưu & Nút Xong */}

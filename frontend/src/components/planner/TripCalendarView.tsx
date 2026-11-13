@@ -42,6 +42,8 @@ export interface TripCalendarViewProps {
   onBack: () => void;
   onUpdateTrip?: (trip: UserTrip) => void;
   onNavigateToItinerary?: () => void;
+  activeWorkspaceTab?: 'ideas' | 'itinerary' | 'calendar';
+  onNavigateToTab?: (tab: 'ideas' | 'itinerary' | 'calendar') => void;
 }
 
 const CALENDAR_HOURS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
@@ -86,6 +88,8 @@ export default function TripCalendarView({
   onBack,
   onUpdateTrip,
   onNavigateToItinerary,
+  activeWorkspaceTab = 'calendar',
+  onNavigateToTab,
 }: TripCalendarViewProps) {
   const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
 
@@ -238,7 +242,7 @@ export default function TripCalendarView({
   return (
     <div className="flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn">
       {/* ─── HEADER: TIÊU ĐỀ CHUYẾN ĐI & NÚT QUAY LẠI ─── */}
-      <header className="h-[56px] px-6 lg:px-[36px] bg-white border-b border-gray-200/80 flex items-center justify-between shrink-0 z-30">
+      <header className="h-[56px] relative px-6 lg:px-[36px] bg-white border-b border-gray-200/80 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-2.5 min-w-0">
           <button
             type="button"
@@ -264,6 +268,39 @@ export default function TripCalendarView({
               {trip.destination} • {calendarRangeText} ({plan.days.length} ngày)
             </p>
           </div>
+        </div>
+
+        {/* Ở GIỮA: THANH CHUYỂN ĐỔI 3 CHẾ ĐỘ WORKSPACE [Ý TƯỞNG | LỊCH TRÌNH | TỔNG QUAN] */}
+        <div className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2 rounded-full bg-gray-100 p-0.5 text-[12px] font-semibold text-gray-600 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : onBack()}
+            className="flex items-center gap-1.5 px-3.5 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
+          >
+            <span>💡</span>
+            <span>Ý tưởng</span>
+            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-gray-200/80 text-gray-700 text-[10.5px] font-bold flex items-center justify-center">
+              {(trip.ideas || []).length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigateToTab ? onNavigateToTab('itinerary') : onNavigateToItinerary?.()}
+            className="flex items-center gap-1.5 px-3.5 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
+          >
+            <span>🧭</span>
+            <span>Lịch trình</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigateToTab ? onNavigateToTab('calendar') : undefined}
+            className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white text-black font-bold shadow-xs transition cursor-pointer"
+          >
+            <span>📊</span>
+            <span>Tổng quan</span>
+          </button>
         </div>
 
         {/* Nút hành động phải */}

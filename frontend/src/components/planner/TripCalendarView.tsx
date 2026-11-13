@@ -270,39 +270,6 @@ export default function TripCalendarView({
           </div>
         </div>
 
-        {/* Ở GIỮA: THANH CHUYỂN ĐỔI 3 CHẾ ĐỘ WORKSPACE [Ý TƯỞNG | LỊCH TRÌNH | TỔNG QUAN] */}
-        <div className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2 rounded-full bg-gray-100 p-0.5 text-[12px] font-semibold text-gray-600 shadow-2xs">
-          <button
-            type="button"
-            onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : onBack()}
-            className="flex items-center gap-1.5 px-3.5 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
-          >
-            <span>💡</span>
-            <span>Ý tưởng</span>
-            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-gray-200/80 text-gray-700 text-[10.5px] font-bold flex items-center justify-center">
-              {(trip.ideas || []).length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigateToTab ? onNavigateToTab('itinerary') : onNavigateToItinerary?.()}
-            className="flex items-center gap-1.5 px-3.5 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
-          >
-            <span>🧭</span>
-            <span>Lịch trình</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigateToTab ? onNavigateToTab('calendar') : undefined}
-            className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white text-black font-bold shadow-xs transition cursor-pointer"
-          >
-            <span>📊</span>
-            <span>Tổng quan</span>
-          </button>
-        </div>
-
         {/* Nút hành động phải */}
         <div className="flex items-center gap-2">
           {onNavigateToItinerary && (
@@ -346,9 +313,56 @@ export default function TripCalendarView({
         {/* ════════════════════════════════════════════════════════
             CỘT TRÁI: BẢNG LỊCH THỜI GIAN BIỂU (GOOGLE CALENDAR STYLE)
         ════════════════════════════════════════════════════════ */}
-        <div className={`${isMapExpanded ? 'hidden' : 'w-[650px] shrink-0'} h-full flex flex-col bg-white select-none overflow-hidden transition-[width] duration-300 ease-in-out`}>
+        <div className={`${isMapExpanded ? 'hidden' : 'w-[650px] shrink-0'} h-full flex flex-col bg-white select-none overflow-hidden transition-[width] duration-300 ease-in-out border-r border-gray-100`}>
+          {/* ─── TẦNG 2: THANH ĐIỀU HƯỚNG 3 CHẾ ĐỘ TRONG CỘT TRÁI ─── */}
+          <div className="px-6 pt-3 pb-2.5 border-b border-gray-100 flex items-center justify-between shrink-0 gap-2">
+            <div className="flex items-center rounded-full bg-gray-100 p-0.5 text-[12px] font-semibold text-gray-600 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : onBack()}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
+              >
+                <span>💡</span>
+                <span>Ý tưởng</span>
+                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-gray-200/80 text-gray-700 text-[10.5px] font-bold flex items-center justify-center">
+                  {(trip.ideas || []).length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigateToTab ? onNavigateToTab('itinerary') : onNavigateToItinerary?.()}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
+              >
+                <span>🧭</span>
+                <span>Lịch trình</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigateToTab ? onNavigateToTab('calendar') : undefined}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-black font-bold shadow-xs transition cursor-pointer"
+              >
+                <span>📊</span>
+                <span>Tổng quan</span>
+              </button>
+            </div>
+
+            {onNavigateToItinerary && (
+              <button
+                type="button"
+                onClick={onNavigateToItinerary}
+                className="h-8 px-3 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[12px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                title="Xem chi tiết các ngày"
+              >
+                <Compass size={13} className="text-emerald-600" />
+                <span>Chi tiết</span>
+              </button>
+            )}
+          </div>
+
           {/* Header Lịch: Calendar + Điều hướng ngày */}
-          <div className="px-6 pt-5 pb-3 shrink-0 flex items-center justify-between">
+          <div className="px-6 pt-4 pb-3 shrink-0 flex items-center justify-between">
             <div>
               <h2 className="text-[26px] font-extrabold text-gray-950 tracking-tight leading-none">
                 Calendar

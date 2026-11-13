@@ -12,6 +12,7 @@ import {
   Compass,
   Star,
   MapPin,
+  SlidersHorizontal,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import {
@@ -240,6 +241,7 @@ export default function TripCalendarView({
   const isGibberish = !cleanTitle || cleanTitle.length <= 2 || cleanTitle.toLowerCase() === 'ư' || cleanTitle.toLowerCase() === 'a' || cleanTitle.toLowerCase().startsWith('bắt đầu');
   const displayTitle = isGibberish ? `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}` : cleanTitle;
 
+  const [showCustomSettings, setShowCustomSettings] = useState(false);
   const totalStops = plan.days.reduce((sum, d) => sum + (d.stops?.length || 0), 0);
   const budgetBriefText = trip.budgetTier || 'Ngân sách linh hoạt';
 
@@ -254,7 +256,7 @@ export default function TripCalendarView({
 
   return (
     <div className="flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn">
-      {/* ─── HEADER: TIÊU ĐỀ CHUYẾN ĐI & NÚT QUAY LẠI ─── */}
+      {/* ─── HEADER: TIÊU ĐỀ CHUYẾN ĐI & 3 WORKSPACE TABS Ở GIỮA ─── */}
       <header className="h-[52px] relative px-6 lg:px-[36px] bg-white border-b border-gray-200/80 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-2.5 min-w-0 max-w-[280px]">
           <button
@@ -278,65 +280,136 @@ export default function TripCalendarView({
               {displayTitle}
             </h1>
             <p className="text-[11px] text-gray-500 font-medium truncate">
-              {trip.destination} • {calendarRangeText} ({plan.days.length} ngày)
+              {trip.destination} • {formatStartingDate(trip.startDate)} • {trip.peopleCount || 2} khách
             </p>
           </div>
         </div>
 
-        {/* CỤM GIỮA: 4 VIÊN THUỐC ĐẶC TRƯNG CHUẨN MINDTRIP (CĂN GIỮA TUYỆT ĐỐI) */}
-        <div className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2 rounded-full border border-gray-200/90 bg-white h-8 text-[12px] font-medium text-gray-800 shadow-2xs divide-x divide-gray-200 overflow-hidden shrink-0">
+        {/* Ở GIỮA: 3 WORKSPACE TABS [ 💡 Ý tưởng | 🧭 Lịch trình | 📅 Lịch ] */}
+        <div className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2 rounded-full bg-gray-100 p-0.5 text-[12px] font-medium text-gray-600 shadow-2xs">
           <button
             type="button"
-            onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
-            title="Điểm đến"
+            onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : onBack()}
+            className="flex items-center gap-1.5 h-7 px-3.5 rounded-full text-neutral-600 hover:text-black hover:bg-white/60 transition cursor-pointer font-medium"
           >
-            <span className="truncate max-w-[120px] font-medium">{trip.destination}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            <span>💡</span>
+            <span>Ý tưởng</span>
+            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-gray-200 text-gray-700 text-[10.5px] font-bold flex items-center justify-center">
+              {(trip.ideas || []).length}
+            </span>
           </button>
+
           <button
             type="button"
-            onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
-            title="Thời gian chuyến đi"
+            onClick={() => onNavigateToTab ? onNavigateToTab('itinerary') : onNavigateToItinerary?.()}
+            className="flex items-center gap-1.5 h-7 px-3.5 rounded-full text-neutral-600 hover:text-black hover:bg-white/60 transition cursor-pointer font-medium"
           >
-            <span className="truncate font-medium">{formatStartingDate(trip.startDate)}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            <span>🧭</span>
+            <span>Lịch trình</span>
           </button>
+
           <button
             type="button"
-            onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
-            title="Số khách"
+            onClick={() => onNavigateToTab ? onNavigateToTab('calendar') : undefined}
+            className="flex items-center gap-1.5 h-7 px-3.5 rounded-full bg-black text-white font-medium shadow-xs transition cursor-pointer"
           >
-            <span className="truncate font-medium">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : undefined}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-700 hover:text-black transition cursor-pointer flex items-center gap-1 group"
-            title="Ngân sách"
-          >
-            <span className="truncate font-medium">{trip.budgetTier || '$$'}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            <span>📅</span>
+            <span>Lịch</span>
           </button>
         </div>
 
-        {/* Nút hành động phải */}
+        {/* BÊN PHẢI: NÚT TÙY CHỈNH + TRẠNG THÁI LƯU + NÚT ĐÓNG */}
         <div className="flex items-center gap-2 shrink-0">
-          {onNavigateToItinerary && (
+          {/* Nút Tùy chỉnh với Dropdown Popover */}
+          <div className="relative">
             <button
               type="button"
-              onClick={onNavigateToItinerary}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 hover:border-black text-[11.5px] font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer shadow-2xs group"
-              title="Xem danh sách chi tiết các ngày"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCustomSettings((prev) => !prev);
+              }}
+              className={`h-8 px-3.5 rounded-full border border-gray-200/90 hover:border-black text-[12px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 ${
+                showCustomSettings ? 'bg-black text-white' : 'bg-white hover:bg-gray-50 text-gray-900'
+              }`}
+              title="Tùy chỉnh các thông số chuyến đi"
             >
-              <Compass size={12} className="text-emerald-600" />
-              <span>Kế hoạch chi tiết</span>
-              <ChevronRight size={11} className="text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+              <SlidersHorizontal size={13} className={showCustomSettings ? 'text-white' : 'text-gray-700'} />
+              <span>Tùy chỉnh</span>
+              <ChevronDown size={11} className={`transition-transform duration-200 ${showCustomSettings ? 'rotate-180' : ''}`} />
             </button>
-          )}
+
+            {/* Dropdown Popover 4 thông số */}
+            {showCustomSettings && (
+              <div
+                className="absolute right-0 top-10 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 animate-fadeIn"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-[11px] font-bold text-gray-400 px-2.5 py-1 uppercase tracking-wider">
+                  Tùy chỉnh chuyến đi
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    onNavigateToTab?.('ideas');
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
+                >
+                  <div>
+                    <div className="text-[11px] text-gray-500 font-medium">Điểm đến</div>
+                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{trip.destination}</div>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    onNavigateToTab?.('ideas');
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
+                >
+                  <div>
+                    <div className="text-[11px] text-gray-500 font-medium">Thời gian bắt đầu</div>
+                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{formatStartingDate(trip.startDate)}</div>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    onNavigateToTab?.('ideas');
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
+                >
+                  <div>
+                    <div className="text-[11px] text-gray-500 font-medium">Số du khách</div>
+                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</div>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    onNavigateToTab?.('ideas');
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
+                >
+                  <div>
+                    <div className="text-[11px] text-gray-500 font-medium">Ngân sách</div>
+                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{trip.budgetTier || 'Ngân sách linh hoạt'}</div>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="text-[11px] text-gray-500 hidden sm:flex items-center gap-1 font-medium">
             {isSaving ? (
@@ -354,9 +427,9 @@ export default function TripCalendarView({
             type="button"
             onClick={onBack}
             className="h-8 px-4 rounded-full bg-black hover:bg-neutral-800 text-white text-[12px] font-bold transition cursor-pointer shadow-xs active:scale-95"
-            title="Xong và quay lại"
+            title="Đóng và quay lại"
           >
-            Xong
+            Đóng
           </button>
         </div>
       </header>
@@ -367,53 +440,6 @@ export default function TripCalendarView({
             CỘT TRÁI: BẢNG LỊCH THỜI GIAN BIỂU (GOOGLE CALENDAR STYLE)
         ════════════════════════════════════════════════════════ */}
         <div className={`${isMapExpanded ? 'hidden' : 'w-[650px] shrink-0'} h-full flex flex-col bg-white select-none overflow-hidden transition-[width] duration-300 ease-in-out border-r border-gray-100`}>
-          {/* ─── TẦNG 2: THANH ĐIỀU HƯỚNG 3 CHẾ ĐỘ TRONG CỘT TRÁI ─── */}
-          <div className="px-6 pt-3 pb-2 flex items-center justify-between shrink-0 gap-2">
-            <div className="flex items-center rounded-full bg-gray-100 p-0.5 text-[12px] font-semibold text-gray-600 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => onNavigateToTab ? onNavigateToTab('ideas') : onBack()}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
-              >
-                <span>💡</span>
-                <span>Ý tưởng</span>
-                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-gray-200/80 text-gray-700 text-[10.5px] font-bold flex items-center justify-center">
-                  {(trip.ideas || []).length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigateToTab ? onNavigateToTab('itinerary') : onNavigateToItinerary?.()}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
-              >
-                <span>🧭</span>
-                <span>Lịch trình</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigateToTab ? onNavigateToTab('calendar') : undefined}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-black font-bold shadow-xs transition cursor-pointer"
-              >
-                <span>📅</span>
-                <span>Lịch</span>
-              </button>
-            </div>
-
-            {onNavigateToItinerary && (
-              <button
-                type="button"
-                onClick={onNavigateToItinerary}
-                className="h-8 px-3.5 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[12px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                title="Xem chi tiết các ngày"
-              >
-                <Compass size={13} className="text-emerald-600" />
-                <span>Chi tiết</span>
-              </button>
-            )}
-          </div>
-
           {/* Header Lịch: Lịch chuyến đi + Điều hướng ngày */}
           <div className="px-6 pt-3.5 pb-2.5 shrink-0 flex items-center justify-between">
             <div>

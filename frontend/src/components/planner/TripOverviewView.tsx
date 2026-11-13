@@ -318,7 +318,8 @@ export default function TripOverviewView({
       ? loadedPois 
       : (allPoisProp && allPoisProp.length > 0 ? allPoisProp : defaultAllPois);
   }, [loadedPois, allPoisProp]);
-  // ─── STATE CỦA 4 POPUP ĐIỀU CHỈNH THÔNG SỐ CHUYẾN ĐI ───
+  // ─── STATE CỦA POPUP TÙY CHỈNH CHUYẾN ĐI & 4 MODAL THÔNG SỐ ───
+  const [showCustomSettings, setShowCustomSettings] = useState(false);
   // 1. Popup Ở đâu
   const [showWhereModal, setShowWhereModal] = useState(false);
   const [whereTarget, setWhereTarget] = useState<string>(trip.destination || 'Đà Nẵng');
@@ -1243,10 +1244,10 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
   return (
     <div className="flex-1 h-full bg-white overflow-hidden select-none animate-fadeIn flex flex-col">
-      {/* ─── THANH TRẠNG THÁI GỌN GÀNG CHUẨN MINDTRIP (THANH MẢNH, 4 MỤC Ở GIỮA) ─── */}
+      {/* ─── THANH HEADER CHÍNH CHUẨN EXPLORE: TÊN CHUYẾN ĐI, 3 WORKSPACE TABS Ở GIỮA, NÚT TÙY CHỈNH BÊN PHẢI ─── */}
       <div className="h-[52px] relative flex items-center justify-between shrink-0 px-6 lg:px-[36px] bg-white border-b border-gray-200/80 z-30">
-        {/* BÊN TRÁI: NÚT QUAY LẠI + THUMBNAIL + TÊN CHUYẾN ĐI (1 HÀNG GỌN) */}
-        <div className="flex items-center gap-2.5 shrink-0 min-w-0">
+        {/* BÊN TRÁI: NÚT QUAY LẠI + THUMBNAIL + TÊN CHUYẾN ĐI & DÒNG METADATA NGẮN GỌN */}
+        <div className="flex items-center gap-2.5 shrink-0 min-w-0 max-w-[280px]">
           <button
             onClick={onBack}
             className="w-8 h-8 rounded-full border border-gray-200/90 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shrink-0 shadow-2xs"
@@ -1262,70 +1263,157 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80'
             )}
             alt={trip.destination}
-            className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs"
+            className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
           />
 
-          <span className="text-[14px] font-bold text-gray-950 truncate max-w-[180px] lg:max-w-[240px]">
-            {displayTitle}
-          </span>
+          <div className="min-w-0">
+            <h1 className="text-[14px] sm:text-[15px] font-bold text-gray-950 truncate leading-snug">
+              {displayTitle}
+            </h1>
+            <p className="text-[11px] text-gray-500 font-medium truncate">
+              {trip.destination} • {formatStartingDate(trip.startDate)} • {trip.peopleCount || 2} khách
+            </p>
+          </div>
         </div>
 
-        {/* Ở GIỮA: THANH VIÊN THUỐC 4 MỤC [ĐỊA ĐIỂM | BẮT ĐẦU TỪ | AI | TÀI CHÍNH] (CĂN GIỮA TUYỆT ĐỐI) */}
-        <div className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2 rounded-full border border-gray-200/90 bg-white h-8 text-[12px] font-medium text-gray-800 shadow-2xs divide-x divide-gray-200 overflow-hidden shrink-0">
-          {/* 1. Địa điểm */}
+        {/* Ở GIỮA: 3 WORKSPACE TABS [ 💡 Ý tưởng | 🧭 Lịch trình | 📅 Lịch ] THEO CHUẨN PILL EXPLORE */}
+        <div className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2 rounded-full bg-gray-100 p-0.5 text-[12px] font-medium text-gray-600 shadow-2xs">
           <button
             type="button"
-            onClick={() => setShowWhereModal(true)}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
-            title="Bấm để thay đổi điểm đến"
+            onClick={() => onNavigateToTab?.('ideas')}
+            className="flex items-center gap-1.5 h-7 px-3.5 rounded-full bg-black text-white font-medium shadow-xs transition cursor-pointer"
           >
-            <span className="truncate max-w-[120px] font-medium">{trip.destination}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            <span>💡</span>
+            <span>Ý tưởng</span>
+            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-white/20 text-white text-[10.5px] font-bold flex items-center justify-center">
+              {tripIdeas.length}
+            </span>
           </button>
 
-          {/* 2. Bắt đầu từ */}
           <button
             type="button"
-            onClick={() => setShowWhenModal(true)}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
-            title="Bấm để thay đổi ngày và thời gian"
+            onClick={() => {
+              if (onNavigateToTab) onNavigateToTab('itinerary');
+              else if (onOpenItineraryDetails) onOpenItineraryDetails();
+              else setShowItineraryDrawer(true);
+            }}
+            className="flex items-center gap-1.5 h-7 px-3.5 rounded-full text-neutral-600 hover:text-black hover:bg-white/60 transition cursor-pointer font-medium"
           >
-            <span className="truncate font-medium">{formatStartingDate(trip.startDate)}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            <span>🧭</span>
+            <span>Lịch trình</span>
           </button>
 
-          {/* 3. Với ai / Số khách */}
           <button
             type="button"
-            onClick={() => setShowWhoModal(true)}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 group"
-            title="Bấm để thay đổi số lượng người đi"
+            onClick={() => onNavigateToTab?.('calendar')}
+            className="flex items-center gap-1.5 h-7 px-3.5 rounded-full text-neutral-600 hover:text-black hover:bg-white/60 transition cursor-pointer font-medium"
           >
-            <span className="truncate font-medium">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
-          </button>
-
-          {/* 4. Tài chính / Ngân sách */}
-          <button
-            type="button"
-            onClick={() => setShowBudgetModal(true)}
-            className="h-full px-3.5 hover:bg-gray-50 text-gray-700 hover:text-black transition cursor-pointer flex items-center gap-1 group"
-            title="Bấm để thay đổi phạm vi ngân sách"
-          >
-            <span className="truncate font-medium">{budgetBriefText || '$$'}</span>
-            <ChevronDown size={11} className="text-gray-400 group-hover:text-black transition-colors shrink-0" />
+            <span>📅</span>
+            <span>Lịch</span>
           </button>
         </div>
 
-        {/* BÊN PHẢI: GỌN GÀNG, KHÔNG BỊ CHÈN */}
+        {/* BÊN PHẢI: NÚT TÙY CHỈNH (POPOVER 4 THÔNG SỐ) + TRẠNG THÁI LƯU + NÚT ĐÓNG */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Nút Tùy chỉnh với Dropdown Popover */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCustomSettings((prev) => !prev);
+              }}
+              className={`h-8 px-3.5 rounded-full border border-gray-200/90 hover:border-black text-[12px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 ${
+                showCustomSettings ? 'bg-black text-white' : 'bg-white hover:bg-gray-50 text-gray-900'
+              }`}
+              title="Tùy chỉnh các thông số chuyến đi"
+            >
+              <SlidersHorizontal size={13} className={showCustomSettings ? 'text-white' : 'text-gray-700'} />
+              <span>Tùy chỉnh</span>
+              <ChevronDown size={11} className={`transition-transform duration-200 ${showCustomSettings ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Popover 4 thông số */}
+            {showCustomSettings && (
+              <div
+                className="absolute right-0 top-10 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 animate-fadeIn"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-[11px] font-bold text-gray-400 px-2.5 py-1 uppercase tracking-wider">
+                  Tùy chỉnh chuyến đi
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    setShowWhereModal(true);
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
+                >
+                  <div>
+                    <div className="text-[11px] text-gray-500 font-medium">Điểm đến</div>
+                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{trip.destination}</div>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    setShowWhenModal(true);
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
+                >
+                  <div>
+                    <div className="text-[11px] text-gray-500 font-medium">Thời gian bắt đầu</div>
+                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{formatStartingDate(trip.startDate)}</div>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    setShowWhoModal(true);
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
+                >
+                  <div>
+                    <div className="text-[11px] text-gray-500 font-medium">Số du khách</div>
+                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}</div>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    setShowBudgetModal(true);
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
+                >
+                  <div>
+                    <div className="text-[11px] text-gray-500 font-medium">Ngân sách</div>
+                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">{budgetBriefText || 'Ngân sách linh hoạt'}</div>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Nút Đóng */}
           <button
             type="button"
             onClick={onBack}
             className="h-8 px-4 rounded-full bg-black hover:bg-neutral-800 text-white text-[12px] font-bold transition cursor-pointer shadow-xs active:scale-95"
-            title="Xong và quay lại"
+            title="Đóng và quay lại"
           >
-            Xong
+            Đóng
           </button>
 
           {/* Hidden tags to preserve test invariants */}
@@ -1340,6 +1428,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         onClick={() => {
           setActiveMenuPoiId(null);
           setShowScheduleMenu(false);
+          setShowCustomSettings(false);
         }}
       >
         
@@ -1349,43 +1438,15 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             isMapExpanded ? 'hidden' : 'w-[650px] shrink-0'
           } h-full bg-white flex flex-col justify-between pl-6 lg:pl-[36px] pr-6 pt-3 pb-4 select-none transition-[width] duration-300 ease-in-out relative border-r border-gray-100`}
         >
-          {/* ─── TẦNG 2: THANH ĐIỀU HƯỚNG 3 CHẾ ĐỘ & HÀNH ĐỘNG CỦA CỘT TRÁI (DÙNG WHITESPACE, BỎ BORDER) ─── */}
-          <div className="flex items-center justify-between pb-2 shrink-0 gap-2">
-            {/* 3 Tab: [ 💡 Ý tưởng | 🧭 Lịch trình | 📅 Lịch ] */}
-            <div className="flex items-center rounded-full bg-gray-100 p-0.5 text-[12px] font-semibold text-gray-600 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => onNavigateToTab?.('ideas')}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-black font-bold shadow-xs transition cursor-pointer"
-              >
-                <span>💡</span>
-                <span>Ý tưởng</span>
-                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-gray-200/80 text-gray-700 text-[10.5px] font-bold flex items-center justify-center">
-                  {tripIdeas.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (onNavigateToTab) onNavigateToTab('itinerary');
-                  else if (onOpenItineraryDetails) onOpenItineraryDetails();
-                  else setShowItineraryDrawer(true);
-                }}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
-              >
-                <span>🧭</span>
-                <span>Lịch trình</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigateToTab?.('calendar')}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-gray-600 hover:text-black hover:bg-white/50 transition cursor-pointer"
-              >
-                <span>📅</span>
-                <span>Lịch</span>
-              </button>
+          {/* Tiêu đề danh sách địa điểm + Nút Thêm địa điểm (gọn gàng, loại bỏ tab tầng 2) */}
+          <div className="flex items-center justify-between pt-1 pb-2 shrink-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-[16px] font-bold text-gray-950 tracking-tight">
+                Địa điểm đã chọn
+              </h3>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-semibold">
+                {ideaPois.length} địa điểm
+              </span>
             </div>
 
             {/* Nút Thêm địa điểm vào ý tưởng */}
@@ -1401,19 +1462,6 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               <Plus size={13} className="text-gray-900 shrink-0" />
               <span>Thêm địa điểm</span>
             </button>
-          </div>
-
-          {/* Tiêu đề danh sách địa điểm */}
-          <div className="flex items-center justify-between pt-2 pb-1 shrink-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-[16px] font-bold text-gray-950 tracking-tight">
-                Địa điểm đã chọn
-              </h3>
-              <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] font-semibold">
-                {ideaPois.length} địa điểm
-              </span>
-            </div>
-            <p className="text-[11.5px] text-gray-400 font-medium">Bấm vào thẻ để định vị trên bản đồ</p>
           </div>
 
           {/* Nội dung danh sách địa điểm ý tưởng dạng Card ngang compact */}

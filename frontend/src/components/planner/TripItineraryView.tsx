@@ -55,6 +55,7 @@ import {
   minutesFromTime,
   updateDateRangeWithDays,
   getRoutePositionsForStops,
+  buildFallbackRoadCorridor,
   type TripItinerary,
   type ItineraryDay,
   type ItineraryStop,
@@ -835,10 +836,17 @@ export default function TripItineraryView({
       return;
     }
 
+    // Hiển thị ngay lộ trình hành lang đường bộ thực tế (0ms) để không bị đứt đoạn hay cắt ngang vịnh biển
+    const instantCorridor = buildFallbackRoadCorridor(currentFilteredStops);
+    if (instantCorridor.coordinates.length >= 2) {
+      setRouteCoordinates(instantCorridor.coordinates);
+      setRouteDurationText(instantCorridor.durationText);
+    }
+
     const dayNum = typeof mapDayFilter === 'number' ? mapDayFilter : undefined;
     getRoutePositionsForStops(currentFilteredStops, trip.id, dayNum)
       .then((res) => {
-        if (isMounted) {
+        if (isMounted && res?.coordinates && res.coordinates.length >= 2) {
           const coords = Array.isArray(res) ? res : res.coordinates;
           const durText = Array.isArray(res) ? undefined : res.durationText;
           setRouteCoordinates(coords);
@@ -846,10 +854,7 @@ export default function TripItineraryView({
         }
       })
       .catch(() => {
-        if (isMounted) {
-          setRouteCoordinates(currentFilteredStops.map((s) => [s.latitude, s.longitude]));
-          setRouteDurationText(undefined);
-        }
+        // Giữ nguyên instantCorridor an toàn trên đất liền
       });
 
     return () => {

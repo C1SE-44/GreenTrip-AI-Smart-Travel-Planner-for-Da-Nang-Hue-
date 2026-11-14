@@ -78,39 +78,80 @@ function calculateHaversineMeters(lat1: number, lon1: number, lat2: number, lon2
   return R * c;
 }
 
-function buildRoadCorridor(
+// High-fidelity road corridor waypoints [lat, lng] along QL1A hugging the land and coast, never crossing open water
+export const HIGHWAY_QL1A_DANANG_HUE: [number, number][] = [
+  [16.0685, 108.1835], // Cầu vượt Ngã Ba Huế (Trung tâm Đà Nẵng)
+  [16.0780, 108.1750], // Bến xe Trung tâm Đà Nẵng
+  [16.0900, 108.1680], // Đường Tôn Đức Thắng (Hòa Khánh Nam)
+  [16.1150, 108.1550], // Đường Nguyễn Lương Bằng (Liên Chiểu)
+  [16.1360, 108.1360], // Cầu Nam Ô / Ngã ba Nguyễn Tất Thành
+  [16.1600, 108.1250], // Chân đèo Hải Vân / Kim Liên
+  [16.1820, 108.1180], // Dốc đèo Hải Vân Nam
+  [16.1950, 108.1150], // Đỉnh đèo / Hầm Hải Vân
+  [16.2300, 108.0100], // Thị trấn Lăng Cô
+  [16.2650, 107.9700], // Đèo Phú Gia
+  [16.2880, 107.9150], // Đèo Phước Tượng
+  [16.3050, 107.8650], // Thị trấn Phú Lộc / Cầu Hai
+  [16.3250, 107.8200], // QL1A phía nam bờ Đầm Cầu Hai
+  [16.3450, 107.7700], // QL1A ven chân núi Lộc Điền
+  [16.3650, 107.7300], // Ga Nong
+  [16.3880, 107.6950], // Thị xã Hương Thủy / Sân bay Phú Bài
+  [16.4150, 107.6550], // Hương Thủy QL1A
+  [16.4450, 107.6100], // Cửa ngõ An Cựu / TP Huế
+  [16.4650, 107.5900], // Trung tâm TP Huế
+];
+
+// Đường tránh Vịnh Đà Nẵng: Tuyệt đối không vẽ đường thẳng cắt ngang mặt nước vịnh
+export const DA_NANG_BAY_LAND_BYPASS: [number, number][] = [
+  [16.1360, 108.1360], // Cầu Nam Ô
+  [16.1150, 108.1550], // Nguyễn Lương Bằng
+  [16.0900, 108.1680], // Tôn Đức Thắng
+  [16.0780, 108.1750], // Bến xe Trung tâm Đà Nẵng
+  [16.0685, 108.1835], // Cầu vượt Ngã Ba Huế
+  [16.0650, 108.1980], // Đường Điện Biên Phủ
+  [16.0620, 108.2120], // Trung tâm Hải Châu
+];
+
+export function buildRoadCorridor(
   fromLat: number,
   fromLng: number,
   toLat: number,
   toLng: number
 ): [number, number][] {
-  // Tuyến Đà Nẵng <-> Huế (vượt Đèo Hải Vân & Lăng Cô)
-  const isFromDaNang = fromLat < 16.2 && fromLng > 108.0;
-  const isToHue = toLat > 16.35 && toLng < 107.75;
-  const isFromHue = fromLat > 16.35 && fromLng < 107.75;
-  const isToDaNang = toLat < 16.2 && toLng > 108.0;
+  // Tuyến Đà Nẵng <-> Huế (vượt Đèo Hải Vân, Lăng Cô, vòng qua chân núi tránh Đầm Cầu Hai)
+  const isFromDaNang = fromLat < 16.22 && fromLng > 108.0;
+  const isToHue = toLat > 16.32 && toLng < 107.8;
+  const isFromHue = fromLat > 16.32 && fromLng < 107.8;
+  const isToDaNang = toLat < 16.22 && toLng > 108.0;
 
-  if ((isFromDaNang && isToHue) || (isFromHue && isToDaNang)) {
-    const haiVanHighway: [number, number][] = [
-      [16.1250, 108.1400], // Ngã 3 Huế / Liên Chiểu
-      [16.1820, 108.1180], // Dốc Đèo Hải Vân Nam
-      [16.1950, 108.1150], // Đỉnh Đèo / Hầm Hải Vân
-      [16.2300, 108.0100], // Thị trấn Lăng Cô
-      [16.2900, 107.9100], // Đèo Phước Tượng / Phú Lộc
-      [16.3200, 107.8200], // Đầm Cầu Hai
-      [16.3800, 107.7000], // Phú Bài
-      [16.4450, 107.6100], // Cửa ngõ An Cựu Huế
-    ];
-    return isFromDaNang ? haiVanHighway : haiVanHighway.slice().reverse();
+  if (isFromDaNang && isToHue) {
+    return HIGHWAY_QL1A_DANANG_HUE.map(([lat, lng]) => [lat, lng]);
+  }
+  if (isFromHue && isToDaNang) {
+    return HIGHWAY_QL1A_DANANG_HUE.slice().reverse().map(([lat, lng]) => [lat, lng]);
   }
 
-  // Đi trong cùng thành phố: tạo 2 điểm uốn cong tự nhiên theo đường phố
+  // Kết nối giữa Bắc Đà Nẵng (Nam Ô / Hải Vân) và Nam/Đông Đà Nẵng (Hải Châu / Thanh Khê / Sơn Trà)
+  // Tuyệt đối không để đường cắt ngang mặt biển Vịnh Đà Nẵng
+  const isNorthFrom = fromLat > 16.12 && fromLng < 108.15;
+  const isSouthTo = toLat <= 16.10 && toLng >= 108.16;
+  const isSouthFrom = fromLat <= 16.10 && fromLng >= 108.16;
+  const isNorthTo = toLat > 16.12 && toLng < 108.15;
+
+  if (isNorthFrom && isSouthTo) {
+    return DA_NANG_BAY_LAND_BYPASS.map(([lat, lng]) => [lat, lng]);
+  }
+  if (isSouthFrom && isNorthTo) {
+    return DA_NANG_BAY_LAND_BYPASS.slice().reverse().map(([lat, lng]) => [lat, lng]);
+  }
+
+  // Đi trong cùng thành phố / khu vực: tạo 2 điểm uốn cong tự nhiên theo đường phố
   const dLat = toLat - fromLat;
   const dLng = toLng - fromLng;
   const dist = Math.hypot(dLat, dLng);
 
   if (dist > 0.005) {
-    const offset = Math.min(dist * 0.22, 0.007);
+    const offset = Math.min(dist * 0.18, 0.005);
     const p1: [number, number] = [fromLat + dLat * 0.35 + offset, fromLng + dLng * 0.35 - offset * 0.5];
     const p2: [number, number] = [fromLat + dLat * 0.70 - offset * 0.5, fromLng + dLng * 0.70 + offset];
     return [p1, p2];
@@ -182,6 +223,60 @@ const SAMPLE_DAY_ROUTES: Record<number, { coords: [number, number][]; dist: numb
 };
 
 /**
+ * Cache in-memory tuyến đường phía Frontend để chuyển ngày / chuyển tab tức thì (0ms)
+ */
+const routeMemoryCache = new Map<string, ComputedRouteResult>();
+
+/**
+ * Xây dựng lộ trình dự phòng tuân thủ nghiêm ngặt mạng lưới đường bộ trên đất liền,
+ * tuyệt đối không vẽ đường thẳng bay ngang biển Vịnh Đà Nẵng hay Đầm Cầu Hai.
+ */
+export function buildFallbackRoadCorridor(
+  stops: { latitude?: number | null; longitude?: number | null; [key: string]: any }[]
+): ComputedRouteResult {
+  const validStops = stops
+    .filter((s) => s.latitude != null && s.longitude != null && Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
+    .map((s) => ({ latitude: Number(s.latitude), longitude: Number(s.longitude) }));
+
+  if (validStops.length < 2) {
+    return {
+      coordinates: validStops.map((s) => [s.latitude, s.longitude]),
+      distanceMeters: 0,
+      durationSeconds: 0,
+      durationText: '',
+    };
+  }
+
+  const fullCoords: [number, number][] = [];
+  let totalDistMeters = 0;
+
+  for (let i = 0; i < validStops.length - 1; i++) {
+    const from = validStops[i];
+    const to = validStops[i + 1];
+
+    if (i === 0) {
+      fullCoords.push([from.latitude, from.longitude]);
+    }
+
+    const corridor = buildRoadCorridor(from.latitude, from.longitude, to.latitude, to.longitude);
+    fullCoords.push(...corridor);
+    fullCoords.push([to.latitude, to.longitude]);
+
+    const legDist = calculateHaversineMeters(from.latitude, from.longitude, to.latitude, to.longitude) * 1.25;
+    totalDistMeters += legDist;
+  }
+
+  const durationSec = Math.max(300, Math.round((totalDistMeters / 1000 / 45) * 3600));
+
+  return {
+    coordinates: fullCoords,
+    distanceMeters: Math.round(totalDistMeters),
+    durationSeconds: durationSec,
+    durationText: `${formatDuration(durationSec)} (${formatDistance(totalDistMeters)})`,
+  };
+}
+
+/**
  * Tính toán tọa độ đường đi (Leaflet [lat, lng]) từ danh sách điểm dừng qua GreenTrip BE hoặc OSRM
  */
 export async function getRoutePositionsForStops(
@@ -209,33 +304,41 @@ export async function getRoutePositionsForStops(
     };
   }
 
-  // 1. Thử gọi backend /api/itineraries/{id}/days/{day}/route với timeout 1.2s nếu có itineraryId và dayNumber
-  if (itineraryId && typeof dayNumber === 'number' && dayNumber >= 1) {
+  // 1. Kiểm tra cache phía Frontend để phản hồi tức thì
+  const cacheKey = `${itineraryId || 'anon'}-${dayNumber || 0}-${validStops.map((s) => `${s.latitude.toFixed(5)},${s.longitude.toFixed(5)}`).join(';')}`;
+  if (routeMemoryCache.has(cacheKey)) {
+    return routeMemoryCache.get(cacheKey)!;
+  }
+
+  // 2. Thử gọi backend /api/itineraries/{id}/days/{day}/route nếu là chuyến đi mẫu có sẵn trong DB
+  if (itineraryId && typeof dayNumber === 'number' && dayNumber >= 1 && (itineraryId.startsWith('sample-') || itineraryId.startsWith('trip-danang'))) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 1200);
+      const timer = setTimeout(() => controller.abort(), 3500);
       const resp = await fetchDayRoute(itineraryId, dayNumber, controller.signal);
       clearTimeout(timer);
       if (resp?.route?.coordinates && resp.route.coordinates.length >= 2) {
         const coords: [number, number][] = resp.route.coordinates.map(([lng, lat]) => [lat, lng]);
         const dist = resp.distance_meters || 0;
         const dur = resp.duration_seconds || 0;
-        return {
+        const result: ComputedRouteResult = {
           coordinates: coords,
           distanceMeters: dist,
           durationSeconds: dur,
           durationText: `${formatDuration(dur)} (${formatDistance(dist)})`,
         };
+        routeMemoryCache.set(cacheKey, result);
+        return result;
       }
     } catch {
-      // Tiếp tục fallback
+      // Tiếp tục qua compute API
     }
   }
 
-  // 2. Thử gọi backend /api/itineraries/compute với danh sách stops (timeout 1.2s)
+  // 3. Gọi backend /api/itineraries/compute với danh sách stops (timeout 9s để OSRM tính toán đầy đủ hàng nghìn điểm GPS)
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 1200);
+    const timer = setTimeout(() => controller.abort(), 9000);
     const computed = await fetchJson<DayRouteResponse>('/api/itineraries/compute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -247,63 +350,42 @@ export async function getRoutePositionsForStops(
       const coords: [number, number][] = computed.route.coordinates.map(([lng, lat]) => [lat, lng]);
       const dist = computed.distance_meters || 0;
       const dur = computed.duration_seconds || 0;
-      return {
+      const result: ComputedRouteResult = {
         coordinates: coords,
         distanceMeters: dist,
         durationSeconds: dur,
         durationText: `${formatDuration(dur)} (${formatDistance(dist)})`,
       };
+      routeMemoryCache.set(cacheKey, result);
+      return result;
     }
   } catch {
-    // Tiếp tục fallback
+    // Tiếp tục qua fallback
   }
 
-  // 3. Nếu là chuyến đi mẫu Ngày 1 và không có tọa độ cá nhân đặc biệt, dùng lộ trình mẫu của Lợi
+  // 4. Nếu là chuyến đi mẫu Ngày 1 và không có tọa độ cá nhân đặc biệt, dùng lộ trình mẫu của Lợi
   if (typeof dayNumber === 'number' && SAMPLE_DAY_ROUTES[dayNumber]) {
     const tmpl = SAMPLE_DAY_ROUTES[dayNumber];
     const isSampleTrip = Boolean(itineraryId && (itineraryId.startsWith('sample-') || itineraryId.startsWith('trip-danang')));
     if (isSampleTrip && dayNumber === 1 && validStops.length <= 4) {
-      // Kiểm tra nếu các điểm ở trung tâm Đà Nẵng
       const allInDaNang = validStops.every((s) => s.latitude < 16.2 && s.longitude > 108.0);
       if (allInDaNang) {
-        return {
+        const result: ComputedRouteResult = {
           coordinates: tmpl.coords,
           distanceMeters: tmpl.dist,
           durationSeconds: tmpl.dur,
           durationText: `${formatDuration(tmpl.dur)} (${formatDistance(tmpl.dist)})`,
         };
+        routeMemoryCache.set(cacheKey, result);
+        return result;
       }
     }
   }
 
-  // 4. Tạo đường đi thực tế theo các hành lang giao thông (Hải Vân QL1A hoặc đường phố)
-  const fullCoords: [number, number][] = [];
-  let totalDistMeters = 0;
-
-  for (let i = 0; i < validStops.length - 1; i++) {
-    const from = validStops[i];
-    const to = validStops[i + 1];
-
-    if (i === 0) {
-      fullCoords.push([from.latitude, from.longitude]);
-    }
-
-    const corridor = buildRoadCorridor(from.latitude, from.longitude, to.latitude, to.longitude);
-    fullCoords.push(...corridor);
-    fullCoords.push([to.latitude, to.longitude]);
-
-    const legDist = calculateHaversineMeters(from.latitude, from.longitude, to.latitude, to.longitude) * 1.18;
-    totalDistMeters += legDist;
-  }
-
-  const durationSec = Math.max(300, Math.round((totalDistMeters / 1000 / 45) * 3600));
-
-  return {
-    coordinates: fullCoords,
-    distanceMeters: Math.round(totalDistMeters),
-    durationSeconds: durationSec,
-    durationText: `${formatDuration(durationSec)} (${formatDistance(totalDistMeters)})`,
-  };
+  // 5. Fallback chuẩn: Tạo đường đi thực tế men theo các hành lang QL1A trên đất liền, tuyệt đối không ra biển
+  const fallbackResult = buildFallbackRoadCorridor(validStops);
+  routeMemoryCache.set(cacheKey, fallbackResult);
+  return fallbackResult;
 }
 
 export type ItineraryStopType = 'poi' | 'rest' | 'custom';

@@ -12,4 +12,4 @@ scipy>=1.11.4,<2.0
 scikit-learn>=1.4.2,<2.0
 pwdlib[argon2]
 google-auth>=2.35.0
-requests>=2.31.0
+requests>=2.31.0reportlab>=5.0.0

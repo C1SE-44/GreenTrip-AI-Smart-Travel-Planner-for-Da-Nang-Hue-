@@ -6,7 +6,13 @@ from typing import Any
 from fastapi import HTTPException
 
 from app.db.postgres import SQLiteConnectionWrapper, get_connection
-from app.trips.schemas import ItineraryDay, ItineraryStop, TripItineraryResponse, TripItinerarySyncRequest
+from app.trips.schemas import (
+    ItineraryDay,
+    ItineraryStop,
+    MyTripSummaryResponse,
+    TripItineraryResponse,
+    TripItinerarySyncRequest,
+)
 
 
 def _ensure_local_tables(connection: Any, cursor: Any) -> None:
@@ -95,6 +101,10 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
     itin_columns = {row[1] for row in cursor.fetchall()}
     if "trip_id" not in itin_columns:
         cursor.execute("ALTER TABLE itineraries ADD COLUMN trip_id TEXT")
+    if "itinerary_id" not in itin_columns:
+        cursor.execute("ALTER TABLE itineraries ADD COLUMN itinerary_id TEXT")
+    if "total_days" not in itin_columns:
+        cursor.execute("ALTER TABLE itineraries ADD COLUMN total_days INTEGER")
     if "start_date" not in itin_columns:
         cursor.execute("ALTER TABLE itineraries ADD COLUMN start_date DATE")
     if "days_count" not in itin_columns:
@@ -109,8 +119,12 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
     day_columns = {row[1] for row in cursor.fetchall()}
     if "day_id" not in day_columns:
         cursor.execute("ALTER TABLE itinerary_days ADD COLUMN day_id TEXT")
+    if "itinerary_day_id" not in day_columns:
+        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN itinerary_day_id TEXT")
     if "trip_id" not in day_columns:
         cursor.execute("ALTER TABLE itinerary_days ADD COLUMN trip_id TEXT")
+    if "itinerary_id" not in day_columns:
+        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN itinerary_id TEXT")
     if "date" not in day_columns:
         cursor.execute("ALTER TABLE itinerary_days ADD COLUMN date DATE")
     if "title" not in day_columns:
@@ -121,6 +135,31 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         cursor.execute("UPDATE itinerary_days SET trip_id = itinerary_id WHERE trip_id IS NULL")
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_days_day_id ON itinerary_days(day_id)")
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_days_trip_day ON itinerary_days(trip_id, day_number)")
+
+    cursor.execute("PRAGMA table_info(itinerary_stops)")
+    stop_columns = {row[1] for row in cursor.fetchall()}
+    for col, col_type in [
+        ("stop_id", "TEXT"),
+        ("day_id", "TEXT"),
+        ("itinerary_stop_id", "TEXT"),
+        ("itinerary_day_id", "TEXT"),
+        ("sequence_no", "INTEGER DEFAULT 0"),
+        ("title", "TEXT DEFAULT ''"),
+        ("city", "TEXT"),
+        ("address", "TEXT"),
+        ("category", "TEXT"),
+        ("stop_type", "TEXT DEFAULT 'poi'"),
+        ("source", "TEXT DEFAULT 'idea'"),
+        ("sequence", "INTEGER DEFAULT 0"),
+        ("duration_minutes", "INTEGER"),
+        ("start_time", "TEXT"),
+        ("end_time", "TEXT"),
+        ("comment", "TEXT"),
+        ("latitude", "REAL"),
+        ("longitude", "REAL"),
+    ]:
+        if col not in stop_columns:
+            cursor.execute(f"ALTER TABLE itinerary_stops ADD COLUMN {col} {col_type}")
 
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_stops_stop_id ON itinerary_stops(stop_id)")
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_stops_day_seq ON itinerary_stops(day_id, sequence)")
@@ -142,7 +181,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                     INSERT INTO public.itineraries (trip_id, user_id, title, destination, start_date, days_count, updated_at, itinerary_id, total_days)
                     VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s)
                     ON CONFLICT (trip_id) DO UPDATE SET
-                        user_id = COALESCE(itineraries.user_id, EXCLUDED.user_id),
+                        user_id = COALESCE(EXCLUDED.user_id, itineraries.user_id),
                         title = EXCLUDED.title,
                         destination = EXCLUDED.destination,
                         start_date = EXCLUDED.start_date,
@@ -230,3 +269,182 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                 )
     except Exception as error:
         raise HTTPException(status_code=503, detail="Chưa thể tải lịch trình từ cơ sở dữ liệu.") from error
+
+
+def list_user_itineraries(user_id: str) -> list[MyTripSummaryResponse]:
+    """Retrieve all saved itineraries for a specific authenticated user ordered by updated_at desc."""
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                _ensure_local_tables(connection, cursor)
+                cursor.execute(
+                    """
+                    SELECT
+                        i.trip_id,
+                        i.title,
+                        i.destination,
+                        i.start_date,
+                        i.days_count,
+                        i.updated_at,
+                        (
+                            SELECT COUNT(*)
+                            FROM public.itinerary_stops s
+                            JOIN public.itinerary_days d ON s.day_id = d.day_id
+                            WHERE d.trip_id = i.trip_id
+                        ) as total_stops
+                    FROM public.itineraries i
+                    WHERE i.user_id = %s
+                    ORDER BY i.updated_at DESC
+                    """,
+                    (user_id,),
+                )
+                rows = cursor.fetchall()
+                results: list[MyTripSummaryResponse] = []
+                for row in rows:
+                    start_date_val = row[3].isoformat() if hasattr(row[3], "isoformat") else row[3]
+                    updated_at_val = row[5].isoformat() if hasattr(row[5], "isoformat") else row[5]
+                    results.append(
+                        MyTripSummaryResponse(
+                            trip_id=row[0],
+                            title=row[1],
+                            destination=row[2] or "Đà Nẵng & Huế",
+                            start_date=start_date_val,
+                            days_count=row[4] or 1,
+                            total_stops=row[6] or 0,
+                            updated_at=updated_at_val,
+                        )
+                    )
+                return results
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Chưa thể tải danh sách chuyến đi từ cơ sở dữ liệu.") from error
+
+
+def get_itinerary_with_ownership(trip_id: str, user_id: str) -> TripItineraryResponse:
+    """Retrieve itinerary details while strictly enforcing owner permissions."""
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                _ensure_local_tables(connection, cursor)
+                cursor.execute(
+                    "SELECT trip_id, user_id, title, destination, start_date, days_count, updated_at FROM public.itineraries WHERE trip_id = %s",
+                    (trip_id,),
+                )
+                trip = cursor.fetchone()
+                if not trip:
+                    raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi.")
+                owner_id = trip[1]
+                if owner_id and owner_id != user_id:
+                    raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập chuyến đi này.")
+
+                cursor.execute(
+                    "SELECT day_id, day_number, date, title FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
+                    (trip_id,),
+                )
+                day_rows = cursor.fetchall()
+                days: list[ItineraryDay] = []
+                for day_row in day_rows:
+                    cursor.execute(
+                        """
+                        SELECT stop_id, poi_id, title, city, address, category, stop_type, source, sequence,
+                               duration_minutes, start_time, end_time, comment, latitude, longitude
+                        FROM public.itinerary_stops WHERE day_id = %s ORDER BY sequence
+                        """,
+                        (day_row[0],),
+                    )
+                    stops = [ItineraryStop(
+                        stop_id=row[0], poi_id=row[1], title=row[2], city=row[3], address=row[4], category=row[5],
+                        stop_type=row[6], source=row[7], sequence=row[8], duration_minutes=row[9],
+                        start_time=row[10], end_time=row[11], comment=row[12], latitude=row[13], longitude=row[14],
+                    ) for row in cursor.fetchall()]
+                    day_date = day_row[2].isoformat() if hasattr(day_row[2], "isoformat") else day_row[2]
+                    days.append(ItineraryDay(day_id=day_row[0], day_number=day_row[1], date=day_date, title=day_row[3], stops=stops))
+
+                return TripItineraryResponse(
+                    trip_id=trip[0], title=trip[2], destination=trip[3],
+                    start_date=trip[4].isoformat() if hasattr(trip[4], "isoformat") else trip[4],
+                    days_count=trip[5], days=days, updated_at=trip[6],
+                )
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Chưa thể tải chi tiết lịch trình từ cơ sở dữ liệu.") from error
+
+
+def update_itinerary_metadata(
+    trip_id: str,
+    user_id: str,
+    title: str | None = None,
+    start_date: str | None = None,
+    destination: str | None = None,
+) -> TripItineraryResponse:
+    """Update high-level metadata (title, start_date, destination) for a user's trip."""
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                _ensure_local_tables(connection, cursor)
+                cursor.execute(
+                    "SELECT trip_id, user_id FROM public.itineraries WHERE trip_id = %s",
+                    (trip_id,),
+                )
+                trip = cursor.fetchone()
+                if not trip:
+                    raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi cần cập nhật.")
+                owner_id = trip[1]
+                if owner_id and owner_id != user_id:
+                    raise HTTPException(status_code=403, detail="Bạn không có quyền chỉnh sửa chuyến đi này.")
+
+                updates = []
+                params = []
+                if title is not None:
+                    updates.append("title = %s")
+                    params.append(title)
+                if start_date is not None:
+                    updates.append("start_date = %s")
+                    params.append(start_date)
+                if destination is not None:
+                    updates.append("destination = %s")
+                    params.append(destination)
+
+                if updates:
+                    updates.append("updated_at = CURRENT_TIMESTAMP")
+                    params.append(trip_id)
+                    query = f"UPDATE public.itineraries SET {', '.join(updates)} WHERE trip_id = %s"
+                    cursor.execute(query, tuple(params))
+                    connection.commit()
+
+        return get_itinerary_with_ownership(trip_id, user_id)
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Chưa thể cập nhật chuyến đi trong cơ sở dữ liệu.") from error
+
+
+def delete_user_itinerary(trip_id: str, user_id: str) -> bool:
+    """Permanently delete a trip and all its days and stops with ownership validation."""
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                _ensure_local_tables(connection, cursor)
+                cursor.execute(
+                    "SELECT trip_id, user_id FROM public.itineraries WHERE trip_id = %s",
+                    (trip_id,),
+                )
+                trip = cursor.fetchone()
+                if not trip:
+                    raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi cần xóa.")
+                owner_id = trip[1]
+                if owner_id and owner_id != user_id:
+                    raise HTTPException(status_code=403, detail="Bạn không có quyền xóa chuyến đi này.")
+
+                cursor.execute(
+                    "DELETE FROM public.itinerary_stops WHERE day_id IN (SELECT day_id FROM public.itinerary_days WHERE trip_id = %s)",
+                    (trip_id,),
+                )
+                cursor.execute("DELETE FROM public.itinerary_days WHERE trip_id = %s", (trip_id,))
+                cursor.execute("DELETE FROM public.itineraries WHERE trip_id = %s", (trip_id,))
+                connection.commit()
+                return True
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Chưa thể xóa chuyến đi khỏi cơ sở dữ liệu.") from error

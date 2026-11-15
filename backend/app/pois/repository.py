@@ -13,15 +13,18 @@ CITY_ALIAS_MAP: dict[str, str] = {
     "huế": "HUE",
 }
 
+SPIRITUAL_CATEGORY_NAMES = ["Tâm linh & Tôn giáo", "Tâm linh và chùa thiền"]
+
+
 CATEGORY_ALIAS_MAP: dict[str, list[str]] = {
     "di-tich": ["Di tích lịch sử và văn hóa", "Tâm linh và chùa thiền"],
     "di tích": ["Di tích lịch sử và văn hóa", "Tâm linh và chùa thiền"],
     "canh-quan": ["Cảnh quan và thiên nhiên"],
     "cảnh quan": ["Cảnh quan và thiên nhiên"],
-    "chua": ["Tâm linh và chùa thiền"],
-    "chùa": ["Tâm linh và chùa thiền"],
-    "tam-linh": ["Tâm linh và chùa thiền"],
-    "tâm linh": ["Tâm linh và chùa thiền"],
+    "chua": SPIRITUAL_CATEGORY_NAMES,
+    "chùa": SPIRITUAL_CATEGORY_NAMES,
+    "tam-linh": SPIRITUAL_CATEGORY_NAMES,
+    "tâm linh": SPIRITUAL_CATEGORY_NAMES,
     "quan-an": ["Ẩm thực và quán ăn", "Quán cafe giải khát"],
     "quán ăn": ["Ẩm thực và quán ăn", "Quán cafe giải khát"],
     "am-thuc": ["Ẩm thực và quán ăn"],
@@ -48,10 +51,22 @@ def list_pois(
     cuisine: str | None = None,
     budget_tier: str | None = None,
     weights: ParsedSliderWeights | None = None,
+    q: str | None = None,
+    ids: list[str] | None = None,
+    view: str = "full",
+    sort: str = "name",
 ) -> tuple[list[POI], int]:
     with get_connection() as connection:
         where_clauses: list[str] = []
         params: list[Any] = []
+
+        if ids is not None:
+            where_clauses.append("p.poi_id::text = ANY(%s)")
+            params.append(ids)
+        if q and q.strip():
+            escaped = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            where_clauses.append("(p.name ILIKE %s OR p.description ILIKE %s OR p.address ILIKE %s)")
+            params.extend([f"%{escaped}%"] * 3)
 
         if category and category.strip().casefold() not in {"all", ""}:
             cat_norm = category.strip().casefold()
@@ -61,6 +76,12 @@ def list_pois(
             else:
                 where_clauses.append("c.name ILIKE %s")
                 params.append(f"%{category.strip()}%")
+
+            # Match the FE's separate Heritage/Spiritual tabs on summary pages.
+            # Full view retains the legacy alias for existing consumers.
+            if view == "summary" and cat_norm == "di-tich":
+                where_clauses.append("NOT (c.name = ANY(%s))")
+                params.append(SPIRITUAL_CATEGORY_NAMES)
 
         if city and city.strip().casefold() not in {"all", ""}:
             city_norm = city.strip().casefold()
@@ -132,7 +153,11 @@ def list_pois(
 
         where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
-        if weights is not None and weights.is_ranking_active:
+        if sort == "curated":
+            green_sql = "(CASE WHEN p.green_score <= 1 THEN p.green_score * 100 ELSE COALESCE(p.green_score, 50) END >= 75)"
+            rating_sql = "COALESCE(CASE WHEN jsonb_typeof(p.ai_metadata->'raw_rating') = 'number' THEN (p.ai_metadata->>'raw_rating')::float END, NULLIF(p.satisfaction_score, 0), 4.6)"
+            order_by_sql = f"ORDER BY ({green_sql} OR POSITION('michelin' IN LOWER(COALESCE(p.name, '') || ' ' || COALESCE(p.description, ''))) > 0) DESC, {green_sql} DESC, {rating_sql} DESC, p.name ASC, p.poi_id ASC"
+        elif weights is not None and weights.is_ranking_active:
             green_norm_sql = (
                 "(CASE WHEN p.green_score IS NULL THEN 0.5 "
                 "WHEN p.green_score < 0 THEN 0.0 "
@@ -157,6 +182,9 @@ def list_pois(
         else:
             order_by_sql = "ORDER BY p.name ASC, p.poi_id ASC"
 
+        metadata_sql = "p.ai_metadata"
+        if view == "summary":
+            metadata_sql = "(p.ai_metadata - ARRAY['featured_reviews', 'sample_reviews', 'menu_items', 'menu_image_url', 'cleaning_rules_applied', 'dedup_key'])"
         with connection.cursor() as cursor:
             query = f"""
                 SELECT
@@ -182,12 +210,12 @@ def list_pois(
                     p.vibes AS vibes,
                     p.best_time AS best_time,
                     p.eco_features AS eco_features,
-                    p.ai_metadata AS ai_metadata,
-                    p.phone_number AS phone_number,
-                    p.website_url AS website_url,
-                    p.social_links AS social_links,
+                    {metadata_sql} AS ai_metadata,
+                    {'NULL' if view == 'summary' else 'p.phone_number'} AS phone_number,
+                    {'NULL' if view == 'summary' else 'p.website_url'} AS website_url,
+                    {'NULL' if view == 'summary' else 'p.social_links'} AS social_links,
                     p.opening_hours AS opening_hours,
-                    p.email AS email,
+                    {'NULL' if view == 'summary' else 'p.email'} AS email,
                     COALESCE(saved_counts.saved_count, 0) AS saved_count
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id

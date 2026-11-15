@@ -8,7 +8,8 @@ Write-Host "========================================================" -Foregroun
 
 # 1. Khoi dong Backend FastAPI
 Write-Host "[1/2] Dang khoi dong Backend FastAPI (Port 8000)..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\backend'; Write-Host '=== GreenTrip Backend FastAPI (:8000) ===' -ForegroundColor Green; .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000"
+$py = if (Test-Path "$root\backend\.venv\Scripts\python.exe") { "$root\backend\.venv\Scripts\python.exe" } elseif (Test-Path "$root\.venv\Scripts\python.exe") { "$root\.venv\Scripts\python.exe" } else { "python" }
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\backend'; Write-Host '=== GreenTrip Backend FastAPI (:8000) ===' -ForegroundColor Green; & '$py' -m uvicorn app.main:app --reload --port 8000"
 
 Start-Sleep -Seconds 1
 
@@ -18,7 +19,8 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\fronten
 
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "  DA KHOI CHAY XONG! Vui long mo:" -ForegroundColor Green
-Write-Host "  - Frontend: http://localhost:5173/planner" -ForegroundColor White
+Write-Host "  - Frontend: http://localhost:5173" -ForegroundColor White
+Write-Host "  - Planner:  http://localhost:5173/planner" -ForegroundColor White
 Write-Host "  - Backend:  http://localhost:8000/docs" -ForegroundColor White
 Write-Host "========================================================" -ForegroundColor Cyan
 Start-Sleep -Seconds 3

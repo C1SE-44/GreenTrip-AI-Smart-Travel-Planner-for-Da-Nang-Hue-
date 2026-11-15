@@ -1,0 +1,27 @@
+# Local code navigation only; never index credentials, datasets or generated assets.
+.env
+.env.*
+*.pem
+*.key
+*credentials*
+*auth-state*
+node_modules/
+.git/
+.venv/
+venv/
+__pycache__/
+dist/
+build/
+coverage/
+graphify-out/
+.codex/
+.agents/
+.tools/
+/data/
+outputs/
+work/
+mindtrip_artifacts/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+uv.lock

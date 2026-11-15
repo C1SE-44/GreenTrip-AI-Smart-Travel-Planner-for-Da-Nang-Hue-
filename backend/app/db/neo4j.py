@@ -26,6 +26,7 @@ def initialize_driver() -> Any:
         settings.NEO4J_URI,
         auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD),
         database=settings.NEO4J_DATABASE,
+        connection_timeout=2.0,
     )
     return _driver
 

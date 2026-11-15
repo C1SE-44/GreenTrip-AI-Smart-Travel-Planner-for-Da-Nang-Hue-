@@ -108,6 +108,7 @@ export interface Poi {
   opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
   savedCount?: number;
+  isReference?: boolean;
 }
 
 export interface BackendPoiItem {
@@ -778,6 +779,51 @@ export function normalizePois(items: BackendPoiItem[] = []): Poi[] {
 
 export const pois: Poi[] = [
   {
+    id: '029a28df-b091-49d9-a911-738572c72464',
+    isGreen: true,
+    name: 'Nhà Hàng Bếp Cuốn Đà Nẵng (Đạt giải MICHELIN Bib Gourmand)',
+    category: 'quan-an',
+    city: 'Đà Nẵng',
+    lat: 16.0578779,
+    lng: 108.2452275,
+    address: '31-33 Trần Bạch Đằng, Phước Mỹ, Sơn Trà, Đà Nẵng',
+    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800',
+    description: 'Nhà hàng ẩm thực cuốn truyền thống nổi tiếng đạt giải MICHELIN Bib Gourmand, phục vụ bánh tráng cuốn thịt heo, nem lụi và các món cuốn miền Trung.',
+    rating: 4.9,
+    visitDuration: '1–1.5 giờ',
+    ecoScore: 88,
+  },
+  {
+    id: 'd58fe815-4aa1-45b2-831a-11b97e130918',
+    isGreen: true,
+    name: 'Đi Lạc Coffee – Specialty Coffee Roastery',
+    category: 'quan-an',
+    city: 'Đà Nẵng',
+    lat: 16.0576932,
+    lng: 108.2453294,
+    address: '24 Nguyễn Công Trứ, Phường An Hải Bắc, Quận Sơn Trà, Đà Nẵng',
+    image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&q=80&w=900',
+    description: 'Quán cà phê rang xay đặc sản với không gian mở thoáng đãng, sử dụng bao bì thân thiện môi trường và cà phê chất lượng cao.',
+    rating: 4.9,
+    visitDuration: '45–60 phút',
+    ecoScore: 92,
+  },
+  {
+    id: 'bfed964e-ff10-44f4-8654-2136245ab062',
+    isGreen: true,
+    name: 'Nhà Thờ Giáo Xứ An Hải & Đền Thánh Tử Đạo An Hải',
+    category: 'chua',
+    city: 'Đà Nẵng',
+    lat: 16.0626734,
+    lng: 108.2343254,
+    address: '387 Ngô Quyền, Phường An Hải Bắc, Quận Sơn Trà, Đà Nẵng',
+    image: 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&q=80&w=900',
+    description: 'Công trình kiến trúc tôn giáo và lịch sử lâu đời bên tả ngạn sông Hàn, điểm đến tâm linh thanh bình.',
+    rating: 4.9,
+    visitDuration: '45 phút',
+    ecoScore: 85,
+  },
+  {
     id: 'madame-lan',
     isGreen: true,
     name: 'Nhà hàng Madame Lân',
@@ -989,9 +1035,29 @@ export const pois: Poi[] = [
   },
 ];
 
+// Kiểm tra xem chuỗi có phải mã định danh kỹ thuật (UUID, MongoID, hash...) không phải tên người dùng
+export function isRawIdentifier(val?: string | null): boolean {
+  if (!val) return false;
+  const str = String(val).trim();
+  // Standard UUID: 8-4-4-4-12 hex
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)) {
+    return true;
+  }
+  // MongoDB ObjectId or 24/32 hex string
+  if (/^[0-9a-f]{24}$/i.test(str) || /^[0-9a-f]{32}$/i.test(str)) {
+    return true;
+  }
+  // Common internal id prefixes like poi-029a28...
+  if (/^poi-[0-9a-f]{8,}/i.test(str)) {
+    return true;
+  }
+  return false;
+}
+
 // Rút gọn & tinh chỉnh tên hiển thị trên bản đồ và popup (chuẩn Mindtrip / Google Maps)
 export function cleanPoiName(name: string): string {
   if (!name) return '';
+  if (isRawIdentifier(name)) return 'Đang tải...';
   let res = name;
 
   // 1. Bỏ nội dung trong ngoặc đơn (), ngoặc vuông [] (vd: (Workspace 24/7), [Đặc sản]...)

@@ -5,6 +5,7 @@ such as 'tôi có nên đi bán đảo sơn trà không'.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import Any
@@ -47,6 +48,13 @@ CURATED_POI_ADVICE: dict[str, dict[str, Any]] = {
         ],
         "budget_impact": "Điểm đến hoàn toàn miễn phí vé vào cổng, chỉ phát sinh chi phí di chuyển (~80.000 – 150.000 ₫/chiều).",
         "green_impact": "Hành trình khuyến khích bảo vệ môi trường, ngắm thú hoang dã văn minh không để lại rác thải nhựa.",
+        "gallery": [
+            "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1528127269322-539801943592?w=800&auto=format&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800&auto=format&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=800&auto=format&fit=crop&q=80",
+        ],
     },
     "cầu rồng": {
         "canonical_name": "Cầu Rồng",
@@ -257,7 +265,19 @@ def handle_poi_advice(
         rating_flt = round(float(sat_score or 4.8), 1)
         fallback_hero = "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80"
         
-        gallery_list = gallery if isinstance(gallery, list) and len(gallery) > 0 else None
+        gallery_list = None
+        if isinstance(gallery, list) and len(gallery) > 0:
+            gallery_list = gallery
+        elif isinstance(gallery, str):
+            try:
+                parsed = json.loads(gallery)
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    gallery_list = parsed
+            except Exception:
+                pass
+
+        if (not gallery_list or len(gallery_list) < 5) and curated and "gallery" in curated:
+            gallery_list = curated["gallery"]
 
         suggested_pois.append(
             CopilotSuggestedPoiItem(

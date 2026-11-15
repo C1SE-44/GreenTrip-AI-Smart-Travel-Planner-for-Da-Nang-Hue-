@@ -5,6 +5,7 @@ from app.db.postgres import get_connection
 from app.trips.schemas import CopilotChatRequest, CopilotChatResponse
 from app.auth.service import decode_access_token
 from app.trips.itinerary_repository import get_itinerary, save_itinerary
+from app.trips.schedule_validation import validate_schedule_changes
 from app.trips.schemas import TripItineraryResponse, TripItinerarySyncRequest, TripParametersRequest, TripParametersResponse
 from app.trips.service import process_copilot_chat, validate_and_process_trip_parameters
 
@@ -41,7 +42,10 @@ def write_trip_itinerary(
 ) -> TripItineraryResponse:
     if trip_id != payload.trip_id:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Mã chuyến đi không khớp.")
-    return save_itinerary(payload, _optional_user_id(authorization))
+    user_id = _optional_user_id(authorization)
+    previous = get_itinerary(trip_id, user_id)
+    validate_schedule_changes(payload, previous)
+    return save_itinerary(payload, user_id)
 
 
 @router.post(

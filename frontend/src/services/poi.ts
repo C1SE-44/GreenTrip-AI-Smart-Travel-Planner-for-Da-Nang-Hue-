@@ -15,6 +15,10 @@ export interface GetPoisParams {
   budget_tier?: BudgetTier;
   eco_certified_only?: boolean;
   green_transit_only?: boolean;
+  q?: string;
+  ids?: string[];
+  view?: 'full' | 'summary';
+  sort?: 'name' | 'curated';
 }
 
 export const ECO_PRIORITY_WEIGHT_MAP: Record<EcoPriority, number> = {
@@ -200,14 +204,21 @@ export function isPoiGreenTransit(
 /**
  * Gọi Backend API lấy danh sách POI với các query parameters đã lọc & chuẩn hóa
  */
-export async function getPois(params: GetPoisParams = {}): Promise<PaginatedPoisResponse> {
+const summaryCache = new Map<string, { expires: number; response: PaginatedPoisResponse }>();
+
+export async function getPois(params: GetPoisParams = {}, signal?: AbortSignal): Promise<PaginatedPoisResponse> {
   const query = new URLSearchParams();
+  if (params.q?.trim()) query.set('q', params.q.trim());
+  params.ids?.forEach(id => query.append('ids', id));
+  if (params.view) query.set('view', params.view);
+  if (params.sort) query.set('sort', params.sort);
 
   if (params.page !== undefined && params.page > 0) {
     query.set('page', String(params.page));
   }
   if (params.limit !== undefined && params.limit > 0) {
-    query.set('limit', String(params.limit));
+    const safeLimit = Math.min(Math.floor(params.limit), 100);
+    query.set('limit', String(safeLimit));
   }
   if (params.category && params.category !== 'all') {
     query.set('category', params.category);
@@ -248,29 +259,35 @@ export async function getPois(params: GetPoisParams = {}): Promise<PaginatedPois
   const queryString = query.toString();
   const path = queryString ? `/pois?${queryString}` : '/pois';
 
-  return fetchJson<PaginatedPoisResponse>(path);
+  signal?.throwIfAborted();
+  const cached = params.view === 'summary' ? summaryCache.get(path) : undefined;
+  if (cached && cached.expires > Date.now()) return cached.response;
+  const response = await fetchJson<PaginatedPoisResponse>(path, { signal });
+  if (params.view === 'summary' && !signal?.aborted) {
+    // Short-lived, bounded cache for tab/page revisits; never cache full detail.
+    summaryCache.delete(path);
+    summaryCache.set(path, { expires: Date.now() + 30_000, response });
+    if (summaryCache.size > 32) summaryCache.delete(summaryCache.keys().next().value!);
+  }
+  return response;
 }
 
 /**
  * Lấy toàn bộ danh sách POI (hỗ trợ tự động phân trang nếu backend giới hạn số lượng trên 1 trang).
- * Đảm bảo 100% tất cả 482 POIs (bao gồm Cầu Rồng, Chùa Linh Ứng, Ngũ Hành Sơn...) đều được kích hoạt.
+ * Chỉ dùng khi chức năng cần toàn bộ tập ứng viên; tối đa hai request đồng thời.
  */
-export async function getAllPois(params: GetPoisParams = {}): Promise<PaginatedPoisResponse> {
-  const firstPage = await getPois({ ...params, page: 1, limit: params.limit ?? 500 });
+export async function getAllPois(params: GetPoisParams = {}, signal?: AbortSignal): Promise<PaginatedPoisResponse> {
+  const firstPage = await getPois({ ...params, page: 1, limit: params.limit ?? 500 }, signal);
   const items = [...(firstPage.items ?? [])];
   const totalPages = firstPage.pagination?.total_pages ?? 1;
 
   if (totalPages > 1 && items.length < (firstPage.pagination?.total ?? 0)) {
-    const remainingLimit = firstPage.pagination?.limit ?? 100;
-    const remainingPages = await Promise.all(
-      Array.from({ length: totalPages - 1 }, (_, index) =>
-        getPois({ ...params, page: index + 2, limit: remainingLimit }),
-      ),
-    );
-    for (const page of remainingPages) {
-      if (page.items) {
-        items.push(...page.items);
-      }
+    const remainingLimit = firstPage.pagination?.limit ?? 500;
+    for (let page = 2; page <= totalPages; page += 2) {
+      const remainingPages = await Promise.all(
+        [page, page + 1].filter(p => p <= totalPages).map(p => getPois({ ...params, page: p, limit: remainingLimit }, signal)),
+      );
+      for (const result of remainingPages) items.push(...(result.items ?? []));
     }
   }
 
@@ -287,25 +304,17 @@ export async function getAllPois(params: GetPoisParams = {}): Promise<PaginatedP
   };
 }
 
-export async function getPoisByIds(ids: string[]): Promise<BackendPoiItem[]> {
+export async function getPoisByIds(ids: string[], signal?: AbortSignal): Promise<BackendPoiItem[]> {
   const requestedIds = new Set(ids.map(String));
   if (requestedIds.size === 0) return [];
 
-  const firstPage = await getPois({ page: 1, limit: 100 });
-  const pages = [firstPage];
-  const totalPages = firstPage.pagination?.total_pages ?? 1;
-  if (totalPages > 1) {
-    const remainingPages = await Promise.all(
-      Array.from({ length: totalPages - 1 }, (_, index) =>
-        getPois({ page: index + 2, limit: 100 }),
-      ),
-    );
-    pages.push(...remainingPages);
+  const uniqueIds = [...requestedIds];
+  const items: BackendPoiItem[] = [];
+  for (let i = 0; i < uniqueIds.length; i += 100) {
+    const response = await getPois({ ids: uniqueIds.slice(i, i + 100), limit: 100 }, signal);
+    items.push(...response.items.filter(poi => requestedIds.has(String(poi.id))));
   }
-
-  return pages
-    .flatMap((page) => page.items ?? [])
-    .filter((poi) => requestedIds.has(String(poi.id)));
+  return items;
 }
 
 // ─────────────────────────────────────────────

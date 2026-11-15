@@ -12,19 +12,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      crossorigin=""
-    />
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link rel="preload" as="image" href="/images/landing/danang-1400.webp" imagesrcset="/images/landing/danang-640.webp 640w, /images/landing/danang-1400.webp 1400w" imagesizes="100vw" fetchpriority="high" />
+    <style>
+      .app-shell{min-height:100svh;background:#fcfaf5;color:#111;font-family:Arial,sans-serif;padding:24px}
+      .app-shell>strong{font-size:24px;letter-spacing:-1px}
+      .app-shell>div{text-align:center;max-width:1200px;margin:90px auto 0}
+      .app-shell h1{font-size:clamp(42px,6.2vw,88px);letter-spacing:-.05em;line-height:1.15;margin:0 0 24px}
+      .app-shell p{font-size:16px;line-height:1.7;color:#595959}
+      .app-shell [role=status]{font-size:14px;margin-top:30px}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="app-shell" aria-busy="true"><strong>greentrip</strong><div><h1>Khám phá Đà Nẵng, Huế.</h1><p>Chọn nơi muốn đến, xem gợi ý theo ngày.</p><p role="status">Đang chuẩn bị gợi ý chuyến đi…</p></div></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

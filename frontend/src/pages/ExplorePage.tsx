@@ -1,4 +1,9 @@
+import { poiImageUrl } from '@/utils/poiImage';
 import { Leaf } from 'lucide-react';
+import '@phosphor-icons/web/regular';
+import '@phosphor-icons/web/fill';
+import '@phosphor-icons/web/bold';
+import 'leaflet/dist/leaflet.css';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
@@ -18,7 +23,7 @@ import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
 import { getMe, type UserProfile } from '@/services/auth';
-import { getPois, getAllPois } from '@/services/poi';
+import { getPois, getAllPois, getPoisByIds } from '@/services/poi';
 import ExploreFilterModal, {
   type ExploreFilterValues,
   type PoiCategoryFilter,
@@ -323,19 +328,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   // 2. POI hiển thị bảng chi tiết sâu toàn màn hình (PoiDetailSection)
   const [fullDetailPoiId, setFullDetailPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
-  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const handleDebouncedHover = useCallback((id: string | null) => {
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
-    if (!id) {
-      hoverTimerRef.current = setTimeout(() => {
-        setHoveredPoiId(null);
-      }, 120);
-      return;
-    }
-    setHoveredPoiId(id);
+  const suppressCardHover = useRef(false);
+  const handleCardHover = useCallback((id: string | null) => {
+    if (!suppressCardHover.current) setHoveredPoiId(id);
   }, []);
   const addedTrips = useMemo(
     () => new Set(userTrips.flatMap((trip) => [...(trip.savedPlaces ?? []), ...(trip.ideas ?? [])])),
@@ -407,7 +402,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [allPois, setAllPois] = useState<Poi[]>(pois);
+  const [allPois, setAllPois] = useState<Poi[]>([]);
+  const [poiRetryKey, setPoiRetryKey] = useState(0);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
@@ -537,57 +533,199 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     setShowProfileMenu(false);
   };
 
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [remoteTotal, setRemoteTotal] = useState(0);
+  const [detailPoi, setDetailPoi] = useState<Poi | null>(null);
+  const [detailError, setDetailError] = useState(false);
+  const [detailRetry, setDetailRetry] = useState(0);
+  const categoryCacheRef = useRef<Map<string, { items: Poi[]; total: number }>>(new Map());
+  const detailPoiCacheRef = useRef<Map<string, Poi>>(new Map());
+
+  // Keep existing FE-only filter/ranking rules over a complete candidate set.
+  // The default browsing path never downloads the entire catalogue.
+  const needsLocalCatalogue = isFilterPopoverOpen || JSON.stringify(filterValues) !== JSON.stringify(DEFAULT_FILTER_VALUES);
+  const overviewRequest = activeTab === 'for-you' && !debouncedSearch.trim() && !needsLocalCatalogue;
+  const needsTripCatalogue = viewMode === 'trips' && !!(activeOverviewTrip || selectedTripForDetails);
+  const requestPage = needsLocalCatalogue || needsTripCatalogue || overviewRequest ? 1 : currentPage;
+
   useEffect(() => {
-    let active = true;
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
-    async function loadPois() {
-      try {
-        setLoading(true);
-        setError(null);
+  useEffect(() => { setCurrentPage(1); }, [cityFilter, categoryFilter, filterValues, activeTab]);
 
-        const response = await getAllPois({
-          city: cityFilter !== 'all' ? cityFilter : undefined,
-          category: categoryFilter !== 'all' ? categoryFilter : undefined,
-          eco_priority: filterValues.ecoPriority,
-          budget_tier: filterValues.budget,
-          eco_certified_only: filterValues.ecoCertifiedOnly,
-          green_transit_only: filterValues.greenTransitOnly,
-        });
+  useEffect(() => {
+    if (viewMode !== 'explore' && !needsTripCatalogue) {
+      setLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    const cacheKey = JSON.stringify({
+      city: cityFilter,
+      cat: categoryFilter,
+      tab: activeTab,
+      mode: viewMode,
+      q: debouncedSearch.trim(),
+      page: requestPage,
+      filters: needsLocalCatalogue ? filterValues : null,
+      needsTrip: needsTripCatalogue,
+    });
 
-        const normalized = normalizePois(response.items);
-        if (!active) return;
-        setAllPois(normalized.length > 0 ? normalized : pois);
-      } catch (loadError) {
-        if (!active) return;
-        console.warn('Backend POIs fetch failed, using fallback data:', loadError);
-        setError(pois && pois.length > 0 ? null : (loadError instanceof Error ? loadError.message : 'Failed to load POIs'));
-        setAllPois(pois);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
+    const cachedData = categoryCacheRef.current.get(cacheKey);
+    if (cachedData) {
+      setAllPois(cachedData.items);
+      setRemoteTotal(cachedData.total);
+      setLoading(false);
+      setError(null);
+    } else {
+      setLoading(true);
+      setError(null);
     }
 
-    loadPois();
-
-    return () => {
-      active = false;
+    const params = {
+      city: cityFilter !== 'all' ? cityFilter : undefined,
+      category: categoryFilter !== 'all' ? categoryFilter : undefined,
+      view: 'summary' as const,
     };
-  }, [cityFilter, categoryFilter, filterValues]);
+    async function loadPois() {
+      try {
+        if (needsTripCatalogue) {
+          // Planner still needs full detail; do not run this for the trips list.
+          const response = await getAllPois({}, controller.signal);
+          if (!controller.signal.aborted) {
+            const normalized = normalizePois(response.items);
+            categoryCacheRef.current.set(cacheKey, { items: normalized, total: normalized.length });
+            setAllPois(normalized);
+          }
+        } else if (needsLocalCatalogue) {
+          const response = await getAllPois({
+            ...params,
+            limit: 100,
+            eco_priority: filterValues.ecoPriority,
+            budget_tier: filterValues.budget,
+            eco_certified_only: filterValues.ecoCertifiedOnly,
+            green_transit_only: filterValues.greenTransitOnly,
+          }, controller.signal);
+          if (!controller.signal.aborted) {
+            const normalized = normalizePois(response.items);
+            categoryCacheRef.current.set(cacheKey, { items: normalized, total: normalized.length });
+            setAllPois(normalized);
+          }
+        } else if (overviewRequest) {
+          // Four small groups, not four copies of the whole catalogue.
+          const responses = await Promise.all(['quan-an', 'di-tich', 'canh-quan', 'chua'].map(category =>
+            getPois({ ...params, category, limit: 4, sort: 'curated' }, controller.signal),
+          ));
+          const items = responses.flatMap(response => response.items);
+          if (!controller.signal.aborted) {
+            const normalized = normalizePois([...new Map(items.map(item => [item.id, item])).values()]);
+            categoryCacheRef.current.set(cacheKey, { items: normalized, total: normalized.length });
+            setAllPois(normalized);
+
+            // Prefetch page 1 for the 4 categories in the background so tab switching is instantaneous (0ms)
+            const prefetchCategories: PoiCategory[] = ['quan-an', 'di-tich', 'canh-quan', 'chua'];
+            setTimeout(() => {
+              prefetchCategories.forEach(async (cat) => {
+                const preKey = JSON.stringify({
+                  city: cityFilter,
+                  cat,
+                  tab: cat,
+                  mode: 'explore',
+                  q: '',
+                  page: 1,
+                  filters: null,
+                  needsTrip: false,
+                });
+                if (!categoryCacheRef.current.has(preKey)) {
+                  try {
+                    const res = await getPois({ ...params, category: cat, page: 1, limit: PAGE_SIZE, view: 'summary' });
+                    const norm = normalizePois(res.items);
+                    categoryCacheRef.current.set(preKey, { items: norm, total: res.pagination.total });
+                  } catch {}
+                }
+              });
+            }, 400);
+          }
+        } else {
+          const response = await getPois({ ...params, page: requestPage, limit: PAGE_SIZE, q: debouncedSearch.slice(0, 200) }, controller.signal);
+          if (!controller.signal.aborted) {
+            const normalized = normalizePois(response.items);
+            categoryCacheRef.current.set(cacheKey, { items: normalized, total: response.pagination.total });
+            setAllPois(normalized);
+            setRemoteTotal(response.pagination.total);
+          }
+        }
+      } catch (loadError) {
+        if (controller.signal.aborted) return;
+        console.warn('Backend POIs fetch failed:', loadError);
+        if (!cachedData) {
+          setError('Không thể tải địa điểm. Vui lòng thử lại.');
+          setAllPois([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+    void loadPois();
+    return () => controller.abort();
+  }, [cityFilter, categoryFilter, needsLocalCatalogue, needsTripCatalogue, overviewRequest, viewMode, requestPage, debouncedSearch, poiRetryKey, filterValues.ecoPriority, filterValues.budget, filterValues.ecoCertifiedOnly, filterValues.greenTransitOnly]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [search, cityFilter, categoryFilter, filterValues, activeTab]);
+    setDetailError(false);
+    if (!fullDetailPoiId) {
+      setDetailPoi(null);
+      return;
+    }
+    const cached = detailPoiCacheRef.current.get(fullDetailPoiId);
+    if (cached) {
+      setDetailPoi(cached);
+      return;
+    }
+    const controller = new AbortController();
+    void getPoisByIds([fullDetailPoiId], controller.signal).then(items => {
+      if (!controller.signal.aborted) {
+        const normalized = normalizePois(items)[0] ?? null;
+        if (normalized) {
+          detailPoiCacheRef.current.set(fullDetailPoiId, normalized);
+          setDetailPoi(normalized);
+        } else {
+          setDetailError(items.length === 0);
+        }
+      }
+    }).catch(() => { if (!controller.signal.aborted) setDetailError(true); });
+    return () => controller.abort();
+  }, [fullDetailPoiId, detailRetry]);
 
   const handleTabChange = (tabId: ExploreTabId) => {
     setActiveTab(tabId);
     setCurrentPage(1);
+    const targetCat = tabId === 'for-you' ? 'all' : (tabId as PoiCategory);
     if (tabId === 'for-you') {
       setCategoryFilter('all');
       setFilterValues((prev) => ({ ...prev, vibes: [], subCategories: [], features: [], minRating: null }));
     } else {
-      setCategoryFilter(tabId as PoiCategory);
+      setCategoryFilter(targetCat);
+    }
+    // Optimistic cache check for 0ms transition
+    const optimisticKey = JSON.stringify({
+      city: cityFilter,
+      cat: targetCat,
+      tab: tabId,
+      mode: 'explore',
+      q: debouncedSearch.trim(),
+      page: 1,
+      filters: null,
+      needsTrip: false,
+    });
+    const cached = categoryCacheRef.current.get(optimisticKey);
+    if (cached) {
+      setAllPois(cached.items);
+      setRemoteTotal(cached.total);
+      setLoading(false);
     }
     mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -950,11 +1088,13 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     return sections;
   }, [isCuratedOverview, filteredPois, allPois, savedIds]);
 
-  const totalPages = Math.ceil(filteredPois.length / PAGE_SIZE) || 1;
+  const remotePaging = !needsLocalCatalogue && !overviewRequest;
+  const totalPages = Math.ceil((remotePaging ? remoteTotal : filteredPois.length) / PAGE_SIZE) || 1;
   const paginatedPois = useMemo(() => {
+    if (remotePaging) return allPois;
     const start = (currentPage - 1) * PAGE_SIZE;
     return filteredPois.slice(start, start + PAGE_SIZE);
-  }, [filteredPois, currentPage]);
+  }, [filteredPois, allPois, currentPage, remotePaging]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || newPage > totalPages) return;
@@ -962,10 +1102,14 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Bộ địa điểm ghim trên bản đồ (Đồng bộ số lượng ghim đúng với danh sách đang hiển thị)
+  const [searchedAreaPois, setSearchedAreaPois] = useState<Poi[]>([]);
+  const [isSearchingArea, setIsSearchingArea] = useState(false);
+
+  // Bộ địa điểm ghim trên bản đồ (Đồng bộ số lượng ghim đúng với danh sách đang hiển thị + các điểm tìm kiếm)
   const displayedMapPois = useMemo(() => {
+    const map = new Map<string, Poi>();
+
     if (isCuratedOverview && curatedSections) {
-      const map = new Map<string, Poi>();
       Object.values(curatedSections).forEach((sec) => {
         sec.items.slice(0, 4).forEach((p) => {
           if (p.lat && p.lng) map.set(p.id, p);
@@ -980,30 +1124,85 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           }
         }
       });
-      return Array.from(map.values());
+    } else {
+      // Khi ở tab danh mục hoặc tìm kiếm/lọc: Bản đồ CHỈ hiển thị đúng các địa điểm của trang hiện tại (16 địa điểm)
+      paginatedPois.forEach((p) => {
+        if (p.lat && p.lng) map.set(p.id, p);
+      });
     }
 
-    // Khi ở tab danh mục hoặc tìm kiếm/lọc: Bản đồ CHỈ hiển thị đúng các địa điểm của trang hiện tại (16 địa điểm)
-    const map = new Map<string, Poi>();
-    paginatedPois.forEach((p) => {
-      if (p.lat && p.lng) map.set(p.id, p);
+    // Các địa điểm tìm kiếm theo khu vực
+    searchedAreaPois.forEach((p) => {
+      if (p.lat && p.lng && !map.has(p.id)) {
+        map.set(p.id, p);
+      }
     });
-    return Array.from(map.values());
-  }, [isCuratedOverview, curatedSections, paginatedPois, savedIds, allPois, cityFilter]);
 
+    return Array.from(map.values());
+  }, [isCuratedOverview, curatedSections, paginatedPois, savedIds, allPois, cityFilter, searchedAreaPois]);
+
+  const handleSearchThisArea = useCallback((bounds: L.LatLngBounds) => {
+    setIsSearchingArea(true);
+    setTimeout(() => {
+      const south = bounds.getSouth();
+      const north = bounds.getNorth();
+      const west = bounds.getWest();
+      const east = bounds.getEast();
+
+      const existingIds = new Set(displayedMapPois.map((p) => p.id));
+      const found = allPois
+        .filter((p) => {
+          if (!p.lat || !p.lng) return false;
+          if (existingIds.has(p.id)) return false;
+          return p.lat >= south && p.lat <= north && p.lng >= west && p.lng <= east;
+        })
+        .slice(0, 15)
+        .map((p) => ({ ...p, isReference: true }));
+
+      setSearchedAreaPois(found);
+      setIsSearchingArea(false);
+    }, 450);
+  }, [allPois, displayedMapPois]);
+
+  const handleReturnToCenter = useCallback(() => {
+    setSearchedAreaPois([]);
+  }, []);
+
+  const exploreCamera = useMemo(() => ({ region: cityFilter, contextPois: filteredPois }), [cityFilter, filteredPois]);
 
   const handleSelectPoi = (id: string | null) => {
     setSelectedMapPoiId((prev) => (prev === id ? null : id));
   };
 
+  const handleMapSelectPoi = (id: string | null) => {
+    handleSelectPoi(id);
+    setHoveredPoiId(null);
+    const list = mainScrollRef.current;
+    const card = id && list ? Array.from(list.querySelectorAll<HTMLElement>('[data-poi-id]')).find(el => el.dataset.poiId === id) : null;
+    if (!list || !card) return;
+    const bounds = list.getBoundingClientRect();
+    const cardBounds = card.getBoundingClientRect();
+    if (cardBounds.top >= bounds.top && cardBounds.bottom <= bounds.bottom) return;
+    suppressCardHover.current = true;
+    list.scrollTo({ top: Math.max(0, list.scrollTop + cardBounds.top - bounds.top - 16), behavior: 'instant' });
+    requestAnimationFrame(() => { suppressCardHover.current = false; });
+  };
+
   const handleOpenFullDetail = (id: string) => {
+    setSelectedMapPoiId(null);
     setFullDetailPoiId(id);
   };
 
   const fullDetailPoi = useMemo(() => {
     if (!fullDetailPoiId) return null;
-    return allPois.find((poi) => poi.id === fullDetailPoiId) || null;
-  }, [allPois, fullDetailPoiId]);
+    const base = allPois.find((p) => p.id === fullDetailPoiId)
+      ?? displayedMapPois.find((p) => p.id === fullDetailPoiId)
+      ?? pois.find((p) => p.id === fullDetailPoiId);
+    if (detailPoi?.id === fullDetailPoiId) {
+      return base ? { ...base, ...detailPoi } : detailPoi;
+    }
+    return base ?? null;
+  }, [detailPoi, fullDetailPoiId, allPois, displayedMapPois]);
 
 const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilter;
 
@@ -1013,7 +1212,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
       <aside 
         className={`${
           isSidebarCollapsed ? "w-[68px]" : "w-[218px]"
-        } px-2.5 shrink-0 h-full border-r border-gray-100/90 flex flex-col justify-between pt-2.5 pb-6 bg-white z-20 select-none transition-[width] duration-300 ease-in-out group/sidebar relative`} 
+        } ${viewMode === 'trips' && (activeOverviewTrip || selectedTripForDetails) ? 'hidden md:flex' : 'flex'} px-2.5 shrink-0 h-full border-r border-gray-100/90 flex-col justify-between pt-2.5 pb-6 bg-white z-20 select-none transition-[width] duration-300 ease-in-out group/sidebar relative`}
         data-purpose="sidebar"
       >
         <div className="flex flex-col">
@@ -1741,7 +1940,11 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           {/* Search Box & Filter */}
           <div className="flex items-center gap-3 mb-4">
             <div className="flex-1 relative flex items-center">
-              <i className="ph ph-magnifying-glass text-gray-400 absolute left-4 text-xl"></i>
+              {loading || search !== debouncedSearch ? (
+                <i className="ph ph-circle-notch animate-spin text-gray-500 absolute left-4 text-xl"></i>
+              ) : (
+                <i className="ph ph-magnifying-glass text-gray-400 absolute left-4 text-xl"></i>
+              )}
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -1859,12 +2062,19 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           )}
 
           {/* Grid danh sách thẻ */}
-          {loading ? (
+          {loading && allPois.length === 0 ? (
             <div className="grid grid-cols-2 gap-[32px] pb-16">
               {Array.from({ length: 6 }).map((_, i) => <PoiCardSkeleton key={i} />)}
             </div>
-          ) : isCuratedOverview && curatedSections ? (
-            <div className="space-y-12 pb-16">
+          ) : error && allPois.length === 0 ? (
+            <div role="alert" className="py-20 text-center text-neutral-700">
+              <p className="text-sm font-medium">{error}</p>
+              <button type="button" onClick={() => setPoiRetryKey((key) => key + 1)} className="mt-4 min-h-10 rounded-full border border-neutral-300 px-5 text-sm font-medium hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900">
+                Thử lại
+              </button>
+            </div>
+          ) : isCuratedOverview && curatedSections && filteredPois.length > 0 ? (
+            <div className={`space-y-12 pb-16 ${(loading || search !== debouncedSearch) && allPois.length > 0 ? 'opacity-85 transition-opacity duration-150' : 'opacity-100 transition-opacity duration-150'}`}>
               {Object.entries(curatedSections).map(([secKey, sec]) => {
                 const items = sec.items.slice(0, 4);
                 if (items.length === 0) return null;
@@ -1888,7 +2098,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                               handleSelectPoi(poi.id);
                               handleOpenFullDetail(poi.id);
                             }}
-                            onHover={handleDebouncedHover}
+                            onHover={handleCardHover}
                             onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}
                             onToggleAddTrip={toggleAddTrip}
                           />
@@ -1910,14 +2120,18 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 );
               })}
             </div>
-          ) : filteredPois.length === 0 ? (
+          ) : (loading || search !== debouncedSearch) && paginatedPois.length === 0 ? (
+            <div className="grid grid-cols-2 gap-[32px] pb-16">
+              {Array.from({ length: 6 }).map((_, i) => <PoiCardSkeleton key={i} />)}
+            </div>
+          ) : paginatedPois.length === 0 ? (
             <div className="py-20 text-center text-gray-500 pb-16">
               <i className="ph ph-magnifying-glass text-3xl mb-2 text-gray-400"></i>
               <p className="text-sm font-medium">Không tìm thấy địa điểm phù hợp</p>
             </div>
           ) : (
             <div className="pb-16 space-y-8">
-              <div className="grid grid-cols-2 gap-[32px]">
+              <div className={`grid grid-cols-2 gap-[32px] ${(loading || search !== debouncedSearch) && allPois.length > 0 ? 'opacity-85 transition-opacity duration-150' : 'opacity-100 transition-opacity duration-150'}`}>
                 {paginatedPois.map((poi, idx) => (
                   <div key={poi.id} data-poi-id={poi.id}>
                     <PoiCard
@@ -1931,7 +2145,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                         handleSelectPoi(poi.id);
                         handleOpenFullDetail(poi.id);
                       }}
-                      onHover={handleDebouncedHover}
+                      onHover={handleCardHover}
                       onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}
                       onToggleAddTrip={toggleAddTrip}
                     />
@@ -1992,19 +2206,21 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         )}
       </main>
 
-      {/* 3. RIGHT SECTION: Map giữ khoảng cách p-6 bo góc 22px. Khi xem chi tiết: Card trượt từ bên phải qua, bo cong 24px mép trái chuẩn Mindtrip, đổ bóng mờ khuếch tán sang trái */}
+      {/* 3. RIGHT SECTION: Map tràn viền trên, phải, dưới (chiều cao 100vh), bo tròn 2 góc trái 20px chuẩn trang lịch trình */}
       <section 
-        className={`flex-1 h-full relative bg-white ${fullDetailPoi ? 'overflow-visible z-30' : 'overflow-hidden'}`} 
+        className={`flex-1 h-full relative bg-white ${fullDetailPoiId ? 'overflow-visible z-30' : 'overflow-hidden'}`} 
         data-purpose="right-panel-container"
       >
         {/* Interactive Map: Luôn hiển thị trừ khi người dùng chủ động mở bảng chi tiết sâu */}
-        <div className={`w-full h-full pl-3 pr-6 lg:pr-[36px] py-6 ${fullDetailPoi ? "invisible pointer-events-none" : "visible"}`}>
-          <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
+        <div className={`w-full h-full pl-3 pr-0 py-0 ${fullDetailPoiId ? "invisible pointer-events-none" : "visible"}`}>
+          <div className="w-full h-full rounded-l-[20px] rounded-r-none overflow-hidden border-l border-gray-200/90 shadow-[-4px_0_16px_rgba(0,0,0,0.04)] relative [transform:translateZ(0)]">
             <PoiMap
+              clipByParent
               pois={displayedMapPois}
+              exploreCamera={exploreCamera}
               selectedPoiId={selectedMapPoiId}
               hoveredPoiId={hoveredPoiId}
-              onSelectPoi={handleSelectPoi}
+              onSelectPoi={handleMapSelectPoi}
               onHoverPoi={setHoveredPoiId}
               onOpenDetails={handleOpenFullDetail}
               isExpanded={isMapExpanded}
@@ -2019,23 +2235,49 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
               addedTrips={addedTrips}
               onToggleAddTrip={toggleAddTrip}
+              onSearchThisArea={handleSearchThisArea}
+              isSearchingArea={isSearchingArea}
+              onReturnToCenter={handleReturnToCenter}
+              showReturnToCenter={searchedAreaPois.length > 0}
+              returnCenterLabel="Về trung tâm"
             />
           </div>
         </div>
 
-        {/* Right Detail Section: Card trượt từ bên phải qua khi bấm "Chi tiết ->" */}
-        {fullDetailPoi && (
+        {/* Right Detail Section: Card trượt từ bên phải qua tức thì (0ms) khi bấm "Chi tiết ->" */}
+        {fullDetailPoiId && (
           <div 
             className="absolute inset-y-0 right-0 w-full z-40 bg-white rounded-l-[24px] border-l border-t border-b border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.08),-4px_0_12px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden animate-slideInRight"
           >
-            <PoiDetailSection
-              poi={fullDetailPoi}
-              isFavorite={savedIds.has(fullDetailPoi.id)}
-              isFavoritePending={pendingIds.has(fullDetailPoi.id)}
-              onClose={() => setFullDetailPoiId(null)}
-              onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
-              onViewOnMap={() => setFullDetailPoiId(null)}
-            />
+            {fullDetailPoi ? (
+              <PoiDetailSection
+                poi={fullDetailPoi}
+                isFavorite={savedIds.has(fullDetailPoi.id)}
+                isFavoritePending={pendingIds.has(fullDetailPoi.id)}
+                onClose={() => setFullDetailPoiId(null)}
+                onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
+                onViewOnMap={() => setFullDetailPoiId(null)}
+              />
+            ) : detailError ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center" role="status">
+                <p className="text-gray-700 text-sm mb-4">Không thể tải chi tiết địa điểm.</p>
+                <div className="flex items-center gap-3">
+                  <button type="button" className="min-h-10 px-5 rounded-full bg-black text-white text-xs font-medium cursor-pointer" onClick={() => setDetailRetry(value => value + 1)}>Thử lại</button>
+                  <button type="button" className="min-h-10 px-5 rounded-full border border-gray-300 text-xs font-medium cursor-pointer hover:bg-gray-50" onClick={() => setFullDetailPoiId(null)}>Đóng</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col p-6 animate-pulse" role="status" aria-label="Đang tải chi tiết">
+                <div className="w-full h-64 bg-gray-200 rounded-2xl mb-6" />
+                <div className="h-7 bg-gray-200 rounded-lg w-3/4 mb-3" />
+                <div className="h-4 bg-gray-200 rounded-md w-1/3 mb-6" />
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-full" />
+                  <div className="h-4 bg-gray-200 rounded w-5/6" />
+                  <div className="h-4 bg-gray-200 rounded w-4/6" />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -2043,8 +2285,17 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
       )}
 
       {/* 4. Explore Filter Modal (Đa Tab chuẩn Quiet Luxury & Mindtrip) */}
+      {isFilterPopoverOpen && (loading || error) && (
+        <div className="fixed inset-0 z-50 bg-black/20 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Chuẩn bị bộ lọc">
+          <div className="rounded-2xl bg-white p-6 shadow-xl text-sm" role="status">
+            <p>{error ? 'Không thể tải dữ liệu bộ lọc.' : 'Đang chuẩn bị bộ lọc…'}</p>
+            {error && <button className="min-h-11 px-4 underline" onClick={() => setPoiRetryKey(value => value + 1)}>Thử lại</button>}
+            <button className="min-h-11 px-4 underline" onClick={() => setIsFilterPopoverOpen(false)}>Đóng</button>
+          </div>
+        </div>
+      )}
       <ExploreFilterModal
-        isOpen={isFilterPopoverOpen}
+        isOpen={isFilterPopoverOpen && !loading && !error}
         allPois={allPois}
         onClose={() => setIsFilterPopoverOpen(false)}
         activeTab={activeTab === 'for-you' ? 'all' : activeTab}
@@ -2228,7 +2479,13 @@ function PoiCard({
       {/* 1. Card Image Box: aspect-[1.05/1], rounded-[20px], isolate để các nút con không bao giờ thoát ra ngoài đè lên header */}
       <div className={`relative w-full aspect-[1.05/1] rounded-[20px] overflow-hidden bg-gray-100 shadow-sm transition-all duration-200 isolate ${active ? 'ring-2 ring-black' : ''}`}>
         <img
-          src={gallery[imgIdx] || poi.image}
+          src={poiImageUrl(gallery[imgIdx] || poi.image, 640)}
+          srcSet={`${poiImageUrl(gallery[imgIdx] || poi.image, 320)} 320w, ${poiImageUrl(gallery[imgIdx] || poi.image, 640)} 640w`}
+          sizes="(max-width: 767px) 45vw, 320px"
+          loading="lazy"
+          decoding="async"
+          width={640}
+          height={610}
           alt={poi.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />

@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Compass, CalendarCheck, MapPinned, LogIn, UserPlus, LogOut } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
-import LoginModal from '@/components/auth/LoginModal';
-import OnboardingModal from '@/components/auth/OnboardingModal';
+const LoginModal = lazy(() => import('@/components/auth/LoginModal'));
+const OnboardingModal = lazy(() => import('@/components/auth/OnboardingModal'));
+
+const modalLoading = <div className="fixed inset-0 z-50 grid place-items-center bg-black/30" role="status"><span className="rounded-2xl bg-cream px-6 py-4 text-sm text-neutral-700">Đang mở…</span></div>;
 
 const navItems = [
   { to: '/explore', label: 'Khám Phá', icon: Compass },
@@ -260,19 +262,19 @@ export default function Navbar() {
       )}
 
       {/* Wanderlog Style Popup Modal */}
-      <LoginModal
+      {authModal.isOpen && <Suspense fallback={modalLoading}><LoginModal
         isOpen={authModal.isOpen}
         initialMode={authModal.mode}
         onClose={handleCloseModal}
         onLoginSuccess={handleLoginSuccess}
         onRegisterSuccess={handleRegisterSuccess}
-      />
+      /></Suspense>}
 
       {/* Onboarding Survey Flow Modal */}
-      <OnboardingModal
+      {isOnboardingOpen && <Suspense fallback={modalLoading}><OnboardingModal
         isOpen={isOnboardingOpen}
         onClose={handleCloseOnboarding}
-      />
+      /></Suspense>}
     </>
   );
 }

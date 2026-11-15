@@ -1,3 +1,4 @@
+import { dateKey, vietnamNow } from '@/utils/tripDates';
 import React, { useState } from 'react';
 import { X, Minus, Plus, Calendar, Loader2, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
@@ -123,6 +124,7 @@ export default function CreateTripMindtripModal({
 
   const handleSelectDate = (year: number, month: number, day: number) => {
     const clicked = new Date(year, month, day);
+    if (dateKey(clicked) < vietnamNow().date) return;
     if (!rangeStart || (rangeStart && rangeEnd)) {
       setRangeStart(clicked);
       setRangeEnd(null);
@@ -179,6 +181,10 @@ export default function CreateTripMindtripModal({
 
   // Gửi thông số sang Backend API FastAPI để xác thực & sinh lịch trình
   const handleCreate = async () => {
+    if (whenTab === 'dates' && (!rangeStart || !rangeEnd || dateKey(rangeStart) < vietnamNow().date)) {
+      setErrorMessage('Chọn đủ khoảng ngày từ hôm nay trở đi.');
+      return;
+    }
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -217,7 +223,7 @@ export default function CreateTripMindtripModal({
         id: 'trip_' + Date.now(),
         title,
         destination: normDest,
-        startDate: whenDisplay,
+        startDate: startDateStr || whenDisplay,
         daysCount: validDays,
         peopleCount: Math.max(1, totalGuests),
         coverImage,
@@ -253,7 +259,7 @@ export default function CreateTripMindtripModal({
         id: 'trip_' + Date.now(),
         title,
         destination: normDest,
-        startDate: whenDisplay,
+        startDate: startDateStr || whenDisplay,
         daysCount: validDays,
         peopleCount: Math.max(1, totalGuests),
         coverImage,
@@ -588,7 +594,8 @@ export default function CreateTripMindtripModal({
                             <button
                               type="button"
                               onClick={() => handleSelectDate(month1Year, month1Index, dayNum)}
-                              className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
+                              aria-label={dateKey(thisDate)} disabled={dateKey(thisDate) < vietnamNow().date}
+                              className={`disabled:opacity-40 disabled:cursor-not-allowed relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
                                 isStart || isEnd
                                   ? 'bg-black text-white font-bold shadow-xs'
                                   : 'text-gray-900 hover:bg-gray-200/80 font-normal'
@@ -651,7 +658,8 @@ export default function CreateTripMindtripModal({
                             <button
                               type="button"
                               onClick={() => handleSelectDate(month2Year, month2Index, dayNum)}
-                              className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
+                              aria-label={dateKey(thisDate)} disabled={dateKey(thisDate) < vietnamNow().date}
+                              className={`disabled:opacity-40 disabled:cursor-not-allowed relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
                                 isStart || isEnd
                                   ? 'bg-black text-white font-bold shadow-xs'
                                   : 'text-gray-900 hover:bg-gray-200/80 font-normal'

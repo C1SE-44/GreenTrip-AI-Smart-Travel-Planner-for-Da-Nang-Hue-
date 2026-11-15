@@ -156,6 +156,7 @@ POI_COLUMNS = {
     "is_local_business", "green_score", "is_active", "sub_category",
     "budget_tier", "vibes", "ai_metadata", "average_visit_minutes",
     "popularity_score",
+    "best_time", "opening_hours",
 }
 CATEGORY_COLUMNS = {"category_id", "name"}
 CITY_COLUMNS = {"city_id", "name", "code"}
@@ -181,6 +182,27 @@ def test_repository_filters_using_resolved_city_ids(
     assert "p.city_id = ANY(%s)" in select_sql
     assert select_params == (expected_ids,)
     assert "JOIN public.cities AS ci ON ci.city_id = p.city_id" in select_sql
+    assert "AS best_time" in select_sql
+    assert "AS opening_hours" in select_sql
+
+
+def test_recommendation_response_preserves_scheduling_metadata() -> None:
+    poi = make_poi("schedule-ready")
+    poi.update({
+        "best_time": ["morning", "afternoon"],
+        "opening_hours": {"monday": "09:00-17:00"},
+        "average_visit_minutes": 75,
+    })
+
+    response = service._recommend_by_ideas_and_taxonomy(
+        [poi],
+        RecommendationRequest(interests=["culture"], top_k=1),
+    )
+
+    assert response.data[0].best_time == ["morning", "afternoon"]
+    assert response.data[0].opening_hours == {"monday": "09:00-17:00"}
+    assert response.data[0].average_visit_minutes == 75
+    assert response.data[0].sub_category == "heritage"
 
 
 def test_unknown_destination_fails_instead_of_returning_cross_city_pois() -> None:

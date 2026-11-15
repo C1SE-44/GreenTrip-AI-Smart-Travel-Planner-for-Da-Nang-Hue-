@@ -81,7 +81,7 @@ def ensure_itinerary_tables():
 
     CREATE TABLE IF NOT EXISTS itinerary_days (
         itinerary_day_id TEXT PRIMARY KEY,
-        itinerary_id TEXT NOT NULL,
+        itinerary_id TEXT DEFAULT '',
         day_number INTEGER NOT NULL,
         theme TEXT,
         focus_city TEXT,
@@ -91,9 +91,9 @@ def ensure_itinerary_tables():
 
     CREATE TABLE IF NOT EXISTS itinerary_stops (
         itinerary_stop_id TEXT PRIMARY KEY,
-        itinerary_day_id TEXT NOT NULL,
-        poi_id TEXT NOT NULL,
-        sequence_no INTEGER NOT NULL,
+        itinerary_day_id TEXT DEFAULT '',
+        poi_id TEXT,
+        sequence_no INTEGER NOT NULL DEFAULT 0,
         time_slot TEXT,
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -295,12 +295,6 @@ def seed_sample_itineraries():
             # ─── Multi-day Itinerary: 7 Days (N-day test case) ───
             itin_7d = "sample-central-vietnam-7d"
             if not _check_itinerary_exists(cursor, conn, itin_7d):
-                _insert_itinerary(cursor, conn, itin_7d, "Miền Trung Huyền Diệu 7 Ngày", "Đà Nẵng & Huế", 7, "PUBLISHED")
-                for d_num in range(1, 8):
-                    _insert_itinerary_day(cursor, conn, f"{itin_7d}-d{d_num}", itin_7d, d_num, f"Hành trình Ngày {d_num}", "Đà Nẵng" if d_num <= 3 else "Huế")
-                    _insert_itinerary_stop(cursor, conn, f"{itin_7d}-d{d_num}-s1", f"{itin_7d}-d{d_num}", "poi_cau_rong" if d_num % 2 == 1 else "poi_dai_noi", 1, "09:00", f"Điểm 1 Ngày {d_num}")
-                    _insert_itinerary_stop(cursor, conn, f"{itin_7d}-d{d_num}-s2", f"{itin_7d}-d{d_num}", "poi_my_khe" if d_num % 2 == 1 else "poi_thien_mu", 2, "14:00", f"Điểm 2 Ngày {d_num}")
-            if not cursor.fetchone():
                 _insert_itinerary(cursor, conn, itin_7d, "Miền Trung Huyền Diệu 7 Ngày", "Đà Nẵng & Huế", 7, "PUBLISHED")
                 for d_num in range(1, 8):
                     _insert_itinerary_day(cursor, conn, f"{itin_7d}-d{d_num}", itin_7d, d_num, f"Hành trình Ngày {d_num}", "Đà Nẵng" if d_num <= 3 else "Huế")

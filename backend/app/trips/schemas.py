@@ -159,6 +159,7 @@ class TripParametersRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_business_rules(self) -> "TripParametersRequest":
+        # Business rule 1: Minimum budget per person per day
         if self.total_budget is not None:
             min_budget_required = 200_000.0 * self.days * self.num_people
             if self.total_budget < min_budget_required:
@@ -356,6 +357,9 @@ class ValidatedTripData(BaseModel):
     total_budget: float
     daily_budget_per_person: float
     budget_tier: BudgetTier
+    dining_tier: BudgetTier | None = None
+    lodging_tier: BudgetTier | None = None
+    activities_tier: BudgetTier | None = None
     pacing_level: str
     pacing_label: str
     pacing_desc: str

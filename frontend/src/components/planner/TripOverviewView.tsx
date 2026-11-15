@@ -1,6 +1,7 @@
+import { tripStartDate, dateAt, dateKey, vietnamNow } from '@/utils/tripDates';
 // TripOverviewView - Updated with Ideas & 2-Stage PB09 Recommendations
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { 
+import {
   ChevronLeft, 
   ChevronRight,
   Clock,
@@ -31,18 +32,19 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
-import { 
+import {
   pois as defaultAllPois, 
   normalizePois,
   normalizePoi, 
   normalizeCategory, 
   normalizeCity, 
   getDeterministicImage,
+  isRawIdentifier,
   type Poi,
   type PoiCity,
   type PoiCategory
 } from '@/data/pois';
-import { getPois, getAllPois } from '@/services/poi';
+import { getPois, getAllPois, getPoisByIds } from '@/services/poi';
 import { fetchJson } from '@/lib/api';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiCard from '@/components/poi/PoiCard';
@@ -50,11 +52,15 @@ import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import ExplanationModal from '@/components/poi/ExplanationModal';
 import TripItineraryView from './TripItineraryView';
 import TripHeader from './TripHeader';
+import { plannerStyles } from './plannerStyles';
+import PlannerPopover from './PlannerPopover';
+import { usePlannerMapVisible } from './usePlannerMapVisible';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { sendCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
 import { MorphTabIcon, MorphFavoriteButton, MorphAddButton } from '@/components/ui/MorphButton';
 import {
   createEmptyItinerary,
+  alignItineraryToTrip,
   getTripItinerary,
   saveTripItinerary,
   stopFromPoi,
@@ -320,6 +326,7 @@ export default function TripOverviewView({
       ? loadedPois 
       : (allPoisProp && allPoisProp.length > 0 ? allPoisProp : defaultAllPois);
   }, [loadedPois, allPoisProp]);
+
   // ─── STATE CỦA POPUP TÙY CHỈNH CHUYẾN ĐI & 4 MODAL THÔNG SỐ ───
   const [showCustomSettings, setShowCustomSettings] = useState(false);
   // 1. Popup Ở đâu
@@ -330,10 +337,24 @@ export default function TripOverviewView({
   // 2. Popup Khi
   const [showWhenModal, setShowWhenModal] = useState(false);
   const [whenTab, setWhenTab] = useState<'dates' | 'flex'>('dates');
-  const [calendarBaseMonth, setCalendarBaseMonth] = useState<Date>(new Date(2026, 10, 1));
-  const [rangeStart, setRangeStart] = useState<Date | null>(new Date(2026, 10, 2));
-  const [rangeEnd, setRangeEnd] = useState<Date | null>(new Date(2026, 10, 5));
+  const [calendarBaseMonth, setCalendarBaseMonth] = useState<Date>(() => new Date(`${vietnamNow().date}T12:00:00`));
+  const [rangeStart, setRangeStart] = useState<Date | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
   const [flexibleDays, setFlexibleDays] = useState(trip.daysCount || 4);
+  const [whenError, setWhenError] = useState('');
+  const [whenSaving, setWhenSaving] = useState(false);
+  const today = vietnamNow().date;
+  useEffect(() => {
+    if (!showWhenModal) return;
+    const start = tripStartDate(trip.startDate);
+    setRangeStart(start ? new Date(`${start}T12:00:00`) : null);
+    setRangeEnd(start ? new Date(`${dateAt(start, (trip.daysCount || 1) - 1)}T12:00:00`) : null);
+    setCalendarBaseMonth(new Date(`${start || vietnamNow().date}T12:00:00`));
+    setWhenTab(start ? 'dates' : 'flex');
+    setFlexibleDays(trip.daysCount || 4);
+    setWhenError('');
+  }, [showWhenModal, trip.startDate, trip.daysCount]);
+
   const [selectedMonth, setSelectedMonth] = useState('Tháng 11');
 
   // 3. Popup Ai (Du khách)
@@ -434,6 +455,36 @@ export default function TripOverviewView({
   // ─── DANH SÁCH Ý TƯỞNG (IDEAS / WISHLIST) CỦA CHUYẾN ĐI ───
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => trip.ideas || []);
 
+  // Tự động tải bổ sung các POI ID có trong tripIdeas mà chưa tồn tại trong danh sách đã nạp
+  useEffect(() => {
+    const missingIds = tripIdeas.filter((id) => {
+      if (!id || id.startsWith('custom-')) return false;
+      const found = allPois.some((p) => String(p.id) === String(id) || p.name.toLowerCase() === id.toLowerCase());
+      return !found;
+    });
+
+    if (missingIds.length === 0) return;
+
+    let isSubscribed = true;
+    getPoisByIds(missingIds)
+      .then((items) => {
+        if (!isSubscribed || items.length === 0) return;
+        const normalized = normalizePois(items);
+        setLoadedPois((prev) => {
+          const map = new Map(prev.map((p) => [String(p.id), p]));
+          normalized.forEach((item) => map.set(String(item.id), item));
+          return Array.from(map.values());
+        });
+      })
+      .catch((err) => {
+        console.warn('TripOverviewView: could not fetch missing POIs:', err);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [tripIdeas, allPois]);
+
   // ─── STATE CHO GỢI Ý ĐỊA ĐIỂM (TOP 10 TỐI ƯU THEO BACKEND PB09) ───
 const [recommendedPois, setRecommendedPois] = useState<Poi[]>([]);
   const [recCategoryFilter, setRecCategoryFilter] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
@@ -481,6 +532,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       }, 180);
   }, []);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
+  const showMap = usePlannerMapVisible();
   const [activeMenuPoiId, setActiveMenuPoiId] = useState<string | null>(null);
   const [showScheduleMenu, setShowScheduleMenu] = useState(false);
 
@@ -505,27 +557,62 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   const isHue = (c?: string) => /hue|huế/i.test(c || '');
 
   // Lọc POIs trên bản đồ Planner: Đồng bộ theo Copilot AI, Ý tưởng đã lưu & Lộ trình
-  
-  // 3 địa điểm khởi đầu tiêu biểu cho điểm đến
+
+  // ─── TÌM KIẾM KHU VỰC NÀY TRÊN BẢN ĐỒ KHI NGƯỜI DÙNG KÉO RÊ ───
+  const [searchedAreaPois, setSearchedAreaPois] = useState<Poi[]>([]);
+  const [isSearchingArea, setIsSearchingArea] = useState(false);
+
+  const handleSearchThisArea = useCallback((bounds: L.LatLngBounds) => {
+    setIsSearchingArea(true);
+    setTimeout(() => {
+      const south = bounds.getSouth();
+      const north = bounds.getNorth();
+      const west = bounds.getWest();
+      const east = bounds.getEast();
+
+      const existingIds = new Set([
+        ...tripIdeas.map(String),
+        ...itineraryPlan.days.flatMap((d) => d.stops.map((s) => s.poi_id || s.stop_id)),
+      ]);
+
+      const found = allPois
+        .filter((p) => {
+          if (!p.lat || !p.lng) return false;
+          if (existingIds.has(String(p.id))) return false;
+          return p.lat >= south && p.lat <= north && p.lng >= west && p.lng <= east;
+        })
+        .slice(0, 15)
+        .map((p) => ({
+          ...p,
+          isReference: true,
+        }));
+
+      setSearchedAreaPois(found);
+      setIsSearchingArea(false);
+    }, 450);
+  }, [allPois, tripIdeas, itineraryPlan]);
+
+  const handleReturnToCenter = useCallback(() => {
+    setSearchedAreaPois([]);
+  }, []);
+
+  // 3 địa điểm khởi đầu tiêu biểu cho điểm đến (chỉ dùng làm mốc nếu chuyến đi chưa có điểm nào)
   const starterPois = useMemo(() => {
     const destCity = isHue(trip.destination) ? 'Huế' : 'Đà Nẵng';
     return allPois.filter((p) => normalizeCity(p.city) === destCity).slice(0, 3);
   }, [allPois, trip.destination]);
+
+  // Chỉ hiển thị trên bản đồ các địa điểm ĐÃ LƯU (Ý tưởng chuyến đi & Lịch trình), cộng thêm các điểm vừa tìm kiếm ở khu vực này
   const relevantPois = useMemo(() => {
     const map = new Map<string, Poi>();
 
-    // 1. POIs do AI Copilot gợi ý trong cuộc hội thoại
-    recommendedPois.forEach((p) => {
-      if (p.lat && p.lng) map.set(p.id, p);
-    });
-
-    // 2. POIs trong Ý tưởng chuyến đi
+    // 1. POIs trong Ý tưởng chuyến đi (Địa điểm đã chọn)
     tripIdeas.forEach((id) => {
-      const found = allPois.find((p) => p.id === id || p.name.toLowerCase() === id.toLowerCase());
+      const found = allPois.find((p) => String(p.id) === String(id) || p.name.toLowerCase() === id.toLowerCase());
       if (found && found.lat && found.lng) map.set(found.id, found);
     });
 
-    // 3. POIs trong Lịch trình chuyến đi (nếu có)
+    // 2. POIs trong Lịch trình chuyến đi (nếu có các chặng đã xếp)
     itineraryPlan.days.flatMap((d) => d.stops).forEach((s) => {
       const found = allPois.find((p) => p.id === s.poi_id || p.name.toLowerCase() === s.title.toLowerCase());
       if (found && found.lat && found.lng) {
@@ -545,16 +632,22 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       }
     });
 
-    // 4. Nếu chưa có tin nhắn / ý tưởng nào, hiển thị các địa điểm xanh nổi bật của điểm đến
+    // 3. Nếu chưa lưu bất kỳ địa điểm nào, chỉ hiển thị 3 địa điểm khởi đầu tiêu biểu để bản đồ có điểm neo
     if (map.size === 0) {
-      const destCity = isHue(trip.destination) ? 'Huế' : 'Đà Nẵng';
-      allPois.filter((p) => normalizeCity(p.city) === destCity).slice(0, 10).forEach((p) => {
+      starterPois.forEach((p) => {
         if (p.lat && p.lng) map.set(p.id, p);
       });
     }
 
+    // 4. Các địa điểm vừa tìm kiếm khi kéo rê khu vực bản đồ
+    searchedAreaPois.forEach((p) => {
+      if (p.lat && p.lng && !map.has(p.id)) {
+        map.set(p.id, p);
+      }
+    });
+
     return Array.from(map.values());
-  }, [allPois, tripIdeas, recommendedPois, itineraryPlan, trip.destination]);
+  }, [allPois, tripIdeas, itineraryPlan, starterPois, searchedAreaPois]);
 
   // Bộ lọc danh mục địa điểm gợi ý hiển thị ở cột giữa
   const displayedRecommendedPois = useMemo(() => {
@@ -567,21 +660,24 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     return tripIdeas.map((id) => {
       // 1. Tìm trong allPois
       const foundInAll = allPois.find(
-        (p) => p.id === id || p.name.toLowerCase() === id.toLowerCase()
+        (p) => String(p.id) === String(id) || p.name.toLowerCase() === id.toLowerCase()
       );
       if (foundInAll) return foundInAll;
 
       // 2. Tìm trong recommendedPois
       const foundInRec = recommendedPois.find(
-        (p) => p.id === id || p.name.toLowerCase() === id.toLowerCase()
+        (p) => String(p.id) === String(id) || p.name.toLowerCase() === id.toLowerCase()
       );
       if (foundInRec) return foundInRec;
 
-      // 3. Fallback cho custom idea hoặc POI thêm từ bên ngoài
-      const cleanName = id.startsWith('custom-') ? id.replace(/^custom-\d+-?/, '') || id : id;
+      // 3. Fallback cho custom idea hoặc POI đang tải
+      const isCustom = id.startsWith('custom-');
+      const cleanName = isCustom ? id.replace(/^custom-\d+-?/, '') || id : id;
+      const isIdLike = isRawIdentifier(cleanName) || (!isCustom && (isRawIdentifier(id) || id.includes('-')));
+
       return {
         id,
-        name: cleanName,
+        name: isIdLike ? 'Đang tải địa điểm...' : cleanName,
         category: 'canh-quan' as const,
         city: (isHue(trip.destination) ? 'Huế' : 'Đà Nẵng') as PoiCity,
         lat: 16.0544,
@@ -592,7 +688,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         visitDuration: '1–2 giờ',
         isGreen: false,
         ecoScore: 85,
-      };
+        _isLoading: isIdLike,
+      } as Poi & { _isLoading?: boolean };
     });
   }, [tripIdeas, allPois, recommendedPois, trip.destination]);
 
@@ -935,29 +1032,38 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   };
 
   // 2. Cập nhật Thời gian
-  const handleSaveWhen = () => {
-    let newStartDate = trip.startDate || 'Tháng 11, 2026';
-    let newDays = flexibleDays;
-
-    if (whenTab === 'dates' && rangeStart && rangeEnd) {
-      const sDay = rangeStart.getDate();
-      const eDay = rangeEnd.getDate();
-      const m = rangeStart.getMonth() + 1;
-      const diffMs = Math.abs(rangeEnd.getTime() - rangeStart.getTime());
-      newDays = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
-      newStartDate = `Ngày ${sDay} – ${eDay} tháng ${m}`;
-    } else {
-      newStartDate = `${flexibleDays} ngày • ${selectedMonth}`;
+  const handleSaveWhen = async () => {
+    setWhenError('');
+    if (whenTab === 'dates' && (!rangeStart || !rangeEnd)) {
+      setWhenError('Chọn đủ ngày bắt đầu và kết thúc.');
+      return;
     }
-
-    const updated: UserTrip = {
-      ...trip,
-      startDate: newStartDate,
-      daysCount: newDays,
-      title: `Chuyến đi ${trip.destination}, ${newStartDate}`,
-    };
-    onUpdateTrip?.(updated);
-    setShowWhenModal(false);
+    const start = whenTab === 'dates' && rangeStart ? dateKey(rangeStart) : null;
+    const count = start && rangeEnd ? Math.round((rangeEnd.getTime() - rangeStart!.getTime()) / 86400000) + 1 : flexibleDays;
+    if (start && start < vietnamNow().date && (start !== tripStartDate(trip.startDate) || count !== trip.daysCount)) {
+      setWhenError('Không thể chọn khoảng ngày mới trước hôm nay.');
+      return;
+    }
+    const generatedTitle = `Chuyến đi ${trip.destination}`;
+    const title = trip.title.startsWith(`${generatedTitle},`) ? generatedTitle : trip.title;
+    const updated = { ...trip, title, startDate: start || `${count} ngày • ${selectedMonth}`, daysCount: count };
+    setWhenSaving(true);
+    try {
+      let current: TripItinerary;
+      try { current = await getTripItinerary(trip.id); }
+      catch (cause) {
+        if ((cause as { status?: number }).status !== 404) throw cause;
+        current = createEmptyItinerary(trip);
+      }
+      const aligned = alignItineraryToTrip(current, updated);
+      if (aligned.warning) { setWhenError(aligned.warning); return; }
+      await saveTripItinerary(aligned.itinerary);
+      setItineraryPlan(aligned.itinerary);
+      onUpdateTrip?.(updated);
+      setShowWhenModal(false);
+    } catch (cause) {
+      setWhenError(cause instanceof Error ? cause.message : 'Chưa thể lưu ngày chuyến đi.');
+    } finally { setWhenSaving(false); }
   };
 
   // 3. Cập nhật Du khách
@@ -1017,6 +1123,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
   const handleSelectDate = (year: number, month: number, day: number) => {
     const clicked = new Date(year, month, day);
+    if (dateKey(clicked) < vietnamNow().date) return;
     if (!rangeStart || (rangeStart && rangeEnd)) {
       setRangeStart(clicked);
       setRangeEnd(null);
@@ -1279,20 +1386,20 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           setShowCustomSettings(false);
         }}
       >
-        
+
         {/* ────── CỘT GIỮA: TRIP WORKSPACE - TAB Ý TƯỞNG (TỶ LỆ 54%, PADDING 28PX, CÁCH HEADER 24PX) ────── */}
         <div 
           className={`${
-            isMapExpanded ? 'hidden' : 'w-[54%] max-w-[720px] min-w-[460px] shrink-0'
-          } h-full bg-white flex flex-col justify-between px-7 pt-6 pb-6 select-none transition-[width] duration-300 ease-in-out relative border-r border-gray-100`}
+            isMapExpanded && showMap ? 'hidden' : plannerStyles.column
+          } h-full bg-white flex flex-col justify-between px-4 sm:px-7 pt-6 pb-6 select-none transition-[width] duration-300 ease-in-out relative`}
         >
           {/* Tiêu đề danh sách địa điểm + Nút Thêm địa điểm (gọn gàng, không pill) */}
-          <div className="flex items-center justify-between pb-3.5 shrink-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-6 shrink-0">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-[18px] leading-[24px] font-semibold text-gray-950">
+              <h2 className={plannerStyles.title}>
                 Địa điểm đã chọn
               </h2>
-              <span className="text-[13px] leading-[18px] text-gray-500 font-normal">
+              <span className={plannerStyles.meta}>
                 {ideaPois.length} địa điểm
               </span>
             </div>
@@ -1305,7 +1412,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   setModalTab('search');
                   setShowAddIdeasModal(true);
                 }}
-                className="h-8 px-3.5 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-900 text-[13px] font-medium transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                className={plannerStyles.pill}
                 title="Thêm địa điểm vào chuyến đi"
               >
                 <Plus size={13} className="text-gray-900 shrink-0" />
@@ -1315,7 +1422,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           </div>
 
           {/* Nội dung danh sách địa điểm ý tưởng dạng Card ngang compact */}
-          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-3 py-1">
+          <div className="flex-1 min-h-0 overflow-y-auto auto-hide-scrollbar py-1">
+            <div className={ideaPois.length ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start' : 'h-full'}>
             {ideaPois.length === 0 ? (
               /* Trạng thái trống gọn gàng, cân đối */
               <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center py-6 px-4">
@@ -1364,12 +1472,40 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 </button>
               </div>
             ) : (
-              /* Danh sách thẻ ngang compact */
+              /* Lưới thẻ ảnh: ba cột desktop, chữ đè trên ảnh theo mẫu đã xác nhận */
               ideaPois.map((poi) => {
+                const isSkeleton = Boolean((poi as any)._isLoading || isRawIdentifier(poi.name));
+                if (isSkeleton) {
+                  return (
+                    <div
+                      key={poi.id}
+                      className="relative w-full min-w-0 aspect-square min-h-[160px] rounded-2xl bg-neutral-100 overflow-hidden border border-neutral-200/70 animate-pulse select-none"
+                      aria-label="Đang tải thông tin địa điểm..."
+                    >
+                      {/* Ảnh giả lập Skeleton */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200" />
+                      
+                      {/* Nút hành động giả lập góc trên */}
+                      <div className="absolute top-2 right-2 flex items-center gap-1.5 pointer-events-none">
+                        <div className="h-8 w-8 rounded-full bg-neutral-300/60" />
+                        <div className="h-8 w-8 rounded-full bg-neutral-300/60" />
+                      </div>
+
+                      {/* Tiêu đề & nhãn giả lập góc dưới */}
+                      <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none">
+                        <div className="h-4 w-3/4 rounded-md bg-white/60 mb-2 animate-pulse" />
+                        <div className="h-3 w-1/3 rounded-md bg-white/40 animate-pulse" />
+                      </div>
+                    </div>
+                  );
+                }
+
                 const img = poi.image || getDeterministicImage(poi.name, poi.id, normalizeCategory(poi.category), trip.destination);
                 const isSelected = selectedMapPoiId === poi.id;
                 const isHovered = hoveredMapPoiId === poi.id;
-                const categoryName = poi.category === 'quan-an' ? 'Ẩm thực' : poi.category === 'di-tich' ? 'Di tích' : poi.category === 'canh-quan' ? 'Cảnh quan' : 'Tâm linh';
+                const categoryName = poi.category === 'quan-an' ? 'Quán ăn' : poi.category === 'di-tich' ? 'Di tích' : poi.category === 'canh-quan' ? 'Cảnh quan' : 'Tâm linh';
+                const CategoryIcon = poi.category === 'quan-an' ? Utensils : poi.category === 'di-tich' ? Landmark : Compass;
+                const isSaved = savedIds.has(String(poi.id)) || savedIds.has(poi.name);
 
                 return (
                   <div
@@ -1380,63 +1516,35 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     }}
                     onMouseEnter={() => handleDebouncedHover(poi.id)}
                     onMouseLeave={() => handleDebouncedHover(null)}
-                    className={`group relative p-3 rounded-2xl bg-white flex items-center gap-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs border ${
-                      isSelected
-                        ? 'ring-2 ring-black border-transparent bg-gray-50/50'
-                        : isHovered
-                        ? 'border-gray-300 bg-gray-50/30'
-                        : 'border-gray-100/90 hover:border-gray-200'
-                    }`}
+                    className={`group relative w-full min-w-0 aspect-square min-h-[160px] rounded-2xl bg-neutral-100 cursor-pointer overflow-hidden ${isSelected ? 'ring-2 ring-black ring-inset' : isHovered ? 'ring-1 ring-neutral-300' : ''}`}
                   >
-                    {/* Thumbnail vuông nhỏ bo góc 64x64 */}
-                    <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-gray-100/70 bg-gray-50 relative">
-                      <img
-                        src={img}
-                        alt={poi.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        onError={(e) => {
-                          e.currentTarget.src = getDeterministicImage(poi.name, poi.id, normalizeCategory(poi.category), trip.destination);
-                        }}
-                      />
-                    </div>
-
-                    {/* Thông tin ở giữa */}
-                    <div className="flex-1 min-w-0 pr-1">
-                      <div className="flex items-start gap-1.5">
-                        <h4 className="font-semibold text-[15px] sm:text-[16px] leading-[22px] text-gray-950 line-clamp-2 group-hover:text-black" title={poi.name}>
-                          {poi.name}
-                        </h4>
-                        {poi.isGreen && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/70 shrink-0 mt-0.5">
-                            🌱 Xanh
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-1 flex items-center gap-1.5 text-[13px] leading-[18px] text-gray-500 font-normal truncate">
-                        <span>{categoryName} • {poi.city}</span>
-                        {Number(poi.rating) > 0 && (
-                          <span className="flex items-center gap-0.5 text-gray-700 font-semibold">
-                            • <Star size={10} className="fill-amber-400 text-amber-400" /> {poi.rating}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-1 flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
-                        <Check size={11} strokeWidth={2.5} />
-                        <span>Đã thêm vào chuyến đi</span>
+                    <img src={img} alt={poi.name} loading="lazy"
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(event) => { event.currentTarget.src = getDeterministicImage(poi.name, poi.id, normalizeCategory(poi.category), trip.destination); }} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/10 pointer-events-none" />
+                    <div className="absolute inset-x-0 bottom-0 p-3 text-white pointer-events-none">
+                      <h4 className={`${plannerStyles.itemTitle} !text-white line-clamp-2`} title={poi.name}>{poi.name}</h4>
+                      <div className="mt-1.5 flex items-center gap-1.5 text-[12px] leading-4 text-white/90">
+                        <CategoryIcon size={13} className="shrink-0" aria-hidden="true" /><span>{categoryName}</span>
                       </div>
                     </div>
+                    <button type="button" aria-pressed={isSaved} disabled={pendingIds.has(String(poi.id))}
+                      aria-label={`Lưu ${poi.name}`}
+                      onClick={(event) => { event.stopPropagation(); openCollectionPicker(poi); }}
+                      className="absolute right-12 top-2 flex h-10 w-10 items-center justify-center rounded-full text-white hover:bg-black/20 focus-visible:ring-2 focus-visible:ring-white disabled:opacity-50">
+                      <Heart size={25} strokeWidth={1.8} className={isSaved ? 'fill-red-500 text-white' : 'fill-black/10'} />
+                    </button>
 
                     {/* Menu ba chấm (...) thay cho biểu tượng trái tim */}
-                    <div className="relative shrink-0">
+                    <div className="absolute right-2 top-2">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveMenuPoiId(activeMenuPoiId === poi.id ? null : poi.id);
                         }}
-                        className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-black transition cursor-pointer"
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm hover:bg-black/65 focus-visible:ring-2 focus-visible:ring-white"
+                        id={`overview-poi-menu-${poi.id}`} aria-expanded={activeMenuPoiId === poi.id}
                         title="Tùy chọn địa điểm"
                       >
                         <MoreHorizontal size={16} />
@@ -1444,10 +1552,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
                       {/* Dropdown Menu popover */}
                       {activeMenuPoiId === poi.id && (
-                        <div 
-                          className="absolute right-0 top-9 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-30 animate-fadeIn"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <PlannerPopover anchorId={`overview-poi-menu-${poi.id}`} onClose={() => setActiveMenuPoiId(null)}>
                           <button
                             type="button"
                             onClick={() => {
@@ -1470,21 +1575,22 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                             <Trash2 size={13} />
                             <span>Xóa khỏi chuyến đi</span>
                           </button>
-                        </div>
+                        </PlannerPopover>
                       )}
                     </div>
                   </div>
                 );
               })
             )}
+            </div>
           </div>
 
           {/* ─── THANH HÀNH ĐỘNG DƯỚI ĐÁY: DÙNG WHITESPACE, NÚT TẠO LỊCH RÕ RÀNG TRẠNG THÁI RỖNG ─── */}
-          <div className="pt-3 flex items-center justify-between gap-3 shrink-0 relative">
+          <div className="pt-3 flex flex-wrap items-center justify-between gap-2 shrink-0 relative">
             <button
               type="button"
               onClick={() => setShowCopilotDrawer(true)}
-              className="h-10 px-4 rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-800 text-[12.5px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0"
+              className="h-10 px-3 sm:px-4 whitespace-nowrap rounded-full border border-gray-200/90 hover:border-black bg-white hover:bg-gray-50 text-gray-800 text-[12.5px] font-semibold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0"
               title="Mở trợ lý GreenTrip AI"
             >
               <Sparkles size={14} className="text-emerald-600" />
@@ -1505,7 +1611,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   setShowScheduleMenu((prev) => !prev);
                 }}
                 disabled={isAiScheduling}
-                className={`h-10 px-5 rounded-full font-bold text-[12.5px] transition flex items-center gap-2 shadow-2xs active:scale-95 ${
+                className={`h-10 px-3 sm:px-5 whitespace-nowrap rounded-full font-semibold text-[12.5px] transition flex items-center gap-2 shadow-2xs active:scale-95 ${
                   ideaPois.length === 0
                     ? 'bg-neutral-100 text-neutral-400 border border-neutral-200/60 cursor-pointer hover:bg-neutral-200/60'
                     : 'bg-black hover:bg-neutral-800 text-white cursor-pointer'
@@ -1545,7 +1651,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     </div>
                     <div className="min-w-0">
                       <div className="text-[12.5px] font-bold text-gray-900 group-hover:text-emerald-950">Để AI tự động xếp</div>
-                      <div className="text-[11px] text-gray-500 leading-tight mt-0.5">Phân bổ đều các ngày & tối ưu lộ trình xanh</div>
+                      <div className="text-[12px] text-gray-500 leading-tight mt-0.5">Phân bổ đều các ngày & tối ưu lộ trình xanh</div>
                     </div>
                   </button>
 
@@ -1566,7 +1672,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     </div>
                     <div className="min-w-0">
                       <div className="text-[12.5px] font-bold text-gray-900 group-hover:text-black">Tự sắp xếp lịch trình</div>
-                      <div className="text-[11px] text-gray-500 leading-tight mt-0.5">Kéo thả và gán địa điểm theo ý bạn</div>
+                      <div className="text-[12px] text-gray-500 leading-tight mt-0.5">Kéo thả và gán địa điểm theo ý bạn</div>
                     </div>
                   </button>
                 </div>
@@ -1576,12 +1682,14 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         </div>
 
         {/* ────── CỘT PHẢI: MAP SECTION DÙNG CHUNG KHUNG VỚI 2 TAB CÒN LẠI ────── */}
+        {showMap && (
         <section 
-          className="flex-1 h-full min-w-0 pr-6 lg:pr-[36px] py-5 pl-0 relative bg-white overflow-hidden" 
+          className={plannerStyles.map}
           data-purpose="right-panel-container"
         >
-          <div className="w-full h-full rounded-[20px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
+          <div className={plannerStyles.mapSurface}>
             <PoiMap
+              clipByParent
               pois={relevantPois}
               selectedPoiId={selectedMapPoiId}
               hoveredPoiId={hoveredMapPoiId}
@@ -1600,9 +1708,15 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               onToggleFavorite={handleOpenSavedCollections}
               addedTrips={new Set(tripIdeas)}
               onToggleAddTrip={handleToggleIdea}
+              onSearchThisArea={handleSearchThisArea}
+              isSearchingArea={isSearchingArea}
+              onReturnToCenter={handleReturnToCenter}
+              showReturnToCenter={searchedAreaPois.length > 0}
+              returnCenterLabel="Về điểm đã chọn"
             />
           </div>
         </section>
+        )}
       </div>
 
       {/* ─── MODAL 1: Ở ĐÂU (KHI BẤM VÀO PILL ĐIỂM ĐẾN) ─── */}
@@ -1611,12 +1725,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn select-none"
           onClick={() => setShowWhereModal(false)}
         >
-          <div 
+          <div
             className="w-full max-w-[480px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl mx-4 flex flex-col border border-gray-100 relative"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
-              <button 
+              <button
                 onClick={() => setShowWhereModal(false)} 
                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer"
               >
@@ -1637,7 +1751,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 <span className="text-[12px] font-bold text-black">Đi bằng ô tô?</span>
-                <button 
+                <button
                   type="button"
                   onClick={() => setByCar(!byCar)} 
                   className={`w-9 h-5 rounded-full flex items-center p-0.5 transition-colors cursor-pointer ${byCar ? 'bg-black' : 'bg-gray-200'}`}
@@ -1649,7 +1763,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
             {/* 3 Nút chọn vị trí: Huế, Đà Nẵng, Cả 2 */}
             <div className="flex gap-2 mb-6 flex-wrap">
-              <button 
+              <button
                 type="button"
                 onClick={() => setWhereTarget('Huế')} 
                 className={`px-4 py-2 rounded-full border text-[13px] font-semibold transition-all cursor-pointer ${
@@ -1658,7 +1772,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               >
                 Huế
               </button>
-              <button 
+              <button
                 type="button"
                 onClick={() => setWhereTarget('Đà Nẵng')} 
                 className={`px-4 py-2 rounded-full border text-[13px] font-semibold transition-all cursor-pointer ${
@@ -1667,7 +1781,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               >
                 Đà Nẵng
               </button>
-              <button 
+              <button
                 type="button"
                 onClick={() => setWhereTarget('Đà Nẵng & Huế')} 
                 className={`px-4 py-2 rounded-full border text-[13px] font-semibold transition-all cursor-pointer ${
@@ -1679,7 +1793,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             </div>
 
             <div className="mt-auto flex justify-end">
-              <button 
+              <button
                 type="button"
                 onClick={handleSaveWhere} 
                 className="w-full sm:w-32 font-bold text-[14px] py-3 rounded-full bg-black text-white hover:bg-neutral-800 transition-colors cursor-pointer"
@@ -1697,12 +1811,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn select-none"
           onClick={() => setShowWhenModal(false)}
         >
-          <div 
+          <div
             className="w-full max-w-[620px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl mx-4 border border-gray-100 flex flex-col relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Nút X đóng */}
-            <button 
+            <button
               onClick={() => setShowWhenModal(false)} 
               className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer absolute top-6 left-6"
             >
@@ -1712,8 +1826,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             {/* Header: Title Khi + Pill switch Ngày tháng / Linh hoạt */}
             <div className="flex flex-col items-center mb-6">
               <div className="text-[17px] font-bold text-black mb-3">Khi</div>
+              {whenError && <p role="alert" className="text-[13px] text-red-700 mb-2">{whenError}</p>}
               <div className="bg-gray-100 p-1 rounded-full flex gap-1">
-                <button 
+                <button
                   type="button"
                   onClick={() => setWhenTab('dates')} 
                   className={`px-5 py-1.5 rounded-full text-[13px] font-bold transition-all cursor-pointer ${
@@ -1722,7 +1837,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 >
                   Ngày tháng
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={() => setWhenTab('flex')} 
                   className={`px-5 py-1.5 rounded-full text-[13px] font-bold transition-all cursor-pointer ${
@@ -1741,9 +1856,10 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   {/* THÁNG 1: TRÁI */}
                   <div>
                     <div className="flex items-center justify-between mb-3 px-1">
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={handlePrevMonth}
+                        aria-label="Tháng trước" disabled={month1Year < Number(today.slice(0, 4)) || (month1Year === Number(today.slice(0, 4)) && month1Index <= Number(today.slice(5, 7)) - 1)}
                         className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 cursor-pointer text-gray-600"
                       >
                         <ChevronLeft size={18} />
@@ -1779,7 +1895,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                             <button
                               type="button"
                               onClick={() => handleSelectDate(month1Year, month1Index, dayNum)}
-                              className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
+                              aria-label={dateKey(thisDate)} aria-pressed={isStart || isEnd} disabled={dateKey(thisDate) < today}
+                              className={`disabled:opacity-40 disabled:cursor-not-allowed relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
                                 isStart || isEnd
                                   ? 'bg-black text-white font-bold shadow-xs'
                                   : 'text-gray-900 hover:bg-gray-200/80 font-normal'
@@ -1800,9 +1917,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                       <span className="font-bold text-[14px] text-gray-900">
                         {`Tháng ${month2Index + 1} năm ${month2Year}`}
                       </span>
-                      <button 
-                        type="button" 
-                        onClick={handleNextMonth}
+                      <button
+                        type="button"
+                        onClick={handleNextMonth} aria-label="Tháng sau"
                         className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 cursor-pointer text-gray-600"
                       >
                         <ChevronRight size={18} />
@@ -1834,7 +1951,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                             <button
                               type="button"
                               onClick={() => handleSelectDate(month2Year, month2Index, dayNum)}
-                              className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
+                              aria-label={dateKey(thisDate)} aria-pressed={isStart || isEnd} disabled={dateKey(thisDate) < today}
+                              className={`disabled:opacity-40 disabled:cursor-not-allowed relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
                                 isStart || isEnd
                                   ? 'bg-black text-white font-bold shadow-xs'
                                   : 'text-gray-900 hover:bg-gray-200/80 font-normal'
@@ -1849,6 +1967,11 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   </div>
                 </div>
 
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <button type="button" aria-label="Bớt một ngày" disabled={!rangeStart || flexibleDays <= 1} className={plannerStyles.icon} onClick={() => { const count = Math.max(1, flexibleDays - 1); setFlexibleDays(count); if (rangeStart) setRangeEnd(new Date(`${dateAt(dateKey(rangeStart), count - 1)}T12:00:00`)); }}><Minus size={15} /></button>
+                  <span className="text-[13px]">{flexibleDays} ngày</span>
+                  <button type="button" aria-label="Thêm một ngày" disabled={!rangeStart || flexibleDays >= 31} className={plannerStyles.icon} onClick={() => { const count = Math.min(31, flexibleDays + 1); setFlexibleDays(count); if (rangeStart) setRangeEnd(new Date(`${dateAt(dateKey(rangeStart), count - 1)}T12:00:00`)); }}><Plus size={15} /></button>
+                </div>
                 {/* Footer Trang 1: Clear bên trái, Cập nhật bên phải */}
                 <div className="flex items-center justify-between pt-2">
                   <button
@@ -1861,7 +1984,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
                   <button
                     type="button"
-                    onClick={handleSaveWhen}
+                    onClick={handleSaveWhen} disabled={whenSaving}
                     className="px-8 py-3 bg-black text-white rounded-full font-bold text-[14px] hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs"
                   >
                     Cập nhật
@@ -1878,9 +2001,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     Bao nhiêu ngày?
                   </div>
                   <div className="flex items-center justify-center gap-4">
-                    <button 
+                    <button
                       type="button"
-                      onClick={() => setFlexibleDays(Math.max(1, flexibleDays - 1))} 
+                      aria-label="Bớt một ngày" disabled={flexibleDays <= 1} onClick={() => setFlexibleDays(Math.max(1, flexibleDays - 1))}
                       className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center hover:border-black transition cursor-pointer text-gray-700"
                     >
                       <Minus size={15}/>
@@ -1888,9 +2011,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     <div className="w-20 py-2 border border-gray-300 rounded-full text-center font-bold text-[16px] text-black">
                       {flexibleDays}
                     </div>
-                    <button 
+                    <button
                       type="button"
-                      onClick={() => setFlexibleDays(Math.min(14, flexibleDays + 1))} 
+                      aria-label="Thêm một ngày" disabled={flexibleDays >= 14} onClick={() => setFlexibleDays(Math.min(14, flexibleDays + 1))}
                       className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center hover:border-black transition cursor-pointer text-gray-700"
                     >
                       <Plus size={15}/>
@@ -1927,9 +2050,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 </div>
 
                 <div className="flex justify-end pt-2">
-                  <button 
+                  <button
                     type="button"
-                    onClick={handleSaveWhen} 
+                    onClick={handleSaveWhen} disabled={whenSaving}
                     className="px-8 py-3 bg-black text-white font-bold text-[14px] rounded-full hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs"
                   >
                     Cập nhật
@@ -1947,12 +2070,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn select-none"
           onClick={() => setShowWhoModal(false)}
         >
-          <div 
+          <div
             className="w-full max-w-[420px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl mx-4 border border-gray-100"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-start mb-6">
-              <button 
+              <button
                 onClick={() => setShowWhoModal(false)} 
                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer"
               >
@@ -1973,7 +2096,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <div className="text-[12px] text-gray-400 font-light">Từ 13 tuổi trở lên</div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setAdults(Math.max(1, adults - 1))} 
                     className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
@@ -1981,7 +2104,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     <Minus size={14}/>
                   </button>
                   <span className="w-5 text-center text-[14px] font-bold">{adults}</span>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setAdults(adults + 1)} 
                     className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
@@ -1998,7 +2121,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <div className="text-[12px] text-gray-400 font-light">Độ tuổi 2–12</div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setChildren(Math.max(0, children - 1))} 
                     className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
@@ -2006,7 +2129,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     <Minus size={14}/>
                   </button>
                   <span className="w-5 text-center text-[14px] font-bold">{children}</span>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setChildren(children + 1)} 
                     className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
@@ -2023,7 +2146,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <div className="text-[12px] text-gray-400 font-light">Dưới 2 tuổi</div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setInfants(Math.max(0, infants - 1))} 
                     className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
@@ -2031,7 +2154,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     <Minus size={14}/>
                   </button>
                   <span className="w-5 text-center text-[14px] font-bold">{infants}</span>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setInfants(infants + 1)} 
                     className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
@@ -2048,7 +2171,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <div className="text-[12px] text-gray-400 font-light underline">Bạn có mang theo thú cưng không?</div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setPets(Math.max(0, pets - 1))} 
                     className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
@@ -2056,7 +2179,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     <Minus size={14}/>
                   </button>
                   <span className="w-5 text-center text-[14px] font-bold">{pets}</span>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setPets(pets + 1)} 
                     className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
@@ -2068,7 +2191,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             </div>
 
             <div className="flex justify-end">
-              <button 
+              <button
                 type="button"
                 onClick={handleSaveWho} 
                 className="w-full sm:w-32 bg-black text-white font-bold text-[14px] py-3 rounded-full hover:bg-neutral-800 transition-colors cursor-pointer"
@@ -2086,7 +2209,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn select-none"
           onClick={() => setShowBudgetModal(false)}
         >
-          <div 
+          <div
             className="w-full max-w-[560px] bg-white rounded-[28px] p-6 sm:p-7 shadow-2xl relative border border-gray-100 flex flex-col max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2116,7 +2239,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <span className="text-[13.5px] font-bold text-gray-900 flex items-center gap-1.5">
                     <span>🍽️</span> Ăn uống & Ẩm thực
                   </span>
-                  <span className="text-[11px] font-medium text-gray-500">
+                  <span className="text-[12px] font-medium text-gray-500">
                     {categoryBudgets.dining === 'any' ? 'Mọi mức giá' : DINING_BUDGET_OPTIONS.find(o => o.id === categoryBudgets.dining)?.sub}
                   </span>
                 </div>
@@ -2135,7 +2258,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                         }`}
                       >
                         <span className="text-[13px] leading-tight">{opt.label}</span>
-                        <span className={`text-[10px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
+                        <span className={`text-[12px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
                           {opt.desc}
                         </span>
                       </button>
@@ -2150,7 +2273,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <span className="text-[13.5px] font-bold text-gray-900 flex items-center gap-1.5">
                     <span>🏨</span> Lưu trú & Khách sạn
                   </span>
-                  <span className="text-[11px] font-medium text-gray-500">
+                  <span className="text-[12px] font-medium text-gray-500">
                     {categoryBudgets.lodging === 'any' ? 'Mọi loại phòng' : LODGING_BUDGET_OPTIONS.find(o => o.id === categoryBudgets.lodging)?.sub}
                   </span>
                 </div>
@@ -2169,7 +2292,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                         }`}
                       >
                         <span className="text-[13px] leading-tight">{opt.label}</span>
-                        <span className={`text-[10px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
+                        <span className={`text-[12px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
                           {opt.desc}
                         </span>
                       </button>
@@ -2184,7 +2307,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <span className="text-[13.5px] font-bold text-gray-900 flex items-center gap-1.5">
                     <span>🎡</span> Hoạt động & Tham quan
                   </span>
-                  <span className="text-[11px] font-medium text-gray-500">
+                  <span className="text-[12px] font-medium text-gray-500">
                     {categoryBudgets.activities === 'any' ? 'Mọi hoạt động' : ACTIVITIES_BUDGET_OPTIONS.find(o => o.id === categoryBudgets.activities)?.sub}
                   </span>
                 </div>
@@ -2203,7 +2326,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                         }`}
                       >
                         <span className="text-[13px] leading-tight">{opt.label}</span>
-                        <span className={`text-[10px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
+                        <span className={`text-[12px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
                           {opt.desc}
                         </span>
                       </button>
@@ -2214,7 +2337,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             </div>
 
             {/* Chú thích thông minh */}
-            <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-[11.5px] text-amber-900 leading-relaxed mb-5">
+            <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-[12px] text-amber-900 leading-relaxed mb-5">
               💡 <strong>Cơ chế gợi ý theo danh mục:</strong> Gợi ý Nhà hàng sẽ áp dụng ngân sách Ăn uống; Gợi ý Di tích & Cảnh quan sẽ áp dụng ngân sách Hoạt động để không bị áp một mức chung cho cả chuyến đi.
             </div>
 
@@ -2238,7 +2361,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setActiveRightDrawer(null)}
         >
-          <div 
+          <div
             className="w-full max-w-[540px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl relative border border-gray-100"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2247,7 +2370,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 {activeRightDrawer === 'ideas' && '💡 Ý tưởng & Điểm gợi ý'}
                 {activeRightDrawer === 'calendar' && '📅 Khung thời gian chuyến đi'}
               </h3>
-              <button 
+              <button
                 onClick={() => setActiveRightDrawer(null)} 
                 className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 text-gray-500 cursor-pointer"
               >
@@ -2267,12 +2390,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                       <div className="text-xs text-gray-500">{trip.destination} • {trip.daysCount} ngày</div>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => {
                       setActiveRightDrawer(null);
                       setShowItineraryDrawer(true);
                       if (onOpenItineraryDetails) onOpenItineraryDetails();
-                    }} 
+                    }}
                     className="text-xs font-bold text-black underline cursor-pointer"
                   >
                     Xem chi tiết ngày
@@ -2345,7 +2468,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                       if (rawFav) count = Math.max(count, (JSON.parse(rawFav) as string[]).length);
                     } catch {}
                     return count > 0 ? (
-                      <span className="w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      <span className="w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[12px] font-bold flex items-center justify-center">
                         {count}
                       </span>
                     ) : null;
@@ -2376,7 +2499,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                         onClick={() => setShowModalCityDropdown((prev) => !prev)}
                         className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
                       >
-                        <h2 className="text-[22px] font-bold text-gray-950 tracking-tight leading-tight group-hover:text-black">
+                        <h2 className={`${plannerStyles.modalTitle} group-hover:text-black`}>
                           {modalCity === 'all' ? 'Đà Nẵng & Huế' : modalCity}
                         </h2>
                         <i className="ph ph-caret-down text-[18px] font-bold text-gray-950 group-hover:translate-y-0.5 transition-transform"></i>
@@ -2541,7 +2664,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
                               {/* Huy hiệu Địa điểm xanh */}
                               {poi.isGreen && (
-                                <div className="absolute top-2.5 left-2.5 z-10 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[10.5px] font-bold px-2 py-0.5 rounded-full shadow-md backdrop-blur-md flex items-center gap-1 pointer-events-none">
+                                <div className="absolute top-2.5 left-2.5 z-10 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[12px] font-bold px-2 py-0.5 rounded-full shadow-md backdrop-blur-md flex items-center gap-1 pointer-events-none">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                   <span>🌱 Địa điểm xanh</span>
                                 </div>
@@ -2601,7 +2724,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                               )}
                             </div>
 
-                            <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-gray-500 font-normal">
+                            <div className="mt-0.5 flex items-center gap-1 text-[12px] text-gray-500 font-normal">
                               <MapPin size={11} className="text-gray-400 shrink-0" />
                               <span className="truncate">
                                 {(() => {
@@ -2619,7 +2742,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                               </span>
                             </div>
 
-                            <div className="mt-0.5 text-[11.5px] text-gray-400 font-normal truncate">
+                            <div className="mt-0.5 text-[12px] text-gray-400 font-normal truncate">
                               {poi.address || `${poi.city}, Việt Nam`}
                             </div>
                           </div>
@@ -2727,7 +2850,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
           {/* Drawer Title Section */}
           <div className="px-6 pt-4 pb-2">
-            <h2 className="text-[28px] sm:text-[32px] font-extrabold text-gray-950 tracking-tight leading-tight">
+            <h2 className={plannerStyles.title}>
               Ý tưởng đã lưu
             </h2>
             <p className="text-[13.5px] text-gray-500 mt-1">
@@ -2784,12 +2907,31 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             ) : (
               /* Danh sách ý tưởng: Lưới 2 cột card ảnh lớn chuẩn Mindtrip */
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-6">
-                {ideaPois.map((poi) => (
-                  <div
-                    key={poi.id}
-                    onClick={() => setSelectedMapPoiId(poi.id)}
-                    className="group relative aspect-[4/3] rounded-2xl overflow-hidden cursor-pointer shadow-2xs hover:shadow-md transition-all duration-300 border border-gray-100 bg-gray-100"
-                  >
+                {ideaPois.map((poi) => {
+                  const isSkeleton = Boolean((poi as any)._isLoading || isRawIdentifier(poi.name));
+                  if (isSkeleton) {
+                    return (
+                      <div
+                        key={poi.id}
+                        className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xs border border-gray-100 bg-neutral-100 animate-pulse select-none"
+                        aria-label="Đang tải thông tin địa điểm..."
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200" />
+                        <div className="absolute top-3 right-3 h-8 w-8 rounded-full bg-neutral-300/60" />
+                        <div className="absolute inset-x-0 bottom-0 p-3.5 bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none">
+                          <div className="h-4 w-3/4 rounded bg-white/60 mb-2 animate-pulse" />
+                          <div className="h-3 w-1/3 rounded bg-white/40 animate-pulse" />
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={poi.id}
+                      onClick={() => setSelectedMapPoiId(poi.id)}
+                      className="group relative aspect-[4/3] rounded-2xl overflow-hidden cursor-pointer shadow-2xs hover:shadow-md transition-all duration-300 border border-gray-100 bg-gray-100"
+                    >
                     <img
                       src={poi.image}
                       alt={poi.name}
@@ -2800,7 +2942,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
                     {/* Huy hiệu Địa điểm xanh góc trên bên trái */}
                     {poi.isGreen && (
-                      <div className="absolute top-3 left-3 z-10 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md backdrop-blur-md flex items-center gap-1 pointer-events-none">
+                      <div className="absolute top-3 left-3 z-10 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[12px] font-bold px-2.5 py-0.5 rounded-full shadow-md backdrop-blur-md flex items-center gap-1 pointer-events-none">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         <span>🌱 Địa điểm xanh</span>
                       </div>
@@ -2839,8 +2981,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
+            </div>
             )}
           </div>
         </div>
@@ -2901,7 +3044,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <span className="text-gray-400 font-normal text-xs">Chats {chatMessages.length > 0 ? chatMessages.length : 1}</span>
                   <span className="sr-only">Đoạn chat (1)</span>
                 </h3>
-                <p className="text-[11px] text-gray-500 font-medium">Gợi ý địa điểm xanh & tối ưu chuyến đi</p>
+                <p className="text-[12px] text-gray-500 font-medium">Gợi ý địa điểm xanh & tối ưu chuyến đi</p>
               </div>
             </div>
 
@@ -2999,21 +3142,21 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                                 <h5 className="font-bold text-[13px] text-gray-900 truncate">
                                   {p.name}
                                 </h5>
-                                <span className="text-[10.5px] px-1.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 font-semibold shrink-0">
+                                <span className="text-[12px] px-1.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 font-semibold shrink-0">
                                   🌱 {p.green_score || 90}/100
                                 </span>
                                 {p.rating && (
-                                  <span className="text-[11px] font-semibold text-amber-600 flex items-center gap-0.5 shrink-0">
+                                  <span className="text-[12px] font-semibold text-amber-600 flex items-center gap-0.5 shrink-0">
                                     <Star size={11} className="fill-amber-500 text-amber-500" />
                                     {p.rating}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11.5px] text-gray-600 line-clamp-1 mt-0.5">
+                              <p className="text-[12px] text-gray-600 line-clamp-1 mt-0.5">
                                 {p.swap_reason || p.address}
                               </p>
                               {(p.price_range_display || p.budget_delta) && (
-                                <p className="text-[10.5px] text-gray-500 mt-0.5">
+                                <p className="text-[12px] text-gray-500 mt-0.5">
                                   {p.price_range_display || p.budget_delta}
                                 </p>
                               )}
@@ -3069,7 +3212,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 key={idx}
                 type="button"
                 onClick={() => handleSendChatMessage(q)}
-                className="text-[11.5px] bg-white hover:bg-gray-100 border border-gray-200/70 rounded-full px-3 py-1 text-gray-700 transition cursor-pointer active:scale-95 truncate max-w-full font-medium shadow-2xs"
+                className="text-[12px] bg-white hover:bg-gray-100 border border-gray-200/70 rounded-full px-3 py-1 text-gray-700 transition cursor-pointer active:scale-95 truncate max-w-full font-medium shadow-2xs"
                 title={q}
               >
                 {q.replace(/^(💡|🌱|📍)\s*/, '')}

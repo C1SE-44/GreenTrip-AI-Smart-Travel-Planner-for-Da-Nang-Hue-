@@ -1,5 +1,7 @@
 # GreenTrip AI — Quy Tắc Làm Việc Bắt Buộc (Team & AI Agent Rules)
 
+> **Context AI (2026-11-13):** Bắt đầu từ [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md), chỉ đọc module liên quan theo bảng định tuyến. Dùng Graphify code-only với budget ngắn và Ponytail full; không đọc lại toàn bộ bàn giao dài mỗi lượt. Backlog/owner: [AI_ROADMAP.md](docs/AI_ROADMAP.md); lệnh công cụ: [AI_TOOLS.md](docs/AI_TOOLS.md). Giữ nguyên các quy tắc nhóm bên dưới.
+
 Tài liệu này là quy ước vận hành bắt buộc cho tất cả thành viên và AI Agent khi làm việc trên repository **GreenTrip AI**. Mọi phiên làm việc phải tuân thủ nghiêm ngặt **Nội quy làm việc nhóm** và **Git Flow Rule** dưới đây.
 
 ---

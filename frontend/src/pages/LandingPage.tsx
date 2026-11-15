@@ -1,831 +1,104 @@
-import { Link } from "react-router-dom";
-import {
-  CalendarCheck,
-  Compass,
-  MapPin,
-  Navigation,
-  Leaf,
-  Star,
-  ChevronDown,
-  Check,
-  Bell,
-  Instagram,
-  Twitter,
-  Facebook,
-  Github,
-} from "lucide-react";
+import React, {useEffect, useRef, useState} from 'react';
+import {Link, useLocation} from 'react-router-dom';
+import {ArrowUpRight, ArrowRight, Leaf, MapPin, Clock3, Check, ChevronDown, X, Plus, RotateCcw, Copy, Pause, Play, Route, ArrowDown} from 'lucide-react';
+import {HeroScenes} from '@/components/landing/HeroScenes';
+import {places} from '@/components/landing/places';
+import '@/components/landing/landing.css';
 
+const steps=['Khám phá','Điều chỉnh','Mang theo'];
+function CardTabs({active}: {active: number}) {
+  return <nav className="card-tabs" aria-label={`Các bước · ${steps[active]}`}>{steps.map((label,i)=><a href={`#step-${i}`} aria-current={i===active?'step':undefined} key={label}>{label}</a>)}</nav>;
+}
+type City = keyof typeof places;
 export default function LandingPage() {
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  const location=useLocation();
+  const [city,setCity]=useState<City>('danang');
+  const [days,setDays]=useState(1);
+  const [removed,setRemoved]=useState<string[]>([]);
+  const [notice,setNotice]=useState('');
+  const [sampleOpen,setSampleOpen]=useState(false);
+  const [paused,setPaused]=useState(false);
+  const [inView,setInView]=useState(true);
+  const [reduced,setReduced]=useState(()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [tabVisible,setTabVisible]=useState(!document.hidden);
+  const dialog=useRef<HTMLDialogElement>(null);
+  const hero=useRef<HTMLElement>(null);
+  const place=places[city];
+  const groups=place.groups.slice(0,days);
+  const selected=groups.flat().filter(p=>!removed.includes(p.name));
+
+  useEffect(()=>{
+    const media=window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onMotion=(e: MediaQueryListEvent)=>setReduced(e.matches);
+    const onVisibility=()=>setTabVisible(!document.hidden);
+    media.addEventListener('change',onMotion);
+    document.addEventListener('visibilitychange',onVisibility);
+    const observer=new IntersectionObserver(([entry])=>setInView(entry.isIntersecting),{threshold:.05});
+    if(hero.current) observer.observe(hero.current);
+    return ()=>{media.removeEventListener('change',onMotion);document.removeEventListener('visibilitychange',onVisibility);observer.disconnect();};
+  },[]);
+  const choose=(c: City,d: number)=>{setCity(c);setDays(d);setRemoved([]);setNotice('');};
+  const openSample=(c=city,d=days)=>{
+    if(c!==city||d!==days)choose(c,d);
+    setSampleOpen(true);
+    if(dialog.current&&!dialog.current.open)dialog.current.showModal();
+  };
+  const toggle=(name: string)=>{setRemoved(prev=>prev.includes(name)?prev.filter(n=>n!==name):[...prev,name]);setNotice('');};
+  const restore=()=>{setRemoved([]);setNotice('Đã khôi phục các điểm của lịch mẫu.');};
+  const copy=async()=>{
+    const text=[`GreenTrip · ${place.name} · ${days} ngày`,'Lịch mẫu tham khảo. Kiểm tra giờ mở cửa, vé, thời tiết và thời gian di chuyển trước khi đi.',...groups.flatMap((g,i)=>[`\nNgày ${i+1}`,...g.filter(p=>!removed.includes(p.name)).map(p=>`${p.period}: ${p.name}`)])].join('\n');
+    try{await navigator.clipboard.writeText(text);setNotice('Đã sao chép lịch. Dán vào ghi chú để mang theo nhé.');}
+    catch{setNotice('Chưa sao chép được. Hãy mở lịch mẫu và chọn nội dung để sao chép.');}
   };
 
-  const features = [
-    {
-      id: "hoc-hoi",
-      label: "Học hỏi",
-      bgColor: "bg-[#0f1f63]",
-      gradient: "from-[#0f1f63]",
-      title: (
-        <span className="text-[#F9DED6] text-[1.25em] leading-[0.95] block mt-8">
-          Học hỏi
-          <br />
-          phong cách
-          <br />
-          của bạn.
-        </span>
-      ),
-      desc: "Hãy chia sẻ những điều quan trọng với bạn. Trợ lý du lịch cá nhân của bạn sẽ ghi nhớ cách bạn thích đi du lịch, vì vậy bạn không cần phải bắt đầu lại từ đầu mỗi lần. Và bạn càng sử dụng nhiều, hệ thống càng giỏi hơn trong việc tìm kiếm những địa điểm thực sự phù hợp với bạn.",
-      img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=75",
-      widgets: (
-        <>
-          <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
-                  <Star size={10} className="text-white" />
-                </div>
-                <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
-              </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
-                Địa điểm ăn uống ngon, nhưng thân thiện với trẻ em.
-              </p>
-            </div>
-          </div>
-          <div
-            className="absolute top-[40%] right-4 lg:right-0 -translate-y-1/2 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
-            style={{ animationDelay: "150ms" }}
-          >
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
-                  <Star size={10} className="text-white" />
-                </div>
-                <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
-              </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
-                Thức ăn đường phố hơn là nhà hàng sang trọng
-              </p>
-            </div>
-          </div>
-          <div
-            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
-            style={{ animationDelay: "300ms" }}
-          >
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
-                  <Star size={10} className="text-white" />
-                </div>
-                <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
-              </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
-                Chỉ những viên ngọc quý địa phương
-              </p>
-            </div>
-          </div>
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex h-20 w-20 items-center justify-center rounded-full bg-white/90 backdrop-blur-xl border border-white/60 shadow-2xl hover:scale-105 transition-transform cursor-pointer z-10">
-            <div className="flex items-center gap-1.5">
-              <div className="w-1 h-4 bg-gray-800 rounded-full animate-pulseRing"></div>
-              <div
-                className="w-1 h-8 bg-gray-800 rounded-full animate-pulseRing"
-                style={{ animationDelay: "100ms" }}
-              ></div>
-              <div
-                className="w-1 h-5 bg-gray-800 rounded-full animate-pulseRing"
-                style={{ animationDelay: "200ms" }}
-              ></div>
-              <div
-                className="w-1 h-3 bg-gray-800 rounded-full animate-pulseRing"
-                style={{ animationDelay: "150ms" }}
-              ></div>
-            </div>
-          </div>
-        </>
-      ),
-    },
-    {
-      id: "toi-uu",
-      label: "Tối ưu",
-      bgColor: "bg-[#9e472a]",
-      gradient: "from-[#9e472a]",
-      title: (
-        <span className="text-[#FDE68A] text-[1.25em] leading-[0.95] block mt-8">
-          Tối ưu hóa
-          <br />
-          mọi quyết
-          <br />
-          định.
-        </span>
-      ),
-      desc: "Trợ lý du lịch có thể giúp bạn sắp xếp thứ tự điểm đến, phương tiện và nhà hàng — tự động tính toán bằng thuật toán vận trù học để tối ưu chi phí và thời gian. Khi bạn đã sẵn sàng, hãy tự tin khởi hành với một lịch trình không có góc chết.",
-      img: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=75",
-      widgets: (
-        <>
-          <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
-                  <Check size={10} className="text-white" />
-                </div>
-                <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
-              </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
-                Lộ trình ngắn nhất: Tiết kiệm 15km.
-              </p>
-            </div>
-          </div>
-          <div
-            className="absolute top-[40%] right-4 lg:right-0 -translate-y-1/2 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
-            style={{ animationDelay: "150ms" }}
-          >
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
-                  <Check size={10} className="text-white" />
-                </div>
-                <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
-              </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
-                Đã né tuyến đường đang thi công.
-              </p>
-            </div>
-          </div>
-          <div
-            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
-            style={{ animationDelay: "300ms" }}
-          >
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
-                  <Check size={10} className="text-white" />
-                </div>
-                <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
-              </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
-                Thời gian tham quan đã được tối ưu.
-              </p>
-            </div>
-          </div>
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex h-20 w-20 items-center justify-center rounded-full bg-white/90 backdrop-blur-xl border border-white/60 shadow-2xl hover:scale-105 transition-transform cursor-pointer z-10">
-            <div className="flex items-center gap-1.5">
-              <div className="w-1 h-4 bg-gray-800 rounded-full animate-pulseRing"></div>
-              <div
-                className="w-1 h-8 bg-gray-800 rounded-full animate-pulseRing"
-                style={{ animationDelay: "100ms" }}
-              ></div>
-              <div
-                className="w-1 h-5 bg-gray-800 rounded-full animate-pulseRing"
-                style={{ animationDelay: "200ms" }}
-              ></div>
-              <div
-                className="w-1 h-3 bg-gray-800 rounded-full animate-pulseRing"
-                style={{ animationDelay: "150ms" }}
-              ></div>
-            </div>
-          </div>
-        </>
-      ),
-    },
-    {
-      id: "thich-nghi",
-      label: "Thích nghi",
-      bgColor: "bg-[#22362b]",
-      gradient: "from-[#22362b]",
-      title: (
-        <span className="text-[#D1FAE5] text-[1.25em] leading-[0.95] block mt-8">
-          Thích nghi
-          <br />
-          với nhịp
-          <br />
-          đập xanh.
-        </span>
-      ),
-      desc: "Trợ lý du lịch luôn để mắt đến các chi tiết để bạn không cần bận tâm. Từ việc đánh giá Eco Score của từng địa điểm đến các cảnh báo thay đổi lịch trình linh hoạt, giúp chuyến đi miền Trung của bạn luôn trọn vẹn và bền vững.",
-      img: "https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=1200&q=75",
-      widgets: (
-        <>
-          <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
-                  <Leaf size={10} className="text-white" />
-                </div>
-                <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
-              </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
-                Eco Score 90: Quán sử dụng 100% hữu cơ.
-              </p>
-            </div>
-          </div>
-          <div
-            className="absolute top-[40%] right-4 lg:right-0 -translate-y-1/2 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
-            style={{ animationDelay: "150ms" }}
-          >
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
-                  <Bell size={10} className="text-white" />
-                </div>
-                <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
-              </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
-                Có mưa rào ở Lăng Cô chiều nay.
-              </p>
-            </div>
-          </div>
-          <div
-            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
-            style={{ animationDelay: "300ms" }}
-          >
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
-                  <Check size={10} className="text-white" />
-                </div>
-                <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
-              </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
-                Đã tự động gợi ý điểm đến trong nhà.
-              </p>
-            </div>
-          </div>
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex h-20 w-20 items-center justify-center rounded-full bg-white/90 backdrop-blur-xl border border-white/60 shadow-2xl hover:scale-105 transition-transform cursor-pointer z-10">
-            <div className="flex items-center gap-1.5">
-              <div className="w-1 h-4 bg-gray-800 rounded-full animate-pulseRing"></div>
-              <div
-                className="w-1 h-8 bg-gray-800 rounded-full animate-pulseRing"
-                style={{ animationDelay: "100ms" }}
-              ></div>
-              <div
-                className="w-1 h-5 bg-gray-800 rounded-full animate-pulseRing"
-                style={{ animationDelay: "200ms" }}
-              ></div>
-              <div
-                className="w-1 h-3 bg-gray-800 rounded-full animate-pulseRing"
-                style={{ animationDelay: "150ms" }}
-              ></div>
-            </div>
-          </div>
-        </>
-      ),
-    },
-  ];
+  useEffect(()=>{
+    if(!sampleOpen) return;
+    const previous=document.body.style.overflow;
+    document.body.style.overflow='hidden';
+    return ()=>{document.body.style.overflow=previous;};
+  },[sampleOpen]);
 
-  return (
-    <div className="flex min-h-screen flex-col bg-white">
-      {/* 1. HERO SECTION */}
-      <section className="relative flex min-h-screen flex-col items-center justify-end overflow-hidden pb-12 text-center bg-white">
-        <div className="absolute top-0 left-0 right-0 h-[80vh] z-0">
-          <img
-            src="https://images.unsplash.com/photo-1471922694854-ff1b63b20054?auto=format&fit=crop&w=1600&q=75"
-            alt="Mặt nước biển từ trên cao"
-            decoding="async"
-            className="h-full w-full object-cover"
-          />
-          <div className="absolute inset-x-0 bottom-0 h-[30vh] bg-gradient-to-t from-white via-white/90 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
+  return <div className="gt-landing">
+    <a className="skip-link" href="#main">Đến nội dung chính</a>
+    <main id="main">
+      <section className={`hero hero-${city}`} ref={hero} aria-labelledby="hero-title">
+        <HeroScenes selectedCity={city} running={inView&&tabVisible&&!paused&&!sampleOpen&&location.pathname==='/'} reduced={reduced}/>
+        <div className="hero-content"><h1 id="hero-title">Khám phá Đà Nẵng, Huế.</h1><p>Chọn nơi muốn đến, xem gợi ý theo ngày.<br className="mobile-only"/> Chuyến đi bắt đầu từ đây.</p>
+          <form className="hero-search" onSubmit={e=>{e.preventDefault();openSample();}}>
+            <label><span><MapPin size={16}/> Bạn muốn đi đâu?</span><span className="select-wrap"><select value={city} onChange={e=>choose(e.target.value as City,days)}><option value="danang">Đà Nẵng</option><option value="hue">Huế</option></select><ChevronDown size={16}/></span></label>
+            <label><span><Clock3 size={16}/> Bạn có bao lâu?</span><span className="select-wrap"><select value={days} onChange={e=>choose(city,Number(e.target.value))}>{[1,2,3].map(n=><option value={n} key={n}>{n} ngày</option>)}</select><ChevronDown size={16}/></span></label>
+            <button className="button black" type="submit">Xem gợi ý <ArrowRight size={18}/></button>
+          </form><p className="hero-note">Lịch mẫu có sẵn · Xem ngay, không cần tài khoản</p>
         </div>
-
-        <div className="relative z-10 mx-auto max-w-5xl px-4 mt-auto">
-          <h1 className="font-heading text-5xl font-black tracking-tighter text-black sm:text-6xl md:text-7xl lg:text-[5.5rem] leading-[1.05]">
-            Khám phá Đà Nẵng, Huế.
-          </h1>
-
-          <p className="mx-auto mt-6 max-w-2xl text-base font-normal text-gray-500 sm:text-[1.05rem] leading-relaxed">
-            Gặp gỡ trợ lý cá nhân giúp tự động tối ưu hóa từng kilomet di
-            chuyển, tiết kiệm thời gian và mở ra những trải nghiệm sinh thái
-            tuyệt vời nhất.
-          </p>
-
-          <div className="mt-8 mb-2">
-            <Link
-              to="/onboarding"
-              className="inline-flex items-center gap-2 rounded-full bg-black px-10 py-4 text-base font-bold text-white transition-transform hover:scale-105 hover:bg-gray-900 shadow-xl"
-            >
-              Thiết lập lịch trình của bạn
-            </Link>
-          </div>
-        </div>
-
-        <div className="absolute bottom-4 z-10 animate-bounce">
-          <ChevronDown size={24} className="text-black/40" />
-        </div>
+        <button className="motion-control" onClick={()=>setPaused(!paused)} aria-label={paused?'Tiếp tục chuyển động':'Tạm dừng chuyển động'} disabled={reduced}>{paused||reduced?<Play size={14}/>:<Pause size={14}/>}</button>
+        <a href="#step-0" className="hero-scroll" aria-label="Xem GreenTrip giúp bạn thế nào"><ArrowDown size={20}/></a>
       </section>
 
-      {/* 2. THREE SEPARATE SECTIONS WITH IN-PAGE SCROLL NAV */}
-      <div className="flex flex-col gap-8 pt-24 pb-12">
-        {features.map((feature) => (
-          <section
-            key={feature.id}
-            id={feature.id}
-            className="px-4 md:px-8 scroll-mt-[57px]"
-          >
-            <div
-              className={`relative mx-auto max-w-[1200px] overflow-hidden rounded-[40px] text-white min-h-[500px] ${feature.bgColor}`}
-            >
-              <div className="flex flex-col lg:flex-row min-h-[500px]">
-                <div className="flex flex-col justify-center p-8 lg:p-12 lg:w-1/2 z-20">
-                  <div className="mt-16 mb-8 flex flex-wrap gap-3">
-                    {features.map((f) => (
-                      <button
-                        key={f.id}
-                        onClick={() => scrollTo(f.id)}
-                        className={`rounded-full px-5 py-2 text-sm font-medium transition-colors cursor-pointer ${
-                          f.id === feature.id
-                            ? "border border-white bg-transparent text-white"
-                            : "text-white/50 hover:text-white/80 hover:bg-white/5"
-                        }`}
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <h2 className="font-heading text-5xl font-extrabold leading-tight tracking-tight lg:text-7xl">
-                    {feature.title}
-                  </h2>
-                  <p className="mt-8 max-w-sm text-[15px] font-light text-white leading-[1.7]">
-                    {feature.desc}
-                  </p>
-                </div>
-
-                <div className="relative lg:w-1/2 min-h-[400px]">
-                  <img
-                    src={feature.img}
-                    alt={feature.label}
-                    className="absolute inset-0 h-full w-full object-cover opacity-80 mix-blend-luminosity"
-                  />
-                  <div
-                    className={`absolute inset-0 bg-gradient-to-r ${feature.gradient} to-transparent lg:w-32`}
-                  />
-                  {feature.widgets}
-                </div>
-              </div>
-            </div>
-          </section>
-        ))}
-      </div>
-
-      <div className="bg-gradient-to-b from-white via-[#F5F5F7] via-15% to-[#EAEAEF] rounded-b-[40px] lg:rounded-b-[80px] relative z-20 pb-[200px]">
-        {/* 3. GRID FEATURES */}
-        <section className="px-4 pt-16 md:px-8">
-          <div className="mx-auto max-w-[1200px]">
-            <div className="mb-10 text-left flex flex-col items-start">
-              <h2 className="font-heading text-4xl font-extrabold tracking-tight text-black sm:text-5xl lg:text-[4.5rem] leading-[1.05] max-w-4xl">
-                Tận dụng tối đa trợ lý du lịch của bạn.
-              </h2>
-              <p className="mt-6 text-xl font-light text-gray-500 max-w-3xl">
-                Luôn chủ động, lên kế hoạch, đặt chỗ và khám phá với sự hỗ trợ
-                từ một trợ lý hiểu rõ cách bạn đi du lịch.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Card 1: Tiết kiệm */}
-              <div className="relative flex flex-col overflow-visible rounded-[40px] bg-white p-8 shadow-sm hover:shadow-lg transition-shadow aspect-square w-full min-h-[300px]">
-                <div className="mb-4 text-black">
-                  <Bell size={22} strokeWidth={2.5} />
-                </div>
-                <h3 className="mb-3 text-xl font-bold text-black">Cảnh báo</h3>
-                <p className="text-[13px] font-light text-gray-500 leading-relaxed">
-                  Luôn cập nhật thông tin với các cảnh báo ùn tắc, tính toán lại
-                  lịch trình theo thời gian thực.
-                </p>
-
-                <div className="absolute -bottom-6 left-0 right-0 flex flex-col items-center justify-end pb-4 space-y-3 pointer-events-none">
-                  <div className="w-[85%] bg-white rounded-2xl shadow-xl border border-gray-100 p-3 flex items-center gap-3 rotate-[-2deg]">
-                    <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-                      <Bell size={20} className="text-orange-600" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-gray-900">
-                        Mưa rào lúc 15:00
-                      </div>
-                      <div className="text-[10px] text-green-600 font-light">
-                        Đã điều chỉnh lịch
-                      </div>
-                    </div>
-                  </div>
-                  <div className="w-[85%] bg-black rounded-[20px] shadow-2xl p-3 flex items-center gap-3 translate-y-4 rotate-[1deg]">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                      <Navigation size={18} className="text-white" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white">
-                        Tránh kẹt xe
-                      </div>
-                      <div className="text-[10px] text-gray-400 font-light">
-                        Tiết kiệm 20 phút
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 2: Xây dựng */}
-              <div className="relative flex flex-col overflow-visible rounded-[40px] bg-white p-8 shadow-sm hover:shadow-lg transition-shadow aspect-square w-full min-h-[300px]">
-                <div className="mb-4 text-black">
-                  <CalendarCheck size={22} strokeWidth={2.5} />
-                </div>
-                <h3 className="mb-3 text-xl font-bold text-black">Xây dựng</h3>
-                <p className="text-[13px] font-light text-gray-500 leading-relaxed">
-                  Lập kế hoạch chuyên sâu dựa trên thói quen và lưu trữ toàn bộ
-                  lịch trình ở cùng một nơi.
-                </p>
-
-                <div className="absolute -bottom-6 left-0 right-0 flex flex-col items-center gap-2 pointer-events-none">
-                  <div className="w-[80%] bg-white rounded-3xl shadow-2xl border border-gray-100 p-3 relative translate-y-4">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="text-[11px] font-bold text-black">
-                        Lịch trình Huế 3 ngày
-                      </div>
-                      <div className="w-5 h-5 rounded-full bg-blue-100 text-[9px] flex items-center justify-center font-bold">
-                        +
-                      </div>
-                    </div>
-                    <div className="space-y-2.5">
-                      <div className="flex gap-2 items-center">
-                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                        <div className="flex-1 space-y-1">
-                          <div className="h-1.5 w-[70%] bg-gray-200 rounded-full"></div>
-                          <div className="h-1 w-[40%] bg-gray-100 rounded-full"></div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 items-center">
-                        <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-                        <div className="flex-1 space-y-1">
-                          <div className="h-1.5 w-[50%] bg-gray-200 rounded-full"></div>
-                          <div className="h-1 w-[80%] bg-gray-100 rounded-full"></div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 items-center">
-                        <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-                        <div className="flex-1 space-y-1">
-                          <div className="h-1.5 w-[90%] bg-gray-200 rounded-full"></div>
-                          <div className="h-1 w-[30%] bg-gray-100 rounded-full"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 3: Sinh thái */}
-              <div className="relative flex flex-col overflow-visible rounded-[40px] bg-white p-8 shadow-sm hover:shadow-lg transition-shadow aspect-square w-full min-h-[300px]">
-                <div className="mb-4 text-black">
-                  <Leaf size={22} strokeWidth={2.5} />
-                </div>
-                <h3 className="mb-3 text-xl font-bold text-black">Sinh thái</h3>
-                <p className="text-[13px] font-light text-gray-500 leading-relaxed">
-                  Theo dõi lượng phát thải và quy đổi thành Eco Score, giúp bạn
-                  chọn các hoạt động bảo vệ môi trường.
-                </p>
-
-                <div className="absolute -bottom-2 left-0 right-0 flex flex-col items-center gap-3 pointer-events-none">
-                  <div className="flex gap-2">
-                    <div className="bg-[#e6f4ea] text-green-700 text-[11px] font-bold px-4 py-2 rounded-full border border-green-200 shadow-sm rotate-[-3deg]">
-                      Di chuyển xanh
-                    </div>
-                    <div className="bg-[#e6f4ea] text-green-700 text-[11px] font-bold px-4 py-2 rounded-full border border-green-200 shadow-sm rotate-[4deg]">
-                      Quán chay
-                    </div>
-                  </div>
-                  <div className="w-[85%] bg-white rounded-[20px] shadow-2xl border border-gray-100 p-4 flex justify-between items-center translate-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-green-500 w-8 h-8 rounded-full flex items-center justify-center">
-                        <Leaf size={14} className="text-white" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-black">
-                          Eco Score
-                        </div>
-                        <div className="text-[10px] text-gray-500 font-light">
-                          +150 điểm
-                        </div>
-                      </div>
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-sm">
-                      ✨
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 4: Khám phá */}
-              <div className="relative flex flex-col overflow-visible rounded-[40px] bg-white p-8 shadow-sm hover:shadow-lg transition-shadow aspect-square w-full min-h-[300px]">
-                <div className="mb-4 text-black">
-                  <Compass size={22} strokeWidth={2.5} />
-                </div>
-                <h3 className="mb-3 text-xl font-bold text-black">Khám phá</h3>
-                <p className="text-[13px] font-light text-gray-500 leading-relaxed">
-                  Bản đồ đa lớp (Multi-layer map) giúp tìm những địa điểm, sự
-                  kiện thú vị xung quanh bạn.
-                </p>
-
-                <div className="absolute -bottom-10 left-4 right-4 h-32 flex items-center justify-start pointer-events-none">
-                  <div className="absolute left-[10%] w-[42%] rotate-[-6deg] translate-y-0 z-0">
-                    <div className="bg-white p-1.5 rounded-2xl shadow-xl border border-gray-100">
-                      <img
-                        src="https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=75"
-                        loading="lazy"
-                        decoding="async"
-                        className="aspect-square w-full object-cover rounded-xl bg-gray-100"
-                      />
-                      <div className="px-2 py-2 flex justify-between items-center">
-                        <div>
-                          <div className="text-[10px] font-bold text-black">
-                            Đại Nội
-                          </div>
-                          <div className="text-[8px] text-gray-500 font-medium mt-0.5">
-                            Huế
-                          </div>
-                        </div>
-                        <div className="text-[8px] font-bold text-gray-300">
-                          ⭐
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="absolute left-[30%] w-[42%] rotate-[12deg] translate-y-6 z-10">
-                    <div className="bg-white p-1.5 rounded-2xl shadow-2xl border border-gray-100">
-                      <img
-                        src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=75"
-                        loading="lazy"
-                        decoding="async"
-                        className="aspect-square w-full object-cover rounded-xl bg-gray-100"
-                      />
-                      <div className="px-2 py-2 flex justify-between items-center">
-                        <div>
-                          <div className="text-[10px] font-bold text-black">
-                            Phố Cổ
-                          </div>
-                          <div className="text-[8px] text-gray-500 font-medium mt-0.5">
-                            Hội An
-                          </div>
-                        </div>
-                        <div className="text-[8px] font-bold text-gray-300">
-                          ⭐
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="absolute right-[5%] top-0 w-12 h-12 bg-[#1a1a1a] rounded-full shadow-2xl flex items-center justify-center border-4 border-white rotate-[15deg]">
-                    <MapPin size={20} className="text-white" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {/* 4. DESTINATIONS CAROUSEL */}
-      <section className="px-4 py-20 md:px-8 bg-white">
-        <div className="mx-auto max-w-[1200px]">
-          <h2 className="font-heading text-4xl font-extrabold tracking-tight text-charcoal sm:text-5xl lg:text-6xl max-w-3xl leading-[1.1]">
-            Từ Đại Nội cổ kính đến Cầu Rồng rực lửa.
-          </h2>
-          <p className="mt-6 text-lg font-light text-muted max-w-2xl mb-12">
-            Miền Trung ẩn chứa hàng trăm điểm đến chưa được khai phá. GreenTrip
-            giúp bạn tìm ra con đường riêng của mình — xanh hơn, thú vị hơn.
-          </p>
-
-          <div className="flex gap-4">
-            {[
-              {
-                title: "Cầu Rồng phun lửa",
-                location: "Đà Nẵng, Việt Nam",
-                tag: "Biểu tượng",
-                img: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=75",
-                count: "12 điểm",
-              },
-              {
-                title: "Đại Nội Kinh thành Huế",
-                location: "Huế, Việt Nam",
-                tag: "Di sản UNESCO",
-                img: "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&q=80",
-                count: "8 điểm",
-              },
-              {
-                title: "Phố cổ Hội An về đêm",
-                location: "Hội An, Việt Nam",
-                tag: "Phố lồng đèn",
-                img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=75",
-                count: "15 điểm",
-              },
-              {
-title: 'Bà Nà Hills & Cầu Vàng',
-                location: 'Đà Nẵng, Việt Nam',
-                tag: 'Kỳ quan',
-                img: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&q=80',
-                count: '6 điểm',
-              },
-              {
-                title: "Lăng Cô & Đèo Hải Vân",
-                location: "Thừa Thiên Huế",
-                tag: "Thiên nhiên",
-                img: "https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=1200&q=75",
-                count: "5 điểm",
-              },
-            ].map((item, i) => (
-              <div key={i} className="flex-1 group cursor-pointer min-w-0">
-                <div className="relative h-[260px] overflow-hidden rounded-[18px] mb-3">
-                  <img
-                    src={item.img}
-                    alt={item.title}
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white">
-                    {item.count}
-                  </div>
-                </div>
-                <h4 className="text-[14px] font-bold text-charcoal leading-snug line-clamp-2">
-                  {item.title}
-                </h4>
-                <p className="text-[12px] font-light text-muted mt-1 flex items-center gap-1">
-                  <MapPin size={11} className="shrink-0" /> {item.location}
-                </p>
-                <span className="inline-block mt-1.5 text-[10px] font-light text-muted bg-gray-100 px-2 py-0.5 rounded-full">
-                  {item.tag}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 mt-10">
-            <Link
-              to="/onboarding"
-              className="inline-flex items-center gap-2 rounded-full bg-black px-7 py-3.5 text-[15px] font-bold text-white hover:bg-gray-900 transition-colors"
-            >
-              Khám phá địa điểm
-            </Link>
-            <Link
-              to="/onboarding"
-              className="text-[15px] font-light text-charcoal hover:underline"
-            >
-              Xem lịch trình mẫu miễn phí →
-            </Link>
-          </div>
-        </div>
+      <div className="story-intro section-width"><p>ĐI ÍT NGÀY HAY ĐI THONG THẢ</p><span>Có gợi ý để bắt đầu. Có lựa chọn để đổi ý.</span></div>
+      <section id="step-0" className="feature-panel navy section-width" aria-labelledby="discover-title">
+        <div className="panel-copy"><CardTabs active={0}/><h2 id="discover-title">Biết ghé đâu.<br/>Biết đi lúc nào.</h2><p>Xem các điểm dừng theo từng buổi, thay vì tự ghép một danh sách dài. Chọn một lịch mẫu rồi bắt đầu từ đó.</p><button className="panel-link" onClick={()=>openSample()}>Xem lịch {place.name} {days} ngày <ArrowUpRight size={20}/></button></div>
+        <div className="panel-visual discovery-visual"><img className="panel-photo" src={place.image} srcSet={place.srcSet} sizes="(max-width: 760px) 100vw, 50vw" decoding="async" alt={place.alt} loading="lazy"/><div className="floating-schedule"><div className="paper-top"><span>LỊCH MẪU THAM KHẢO</span><Route size={18}/></div><h3>Một ngày ở {place.name}</h3><ol>{place.groups[0].map((stop,i)=><li key={stop.name}><span className="number-dot">{i+1}</span><div><small>{stop.period}</small><strong>{stop.name}</strong></div></li>)}</ol><button onClick={()=>openSample(city,1)}>Mở lịch trình <ArrowRight size={16}/></button></div><span className="visual-caption">Một gợi ý rõ ràng. Một khởi đầu nhẹ nhàng.</span></div>
+      </section>
+      <section id="step-1" className="feature-panel clay section-width" aria-labelledby="adjust-title">
+        <div className="panel-copy"><CardTabs active={1}/><h2 id="adjust-title">Lịch có sẵn.<br/>Nhịp đi là<br/>của bạn.</h2><p>Thích một điểm thì giữ lại. Muốn dành thời gian nghỉ, bỏ bớt một điểm. Không cần đi hết mới là một chuyến đi trọn vẹn.</p><button className="panel-link" onClick={()=>openSample()}>Điều chỉnh lịch mẫu <ArrowUpRight size={20}/></button></div>
+        <div className="panel-visual adjust-visual"><img className="panel-photo" src={places.hue.image} srcSet={places.hue.srcSet} sizes="(max-width: 760px) 100vw, 50vw" decoding="async" alt={places.hue.alt} loading="lazy"/><div className="choice-heading"><span>THỬ CHỌN THEO CÁCH CỦA BẠN</span><strong>Hôm nay, bạn muốn ghé đâu?</strong></div><div className="choice-stack">{place.groups[0].map((stop,i)=><button className={`choice-pill choice-${i}${removed.includes(stop.name)?' is-removed':''}`} key={stop.name} onClick={()=>toggle(stop.name)} aria-pressed={!removed.includes(stop.name)} aria-label={`${removed.includes(stop.name)?'Thêm lại':'Bỏ'} ${stop.name}`}><span className="choice-check">{removed.includes(stop.name)?<Plus size={18}/>:<Check size={18}/>}</span><span><small>{stop.period}</small><strong>{stop.name}</strong></span></button>)}</div><span className="visual-caption">Bấm vào một điểm để giữ hoặc bỏ khỏi lịch.</span></div>
+      </section>
+      <section id="step-2" className="feature-panel forest section-width" aria-labelledby="keep-title">
+        <div className="panel-copy"><CardTabs active={2}/><h2 id="keep-title">Chốt lịch.<br/>Rồi lên đường.</h2><p>Giữ những điểm bạn đã chọn trong ghi chú để tiện mở lại. Một lịch trình vừa đủ, luôn ở bên khi cần.</p><button className="panel-link" disabled={!selected.length} onClick={copy}>Sao chép lịch của bạn <ArrowUpRight size={20}/></button><p className="panel-status" role="status">{notice}</p></div>
+        <div className="panel-visual keep-visual"><div className="ticket"><div className="ticket-brand"><Leaf size={20}/><span>greentrip</span><ArrowUpRight size={17}/></div><span className="ticket-eyebrow">CHUYẾN ĐI BẮT ĐẦU TỪ ĐÂY</span><h3>{place.name}</h3><div className="ticket-details"><span><small>THỜI LƯỢNG</small>{days} ngày</span><span><small>ĐIỂM ĐÃ CHỌN</small>{selected.length} điểm</span></div><div className="ticket-divider"/><div className="ticket-stops">{selected.length?selected.slice(0,3).map(p=><p key={p.name}><Check size={14}/>{p.name}</p>):<p>Thêm lại điểm để hoàn thiện lịch.</p>}{selected.length>3&&<span>Và {selected.length-3} điểm cho những ngày tiếp theo.</span>}</div><button className="button black" onClick={copy} disabled={!selected.length}><Copy size={16}/> Sao chép lịch trình</button><small className="ticket-note">Lịch mẫu tham khảo · Chưa đồng bộ tài khoản</small></div><span className="visual-caption">Ít chuẩn bị hơn. Nhiều thời gian trải nghiệm hơn.</span></div>
       </section>
 
-      {/* 6. FINAL CTA */}
-      <section className="px-4 py-24 md:px-8 bg-white">
-        <div className="relative mx-auto max-w-[1260px] overflow-hidden rounded-[40px] text-white text-center flex flex-col justify-center min-h-[680px] p-12 md:p-20 shadow-2xl">
-          <div className="absolute inset-0 z-0">
-            <img
-              src="https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=1400&q=75"
-              alt="Resort Pool"
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"></div>
-          </div>
-
-          <div className="relative z-10 mx-auto max-w-3xl">
-            <h2 className="font-heading text-5xl font-extrabold leading-tight tracking-tight lg:text-[5.5rem] drop-shadow-lg">
-              Mỗi chuyến đi,
-              <br />
-              nhiều bản sắc hơn.
-            </h2>
-            <div className="mt-20">
-              <p className="mx-auto max-w-3xl text-[18px] font-light text-white drop-shadow-md leading-relaxed">
-                Trả lời vài câu hỏi để giúp GreenTrip hiểu hơn về phong cách của
-                bạn. Trợ lý du lịch sẽ học hỏi những điều bạn quan tâm và giúp
-                mọi chuyến đi trở nên mượt mà hơn.
-              </p>
-              <div className="mt-8">
-                <Link
-                  to="/onboarding"
-                  className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-[17px] font-normal text-black transition-transform hover:scale-105 shadow-xl"
-                >
-                  Thiết lập lịch trình ngay
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. FOOTER */}
-      <footer className="bg-white px-4 py-16 md:px-8 border-t border-gray-100">
-        <div className="mx-auto max-w-[1200px] grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
-          <div className="col-span-2 lg:col-span-2">
-            <div className="flex items-center gap-2 mb-6">
-              <Leaf size={28} className="text-forest-600" />
-              <span className="font-heading text-2xl font-bold tracking-tight text-forest-900">
-                GreenTrip<span className="text-forest-600">.</span>
-              </span>
-            </div>
-            <p className="text-muted text-sm max-w-xs mb-6">
-              Nền tảng Lập lịch trình thông minh (Smart) và Du lịch bền vững
-              (Green) tiên phong tại Đà Nẵng - Huế.
-            </p>
-            <div className="flex gap-4">
-              <a
-                href="#"
-                className="text-muted hover:text-charcoal transition-colors"
-              >
-                <Instagram size={20} />
-              </a>
-              <a
-                href="#"
-                className="text-muted hover:text-charcoal transition-colors"
-              >
-                <Twitter size={20} />
-              </a>
-              <a
-                href="#"
-                className="text-muted hover:text-charcoal transition-colors"
-              >
-                <Facebook size={20} />
-              </a>
-              <a
-                href="#"
-                className="text-muted hover:text-charcoal transition-colors"
-              >
-                <Github size={20} />
-              </a>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-charcoal mb-4">Khám phá</h4>
-            <ul className="space-y-3 text-sm text-muted">
-              <li>
-                <a href="#" className="hover:text-forest-600">
-                  Đà Nẵng
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-forest-600">
-                  Thừa Thiên Huế
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-forest-600">
-                  Quán ăn Eco
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-forest-600">
-                  Khách sạn
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-charcoal mb-4">Giải pháp</h4>
-            <ul className="space-y-3 text-sm text-muted">
-              <li>
-                <a href="#" className="hover:text-forest-600">
-                  Thuật toán OR-Tools
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-forest-600">
-                  AI Đề xuất
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-forest-600">
-                  Cách tính Eco Score
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-charcoal mb-4">Công ty</h4>
-            <ul className="space-y-3 text-sm text-muted">
-              <li>
-                <a href="#" className="hover:text-forest-600">
-                  Về dự án
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-forest-600">
-                  Đội ngũ
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-forest-600">
-                  Liên hệ
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <div className="mx-auto max-w-[1200px] mt-16 pt-8 border-t border-gray-100 text-center text-sm text-muted/70">
-          © 2026 GreenTrip AI. All rights reserved. Capstone Project for Da Nang
-          - Hue.
-        </div>
-      </footer>
-    </div>
-  );
+      <section id="explore" className="destinations section-width" aria-labelledby="destinations-title"><div className="section-heading"><div><p className="eyebrow">HAI ĐIỂM ĐẾN, NHIỀU CÁCH KHÁM PHÁ</p><h2 id="destinations-title">Bạn muốn bắt đầu ở đâu?</h2></div><p>Một ngày ngắn hay một chuyến đi dài.<br/>Chọn nơi bạn muốn ghé trước.</p></div><div className="destination-grid">{(Object.entries(places) as [City, typeof places[City]][]).map(([id,p])=><article className="destination-card" key={id}><button className="destination-image" onClick={()=>openSample(id,days)} aria-label={`Xem lịch mẫu ${p.name}`}><img src={p.image} srcSet={p.srcSet} sizes="(max-width: 760px) 100vw, 50vw" decoding="async" alt={p.alt} loading="lazy"/><span>{p.name}</span><span className="round-arrow"><ArrowUpRight size={24}/></span></button><div className="destination-bottom"><p>{id==='danang'?'Thành phố, biển và những khoảng nghỉ.':'Di sản, nhà vườn và một nhịp sống chậm.'}</p><div aria-label={`Lịch mẫu ${p.name}`}>{[1,2,3].map(n=><button key={n} onClick={()=>openSample(id,n)}>{n} ngày <ArrowUpRight size={13}/></button>)}</div></div></article>)}</div></section>
+      <section className="closing-photo section-width"><img src="/images/landing/closing-resort-1400.webp" srcSet="/images/landing/closing-resort-640.webp 640w, /images/landing/closing-resort-1400.webp 1400w" sizes="100vw" decoding="async" alt="" loading="lazy"/><div className="closing-photo-content"><h2>Mỗi chuyến đi,<br/>nhiều bản sắc hơn.</h2><p>Chọn nơi muốn đến và số ngày bạn có.<br/>Tìm một lịch trình để bắt đầu, rồi khám phá theo cách của riêng mình.</p><button className="button" onClick={()=>openSample()}>Xem lịch trình gợi ý <ArrowRight size={18}/></button><span>Xem ngay, không cần tài khoản.</span></div></section>
+    </main>
+    <footer className="site-footer section-width"><div><a className="logo" href="#"><Leaf size={25}/>greentrip</a><p>Du lịch thông minh, bắt đầu từ những lựa chọn của bạn.<br/>Đà Nẵng · Huế</p></div><div className="footer-links"><Link to="/explore">Khám phá điểm đến</Link><button onClick={()=>openSample()}>Xem lịch mẫu</button><Link to="/planner">Lập lịch trình <ArrowUpRight size={14}/></Link></div><span className="copyright">© {new Date().getFullYear()} GreenTrip AI · Dự án du lịch thông minh</span></footer>
+    <dialog ref={dialog} className="sample-dialog" aria-labelledby="sample-title" onClose={()=>setSampleOpen(false)} onClick={e=>{if(e.target===dialog.current)dialog.current?.close();}}>
+      <div className="dialog-top"><div><span className="eyebrow">LỊCH MẪU THAM KHẢO</span><h2 id="sample-title">{place.name} · {days} ngày</h2></div><button className="icon-button" onClick={()=>dialog.current?.close()} aria-label="Đóng lịch mẫu" autoFocus><X size={23}/></button></div>
+      <div className="dialog-options"><label>Điểm đến<select value={city} aria-label="Điểm đến của lịch mẫu" onChange={e=>choose(e.target.value as City,days)}><option value="danang">Đà Nẵng</option><option value="hue">Huế</option></select></label><label>Thời lượng<select value={days} aria-label="Số ngày của lịch mẫu" onChange={e=>choose(city,Number(e.target.value))}>{[1,2,3].map(n=><option value={n} key={n}>{n} ngày</option>)}</select></label><span>{selected.length} điểm đang chọn</span></div>
+      <p className="sample-description">Một gợi ý theo buổi, có thể thêm/bỏ điểm ngay bên dưới. Bạn cần kiểm tra giờ mở cửa, vé, thời tiết và thời gian di chuyển trước khi đi.</p>
+      <div className="dialog-days">{groups.map((g,i)=><section className="sample-day" key={`${city}-${i}`}><h3><span>{String(i+1).padStart(2,'0')}</span>Ngày {i+1}</h3><ol>{g.map(stop=>{const excluded=removed.includes(stop.name);return <li className={`sample-stop${excluded?' excluded':''}`} key={stop.name}><div className="stop-copy"><span>{stop.period} · {stop.type}</span><h4>{stop.name}</h4><p>{stop.desc}</p></div><button className="stop-button" aria-pressed={!excluded} onClick={()=>toggle(stop.name)} aria-label={`${excluded?'Thêm lại':'Bỏ'} ${stop.name}`}>{excluded?<Plus size={17}/>:<Check size={17}/>}<span>{excluded?'Thêm lại':'Đã chọn'}</span></button></li>;})}</ol></section>)}</div>
+      {!selected.length&&<p className="empty-state">Bạn đã bỏ tất cả điểm. Thêm lại một điểm hoặc khôi phục lịch mẫu để tiếp tục.</p>}
+      <div className="dialog-actions"><button className="button black" onClick={copy} disabled={!selected.length}><Copy size={16}/> Sao chép lịch trình</button><button className="reset-button" onClick={restore}><RotateCcw size={16}/> Khôi phục mẫu</button></div><p className="sample-status" role="status">{notice||'Thay đổi chỉ ở bản xem thử này. Sao chép lịch để giữ lại trước khi tải lại trang.'}</p>
+    </dialog>
+  </div>;
 }

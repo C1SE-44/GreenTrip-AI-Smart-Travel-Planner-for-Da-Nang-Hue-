@@ -1,3 +1,4 @@
+from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.pois.explanation_service import (
@@ -29,6 +30,10 @@ def get_pois(
     sub_category: str | None = Query(default=None, description="Filter by sub_category (e.g. western_international, traditional_noodles)"),
     cuisine: str | None = Query(default=None, description="Filter by cuisine (e.g. italian_pizza, japanese_sushi)"),
     budget_tier: str | None = Query(default=None, description="Filter by budget tier ($, $$, $$$, free)"),
+    q: str | None = Query(default=None, max_length=200),
+    ids: list[str] | None = Query(default=None, max_length=100),
+    view: Literal["full", "summary"] = Query(default="full"),
+    sort: Literal["name", "curated"] = Query(default="name"),
     weights: ParsedSliderWeights = Depends(parse_slider_weights),
 ) -> PaginatedPOIResponse:
     try:
@@ -41,6 +46,10 @@ def get_pois(
             cuisine=cuisine,
             budget_tier=budget_tier,
             weights=weights,
+            q=q,
+            ids=ids,
+            view=view,
+            sort=sort,
         )
     except POIServiceUnavailable as exc:
         raise HTTPException(

@@ -1,3 +1,4 @@
+import { tripStartDate, dateAt, vietnamNow } from '@/utils/tripDates';
 import { fetchJson } from '@/lib/api';
 import type { Poi } from '@/data/pois';
 import type { UserTrip } from '@/pages/ExplorePage';
@@ -366,7 +367,7 @@ export function parseDaysCountFromTrip(trip: Partial<UserTrip>): number {
 
 export function createEmptyItinerary(trip: UserTrip): TripItinerary {
   const count = Math.max(1, Math.min(31, parseDaysCountFromTrip(trip)));
-  const start = trip.startDate && /^\d{4}-\d{2}-\d{2}$/.test(trip.startDate) ? trip.startDate : null;
+  const start = tripStartDate(trip.startDate);
   return {
     trip_id: trip.id,
     title: trip.title,
@@ -416,12 +417,19 @@ export function stopFromPoi(poi: Poi, source: 'idea' | 'manual' | 'assistant' = 
   };
 }
 
+const itineraryWrites = new Map<string, Promise<TripItinerary>>();
+
 export async function getTripItinerary(tripId: string): Promise<TripItinerary> {
+  await itineraryWrites.get(tripId)?.catch(() => undefined);
+  const key = `greentrip_itinerary_${tripId}`;
+  const cacheBeforeRead = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
   try {
     const remote = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(tripId)}/itinerary`);
     if (remote && remote.trip_id) {
       try {
         if (typeof localStorage !== 'undefined') {
+          const current = localStorage.getItem(key);
+          if (current && current !== cacheBeforeRead) return JSON.parse(current) as TripItinerary;
           localStorage.setItem(`greentrip_itinerary_${tripId}`, JSON.stringify(remote));
         }
       } catch (e) {
@@ -447,28 +455,58 @@ export async function getTripItinerary(tripId: string): Promise<TripItinerary> {
   throw new Error(`Itinerary not found for trip ${tripId}`);
 }
 
-export async function saveTripItinerary(itinerary: TripItinerary): Promise<TripItinerary> {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(`greentrip_itinerary_${itinerary.trip_id}`, JSON.stringify(itinerary));
+export function scheduleError(next: TripItinerary, previous?: TripItinerary | null): string {
+  const old = new Map(previous?.days.flatMap(day => day.stops.map(stop => [stop.stop_id, { date: day.date || (previous.start_date ? dateAt(previous.start_date, day.day_number - 1) : null), time: stop.start_time, end: stop.end_time }] as const)));
+  const now = vietnamNow();
+  for (const day of next.days) {
+    const date = day.date || (next.start_date ? dateAt(next.start_date, day.day_number - 1) : null);
+    for (const stop of day.stops) {
+      if (!date || !stop.start_time) continue;
+      const before = old.get(stop.stop_id);
+      if (before?.date === date && before.time === stop.start_time && before.end === stop.end_time) continue;
+      const [hour, minute] = stop.start_time.split(':').map(Number);
+      if (date < now.date || (date === now.date && hour * 60 + minute < now.minutes)) {
+        return 'Không thể thêm hoặc dời hoạt động vào quá khứ (giờ Việt Nam).';
+      }
     }
-  } catch (e) {
-    console.warn('Failed to save itinerary to localStorage', e);
   }
+  return '';
+}
 
-  try {
-    return await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(itinerary.trip_id)}/itinerary`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(itinerary),
-    });
-  } catch (err) {
-    console.warn('Backend saveTripItinerary failed, using local storage state', err);
-    return {
-      ...itinerary,
-      updated_at: new Date().toISOString(),
-    };
-  }
+export async function saveTripItinerary(itinerary: TripItinerary): Promise<TripItinerary> {
+  const key = `greentrip_itinerary_${itinerary.trip_id}`;
+  const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+  const previous = raw ? JSON.parse(raw) as TripItinerary : null;
+  const error = scheduleError(itinerary, previous);
+  if (error) throw new Error(error);
+  const staged = JSON.stringify(itinerary);
+  if (typeof localStorage !== 'undefined') localStorage.setItem(key, staged);
+  const preceding = itineraryWrites.get(itinerary.trip_id);
+  const pending = (async () => {
+    await preceding?.catch(() => undefined);
+    let saved: TripItinerary;
+    try {
+      saved = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(itinerary.trip_id)}/itinerary`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itinerary),
+      });
+    } catch (cause) {
+      const status = (cause as { status?: number }).status;
+      if (status && status < 500) {
+        if (typeof localStorage !== 'undefined' && localStorage.getItem(key) === staged) {
+          if (raw) localStorage.setItem(key, raw); else localStorage.removeItem(key);
+        }
+        throw cause;
+      }
+      console.warn('Backend saveTripItinerary failed, using local storage state', cause);
+      saved = { ...itinerary, updated_at: new Date().toISOString() };
+    }
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(key) === staged) localStorage.setItem(key, JSON.stringify(saved));
+    return saved;
+  })();
+  itineraryWrites.set(itinerary.trip_id, pending);
+  const clear = () => { if (itineraryWrites.get(itinerary.trip_id) === pending) itineraryWrites.delete(itinerary.trip_id); };
+  void pending.then(clear, clear);
+  return pending;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -567,6 +605,7 @@ export function normalizeSequence(days: ItineraryDay[]): ItineraryDay[] {
 
 export function alignItineraryToTrip(itinerary: TripItinerary, trip: UserTrip): { itinerary: TripItinerary; changed: boolean; warning: string } {
   const requestedDays = Math.max(1, Math.min(31, parseDaysCountFromTrip(trip) || itinerary.days_count));
+  const start = tripStartDate(trip.startDate);
   const days = [...itinerary.days].sort((a, b) => a.day_number - b.day_number);
   let warning = '';
   let changed = itinerary.title !== trip.title || itinerary.destination !== trip.destination;
@@ -600,11 +639,13 @@ export function alignItineraryToTrip(itinerary: TripItinerary, trip: UserTrip): 
     changed = true;
   }
 
-  const alignedDays = normalizeSequence(days.map((day, index) => ({ ...day, day_number: index + 1 })));
+  const alignedDays = normalizeSequence(days.map((day, index) => ({ ...day, day_number: index + 1, date: start ? dateAt(start, index) : null })));
+  changed ||= start !== itinerary.start_date || alignedDays.some((day, index) => day.date !== itinerary.days[index]?.date);
   const nextItinerary: TripItinerary = {
     ...itinerary,
     title: trip.title,
     destination: trip.destination,
+    start_date: start,
     days_count: alignedDays.length,
     days: alignedDays,
   };
@@ -814,71 +855,8 @@ export function parseStartDateFromTrip(startDateStr?: string | null): { day: num
  * Tự động cập nhật chuỗi ngày khi số lượng ngày của chuyến đi thay đổi (ví dụ: du lịch từ 1-5, thêm 1 ngày thành 1-6)
  */
 export function updateDateRangeWithDays(currentDateStr?: string | null, newDaysCount: number = 1): string {
-  const safeDays = Math.max(1, newDaysCount);
-  if (!currentDateStr || !currentDateStr.trim()) {
-    return `Ngày 1 – ${safeDays} tháng 11`;
-  }
-
-  let raw = currentDateStr.trim();
-  const hadParenthesisDays = /\(\d+\s*ngày\)/i.test(raw);
-  if (hadParenthesisDays) {
-    raw = raw.replace(/\s*\(\d+\s*ngày\)/gi, '').trim();
-  }
-
-  // 1. Dạng: "Ngày 1 – 5 tháng 11" hoặc "Ngày 1 - 5 tháng 11, 2026"
-  const ngayPattern = /^Ngày\s+(\d+)\s*[–-]\s*(\d+)\s+tháng\s+(\d+)(.*)$/i;
-  const matchNgay = raw.match(ngayPattern);
-  if (matchNgay) {
-    const startDay = parseInt(matchNgay[1], 10);
-    const month = matchNgay[3];
-    const tail = matchNgay[4] || '';
-    const newEndDay = startDay + safeDays - 1;
-    const res = `Ngày ${startDay} – ${newEndDay} tháng ${month}${tail}`;
-    return hadParenthesisDays ? `${res} (${safeDays} ngày)` : res;
-  }
-
-  // 2. Dạng: "1 - 5 thg 11" hoặc "1 – 5 thg 11" hoặc "14 – 17 thg 11, 2026"
-  const dashPattern = /^(\d+)\s*[–-]\s*(\d+)\s+(thg|tháng)\s+(\d+)(.*)$/i;
-  const matchDash = raw.match(dashPattern);
-  if (matchDash) {
-    const startDay = parseInt(matchDash[1], 10);
-    const unit = matchDash[3];
-    const month = matchDash[4];
-    const tail = matchDash[5] || '';
-    const newEndDay = startDay + safeDays - 1;
-    const res = `${startDay} – ${newEndDay} ${unit} ${month}${tail}`;
-    return hadParenthesisDays ? `${res} (${safeDays} ngày)` : res;
-  }
-
-  // 3. Dạng: "Từ 16 thg 11" hoặc "Từ 2 thg 11"
-  const tuPattern = /^Từ\s+(\d+)\s+(thg|tháng)\s+(\d+)(.*)$/i;
-  const matchTu = raw.match(tuPattern);
-  if (matchTu) {
-    const startDay = parseInt(matchTu[1], 10);
-    const unit = matchTu[2];
-    const month = matchTu[3];
-    const tail = matchTu[4] || '';
-    const newEndDay = startDay + safeDays - 1;
-    const res = `${startDay} – ${newEndDay} ${unit} ${month}${tail}`;
-    return hadParenthesisDays ? `${res} (${safeDays} ngày)` : res;
-  }
-
-  // 4. Dạng: "4 ngày • Tháng 11" hoặc "4 ngày • Tháng 11, 2026"
-  const flexPattern = /^(\d+)\s*ngày\s*•\s*(.*)$/i;
-  const matchFlex = raw.match(flexPattern);
-  if (matchFlex) {
-    const rest = matchFlex[2];
-    return `${safeDays} ngày • ${rest}`;
-  }
-
-  // 5. ISO Date string: "2026-11-14"
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    const [y, m, d] = raw.split('-').map(Number);
-    const newEndDay = d + safeDays - 1;
-    const res = `Ngày ${d} – ${newEndDay} tháng ${m}`;
-    return hadParenthesisDays ? `${res} (${safeDays} ngày)` : res;
-  }
-
-  const res = `${safeDays} ngày • ${raw}`;
-  return hadParenthesisDays ? `${res} (${safeDays} ngày)` : res;
+  const start = tripStartDate(currentDateStr);
+  if (start) return start;
+  const month = currentDateStr?.split('•')[1]?.trim() || 'Linh hoạt';
+  return `${Math.max(1, newDaysCount)} ngày • ${month}`;
 }

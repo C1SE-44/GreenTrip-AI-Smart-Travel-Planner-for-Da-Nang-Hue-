@@ -1,0 +1,23 @@
+/* Only Trip Workspace owns this edge-to-edge map presentation. */
+.trip-map-surface { container-type: inline-size; }
+
+/* Keep all attribution readable inside narrower map columns. */
+@container (max-width: 600px) {
+  .trip-map-surface footer {
+    height: auto;
+    min-height: 24px;
+    padding: 4px 20px;
+    gap: 8px;
+  }
+  .trip-map-surface footer > div:first-child { flex-shrink: 0; }
+  .trip-map-surface footer > div:last-child {
+    flex-wrap: wrap;
+    gap: 2px 12px;
+  }
+  .trip-map-surface footer > div:last-child > * {
+    margin-left: 0;
+    white-space: nowrap;
+  }
+  .trip-map-surface [data-map-weather],
+  .trip-map-surface [data-map-bottom-controls] { bottom: 64px; }
+}

@@ -1,3 +1,4 @@
+import { tripRangeLabel } from '@/utils/tripDates';
 import React from 'react';
 import {
   ChevronLeft,
@@ -7,6 +8,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
+import { plannerStyles } from './plannerStyles';
 
 export interface TripHeaderProps {
   trip: UserTrip;
@@ -30,25 +32,11 @@ export interface TripHeaderProps {
  */
 export function formatTripSummarySubtitle(trip: UserTrip, overrideDaysCount?: number): string {
   const rawDate = trip.startDate?.trim() || '';
-  let dateRange = '10–12/11';
+
 
   // 1. Parse date range
   const dashMatch = rawDate.match(/(\d+)\s*[-–]\s*(\d+)\s+(?:tháng|thg)\s*(\d+)/i);
   const ngayMatch = rawDate.match(/^Ngày\s+(\d+)\s*[-–]\s*(\d+)\s+tháng\s+(\d+)/i);
-  const slashMatch = rawDate.match(/(\d+)\s*[-–]\s*(\d+)\s*\/\s*(\d+)/);
-  const singleDateMatch = rawDate.match(/(\d+)\s+(?:tháng|thg)\s*(\d+)/i);
-
-  if (dashMatch) {
-    dateRange = `${dashMatch[1]}–${dashMatch[2]}/${dashMatch[3]}`;
-  } else if (ngayMatch) {
-    dateRange = `${ngayMatch[1]}–${ngayMatch[2]}/${ngayMatch[3]}`;
-  } else if (slashMatch) {
-    dateRange = `${slashMatch[1]}–${slashMatch[2]}/${slashMatch[3]}`;
-  } else if (singleDateMatch) {
-    dateRange = `${singleDateMatch[1]}/${singleDateMatch[2]}`;
-  } else if (rawDate.includes('/')) {
-    dateRange = rawDate;
-  }
 
   // 2. Compute days count
   let days = overrideDaysCount || trip.daysCount;
@@ -65,16 +53,11 @@ export function formatTripSummarySubtitle(trip: UserTrip, overrideDaysCount?: nu
   // 3. Guests count
   const guests = trip.peopleCount || 2;
 
-  return `${dateRange} · ${days} ngày · ${guests} khách`;
+  return `${tripRangeLabel(trip.startDate, days)} · ${days} ngày · ${guests} khách`;
 }
 
 export function formatStartingDate(dateStr?: string): string {
-  if (!dateStr) return 'Bắt đầu từ 10 thg 11';
-  const match = dateStr.match(/(\d+)\s*[-–]\s*\d+\s+(?:tháng|thg)\s*(\d+)/i);
-  if (match) return `Bắt đầu từ ${match[1]} thg ${match[2]}`;
-  const dayMatch = dateStr.match(/(\d+)/);
-  if (dayMatch) return `Bắt đầu từ ${dayMatch[1]} thg 11`;
-  return 'Bắt đầu từ 10 thg 11';
+  return tripRangeLabel(dateStr, 1);
 }
 
 export default function TripHeader({
@@ -112,13 +95,13 @@ export default function TripHeader({
       : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80';
 
   return (
-    <header className="h-[64px] relative px-6 lg:px-[36px] bg-white border-b border-gray-200/80 flex items-center justify-between shrink-0 z-30 select-none">
+    <header className="min-h-[112px] xl:min-h-[64px] relative px-4 sm:px-6 lg:px-[36px] pt-3 pb-[52px] xl:py-0 bg-white border-b border-gray-200/80 flex items-center justify-between gap-3 shrink-0 z-30 select-none">
       {/* ─── VÙNG TRÁI: NÚT QUAY LẠI + ẢNH NHỎ + TÊN CHUYẾN ĐI & PHỤ ĐỀ ─── */}
-      <div className="flex items-center gap-3 shrink min-w-0 max-w-[340px] xl:max-w-[420px]">
+      <div className="flex items-center gap-3 shrink min-w-0 max-w-[calc(100%-56px)] xl:max-w-[35%]">
         <button
           type="button"
           onClick={onBack}
-          className="w-8 h-8 rounded-full border border-gray-200/90 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shrink-0 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+          className="w-10 h-10 rounded-full border border-gray-200/90 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shrink-0 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
           title="Quay lại danh sách chuyến đi"
         >
           <ChevronLeft size={16} />
@@ -132,7 +115,7 @@ export default function TripHeader({
         />
 
         <div className="min-w-0">
-          <h1 className="text-[16px] leading-[22px] font-semibold text-gray-950 truncate">
+          <h1 className={`${plannerStyles.tripTitle} truncate`}>
             {displayTitle}
           </h1>
           <p className="text-[13px] leading-[18px] text-gray-500 font-normal truncate">
@@ -142,11 +125,12 @@ export default function TripHeader({
       </div>
 
       {/* ─── VÙNG GIỮA: Ý TƯỞNG · LỊCH TRÌNH · LỊCH (CHUẨN EXPLORE & MOCKUP) ─── */}
-      <div className="flex items-center absolute left-1/2 -translate-x-1/2 gap-1 text-[14px] leading-[20px] font-medium">
+      <div className={`flex w-max max-w-[calc(100%-24px)] whitespace-nowrap items-center absolute bottom-2 xl:bottom-auto left-1/2 -translate-x-1/2 gap-1 ${plannerStyles.controlText}`}>
         <button
           type="button"
           onClick={() => onNavigateToTab?.('ideas')}
-          className={`h-[36px] px-[14px] rounded-full transition-colors font-medium flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
+          aria-pressed={activeTab === 'ideas'}
+          className={`h-10 px-[14px] rounded-full transition-colors font-medium flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
             activeTab === 'ideas'
               ? 'bg-black text-white'
               : 'text-neutral-700 hover:text-black bg-transparent hover:bg-gray-100/60'
@@ -158,7 +142,8 @@ export default function TripHeader({
         <button
           type="button"
           onClick={() => onNavigateToTab?.('itinerary')}
-          className={`h-[36px] px-[14px] rounded-full transition-colors font-medium flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
+          aria-pressed={activeTab === 'itinerary'}
+          className={`h-10 px-[14px] rounded-full transition-colors font-medium flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
             activeTab === 'itinerary'
               ? 'bg-black text-white'
               : 'text-neutral-700 hover:text-black bg-transparent hover:bg-gray-100/60'
@@ -170,7 +155,8 @@ export default function TripHeader({
         <button
           type="button"
           onClick={() => onNavigateToTab?.('calendar')}
-          className={`h-[36px] px-[14px] rounded-full transition-colors font-medium flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
+          aria-pressed={activeTab === 'calendar'}
+          className={`h-10 px-[14px] rounded-full transition-colors font-medium flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
             activeTab === 'calendar'
               ? 'bg-black text-white'
               : 'text-neutral-700 hover:text-black bg-transparent hover:bg-gray-100/60'
@@ -204,16 +190,17 @@ export default function TripHeader({
               e.stopPropagation();
               setShowCustomSettings(!showCustomSettings);
             }}
-            className={`h-9 px-3.5 rounded-full border border-gray-200/90 hover:border-black text-[13px] font-medium transition flex items-center gap-2 shadow-2xs cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
+            className={`h-10 w-10 sm:w-auto sm:px-3.5 rounded-full border border-gray-200/90 hover:border-black text-[13px] font-medium transition flex items-center gap-2 shadow-2xs cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
               showCustomSettings ? 'bg-black text-white' : 'bg-white hover:bg-gray-50 text-gray-900'
             }`}
             title="Tùy chỉnh thông số chuyến đi"
+            aria-expanded={showCustomSettings}
           >
             <SlidersHorizontal size={14} className={showCustomSettings ? 'text-white' : 'text-gray-700'} />
-            <span>Tùy chỉnh</span>
+            <span className="hidden sm:inline">Tùy chỉnh</span>
             <ChevronDown
               size={12}
-              className={`transition-transform duration-200 ${showCustomSettings ? 'rotate-180' : ''}`}
+              className={`hidden sm:block transition-transform duration-200 ${showCustomSettings ? 'rotate-180' : ''}`}
             />
           </button>
 
@@ -223,7 +210,7 @@ export default function TripHeader({
               className="absolute right-0 top-11 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 animate-fadeIn"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-[11px] font-bold text-gray-400 px-2.5 py-1 uppercase tracking-wider">
+              <div className="text-[12px] font-bold text-gray-400 px-2.5 py-1 uppercase tracking-wider">
                 Tùy chỉnh chuyến đi
               </div>
 
@@ -240,7 +227,7 @@ export default function TripHeader({
                     <i className="ph-fill ph-map-pin text-sm"></i>
                   </div>
                   <div>
-                    <div className="text-[11px] text-gray-500 font-medium">Điểm đến</div>
+                    <div className="text-[12px] text-gray-500 font-medium">Điểm đến</div>
                     <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">
                       {trip.destination}
                     </div>
@@ -262,7 +249,7 @@ export default function TripHeader({
                     <i className="ph-fill ph-calendar text-sm"></i>
                   </div>
                   <div>
-                    <div className="text-[11px] text-gray-500 font-medium">Thời gian bắt đầu</div>
+                    <div className="text-[12px] text-gray-500 font-medium">Thời gian bắt đầu</div>
                     <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">
                       {formatStartingDate(trip.startDate)}
                     </div>
@@ -284,7 +271,7 @@ export default function TripHeader({
                     <i className="ph-fill ph-users text-sm"></i>
                   </div>
                   <div>
-                    <div className="text-[11px] text-gray-500 font-medium">Số du khách</div>
+                    <div className="text-[12px] text-gray-500 font-medium">Số du khách</div>
                     <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">
                       {trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}
                     </div>
@@ -306,7 +293,7 @@ export default function TripHeader({
                     <i className="ph-fill ph-wallet text-sm"></i>
                   </div>
                   <div>
-                    <div className="text-[11px] text-gray-500 font-medium">Ngân sách</div>
+                    <div className="text-[12px] text-gray-500 font-medium">Ngân sách</div>
                     <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">
                       {budgetText}
                     </div>

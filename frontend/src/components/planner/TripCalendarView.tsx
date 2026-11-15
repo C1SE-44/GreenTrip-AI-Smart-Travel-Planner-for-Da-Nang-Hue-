@@ -1,3 +1,4 @@
+import { vietnamNow, tripStartDate, dateAt } from '@/utils/tripDates';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ChevronLeft,
@@ -29,6 +30,7 @@ import {
   type ItineraryStop,
   getTripItinerary,
   saveTripItinerary,
+  scheduleError,
   createEmptyItinerary,
   stopFromPoi,
   alignItineraryToTrip,
@@ -39,6 +41,8 @@ import PoiMap from '@/components/poi/PoiMap';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { MorphTabIcon } from '@/components/ui/MorphButton';
 import TripHeader from './TripHeader';
+import { plannerStyles } from './plannerStyles';
+import { usePlannerMapVisible } from './usePlannerMapVisible';
 
 export interface TripCalendarViewProps {
   trip: UserTrip;
@@ -76,12 +80,12 @@ function getStopSlot(stop: ItineraryStop, idx: number) {
 function getStopCategoryTheme(category: string | null) {
   const cat = (category || '').toLowerCase();
   if (cat.includes('quan-an') || cat.includes('ẩm thực') || cat.includes('ăn') || cat.includes('cafe')) {
-    return 'bg-amber-100/90 hover:bg-amber-200/90 border-amber-300 text-amber-950 shadow-2xs';
+    return 'bg-neutral-50 hover:bg-neutral-100 border-neutral-200 text-neutral-900';
   }
   if (cat.includes('di-tich') || cat.includes('canh-quan') || cat.includes('chua') || cat.includes('xanh') || cat.includes('văn hóa')) {
-    return 'bg-emerald-100/90 hover:bg-emerald-200/90 border-emerald-300 text-emerald-950 shadow-2xs';
+    return 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200/70 text-emerald-950';
   }
-  return 'bg-blue-100/90 hover:bg-blue-200/90 border-blue-300 text-blue-950 shadow-2xs';
+  return 'bg-neutral-50 hover:bg-neutral-100 border-neutral-200 text-neutral-900';
 }
 
 export default function TripCalendarView({
@@ -98,10 +102,20 @@ export default function TripCalendarView({
   // 1. Quản lý trạng thái Lịch trình (Itinerary Plan)
   const [plan, setPlan] = useState<TripItinerary>(() => createEmptyItinerary(trip));
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [now, setNow] = useState(() => vietnamNow());
+  useEffect(() => {
+    const refresh = () => setNow(vietnamNow());
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, []);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(1);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
+  const showMap = usePlannerMapVisible();
 
   // Danh sách ý tưởng (Ideas) của chuyến đi
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => {
@@ -118,6 +132,7 @@ export default function TripCalendarView({
   // Tải plan từ backend & căn chỉnh theo số ngày của chuyến đi
   useEffect(() => {
     let active = true;
+    setIsLoading(true);
     getTripItinerary(trip.id)
       .then((p) => {
         if (active && p) {
@@ -130,7 +145,8 @@ export default function TripCalendarView({
           const fresh = createEmptyItinerary(trip);
           setPlan(fresh);
         }
-      });
+      })
+      .finally(() => { if (active) setIsLoading(false); });
     return () => {
       active = false;
     };
@@ -138,22 +154,25 @@ export default function TripCalendarView({
 
   // Đồng bộ số ngày khi trip.daysCount thay đổi
   useEffect(() => {
-    if (trip.daysCount && trip.daysCount !== plan.days.length) {
+    if (!isLoading && trip.daysCount && (trip.daysCount !== plan.days.length || tripStartDate(trip.startDate) !== plan.start_date)) {
       const aligned = alignItineraryToTrip(plan, trip);
       if (aligned.changed) {
         setPlan(aligned.itinerary);
         persistPlan(aligned.itinerary);
       }
     }
-  }, [trip.daysCount, trip, plan]);
+  }, [trip.daysCount, trip.startDate, trip, plan, isLoading]);
 
   const persistPlan = (nextPlan: TripItinerary) => {
+    const error = scheduleError(nextPlan, plan);
+    if (error) { setSaveError(error); return; }
+    setSaveError('');
     setPlan(nextPlan);
     setIsSaving(true);
     saveTripItinerary(nextPlan)
       .then(() => setIsSaving(false))
       .catch((err) => {
-        console.warn('Could not save itinerary:', err);
+        setSaveError(err instanceof Error ? err.message : 'Chưa thể lưu lịch.');
         setIsSaving(false);
       });
   };
@@ -189,41 +208,17 @@ export default function TripCalendarView({
     persistPlan({ ...plan, days: nextDays });
   };
 
-  const startMeta = useMemo(() => {
-    return parseStartDateFromTrip(trip.startDate);
-  }, [trip.startDate]);
-
-  // Thông tin ngày cho header Calendar
   const calendarDaysMeta = useMemo(() => {
-    return plan.days.map((day, idx) => {
-      let dateObj: Date | null = null;
-      if (day.date) {
-        dateObj = new Date(day.date);
-      } else {
-        dateObj = new Date(startMeta.year, startMeta.month - 1, startMeta.day + idx);
-      }
-
-      const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-      const dayOfWeek = dayNames[dateObj.getDay()];
-      const dayOfMonth = dateObj.getDate();
-      const monthNum = dateObj.getMonth() + 1;
-
-      return {
-        day_number: day.day_number,
-        dayOfWeek,
-        dayOfMonth,
-        monthNum,
-        stops: day.stops,
-      };
+    const start = tripStartDate(trip.startDate);
+    return plan.days.map(day => {
+      const date = day.date || (start ? dateAt(start, day.day_number - 1) : null);
+      const parsed = date ? new Date(`${date}T12:00:00`) : null;
+      return { ...day, date, dayOfWeek: parsed ? ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][parsed.getDay()] : 'Ngày', dayOfMonth: parsed ? parsed.getDate() : day.day_number };
     });
-  }, [plan.days, startMeta]);
-
-  const calendarRangeText = useMemo(() => {
-    if (calendarDaysMeta.length === 0) return '';
-    const first = calendarDaysMeta[0];
-    const last = calendarDaysMeta[calendarDaysMeta.length - 1];
-    return `${first.dayOfMonth} – ${last.dayOfMonth} thg ${first.monthNum}, ${startMeta.year}`;
-  }, [calendarDaysMeta, startMeta]);
+  }, [plan.days, trip.startDate]);
+  const calendarRangeText = calendarDaysMeta[0]?.date
+    ? `${calendarDaysMeta[0].date} – ${calendarDaysMeta[calendarDaysMeta.length - 1].date}`
+    : 'Ngày linh hoạt';
 
   // POIs cho bản đồ cột phải
   const currentDayStops = useMemo(() => {
@@ -273,6 +268,7 @@ export default function TripCalendarView({
         onOpenWho={() => onNavigateToTab?.('ideas')}
         onOpenBudget={() => onNavigateToTab?.('ideas')}
         isSaving={isSaving}
+        saveError={saveError}
         daysCount={plan.days.length}
       />
 
@@ -281,16 +277,13 @@ export default function TripCalendarView({
         {/* ════════════════════════════════════════════════════════
             CỘT TRÁI: BẢNG LỊCH THỜI GIAN BIỂU (GOOGLE CALENDAR STYLE)
         ════════════════════════════════════════════════════════ */}
-        <div className={`${isMapExpanded ? 'hidden' : 'w-[54%] max-w-[720px] min-w-[460px] shrink-0'} h-full flex flex-col bg-white select-none overflow-hidden transition-[width] duration-300 ease-in-out border-r border-gray-100`}>
+        <div className={`${isMapExpanded && showMap ? 'hidden' : plannerStyles.column} h-full flex flex-col bg-white select-none overflow-hidden transition-[width] duration-300 ease-in-out`}>
           {/* Header Lịch: Lịch chuyến đi + Điều hướng ngày */}
-          <div className="px-7 pt-6 pb-4 shrink-0 flex items-center justify-between">
+          <div className="px-4 sm:px-7 pt-6 pb-6 shrink-0 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-baseline gap-2">
-              <h1 className="text-[28px] leading-[36px] font-bold text-gray-950">
+              <h1 className={plannerStyles.title}>
                 Lịch chuyến đi
               </h1>
-              <span className="text-[13px] leading-[18px] text-gray-500 font-normal">
-                {plan.days.length} ngày
-              </span>
             </div>
 
             {/* Điều hướng dải ngày */}
@@ -304,8 +297,9 @@ export default function TripCalendarView({
                   onClick={() => {
                     setSelectedCalendarDay((prev) => Math.max(1, prev - 1));
                   }}
-                  className="w-7 h-7 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black cursor-pointer shadow-2xs"
-                  title="Ngày trước"
+                  className={plannerStyles.icon}
+                  title="Chọn ngày trước"
+                  disabled={selectedCalendarDay <= 1}
                 >
                   <ChevronLeft size={14} />
                 </button>
@@ -314,8 +308,9 @@ export default function TripCalendarView({
                   onClick={() => {
                     setSelectedCalendarDay((prev) => Math.min(plan.days.length, prev + 1));
                   }}
-                  className="w-7 h-7 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black cursor-pointer shadow-2xs"
-                  title="Ngày sau"
+                  className={plannerStyles.icon}
+                  title="Chọn ngày sau"
+                  disabled={selectedCalendarDay >= plan.days.length}
                 >
                   <ChevronRight size={14} />
                 </button>
@@ -324,9 +319,10 @@ export default function TripCalendarView({
           </div>
 
           {/* Lời nhắc ngắn nếu chưa có hoạt động xếp giờ */}
-          {totalStops === 0 && (
-            <div className="mx-7 mb-3 px-3.5 py-2 rounded-xl bg-gray-50 border border-gray-200/70 flex items-center justify-between text-xs">
-              <span className="text-gray-500">Chưa có hoạt động được xếp giờ. Hãy sang Lịch trình để phân bổ thời gian.</span>
+          {isLoading && <div role="status" className="mx-4 sm:mx-7 mb-4 rounded-2xl bg-neutral-50 px-3.5 py-3 text-[13px] text-neutral-600">Đang tải lịch chuyến đi…</div>}
+          {!isLoading && totalStops === 0 && (
+            <div className="mx-4 sm:mx-7 mb-4 px-3.5 py-3 rounded-2xl bg-neutral-50 flex flex-wrap items-center justify-between gap-2 text-[13px] leading-5">
+              <span className="text-gray-500">Chưa có hoạt động được xếp giờ.</span>
               <button
                 type="button"
                 onClick={() => onNavigateToTab ? onNavigateToTab('itinerary') : onNavigateToItinerary?.()}
@@ -341,46 +337,48 @@ export default function TripCalendarView({
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative auto-hide-scrollbar">
             {/* Header cột các ngày */}
             <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-2xs flex items-stretch">
-              <div className="w-14 shrink-0 text-center py-2.5 text-[11px] font-semibold text-gray-400 border-r border-gray-100 select-none">
+              <div className="w-14 shrink-0 text-center py-2.5 text-[12px] font-semibold text-neutral-600 border-r border-gray-100 select-none">
                 GMT+7
               </div>
               <div className="flex-1 grid grid-flow-col auto-cols-fr divide-x divide-gray-100">
                 {calendarDaysMeta.map((day) => {
                   const isSelected = selectedCalendarDay === day.day_number;
+                  const isToday = day.date === now.date;
                   return (
-                    <div
+                    <button
+                      type="button" aria-pressed={isSelected} aria-current={isToday ? 'date' : undefined} aria-label={`${day.date || `Ngày ${day.day_number}`}${isToday ? ' hôm nay' : ''}`}
                       key={day.day_number}
                       onClick={() => setSelectedCalendarDay(day.day_number)}
-                      className={`py-2 text-center cursor-pointer transition-colors ${
-                        isSelected ? 'bg-neutral-50/80' : 'hover:bg-gray-50'
+                      className={`py-2 text-center cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black ${!isSelected ? 'hidden sm:block' : ''} ${
+                        isSelected ? 'bg-neutral-100/70 ring-1 ring-inset ring-neutral-300' : 'hover:bg-gray-50'
                       }`}
                     >
-                      <div className="text-[11.5px] font-medium text-gray-500">
+                      <div className="text-[12px] font-medium text-gray-500">
                         {day.dayOfWeek}
                       </div>
                       <div
                         className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mx-auto mt-0.5 ${
-                          isSelected
-                            ? 'bg-black text-white shadow-xs'
+                          isToday
+                            ? 'bg-emerald-700 text-white'
                             : 'text-gray-900 hover:bg-gray-200/70'
                         }`}
                       >
                         {day.dayOfMonth}
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
             </div>
 
             {/* Hàng all-day */}
-            <div className="flex items-stretch border-b border-gray-200/90 text-xs text-gray-400 bg-gray-50/30">
-              <div className="w-14 shrink-0 text-center py-1.5 text-[10.5px] font-medium border-r border-gray-100 select-none">
+            <div className="flex items-stretch border-b border-gray-200/90 text-xs text-neutral-600 bg-gray-50/30">
+              <div className="w-14 shrink-0 text-center py-1.5 text-[12px] font-medium border-r border-gray-100 select-none">
                 Cả ngày
               </div>
               <div className="flex-1 grid grid-flow-col auto-cols-fr divide-x divide-gray-100">
                 {calendarDaysMeta.map((day) => (
-                  <div key={day.day_number} className="h-7 p-1"></div>
+                  <div key={day.day_number} className={`h-7 p-1 ${day.day_number !== selectedCalendarDay ? 'hidden sm:block' : ''}`}></div>
                 ))}
               </div>
             </div>
@@ -388,8 +386,8 @@ export default function TripCalendarView({
             {/* Các hàng giờ (7:00 sáng đến 10:00 tối) */}
             <div className="relative">
               {CALENDAR_HOURS.map((hour) => (
-                <div key={hour} className="h-14 flex items-stretch border-b border-gray-100 relative group/row">
-                  <div className="w-14 shrink-0 text-right pr-2 pt-1 text-[11px] text-gray-400 font-medium select-none border-r border-gray-100">
+                <div key={hour} data-calendar-hour={hour} className="h-16 flex items-stretch border-b border-gray-100/70 relative group/row">
+                  <div className="w-14 shrink-0 text-right pr-2 pt-1 text-[12px] text-neutral-600 font-medium select-none border-r border-gray-100">
                     {formatCalendarHour(hour)}
                   </div>
 
@@ -403,29 +401,35 @@ export default function TripCalendarView({
                       return (
                         <div
                           key={day.day_number}
+                          data-calendar-date={day.date || undefined}
+                          data-calendar-day={day.day_number}
                           onClick={() => setSelectedCalendarDay(day.day_number)}
-                          className="relative h-full p-0.5 hover:bg-gray-50/50 transition-colors group/cell"
+                          className={`relative h-full p-0.5 hover:bg-gray-50/50 transition-colors group/cell ${day.day_number !== selectedCalendarDay ? 'hidden sm:block' : ''}`}
                         >
+                          {day.date === now.date && now.minutes >= hour * 60 && now.minutes < (hour + 1) * 60 && (
+                            <div data-current-time={now.minutes} aria-label="Giờ hiện tại" className="absolute inset-x-0 z-20 border-t border-red-500 pointer-events-none" style={{ top: `${(now.minutes % 60) / 60 * 64}px` }} />
+                          )}
                           {matchingStops.map((stop) => {
                             const slot = getStopSlot(stop, day.stops.indexOf(stop));
                             const themeClass = getStopCategoryTheme(stop.category);
                             return (
                               <div
                                 key={stop.stop_id}
+                                data-calendar-stop={stop.stop_id}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedMapPoiId(stop.poi_id || stop.stop_id);
                                 }}
-                                className={`absolute inset-x-1 top-0.5 rounded-xl p-2 z-10 cursor-pointer transition-all border leading-tight ${themeClass}`}
+                                className={`absolute inset-x-1 rounded-xl p-2 z-10 cursor-pointer transition-all border leading-tight ${themeClass}`}
                                 style={{
-                                  height: `${Math.max(48, Math.min(100, (slot.duration / 60) * 56))}px`,
+                                  top: `${slot.minute / 60 * 64}px`,
+                                  height: `${slot.duration / 60 * 64}px`,
                                 }}
                                 title={`${stop.title} (${slot.duration} phút)`}
                               >
                                 <div className="flex items-start justify-between gap-1">
-                                  <div className="font-bold text-[11.5px] truncate flex items-center gap-1">
-                                    <span>★</span>
-                                    <span className="truncate">{stop.title}</span>
+                                  <div className="min-w-0 font-semibold text-[12px] leading-4 flex items-start gap-1">
+                                    <span className="line-clamp-2">{stop.title}</span>
                                   </div>
                                   <button
                                     type="button"
@@ -433,14 +437,14 @@ export default function TripCalendarView({
                                       e.stopPropagation();
                                       handleDeleteStop(day.day_number, stop.stop_id);
                                     }}
-                                    className="text-gray-500 hover:text-rose-600 opacity-0 group-hover/cell:opacity-100 transition-opacity p-0.5 shrink-0"
+                                    className="text-gray-500 hover:text-rose-600 opacity-100 sm:opacity-0 sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:opacity-100 transition-opacity p-0.5 shrink-0"
                                     title="Xóa khỏi lịch"
                                   >
                                     <X size={11} />
                                   </button>
                                 </div>
-                                <div className="text-[10px] font-semibold opacity-80 mt-0.5">
-                                  {formatCalendarHour(hour)} • {slot.duration}m
+                                <div className="text-[12px] font-semibold opacity-80 mt-0.5">
+                                  {stop.start_time || formatCalendarHour(hour)} · {slot.duration} phút
                                 </div>
                               </div>
                             );
@@ -458,12 +462,14 @@ export default function TripCalendarView({
         {/* ════════════════════════════════════════════════════════
             CỘT PHẢI: BẢN ĐỒ LỘ TRÌNH DÙNG CHUNG KHUNG VỚI 2 TAB CÒN LẠI
         ════════════════════════════════════════════════════════ */}
+        {showMap && (
         <section 
-          className="flex-1 h-full min-w-0 pr-6 lg:pr-[36px] py-5 pl-0 relative bg-white overflow-hidden" 
+          className={plannerStyles.map}
           data-purpose="right-panel-container"
         >
-          <div className="w-full h-full rounded-[20px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
+          <div className={plannerStyles.mapSurface}>
             <PoiMap
+              clipByParent
               pois={mapPois}
               selectedPoiId={selectedMapPoiId}
               hoveredPoiId={hoveredStopId}
@@ -485,6 +491,7 @@ export default function TripCalendarView({
             />
           </div>
         </section>
+        )}
       </div>
     </div>
   );

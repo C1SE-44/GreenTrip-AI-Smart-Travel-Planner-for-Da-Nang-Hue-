@@ -22,6 +22,28 @@ export default function AddToTripModal({
   onClose,
 }: AddToTripModalProps) {
   const [announcement, setAnnouncement] = useState('');
+  const [error, setError] = useState('');
+  const [pendingChange, setPendingChange] = useState<{
+    tripId: string;
+    poiIds: string[];
+    removing: boolean;
+    addedCount: number;
+  } | null>(null);
+
+  // Announce only after the parent has committed both existing trip collections.
+  useEffect(() => {
+    if (!pendingChange) return;
+    const trip = trips.find((item) => item.id === pendingChange.tripId);
+    if (!trip) return;
+    const committed = pendingChange.poiIds.every((id) => pendingChange.removing
+      ? !trip.savedPlaces?.includes(id) && !trip.ideas?.includes(id)
+      : trip.savedPlaces?.includes(id) && trip.ideas?.includes(id));
+    if (!committed) return;
+    setAnnouncement(pendingChange.removing
+      ? `Đã bỏ ${pendingChange.poiIds.length} địa điểm khỏi Ý tưởng của ${trip.title}.`
+      : `Đã thêm ${pendingChange.addedCount} địa điểm vào Ý tưởng của ${trip.title}.`);
+    setPendingChange(null);
+  }, [trips, pendingChange]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -33,7 +55,11 @@ export default function AddToTripModal({
   }, [isOpen, onClose]);
 
   useEffect(() => {
-    if (!isOpen) setAnnouncement('');
+    if (!isOpen) {
+      setAnnouncement('');
+      setError('');
+      setPendingChange(null);
+    }
   }, [isOpen]);
 
   if (!isOpen || poiIds.length === 0) return null;
@@ -72,7 +98,7 @@ export default function AddToTripModal({
         </header>
 
         <p id="add-to-trip-description" className="px-5 pt-4 text-sm leading-relaxed text-neutral-700 sm:px-6">
-          Chọn chuyến đi để lưu {placeCount === 1 ? 'địa điểm này' : `toàn bộ ${placeCount} địa điểm`} vào danh sách Đã lưu. Bạn có thể thêm vào Ý tưởng sau.
+          Chọn chuyến đi để thêm {placeCount === 1 ? 'địa điểm này' : `toàn bộ ${placeCount} địa điểm`} vào Ý tưởng của chuyến được chọn.
         </p>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6">
@@ -80,7 +106,7 @@ export default function AddToTripModal({
             <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl bg-neutral-50 px-5 py-8 text-center">
               <MapPin size={24} className="mb-3 text-neutral-700" aria-hidden="true" />
               <p className="text-base font-semibold text-neutral-950">Bạn chưa có chuyến đi nào</p>
-              <p className="mt-1 max-w-sm text-sm text-neutral-700">Tạo chuyến đi để lưu các địa điểm đã chọn vào danh sách Đã lưu.</p>
+              <p className="mt-1 max-w-sm text-sm text-neutral-700">Tạo chuyến đi để thêm các địa điểm đã chọn vào Ý tưởng.</p>
             </div>
           ) : (
             <ul className="divide-y divide-neutral-200">
@@ -94,12 +120,18 @@ export default function AddToTripModal({
                     <button
                       type="button"
                       aria-pressed={isAdded}
-                      aria-label={`${trip.title}: ${savedCount} trên ${placeCount} địa điểm đã lưu${isAdded ? '' : ', chọn để thêm'}`}
+                      aria-label={`${trip.title}: ${savedCount} trên ${placeCount} địa điểm trong Ý tưởng${isAdded ? '' : ', chọn để thêm'}`}
+                      disabled={pendingChange !== null}
                       onClick={() => {
-                        onToggleTrip(trip.id, poiIds, isAdded);
-                        setAnnouncement(isAdded
-                          ? `Đã bỏ ${placeCount} địa điểm khỏi danh sách Đã lưu của ${trip.title}.`
-                          : `Đã lưu ${placeCount - savedCount} địa điểm vào ${trip.title}.`);
+                        setAnnouncement('');
+                        setError('');
+                        setPendingChange({ tripId: trip.id, poiIds: [...poiIds], removing: isAdded, addedCount: placeCount - savedCount });
+                        try {
+                          onToggleTrip(trip.id, poiIds, isAdded);
+                        } catch {
+                          setPendingChange(null);
+                          setError('Không thể cập nhật Ý tưởng. Vui lòng thử lại.');
+                        }
                       }}
                       className="group flex min-h-[84px] w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-800 sm:gap-4 sm:px-3"
                     >
@@ -114,7 +146,7 @@ export default function AddToTripModal({
                         <span className="mt-1 block truncate text-sm text-neutral-700">
                           {trip.destination}{trip.startDate ? ` · ${trip.startDate}` : ''}
                         </span>
-                        {isPartiallyAdded && <span className="mt-0.5 block text-xs font-medium text-neutral-700">Đã lưu {savedCount}/{placeCount} địa điểm</span>}
+                        {isPartiallyAdded && <span className="mt-0.5 block text-xs font-medium text-neutral-700">Đã thêm {savedCount}/{placeCount} địa điểm vào Ý tưởng</span>}
                       </span>
                       <span
                         className={`flex h-9 min-w-9 shrink-0 items-center justify-center rounded-full border px-1 transition-colors ${
@@ -134,7 +166,8 @@ export default function AddToTripModal({
               })}
             </ul>
           )}
-          <p className="sr-only" aria-live="polite">{announcement}</p>
+          <p role="status" aria-live="polite" className={announcement ? 'px-2 pt-2 text-sm text-emerald-800' : 'sr-only'}>{announcement}</p>
+          {error && <p role="alert" className="px-2 pt-2 text-sm text-red-800">{error}</p>}
         </div>
 
         <footer className="border-t border-neutral-200 px-4 py-3 sm:px-6 sm:py-4">

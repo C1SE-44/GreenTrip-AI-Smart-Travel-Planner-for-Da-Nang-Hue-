@@ -1,5 +1,9 @@
 # BẢN BÀN GIAO TOÀN DIỆN DỰ ÁN GREENTRIP AI (DÀNH CHO CODEX / AI AGENT)
 
+> **Điểm vào tiết kiệm context (13/11/2026):** Đọc [AI_CONTEXT.md](docs/AI_CONTEXT.md) để chọn module và [AI_ROADMAP.md](docs/AI_ROADMAP.md) để biết việc còn lại. Không cần đọc lại toàn bộ tài liệu này mỗi lượt; dùng Graphify code-only và chỉ mở phần liên quan. Cách chạy: [AI_TOOLS.md](docs/AI_TOOLS.md).
+
+> **Cập nhật UI ngày 13/11/2026:** Người dùng đã duyệt hướng Explore + thành phần Mindtrip, giữ bố cục GreenTrip và ưu tiên giao diện trước logic. Đọc [bàn giao UI mới nhất](docs/PLANNER_UI_HANDOFF.md) trước khi sửa ba tab lập kế hoạch. Tài liệu mới bổ sung/điều chỉnh các mô tả giao diện cũ bên dưới; không thay thế quy tắc nhóm trong AGENTS.md.
+
 Tài liệu này được biên soạn để bất kỳ AI Agent nào (Codex, Claude Code, Cursor, Antigravity...) khi nhận dự án đều có thể đọc, nắm bắt 100% bối cảnh kiến trúc, quy chuẩn code, quy trình Git và tiếp tục phát triển mà không bị đứt gãy hay phá vỡ hệ thống kiểm thử.
 
 ---

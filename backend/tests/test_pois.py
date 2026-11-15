@@ -348,6 +348,21 @@ def test_list_pois_resolves_city_and_category_aliases(
     assert "DANANG" in count_parameters
 
 
+@pytest.mark.parametrize("category", ["chua", "chùa", "tam-linh", "tâm linh"])
+def test_spiritual_aliases_query_current_and_legacy_categories(
+    client: tuple[TestClient, list[tuple[str, Any]]],
+    category: str,
+) -> None:
+    test_client, queries = client
+
+    response = test_client.get("/pois", params={"category": category})
+
+    assert response.status_code == 200
+    for query, parameters in queries:
+        assert "c.name = ANY(%s)" in query
+        assert ["Tâm linh & Tôn giáo", "Tâm linh và chùa thiền"] in parameters
+
+
 def test_list_pois_ignores_all_filter_values(
     client: tuple[TestClient, list[tuple[str, Any]]],
 ) -> None:

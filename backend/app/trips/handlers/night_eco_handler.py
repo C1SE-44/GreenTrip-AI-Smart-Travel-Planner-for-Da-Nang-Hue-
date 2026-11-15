@@ -57,10 +57,12 @@ def handle_night_eco(
           )
           AND (
               p.sub_category = ANY(%s)
-              OR p.name ILIKE ANY(ARRAY[
-                  '%%Cầu Rồng%%', '%%Bạch Đằng%%', '%%Sông Hàn%%', '%%Ca Huế%%', 
-                  '%%Trường Tiền%%', '%%Tràng Tiền%%', '%%Chợ đêm%%', '%%Gỗ Lim%%'
-              ])
+              OR (
+                  p.name ILIKE '%%Cầu Rồng%%' OR p.name ILIKE '%%Bạch Đằng%%' OR
+                  p.name ILIKE '%%Sông Hàn%%' OR p.name ILIKE '%%Ca Huế%%' OR
+                  p.name ILIKE '%%Trường Tiền%%' OR p.name ILIKE '%%Tràng Tiền%%' OR
+                  p.name ILIKE '%%Chợ đêm%%' OR p.name ILIKE '%%Gỗ Lim%%'
+              )
           )
         ORDER BY p.green_score DESC, p.satisfaction_score DESC
         LIMIT 10;

@@ -1,15 +1,17 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
-import VerifyEmailPage from '@/pages/VerifyEmailPage';
-import ExplorePage from '@/pages/ExplorePage';
+import { lazy, Suspense } from 'react';
 import LandingPage from '@/pages/LandingPage';
-import PlannerPage from '@/pages/PlannerPage';
 import { SavedPlacesProvider } from '@/context/SavedPlacesContext';
+
+const ExplorePage = lazy(() => import('@/pages/ExplorePage'));
+const VerifyEmailPage = lazy(() => import('@/pages/VerifyEmailPage'));
 
 function App() {
   return (
     <BrowserRouter>
       <SavedPlacesProvider>
+      <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-cream text-sm text-neutral-600" role="status">Đang mở trang…</div>}>
       <Routes>
         {/* Landing Page & Auth Modal Overlay Routes */}
         <Route
@@ -63,17 +65,9 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       </SavedPlacesProvider>
     </BrowserRouter>
-  );
-}
-
-function ComingSoon({ title }: { title: string }) {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 pt-16">
-      <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
-      <p className="mt-2 text-sm text-gray-500">Tính năng này sẽ có trong sprint tiếp theo</p>
-    </div>
   );
 }
 

@@ -52,6 +52,12 @@ export default function LoginModal({
 
   useEffect(() => {
     setMounted(true);
+    if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      document.head.appendChild(script);
+    }
   }, []);
 
   // Đếm ngược 60s cho mã OTP

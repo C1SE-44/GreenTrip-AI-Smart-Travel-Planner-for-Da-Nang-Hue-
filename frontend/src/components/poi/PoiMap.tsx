@@ -1,3 +1,5 @@
+import { poiImageUrl } from '@/utils/poiImage';
+import ExploreMapCamera, { EXPLORE_NEARBY_METERS, type ExploreCameraContext } from './ExploreMapCamera';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -6,6 +8,9 @@ import { categoryLabels, getGalleryImages, cleanPoiName, getSpecificPoiIconClass
 export { cleanPoiName, getSpecificPoiIconClass, isCuratedHighlight };
 
 interface PoiMapProps {
+  exploreCamera?: ExploreCameraContext;
+  /** Let the workspace frame own corner clipping; other maps keep their shape. */
+  clipByParent?: boolean;
   pois: Poi[];
   selectedPoiId: string | null;
   hoveredPoiId: string | null;
@@ -26,6 +31,11 @@ interface PoiMapProps {
   routeCoordinates?: [number, number][];
   numberedOrderMap?: Map<string, number>;
   routeDurationText?: string;
+  onSearchThisArea?: (bounds: L.LatLngBounds, center: L.LatLng) => void;
+  isSearchingArea?: boolean;
+  onReturnToCenter?: () => void;
+  showReturnToCenter?: boolean;
+  returnCenterLabel?: string;
 }
 
 interface MarkerOffset {
@@ -99,7 +109,7 @@ function createMindtripMarkerIcon(
       } rounded-full flex items-center gap-1.5 z-[9999] pointer-events-auto transition-transform scale-105">
         ${orderBadgeHtml}
         <i class="${iconClass} text-[16px] text-white"></i>
-        <img src="${poi.image}" referrerpolicy="no-referrer" class="w-5 h-5 rounded-full object-cover ring-1 ring-white/60" alt="" />
+        <img src="${poiImageUrl(poi.image, 80)}" decoding="async" referrerpolicy="no-referrer" class="w-5 h-5 rounded-full object-cover ring-1 ring-white/60" alt="" />
         <span class="text-[12px] font-bold text-white whitespace-nowrap leading-none pl-0.5">${displayName}</span>
       </div>
     `;
@@ -364,7 +374,8 @@ function FloatingDetailCard({
           alt={poi.name} 
           referrerPolicy="no-referrer"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-          src={gallery[imgIdx] || poi.image}
+          src={poiImageUrl(gallery[imgIdx] || poi.image, 640)}
+          decoding="async"
         />
 
         {/* Nút đóng ô cơ bản (×) chuẩn Mindtrip */}
@@ -422,18 +433,20 @@ function FloatingDetailCard({
           >
             <i className={`ph ${isFavorite ? 'ph-fill ph-heart text-[16px] text-[#b45309]' : 'ph-heart text-[16px]'}`}></i>
           </button>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleAddTrip?.(poi.id);
-            }}
-            className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
-              isAdded ? 'bg-emerald-600 text-white' : 'bg-black/40 hover:bg-black/60 text-white'
-            }`}
-            title="Thêm vào chuyến đi"
-          >
-            <i className={`ph ${isAdded ? 'ph-check text-[16px] font-bold' : 'ph-plus text-[16px]'}`}></i>
-          </button>
+          {onToggleAddTrip && !poi.isReference && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleAddTrip?.(poi.id);
+              }}
+              className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 ${
+                isAdded ? 'bg-emerald-600 text-white' : 'bg-black/40 hover:bg-black/60 text-white'
+              }`}
+              title="Thêm vào chuyến đi"
+            >
+              <i className={`ph ${isAdded ? 'ph-check text-[16px] font-bold' : 'ph-plus text-[16px]'}`}></i>
+            </button>
+          )}
         </div>
 
         {/* Chấm phân trang bên dưới */}
@@ -593,6 +606,32 @@ function MapControlsLayer({
   showMapLoader?: boolean;
 }) {
   const map = useMap();
+  const [scaleText, setScaleText] = useState('500 m');
+
+  useEffect(() => {
+    const updateScale = () => {
+      try {
+        const center = map.getCenter();
+        const p1 = map.latLngToContainerPoint(center);
+        const p2 = L.point(p1.x + 48, p1.y);
+        const p2LatLng = map.containerPointToLatLng(p2);
+        const meters = center.distanceTo(p2LatLng);
+
+        if (meters >= 1000) {
+          const km = meters / 1000;
+          setScaleText(km >= 10 ? `${Math.round(km)} km` : `${Math.round(km * 10) / 10} km`);
+        } else {
+          const rounded = Math.round(meters / 50) * 50 || 50;
+          setScaleText(`${rounded} m`);
+        }
+      } catch {}
+    };
+    updateScale();
+    map.on('zoomend moveend', updateScale);
+    return () => {
+      map.off('zoomend moveend', updateScale);
+    };
+  }, [map]);
 
   return (
     <>
@@ -634,7 +673,7 @@ function MapControlsLayer({
       )}
 
       {/* 2. Right Toolbar Layer - cách mép phải +15% khi ẩn top controls */}
-      <div className={`absolute ${hideTopControls ? 'right-6' : 'right-4'} bottom-8 flex flex-col space-y-2 z-[1000]`}>
+      <div data-map-bottom-controls className={`absolute ${hideTopControls ? 'right-6' : 'right-4'} bottom-8 flex flex-col space-y-2 z-[1000]`}>
         <button 
           onClick={() => map.flyTo([16.0590, 108.2230], 15, { duration: 0.8 })}
           aria-label="Your location" 
@@ -678,7 +717,7 @@ function MapControlsLayer({
       </div>
 
       {/* 3. Weather Widget: Đã đổi thành "31°C Ít mây" */}
-      <div className="absolute bottom-6 left-4 z-[1000] pointer-events-auto">
+      <div data-map-weather className="absolute bottom-6 left-4 z-[1000] pointer-events-auto">
         <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-white/95 backdrop-blur-md rounded-full shadow-sm border border-zinc-200/80 text-xs font-semibold text-zinc-800">
           <span>🌤️</span>
           <span>31°C</span>
@@ -696,7 +735,7 @@ function MapControlsLayer({
           <span>Map Data ©2026 Google</span>
           <div className="flex items-center space-x-1">
             <div className="w-12 h-1 border-b-2 border-l border-r border-zinc-700"></div>
-            <span>500 m</span>
+            <span>{scaleText}</span>
           </div>
           <button className="hover:underline">Terms</button>
           <button className="hover:underline">Report a map error</button>
@@ -836,6 +875,8 @@ export function selectMustTryViewportPois(
 
 function DynamicMarkersLayer({
   pois,
+  exploreCameraEnabled = false,
+  contextFocusIds,
   selectedPoiId,
   hoveredPoiId,
   savedHeartMarkers = false,
@@ -843,13 +884,14 @@ function DynamicMarkersLayer({
   onSelectPoi,
   onHoverMapPin,
   onMarkerHover,
-  isDistantExpanded,
   setIsDistantExpanded,
   coreCluster,
   coreBounds,
   setIsMapLoading,
 }: {
   pois: Poi[];
+  exploreCameraEnabled?: boolean;
+  contextFocusIds?: string[];
   selectedPoiId: string | null;
   hoveredPoiId: string | null;
   savedHeartMarkers?: boolean;
@@ -981,11 +1023,10 @@ function DynamicMarkersLayer({
 
   // Danh sách POI hiển thị: Nếu điểm đang hover nằm ngoài Top 20, chỉ bổ sung riêng điểm đó mà không làm xáo trộn 20 điểm sẵn có
   const displayedPois = useMemo(() => {
-    if (!hoveredPoiId) return visiblePois;
-    if (visiblePois.some((p) => p.id === hoveredPoiId)) return visiblePois;
-    const hoveredPoi = pois.find((p) => p.id === hoveredPoiId);
-    return hoveredPoi ? [...visiblePois, hoveredPoi] : visiblePois;
-  }, [visiblePois, hoveredPoiId, pois]);
+    const extraIds = [...(contextFocusIds || []), ...(hoveredPoiId ? [hoveredPoiId] : [])];
+    const extras = pois.filter(p => extraIds.includes(p.id) && !visiblePois.some(v => v.id === p.id));
+    return extras.length ? [...visiblePois, ...extras] : visiblePois;
+  }, [visiblePois, hoveredPoiId, pois, contextFocusIds]);
 
   // Ghi nhận các POI hiện tại đã được render sau khi hiệu ứng rơi bóng kết thúc (600ms)
   // Giúp các ghim đã hạ cánh không bao giờ bị rơi lại khi rê chuột (hover)
@@ -1183,87 +1224,118 @@ function DynamicMarkersLayer({
     };
   }, [map, computeOffsets]);
 
+  useEffect(() => {
+    if (!exploreCameraEnabled) return;
+    const pane = map.getPane('markerPane');
+    const focus = (event: FocusEvent) => {
+      map.eachLayer(layer => {
+        if (!(layer instanceof L.Marker) || layer.getElement() !== event.target) return;
+        const poi = pois.find(p => iconCache.current.get(p.id)?.icon === layer.options.icon);
+        if (poi) onHoverMapPin(poi.id);
+      });
+    };
+    const blur = () => onHoverMapPin(null);
+    pane?.addEventListener('focusin', focus);
+    pane?.addEventListener('focusout', blur);
+    return () => {
+      pane?.removeEventListener('focusin', focus);
+      pane?.removeEventListener('focusout', blur);
+    };
+  }, [exploreCameraEnabled, map, pois, onHoverMapPin]);
+
+  useEffect(() => {
+    if (!exploreCameraEnabled || !hoveredPoiId) return;
+    // Clamp only the active name, without moving its marker or the camera.
+    const frame = requestAnimationFrame(() => {
+      const label = map.getPane('markerPane')?.querySelector<HTMLElement>('.map-marker-label');
+      if (!label) return;
+      label.style.marginLeft = '0px';
+      label.style.marginTop = '0px';
+      const box = label.getBoundingClientRect();
+      const viewport = map.getContainer().getBoundingClientRect();
+      const dx = Math.max(viewport.left + 12 - box.left, Math.min(0, viewport.right - 12 - box.right));
+      let dy = Math.max(viewport.top + 12 - box.top, Math.min(0, viewport.bottom - 30 - box.bottom));
+      for (const button of map.getContainer().querySelectorAll('.map-floating-btn')) {
+        const control = button.getBoundingClientRect();
+        if (box.left + dx < control.right + 8 && box.right + dx > control.left - 8 && box.top + dy < control.bottom + 8 && box.bottom + dy > control.top - 8) {
+          dy = control.top < viewport.top + viewport.height / 2 ? control.bottom + 8 - box.top : control.top - 8 - box.bottom;
+        }
+      }
+      label.style.marginLeft = `${dx}px`;
+      label.style.marginTop = `${dy}px`;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [exploreCameraEnabled, hoveredPoiId, map, offsets]);
+
   // coreCluster và coreBounds được truyền từ PoiMap để dùng chung đồng nhất với nút Floating Return Control
 
-  // Ref theo dõi việc bản đồ đang mở rộng để bao quát địa điểm ở xa
-  const isDistantExpandedRef = useRef<boolean>(isDistantExpanded);
+  const hoverCameraTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const interacting = useRef(false);
+  const previousSelection = useRef<string | null>(null);
+  const latestPois = useRef(pois);
+  latestPois.current = pois;
+  const latestHover = useRef(hoveredPoiId);
+  latestHover.current = hoveredPoiId;
+  const poiCameraKey = JSON.stringify(pois.map(p => [p.id, p.lat, p.lng]).sort());
+  const iconCache = useRef(new Map<string, { poi: Poi; key: string; icon: L.DivIcon }>());
+
+  const cancelHoverCamera = useCallback(() => {
+    if (hoverCameraTimer.current) clearTimeout(hoverCameraTimer.current);
+    hoverCameraTimer.current = null;
+  }, []);
+
   useEffect(() => {
-    isDistantExpandedRef.current = isDistantExpanded;
-  }, [isDistantExpanded]);
+    const begin = () => { interacting.current = true; cancelHoverCamera(); };
+    const end = () => { interacting.current = false; };
+    const cancel = () => cancelHoverCamera();
+    const container = map.getContainer();
+    map.on('movestart zoomstart dragstart', begin);
+    map.on('moveend zoomend dragend', end);
+    container.addEventListener('pointerdown', cancel);
+    container.addEventListener('wheel', cancel, { passive: true });
+    container.addEventListener('touchstart', cancel, { passive: true });
+    return () => {
+      cancelHoverCamera();
+      map.off('movestart zoomstart dragstart', begin);
+      map.off('moveend zoomend dragend', end);
+      container.removeEventListener('pointerdown', cancel);
+      container.removeEventListener('wheel', cancel);
+      container.removeEventListener('touchstart', cancel);
+    };
+  }, [map, cancelHoverCamera]);
 
-  const prevActivePoiIdRef = useRef<string | null>(null);
-
-  // Địa điểm đang được người dùng tương tác (chọn thẻ hoặc rê chuột debounced)
-  const activePoiId = selectedPoiId || hoveredPoiId;
-
-  // Xử lý camera thông minh theo hành vi người dùng (Chuẩn Mindtrip / GreenTrip UX):
-  // 1. Mặc định: Tập trung vào "chỗ đông đúc" (cụm trung tâm zoom 13.5)
-  // 2. Khi di chuyển tới ô địa điểm ở xa: Mở rộng mượt mà (flyToBounds) bao trọn [Chỗ đông đúc + Điểm ở xa]
-  // 3. Khi di chuyển giữa các điểm ở xa cạnh nhau:
-  //    - TUYỆT ĐỐI KHÔNG tự động co nhỏ về trung tâm khi chuột tạm thời rời thẻ (chấm dứt hiện tượng giật co vào rồi lại phóng to ra)
-  //    - Nếu điểm ở xa tiếp theo đã nằm trong tầm mắt hiện tại: Giữ bản đồ HOÀN TOÀN TĨNH LẶNG, chỉ highlight ghim
-  //    - Nếu điểm ở xa tiếp theo chưa hiển thị trọn vẹn: Mở rộng trực tiếp từ khung nhìn hiện tại tới điểm đó, không bao giờ nhảy về trung tâm trước
-  // 4. Khi quay lại chọn/rê chuột vào địa điểm ở khu trung tâm: Bản đồ êm ái thu nhỏ mượt mà trở về cụm đông đúc
   useEffect(() => {
-    if (!map || pois.length === 0) return;
-
-    // Khi chuột rời khỏi thẻ (activePoiId === null):
-    // GIỮ NGUYÊN tầm nhìn camera hiện tại! KHÔNG tự động nhảy về trung tâm gây giật hình hay cảm giác "bị cứng"!
-    if (!activePoiId) {
-      prevActivePoiIdRef.current = null;
+    cancelHoverCamera();
+    if (exploreCameraEnabled) return;
+    const panIfOutside = (id: string) => {
+      const target = latestPois.current.find(p => p.id === id);
+      if (!target || !Number.isFinite(target.lat) || !Number.isFinite(target.lng)) return;
+      if (map.getBounds().contains([target.lat, target.lng])) return;
+      const isHue = target.city === 'Huế' || target.lat >= 16.3;
+      if (isHue !== (map.getCenter().lat >= 16.3)) setIsDistantExpanded(isHue);
+      map.stop();
+      map.panInside([target.lat, target.lng], { padding: [32, 32], animate: true, duration: 0.35 });
+    };
+    if (selectedPoiId) {
+      if (previousSelection.current !== selectedPoiId) panIfOutside(selectedPoiId);
+      previousSelection.current = selectedPoiId;
       return;
     }
+    previousSelection.current = null;
+    if (!hoveredPoiId || interacting.current) return;
+    const target = latestPois.current.find(p => p.id === hoveredPoiId);
+    if (!target || !Number.isFinite(target.lat) || !Number.isFinite(target.lng) || map.getBounds().contains([target.lat, target.lng])) return;
+    hoverCameraTimer.current = setTimeout(() => {
+      hoverCameraTimer.current = null;
+      if (latestHover.current === hoveredPoiId && !interacting.current) panIfOutside(hoveredPoiId);
+    }, 300);
+    return cancelHoverCamera;
+  }, [hoveredPoiId, selectedPoiId, poiCameraKey, map, setIsDistantExpanded, cancelHoverCamera, exploreCameraEnabled]);
 
-    if (prevActivePoiIdRef.current === activePoiId) return;
-    prevActivePoiIdRef.current = activePoiId;
-
-    const target = pois.find((p) => p.id === activePoiId);
-    if (!target || !Number.isFinite(target.lat) || !Number.isFinite(target.lng)) return;
-
-    try {
-      const currentBounds = map.getBounds();
-      const targetLatLng = L.latLng(target.lat, target.lng);
-      // Kiểm tra xem target đã nằm trong khung hình hiện tại chưa (với lề đệm 10%)
-      const isVisibleInCurrentView = currentBounds.pad(-0.1).contains(targetLatLng);
-
-      // 1. Xác định thành phố của địa điểm đang tương tác (Đà Nẵng vs Huế)
-      const isHueTarget = target.city === 'Huế' || (target.city as string) === 'hue' || target.lat >= 16.3;
-      
-      // 2. Xác định vị trí hiện tại của camera trên bản đồ
-      const currentMapCenter = map.getCenter();
-      const isMapInHue = currentMapCenter.lat >= 16.3;
-      const isSameCity = isHueTarget === isMapInHue;
-
-      if (!isSameCity) {
-        // NGƯỜI DÙNG QUAN TÂM ĐẾN THÀNH PHỐ KHÁC (Đà Nẵng <-> Huế):
-        // Bay trực tiếp tới thành phố đó với góc nhìn to, rõ ràng, chi tiết (zoom 13.5)!
-        // TUYỆT ĐỐI KHÔNG thu nhỏ 100km để nối 2 thành phố gây nhỏ xíu!
-        map.stop();
-        map.flyTo([target.lat, target.lng], 13.5, {
-          duration: 0.9,
-          easeLinearity: 0.25,
-        });
-        setIsDistantExpanded(isHueTarget); // Hiện nút "Về trung tâm Đà Nẵng" khi đang ở Huế
-        return;
-      }
-
-      // NẾU CAMERA ĐÃ Ở CÙNG THÀNH PHỐ VỚI ĐỊA ĐIỂM:
-      if (isVisibleInCurrentView) {
-        // Đã nằm trong tầm mắt: Giữ nguyên góc nhìn to rõ, chỉ highlight ghim
-        return;
-      }
-
-      // Nếu địa điểm hơi lệch ra ngoài khung nhìn của thành phố đó:
-      // Trượt êm ái (panTo) tới điểm đó mà vẫn giữ nguyên zoom 13.5 to rõ!
-      map.stop();
-      map.panTo([target.lat, target.lng], {
-        animate: true,
-        duration: 0.45,
-      });
-    } catch (e) {
-      console.warn('Map camera transition error:', e);
-    }
-  }, [activePoiId, selectedPoiId, hoveredPoiId, pois, map, isDistantExpanded, setIsDistantExpanded]);
+  useEffect(() => {
+    const ids = new Set(latestPois.current.map(p => p.id));
+    for (const id of iconCache.current.keys()) if (!ids.has(id)) iconCache.current.delete(id);
+  }, [poiCameraKey]);
 
   return (
     <>
@@ -1285,12 +1357,22 @@ function DynamicMarkersLayer({
         const isNewEntrance = !renderedPoiIdsRef.current.has(poi.id);
         const entranceDelayMs = isNewEntrance ? (idx % 12) * 35 : 0;
 
+        // Keep unchanged Leaflet icons (and their DOM) through highlight renders.
+        // Entrance animation belongs to the first icon, not every subsequent render.
+        const iconKey = JSON.stringify([isSelected, isHovered, offset.position, offset.xOffset, offset.yOffset, showLabel, savedHeartMarkers, stopOrder]);
+        let cached = iconCache.current.get(poi.id);
+        if (!cached || cached.poi !== poi || cached.key !== iconKey) {
+          cached = { poi, key: iconKey, icon: createMindtripMarkerIcon(isSelected, isHovered, poi, offset, showLabel, isNewEntrance, entranceDelayMs, savedHeartMarkers, stopOrder) };
+          iconCache.current.set(poi.id, cached);
+        }
+
         return (
           <Marker
             key={poi.id}
+            autoPanOnFocus={!exploreCameraEnabled}
             position={[poi.lat, poi.lng]}
             zIndexOffset={isSelected ? 9999 : isHovered ? 9000 : typeof stopOrder === 'number' ? 100 + stopOrder : 50}
-            icon={createMindtripMarkerIcon(isSelected, isHovered, poi, offset, showLabel, isNewEntrance, entranceDelayMs, savedHeartMarkers, stopOrder)}
+            icon={cached.icon}
             eventHandlers={{
               click: () => onSelectPoi(poi.id),
               mouseover: () => {
@@ -1327,6 +1409,17 @@ function MapClickHandler({ onDismiss }: { onDismiss: () => void }) {
   return null;
 }
 
+function MapMoveWatcher({ onMove }: { onMove: (map: L.Map) => void }) {
+  const map = useMapEvents({
+    dragend: () => onMove(map),
+    zoomend: () => onMove(map),
+  });
+  useEffect(() => {
+    onMove(map);
+  }, [map, onMove]);
+  return null;
+}
+
 function RouteAutoFitter({ routeCoordinates }: { routeCoordinates?: [number, number][] }) {
   const map = useMap();
   const prevKeyRef = useRef<string>('');
@@ -1358,6 +1451,8 @@ function RouteAutoFitter({ routeCoordinates }: { routeCoordinates?: [number, num
 }
 
 export default function PoiMap({
+  exploreCamera,
+  clipByParent = false,
   pois,
   selectedPoiId,
   hoveredPoiId,
@@ -1378,9 +1473,104 @@ export default function PoiMap({
   routeCoordinates,
   numberedOrderMap,
   routeDurationText,
+  onSearchThisArea,
+  isSearchingArea = false,
+  onReturnToCenter,
+  showReturnToCenter = false,
+  returnCenterLabel,
 }: PoiMapProps) {
   const mapRef = useRef<L.Map | null>(null);
+  const [showSearchAreaBtn, setShowSearchAreaBtn] = useState(false);
+  const initialCenterRef = useRef<L.LatLng | null>(null);
+  const lastSearchedCenterRef = useRef<L.LatLng | null>(null);
+
+  const handleMapMoved = useCallback((mapInstance: L.Map) => {
+    if (!onSearchThisArea) return;
+    const currentCenter = mapInstance.getCenter();
+    if (!initialCenterRef.current) {
+      initialCenterRef.current = currentCenter;
+      lastSearchedCenterRef.current = currentCenter;
+      return;
+    }
+    const anchor = lastSearchedCenterRef.current || initialCenterRef.current;
+    if (mapInstance.distance(currentCenter, anchor) > 400) {
+      setShowSearchAreaBtn(true);
+    }
+  }, [onSearchThisArea]);
+
+  const handleTriggerSearchArea = useCallback(() => {
+    if (!mapRef.current || !onSearchThisArea) return;
+    setShowSearchAreaBtn(false);
+    lastSearchedCenterRef.current = mapRef.current.getCenter();
+    onSearchThisArea(mapRef.current.getBounds(), mapRef.current.getCenter());
+  }, [onSearchThisArea]);
+
+  // Xác định cụm điểm trung tâm đông đúc (chỗ đông đúc - core cluster):
+  const coreCluster = useMemo(() => {
+    const valid = pois.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    if (valid.length === 0) return [];
+
+    // Cụm đô thị trung tâm Đà Nẵng (sông Hàn, Sơn Trà, Mỹ Khê, Hải Châu, Thanh Khê)
+    const dnCore = valid.filter((p) => p.lat >= 16.01 && p.lat <= 16.12 && p.lng >= 108.17 && p.lng <= 108.27);
+    if (dnCore.length >= 3) return dnCore;
+
+    // Cụm trung tâm Cố Đô Huế (Kinh thành, sông Hương)
+    const hueCore = valid.filter((p) => p.lat >= 16.43 && p.lat <= 16.50 && p.lng >= 107.54 && p.lng <= 107.62);
+    if (hueCore.length >= 3) return hueCore;
+
+    return valid;
+  }, [pois]);
+
+  const coreBounds = useMemo(() => {
+    if (coreCluster.length === 0) return null;
+    return L.latLngBounds(coreCluster.map((p) => [p.lat, p.lng] as [number, number]));
+  }, [coreCluster]);
+
+  const handleReturnToCenter = useCallback(() => {
+    if (mapRef.current) {
+      mapRef.current.stop();
+      if (coreBounds && coreBounds.isValid()) {
+        mapRef.current.flyToBounds(coreBounds.pad(0.2), {
+          duration: 0.85,
+          easeLinearity: 0.25,
+          maxZoom: 14.5,
+        });
+      } else {
+        mapRef.current.flyTo([16.0680, 108.2220], 13.5, {
+          duration: 0.85,
+          easeLinearity: 0.25,
+        });
+      }
+      setIsDistantExpanded(false);
+    }
+  }, [coreBounds]);
+
+  const handleTriggerReturnToCenter = useCallback(() => {
+    setShowSearchAreaBtn(false);
+    if (onReturnToCenter) {
+      onReturnToCenter();
+    }
+    handleReturnToCenter();
+  }, [onReturnToCenter, handleReturnToCenter]);
+  const [contextAnchor, setContextAnchor] = useState<L.LatLng | null>(null);
+  const [contextFocusIds, setContextFocusIds] = useState<string[]>([]);
+  const handleContextAnchor = useCallback((anchor: L.LatLng | null, ids: string[] = []) => {
+    setContextAnchor(anchor);
+    setContextFocusIds(ids);
+  }, []);
+  const markerPois = useMemo(() => {
+    if (!exploreCamera) return pois;
+    const byId = new Map(pois.map(p => [p.id, p]));
+    for (const poi of exploreCamera.contextPois) {
+      if (!Number.isFinite(poi.lat) || !Number.isFinite(poi.lng)) continue;
+      if (poi.id === hoveredPoiId || (contextAnchor && contextAnchor.distanceTo([poi.lat, poi.lng]) <= EXPLORE_NEARBY_METERS)) byId.set(poi.id, poi);
+    }
+    return Array.from(byId.values());
+  }, [pois, exploreCamera, contextAnchor, hoveredPoiId]);
   const [hoveredMapPinId, setHoveredMapPinId] = useState<string | null>(null);
+  useEffect(() => {
+    if (exploreCamera && hoveredPoiId) setHoveredMapPinId(null);
+  }, [exploreCamera, hoveredPoiId]);
   const [isDistantExpanded, setIsDistantExpanded] = useState<boolean>(false);
   const [isMapLoading, setIsMapLoading] = useState<boolean>(false);
 
@@ -1417,43 +1607,13 @@ export default function PoiMap({
     }
   }, [selectedPoiId, cancelAutoCloseTimer, startAutoCloseTimer]);
 
-  // Xác định cụm điểm trung tâm đông đúc (chỗ đông đúc - core cluster):
-  const coreCluster = useMemo(() => {
-    const valid = pois.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-    if (valid.length === 0) return [];
 
-    // Cụm đô thị trung tâm Đà Nẵng (sông Hàn, Sơn Trà, Mỹ Khê, Hải Châu, Thanh Khê)
-    const dnCore = valid.filter((p) => p.lat >= 16.01 && p.lat <= 16.12 && p.lng >= 108.17 && p.lng <= 108.27);
-    if (dnCore.length >= 3) return dnCore;
-
-    // Cụm trung tâm Cố Đô Huế (Kinh thành, sông Hương)
-    const hueCore = valid.filter((p) => p.lat >= 16.43 && p.lat <= 16.50 && p.lng >= 107.54 && p.lng <= 107.62);
-    if (hueCore.length >= 3) return hueCore;
-
-    return valid;
-  }, [pois]);
-
-  const coreBounds = useMemo(() => {
-    if (coreCluster.length === 0) return null;
-    return L.latLngBounds(coreCluster.map((p) => [p.lat, p.lng] as [number, number]));
-  }, [coreCluster]);
-
-  const handleReturnToCenter = useCallback(() => {
-    if (mapRef.current) {
-      mapRef.current.stop();
-      mapRef.current.flyTo([16.0680, 108.2220], 13.5, {
-        duration: 0.85,
-        easeLinearity: 0.25,
-      });
-      setIsDistantExpanded(false);
-    }
-  }, []);
 
   // Ô cơ bản trên map: CHỈ HIỆN KHI BẤM VÀO (selectedPoiId), KHÔNG hiện khi hover để bản đồ luôn rõ ràng, thoáng mắt
-  const selectedPoi = pois.find((p) => p.id === selectedPoiId) || null;
+  const selectedPoi = markerPois.find((p) => p.id === selectedPoiId) || null;
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#f4f2ee] rounded-[22px] [transform:translateZ(0)]">
+    <div className={`relative h-full w-full overflow-hidden bg-[#f4f2ee] ${clipByParent ? 'rounded-none' : 'rounded-[22px]'} [transform:translateZ(0)]`}>
       <style>{`
         .leaflet-container {
           background-color: #f2ede5 !important;
@@ -1548,7 +1708,7 @@ export default function PoiMap({
         inertiaDeceleration={2400}
         inertiaMaxSpeed={1600}
         easeLinearity={0.25}
-        className="h-full w-full rounded-[22px] overflow-hidden"
+        className={`h-full w-full ${clipByParent ? 'rounded-none' : 'rounded-[22px]'} overflow-hidden`}
         ref={(m) => { if (m) mapRef.current = m; }}
         scrollWheelZoom
       >
@@ -1563,7 +1723,9 @@ export default function PoiMap({
         />
 
         <MapResizeListener />
-        <MapAutoFitter pois={pois} />
+        {exploreCamera ? (
+          <ExploreMapCamera region={exploreCamera.region} pois={exploreCamera.contextPois} hoveredPoiId={hoveredPoiId} selectedPoiId={selectedPoiId} onContextAnchor={handleContextAnchor} />
+        ) : <MapAutoFitter pois={pois} />}
         <RouteAutoFitter routeCoordinates={routeCoordinates} />
         
         <MapControlsLayer 
@@ -1626,9 +1788,11 @@ export default function PoiMap({
         )}
 
         <DynamicMarkersLayer
-          pois={pois}
+          pois={markerPois}
+          exploreCameraEnabled={Boolean(exploreCamera)}
+          contextFocusIds={exploreCamera ? contextFocusIds : undefined}
           selectedPoiId={selectedPoiId}
-          hoveredPoiId={hoveredPoiId || hoveredMapPinId}
+          hoveredPoiId={exploreCamera ? hoveredMapPinId || hoveredPoiId : hoveredPoiId || hoveredMapPinId}
           savedHeartMarkers={savedHeartMarkers}
           numberedOrderMap={numberedOrderMap}
           onSelectPoi={(id) => {
@@ -1637,7 +1801,7 @@ export default function PoiMap({
           }}
           onHoverMapPin={(id) => {
             setHoveredMapPinId(id);
-            if (onHoverPoi) onHoverPoi(id);
+            if (!exploreCamera && onHoverPoi) onHoverPoi(id);
           }}
           onMarkerHover={handleMarkerHover}
           isDistantExpanded={isDistantExpanded}
@@ -1647,25 +1811,26 @@ export default function PoiMap({
           setIsMapLoading={setIsMapLoading}
         />
 
-        {/* Nút Floating chuẩn Mindtrip: Khi đang mở rộng xem điểm ở xa, hiện nút bấm êm ái quay về trung tâm */}
-        {isDistantExpanded && (
+        {onSearchThisArea && <MapMoveWatcher onMove={handleMapMoved} />}
+
+        {/* Nút Tìm kiếm khu vực này khi người dùng di chuyển bản đồ ra xa */}
+        {showSearchAreaBtn && !isSearchingArea && (
           <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-[1000] animate-fadeIn pointer-events-auto">
             <button
-              onClick={handleReturnToCenter}
-              className="map-floating-btn px-4 py-2 bg-white/95 backdrop-blur-md rounded-full flex items-center gap-1.5 text-xs font-semibold text-neutral-800 hover:text-black hover:bg-white shadow-md border border-neutral-200/80 transition-all cursor-pointer active:scale-95"
+              type="button"
+              onClick={handleTriggerSearchArea}
+              className="map-floating-btn px-4 py-2 bg-white/95 hover:bg-white text-neutral-900 rounded-full flex items-center gap-2 text-xs font-semibold shadow-[0_4px_16px_rgba(0,0,0,0.12)] border border-neutral-200/90 transition-all cursor-pointer active:scale-95"
             >
-              <i className="ph ph-arrow-counter-clockwise text-sm font-bold text-emerald-700"></i>
-              <span>Về Đà Nẵng</span>
+              <i className="ph ph-magnifying-glass text-sm font-bold text-emerald-700"></i>
+              <span>Tìm kiếm khu vực này</span>
             </button>
           </div>
         )}
 
-        {/* 3-Dot Mindtrip Loading Pill: Chỉ hiển thị khi showMapLoader=true và pois.length > 20 (chế độ Khám phá), không hiển thị ở Lịch trình */}
-        {showMapLoader && pois.length > 20 && (
+        {/* 3-Dot Mindtrip Loading Pill: Hiển thị khi đang tìm kiếm khu vực hoặc khi showMapLoader */}
+        {(isSearchingArea || (showMapLoader && pois.length > 20 && isMapLoading && !isDistantExpanded)) && (
           <div
-            className={`absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none transition-all duration-300 ease-out ${
-              isMapLoading && !isDistantExpanded ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-2 scale-95 pointer-events-none'
-            }`}
+            className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none transition-all duration-300 ease-out opacity-100 translate-y-0 scale-100"
           >
             <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.14)] border border-neutral-200/90 text-xs font-semibold text-neutral-800">
               <div className="flex items-center gap-1">
@@ -1675,6 +1840,20 @@ export default function PoiMap({
               </div>
               <span className="text-[11.5px] font-medium text-neutral-700 tracking-tight">Tìm kiếm khu vực này...</span>
             </div>
+          </div>
+        )}
+
+        {/* Nút Floating quay về trung tâm / điểm đã chọn */}
+        {(showReturnToCenter || isDistantExpanded) && !isSearchingArea && !showSearchAreaBtn && (
+          <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-[1000] animate-fadeIn pointer-events-auto">
+            <button
+              type="button"
+              onClick={handleTriggerReturnToCenter}
+              className="map-floating-btn px-4 py-2 bg-white/95 backdrop-blur-md rounded-full flex items-center gap-1.5 text-xs font-semibold text-neutral-800 hover:text-black hover:bg-white shadow-md border border-neutral-200/80 transition-all cursor-pointer active:scale-95"
+            >
+              <i className="ph ph-arrow-counter-clockwise text-sm font-bold text-emerald-700"></i>
+              <span>{returnCenterLabel || (isDistantExpanded ? 'Về Đà Nẵng' : 'Về điểm đã chọn')}</span>
+            </button>
           </div>
         )}
 

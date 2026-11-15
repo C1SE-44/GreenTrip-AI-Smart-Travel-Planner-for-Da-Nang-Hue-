@@ -105,9 +105,9 @@ export const HIGHWAY_QL1A_DANANG_HUE: [number, number][] = [
 // Đường tránh Vịnh Đà Nẵng: Tuyệt đối không vẽ đường thẳng cắt ngang mặt nước vịnh
 export const DA_NANG_BAY_LAND_BYPASS: [number, number][] = [
   [16.1360, 108.1360], // Cầu Nam Ô
-  [16.1150, 108.1550], // Nguyễn Lương Bằng
-  [16.0900, 108.1680], // Tôn Đức Thắng
-  [16.0780, 108.1750], // Bến xe Trung tâm Đà Nẵng
+  [16.1150, 108.1460], // Nguyễn Lương Bằng (Hòa Khánh Bắc)
+  [16.0880, 108.1580], // Tôn Đức Thắng (Hòa Khánh Nam)
+  [16.0750, 108.1720], // Bến xe Trung tâm Đà Nẵng
   [16.0685, 108.1835], // Cầu vượt Ngã Ba Huế
   [16.0650, 108.1980], // Đường Điện Biên Phủ
   [16.0620, 108.2120], // Trung tâm Hải Châu
@@ -134,10 +134,10 @@ export function buildRoadCorridor(
 
   // Kết nối giữa Bắc Đà Nẵng (Nam Ô / Hải Vân) và Nam/Đông Đà Nẵng (Hải Châu / Thanh Khê / Sơn Trà)
   // Tuyệt đối không để đường cắt ngang mặt biển Vịnh Đà Nẵng
-  const isNorthFrom = fromLat > 16.12 && fromLng < 108.15;
-  const isSouthTo = toLat <= 16.10 && toLng >= 108.16;
-  const isSouthFrom = fromLat <= 16.10 && fromLng >= 108.16;
-  const isNorthTo = toLat > 16.12 && toLng < 108.15;
+  const isNorthFrom = fromLat >= 16.12 && fromLng <= 108.15;
+  const isSouthTo = toLat <= 16.12 && toLng >= 108.16;
+  const isSouthFrom = fromLat <= 16.12 && fromLng >= 108.16;
+  const isNorthTo = toLat >= 16.12 && toLng <= 108.15;
 
   if (isNorthFrom && isSouthTo) {
     return DA_NANG_BAY_LAND_BYPASS.map(([lat, lng]) => [lat, lng]);

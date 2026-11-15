@@ -157,10 +157,10 @@ def test_osrm_failure_fallback_haversine():
 
 def test_router_endpoints_registered_in_app():
     """Test 11: Verify routes are registered under both /api/itineraries and /itineraries in FastAPI app."""
-    registered_paths = [route.path for route in app.routes]
+    openapi_paths = set(app.openapi().get("paths", {}).keys())
 
-    assert "/api/itineraries/{itinerary_id}/days/{day_number}/route" in registered_paths
-    assert "/itineraries/{itinerary_id}/days/{day_number}/route" in registered_paths
+    assert "/api/itineraries/{itinerary_id}/days/{day_number}/route" in openapi_paths
+    assert "/itineraries/{itinerary_id}/days/{day_number}/route" in openapi_paths
 
 
 def test_multiday_1d_itinerary():

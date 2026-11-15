@@ -30,7 +30,7 @@ export interface DayRouteResponse {
 
 /**
  * Fetch ordered route geometry and stops for a specific day of an itinerary.
- * Backend endpoint: GET /api/itineraries/{itinerary_id}/days/{day_number}/route
+ * Backend endpoint: GET /itineraries/{itinerary_id}/days/{day_number}/route
  */
 export async function fetchDayRoute(
   itineraryId: string,
@@ -39,7 +39,7 @@ export async function fetchDayRoute(
 ): Promise<DayRouteResponse> {
   const cleanItinId = encodeURIComponent(itineraryId.trim());
   return fetchJson<DayRouteResponse>(
-    `/api/itineraries/${cleanItinId}/days/${dayNumber}/route`,
+    `/itineraries/${cleanItinId}/days/${dayNumber}/route`,
     { signal }
   );
 }
@@ -232,11 +232,11 @@ export async function getRoutePositionsForStops(
     }
   }
 
-  // 2. Thử gọi backend /api/itineraries/compute với danh sách stops (timeout 1.2s)
+  // 2. Thử gọi backend /itineraries/compute với danh sách stops (timeout 1.2s)
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 1200);
-    const computed = await fetchJson<DayRouteResponse>('/api/itineraries/compute', {
+    const computed = await fetchJson<DayRouteResponse>('/itineraries/compute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ stops: validStops }),
@@ -626,17 +626,64 @@ export function normalizeLegacyLunchBreaks(itinerary: TripItinerary): { itinerar
   return { itinerary: { ...itinerary, days: normalizeSequence(days) }, changed };
 }
 
-export function reorderNearStops(stops: ItineraryStop[]): ItineraryStop[] {
-  const places = stops.filter((stop) => stop.stop_type !== 'rest');
-  if (places.length < 3 || places.some((stop) => stop.latitude == null || stop.longitude == null)) return places;
-  const remaining = places.slice(1);
-  const ordered = [places[0]];
+function resolveStopCoordinates(
+  stop: Pick<ItineraryStop, 'poi_id' | 'latitude' | 'longitude'>,
+  poiById?: Map<string, Poi>
+): { latitude: number; longitude: number } | null {
+  if (
+    stop.latitude != null &&
+    stop.longitude != null &&
+    Number.isFinite(stop.latitude) &&
+    Number.isFinite(stop.longitude)
+  ) {
+    return { latitude: stop.latitude, longitude: stop.longitude };
+  }
+  const matched = stop.poi_id ? poiById?.get(stop.poi_id) : undefined;
+  if (matched && Number.isFinite(matched.lat) && Number.isFinite(matched.lng)) {
+    return { latitude: matched.lat, longitude: matched.lng };
+  }
+  return null;
+}
+
+// # ponytail: Heuristically scale Haversine legs by 1.18 to match buildRoadFallback urban detour ratio.
+const ROAD_DETOUR_FACTOR = 1.18;
+
+export function calculateStopsPathKm(
+  stops: ItineraryStop[],
+  poiById?: Map<string, Poi>,
+  withRoadFactor = false
+): number {
+  const factor = withRoadFactor ? ROAD_DETOUR_FACTOR : 1;
+  let totalKm = 0;
+  let prevCoord: { latitude: number; longitude: number } | null = null;
+  for (const stop of stops) {
+    if (stop.stop_type === 'rest') continue;
+    const coord = resolveStopCoordinates(stop, poiById);
+    if (!coord) continue;
+    if (prevCoord) {
+      totalKm += (distanceKm(prevCoord, coord) ?? 0) * factor;
+    }
+    prevCoord = coord;
+  }
+  return Math.round(totalKm * 100) / 100;
+}
+
+export function orderSegmentNearestAnd2Opt(
+  places: ItineraryStop[],
+  poiById?: Map<string, Poi>
+): ItineraryStop[] {
+  if (places.length < 3) return [...places];
+  const coords = places.map((stop) => resolveStopCoordinates(stop, poiById));
+  if (coords.some((c) => c === null)) return [...places];
+
+  const remaining = places.map((stop, idx) => ({ stop, coord: coords[idx]! }));
+  const ordered = [remaining.shift()!];
   while (remaining.length) {
     const current = ordered[ordered.length - 1];
     let closestIndex = 0;
     let closestDistance = Number.POSITIVE_INFINITY;
     remaining.forEach((candidate, index) => {
-      const distance = distanceKm(current, candidate) ?? Number.POSITIVE_INFINITY;
+      const distance = distanceKm(current.coord, candidate.coord) ?? Number.POSITIVE_INFINITY;
       if (distance < closestDistance) {
         closestDistance = distance;
         closestIndex = index;
@@ -644,7 +691,416 @@ export function reorderNearStops(stops: ItineraryStop[]): ItineraryStop[] {
     });
     ordered.push(remaining.splice(closestIndex, 1)[0]);
   }
-  return ordered;
+
+  const legDist = (a: number, b: number) => distanceKm(ordered[a].coord, ordered[b].coord) ?? 0;
+  // # ponytail: Cap 2-opt iterations to 16 passes on typical daily cluster sizes (< 15 stops).
+  for (let pass = 0; pass < 16; pass += 1) {
+    let improved = false;
+    for (let i = 1; i < ordered.length - 1; i += 1) {
+      for (let j = i + 1; j < ordered.length; j += 1) {
+        const before =
+          legDist(i - 1, i) + (j + 1 < ordered.length ? legDist(j, j + 1) : 0);
+        const after =
+          legDist(i - 1, j) + (j + 1 < ordered.length ? legDist(i, j + 1) : 0);
+        if (before - after > 1e-6) {
+          let left = i;
+          let right = j;
+          while (left < right) {
+            const tmp = ordered[left];
+            ordered[left] = ordered[right];
+            ordered[right] = tmp;
+            left += 1;
+            right -= 1;
+          }
+          improved = true;
+        }
+      }
+    }
+    if (!improved) break;
+  }
+
+  return ordered.map((item) => item.stop);
+}
+
+export function reorderNearStops(stops: ItineraryStop[], poiById?: Map<string, Poi>): ItineraryStop[] {
+  const places = stops.filter((stop) => stop.stop_type !== 'rest');
+  return orderSegmentNearestAnd2Opt(places, poiById);
+}
+
+export interface DayRouteOptimizationResult {
+  day: ItineraryDay;
+  beforeKm: number;
+  afterKm: number;
+  savedKm: number;
+  reordered: boolean;
+}
+
+export function optimizeDayRouteOrder(
+  day: ItineraryDay,
+  poiById?: Map<string, Poi>
+): DayRouteOptimizationResult {
+  const places = day.stops.filter((stop) => stop.stop_type !== 'rest');
+  const rests = day.stops.filter((stop) => stop.stop_type === 'rest');
+  const beforeKm = calculateStopsPathKm(places, poiById, true);
+
+  if (places.length < 3) {
+    return { day, beforeKm, afterKm: beforeKm, savedKm: 0, reordered: false };
+  }
+
+  const optimizedPlaces = orderSegmentNearestAnd2Opt(places, poiById);
+  const afterKm = calculateStopsPathKm(optimizedPlaces, poiById, true);
+  const savedKm = Math.max(0, Math.round((beforeKm - afterKm) * 100) / 100);
+
+  if (savedKm < 0.05) {
+    return { day, beforeKm, afterKm: beforeKm, savedKm: 0, reordered: false };
+  }
+
+  const timedMinutes = places
+    .map((s) => (s.start_time ? minutesFromTime(s.start_time) : null))
+    .filter((v): v is number => v !== null && Number.isFinite(v));
+
+  let timedPlaces = optimizedPlaces;
+  if (timedMinutes.length > 0) {
+    let cursor = Math.min(...timedMinutes);
+    const restWindows = rests
+      .filter((r) => r.start_time && r.end_time)
+      .map((r) => ({ start: minutesFromTime(r.start_time!), end: minutesFromTime(r.end_time!) }))
+      .sort((a, b) => a.start - b.start);
+
+    timedPlaces = optimizedPlaces.map((stop) => {
+      if (!stop.start_time && !stop.end_time) return stop;
+      const dur =
+        stop.duration_minutes ||
+        (stop.start_time && stop.end_time ? durationBetween(stop.start_time, stop.end_time) : null) ||
+        90;
+      for (const rw of restWindows) {
+        if (cursor < rw.end && cursor + dur > rw.start) {
+          cursor = rw.end + 10;
+        }
+      }
+      const clampedStart = Math.min(cursor, 21 * 60 + 30);
+      const clampedEnd = Math.min(clampedStart + dur, 23 * 60);
+      cursor = clampedEnd + 15;
+      return {
+        ...stop,
+        start_time: timeFromMinutes(clampedStart),
+        end_time: timeFromMinutes(Math.max(clampedStart + 15, clampedEnd)),
+      };
+    });
+  }
+
+  const merged = [...timedPlaces];
+  rests.forEach((rest) => insertRestInOrder(merged, rest));
+  const sequenced = merged.map((stop, idx) => ({ ...stop, sequence: idx }));
+
+  return {
+    day: { ...day, stops: sequenced },
+    beforeKm,
+    afterKm,
+    savedKm,
+    reordered: true,
+  };
+}
+
+export interface ItineraryRouteOptimizationResult {
+  days: ItineraryDay[];
+  totalBeforeKm: number;
+  totalAfterKm: number;
+  totalSavedKm: number;
+  reorderedDaysCount: number;
+}
+
+export function optimizeItineraryRouteOrder(
+  days: ItineraryDay[],
+  poiById?: Map<string, Poi>
+): ItineraryRouteOptimizationResult {
+  let totalBeforeKm = 0;
+  let totalAfterKm = 0;
+  let totalSavedKm = 0;
+  let reorderedDaysCount = 0;
+
+  const optimizedDays = days.map((day) => {
+    const res = optimizeDayRouteOrder(day, poiById);
+    totalBeforeKm += res.beforeKm;
+    totalAfterKm += res.afterKm;
+    totalSavedKm += res.savedKm;
+    if (res.reordered) reorderedDaysCount += 1;
+    return res.day;
+  });
+
+  return {
+    days: optimizedDays,
+    totalBeforeKm: Math.round(totalBeforeKm * 100) / 100,
+    totalAfterKm: Math.round(totalAfterKm * 100) / 100,
+    totalSavedKm: Math.round(totalSavedKm * 100) / 100,
+    reorderedDaysCount,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// TÍNH TOÁN PHÁT THẢI CARBON (CO₂) THEO PHƯƠNG TIỆN DI CHUYỂN
+// ─────────────────────────────────────────────────────────────
+
+export type RouteTransportMode = 'driving' | 'motorcycle' | 'transit' | 'walking';
+
+// # ponytail: Urban Vietnam passenger-km emissions baseline (g CO2e/km) aligned with DEFRA/IEA averages.
+export const TRANSPORT_EMISSION_FACTORS_G_PER_KM: Record<RouteTransportMode, number> = {
+  driving: 171,
+  motorcycle: 72,
+  transit: 40,
+  walking: 0,
+};
+
+export const TRANSPORT_MODES_META: ReadonlyArray<{
+  id: RouteTransportMode;
+  label: string;
+  gramsPerKm: number;
+}> = [
+  { id: 'driving', label: 'Ô tô', gramsPerKm: 171 },
+  { id: 'motorcycle', label: 'Xe máy', gramsPerKm: 72 },
+  { id: 'transit', label: 'Buýt xanh', gramsPerKm: 40 },
+  { id: 'walking', label: 'Đi bộ', gramsPerKm: 0 },
+];
+
+export interface RouteCarbonEstimate {
+  distanceKm: number;
+  co2Grams: number;
+  baselineCarGrams: number;
+  savedGrams: number;
+  savedPercent: number;
+}
+
+export function estimateCarbonFootprint(
+  distanceMeters: number,
+  mode: RouteTransportMode
+): RouteCarbonEstimate {
+  const safeKm = Math.max(0, Number.isFinite(distanceMeters) ? distanceMeters : 0) / 1000;
+  const factor = TRANSPORT_EMISSION_FACTORS_G_PER_KM[mode] ?? TRANSPORT_EMISSION_FACTORS_G_PER_KM.driving;
+  const co2Grams = Math.round(safeKm * factor);
+  const baselineCarGrams = Math.round(safeKm * TRANSPORT_EMISSION_FACTORS_G_PER_KM.driving);
+  const savedGrams = Math.max(0, baselineCarGrams - co2Grams);
+  const savedPercent = baselineCarGrams > 0 ? Math.round((savedGrams / baselineCarGrams) * 100) : 0;
+
+  return {
+    distanceKm: Math.round(safeKm * 100) / 100,
+    co2Grams,
+    baselineCarGrams,
+    savedGrams,
+    savedPercent,
+  };
+}
+
+export function formatCarbonAmount(grams: number): string {
+  const safe = Math.max(0, Math.round(Number.isFinite(grams) ? grams : 0));
+  if (safe < 1000) return `${safe} g CO₂`;
+  return `${(safe / 1000).toFixed(2)} kg CO₂`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// KIỂM TRA RÀNG BUỘC GIỜ MỞ CỬA (OPENING HOURS VALIDATOR)
+// ─────────────────────────────────────────────────────────────
+
+export interface OpeningHoursCheckResult {
+  status: 'ok' | 'closed' | 'outside_hours' | 'unknown';
+  warningMessage: string | null;
+  openRangeLabel: string | null;
+}
+
+const WEEKDAY_PREFIXES: { jsDay: number; prefixPatterns: RegExp[]; inlinePattern: RegExp; label: string }[] = [
+  {
+    jsDay: 0,
+    prefixPatterns: [/^chủ\s*nhật(?=$|[\s:,.-])/i, /^cn(?=$|[\s:,.-])/i, /^sunday\b/i],
+    inlinePattern: /(?:chủ\s*nhật|\bcn)(?=$|[\s:,.-])/i,
+    label: 'Chủ Nhật',
+  },
+  {
+    jsDay: 1,
+    prefixPatterns: [/^thứ\s*(?:hai|2)(?=$|[\s:,.-])/i, /^t2(?=$|[\s:,.-])/i, /^monday\b/i],
+    inlinePattern: /thứ\s*(?:hai|2)(?=$|[\s:,.-])/i,
+    label: 'Thứ Hai',
+  },
+  {
+    jsDay: 2,
+    prefixPatterns: [/^thứ\s*(?:ba|3)(?=$|[\s:,.-])/i, /^t3(?=$|[\s:,.-])/i, /^tuesday\b/i],
+    inlinePattern: /thứ\s*(?:ba|3)(?=$|[\s:,.-])/i,
+    label: 'Thứ Ba',
+  },
+  {
+    jsDay: 3,
+    prefixPatterns: [/^thứ\s*(?:tư|tu|4)(?=$|[\s:,.-])/i, /^t4(?=$|[\s:,.-])/i, /^wednesday\b/i],
+    inlinePattern: /thứ\s*(?:tư|tu|4)(?=$|[\s:,.-])/i,
+    label: 'Thứ Tư',
+  },
+  {
+    jsDay: 4,
+    prefixPatterns: [/^thứ\s*(?:năm|nam|5)(?=$|[\s:,.-])/i, /^t5(?=$|[\s:,.-])/i, /^thursday\b/i],
+    inlinePattern: /thứ\s*(?:năm|nam|5)(?=$|[\s:,.-])/i,
+    label: 'Thứ Năm',
+  },
+  {
+    jsDay: 5,
+    prefixPatterns: [/^thứ\s*(?:sáu|sau|6)(?=$|[\s:,.-])/i, /^t6(?=$|[\s:,.-])/i, /^friday\b/i],
+    inlinePattern: /thứ\s*(?:sáu|sau|6)(?=$|[\s:,.-])/i,
+    label: 'Thứ Sáu',
+  },
+  {
+    jsDay: 6,
+    prefixPatterns: [/^thứ\s*(?:bảy|bay|7)(?=$|[\s:,.-])/i, /^t7(?=$|[\s:,.-])/i, /^saturday\b/i],
+    inlinePattern: /thứ\s*(?:bảy|bay|7)(?=$|[\s:,.-])/i,
+    label: 'Thứ Bảy',
+  },
+];
+
+function extractJsDayFromDate(dayDate?: string | null): number | null {
+  if (!dayDate || !/^\d{4}-\d{2}-\d{2}$/.test(dayDate)) return null;
+  const d = new Date(`${dayDate}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d.getDay();
+}
+
+function parseTimeWindowsFromText(text: string): Array<{ start: number; end: number }> {
+  const ranges: Array<{ start: number; end: number }> = [];
+  const regex = /(\d{1,2})[:h](\d{2})\s*[–—-]\s*(\d{1,2})[:h](\d{2})/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    const startH = Number(match[1]);
+    const startM = Number(match[2]);
+    const endH = Number(match[3]);
+    const endM = Number(match[4]);
+    if (startH > 24 || startM >= 60 || endH > 24 || endM >= 60) continue;
+    const start = startH * 60 + startM;
+    let end = endH * 60 + endM;
+    if (end <= start) end += 24 * 60;
+    ranges.push({ start, end });
+  }
+  return ranges;
+}
+
+function extractAllowedWeekdaysFromStatus(text: string): number[] | null {
+  if (!/(?:thứ|chủ\s*nhật)/i.test(text)) return null;
+  const days = new Set<number>();
+  WEEKDAY_PREFIXES.forEach((w) => {
+    if (w.inlinePattern.test(text)) days.add(w.jsDay);
+  });
+
+  // Handle compact lists like "Thứ 4, 6, Chủ Nhật"
+  const listMatch = text.match(/thứ\s*([2-7](?:\s*,\s*[2-7])+)/i);
+  if (listMatch) {
+    listMatch[1].split(',').forEach((tok) => {
+      const n = Number(tok.trim());
+      if (n >= 2 && n <= 7) days.add(n === 2 ? 1 : n === 3 ? 2 : n === 4 ? 3 : n === 5 ? 4 : n === 6 ? 5 : 6);
+    });
+  }
+  return days.size > 0 ? [...days] : null;
+}
+
+export function checkStopOpeningHours(
+  stop: Pick<ItineraryStop, 'stop_type' | 'start_time' | 'end_time' | 'duration_minutes'>,
+  poi: Poi | undefined,
+  dayDate?: string | null
+): OpeningHoursCheckResult {
+  if (stop.stop_type === 'rest') {
+    return { status: 'ok', warningMessage: null, openRangeLabel: null };
+  }
+  const oh = poi?.opening_hours;
+  if (oh?.is_temporarily_closed) {
+    return {
+      status: 'closed',
+      warningMessage: 'Địa điểm hiện đang tạm đóng cửa theo dữ liệu cập nhật.',
+      openRangeLabel: 'Tạm đóng cửa',
+    };
+  }
+
+  const jsDay = extractJsDayFromDate(dayDate);
+  const weekdayLines = Array.isArray(oh?.weekday_text) ? oh.weekday_text.map((l) => String(l).trim()) : [];
+  let targetRuleText = '';
+  let targetDayLabel = '';
+
+  if (weekdayLines.length > 0 && jsDay !== null) {
+    const dayMeta = WEEKDAY_PREFIXES.find((w) => w.jsDay === jsDay);
+    const matchedLine = weekdayLines.find((line) => dayMeta?.prefixPatterns.some((p) => p.test(line)));
+    if (matchedLine) {
+      targetRuleText = matchedLine.replace(/^[^:]+:\s*/, '').trim();
+      targetDayLabel = dayMeta?.label || '';
+    }
+  }
+
+  const statusText = typeof oh?.status_text === 'string' ? oh.status_text.trim() : '';
+  const hasScheduleInStatus =
+    /\d{1,2}[:h]\d{2}/.test(statusText) || /đóng cửa|cả ngày|24\/24|24\/7/i.test(statusText);
+
+  if (!targetRuleText) {
+    if (hasScheduleInStatus) {
+      targetRuleText = statusText;
+    } else if (weekdayLines.length > 0) {
+      targetRuleText = weekdayLines[0].replace(/^[^:]+:\s*/, '').trim();
+    } else if (poi?.openHours) {
+      targetRuleText = poi.openHours.trim();
+    }
+  }
+
+  if (!targetRuleText) {
+    return { status: 'unknown', warningMessage: null, openRangeLabel: null };
+  }
+
+  if (/cả ngày|24\/24|24\/7|24\s*giờ|lễ tân 24/i.test(targetRuleText) && !/đóng cửa/i.test(targetRuleText)) {
+    return { status: 'ok', warningMessage: null, openRangeLabel: 'Mở cửa cả ngày' };
+  }
+
+  if (/đóng\s*cửa/i.test(targetRuleText) && parseTimeWindowsFromText(targetRuleText).length === 0) {
+    const dayInfo = targetDayLabel ? ` vào ${targetDayLabel}` : '';
+    return {
+      status: 'closed',
+      warningMessage: `Địa điểm đóng cửa${dayInfo}. Hãy cân nhắc đổi sang ngày hoặc điểm khác.`,
+      openRangeLabel: `Đóng cửa${dayInfo}`,
+    };
+  }
+
+  const allowedWeekdays = extractAllowedWeekdaysFromStatus(targetRuleText);
+  if (allowedWeekdays && jsDay !== null && !allowedWeekdays.includes(jsDay)) {
+    const dayMeta = WEEKDAY_PREFIXES.find((w) => w.jsDay === jsDay);
+    return {
+      status: 'closed',
+      warningMessage: `Hoạt động này không mở vào ${dayMeta?.label || 'ngày đã chọn'} (${targetRuleText}).`,
+      openRangeLabel: targetRuleText,
+    };
+  }
+
+  const windows = parseTimeWindowsFromText(targetRuleText);
+  if (windows.length === 0) {
+    return { status: 'unknown', warningMessage: null, openRangeLabel: targetRuleText };
+  }
+
+  const openRangeLabel = windows
+    .map((w) => `${timeFromMinutes(w.start % 1440)}–${timeFromMinutes(w.end === 1440 ? 0 : w.end % 1440)}`)
+    .join(', ');
+
+  if (!stop.start_time) {
+    return { status: 'ok', warningMessage: null, openRangeLabel };
+  }
+
+  const visitStart = minutesFromTime(stop.start_time);
+  let visitEnd = stop.end_time ? minutesFromTime(stop.end_time) : visitStart + (stop.duration_minutes || 60);
+  if (!Number.isFinite(visitStart) || !Number.isFinite(visitEnd)) {
+    return { status: 'ok', warningMessage: null, openRangeLabel };
+  }
+  if (visitEnd <= visitStart) visitEnd += 24 * 60;
+
+  const fitsWindow = windows.some(
+    (w) =>
+      (visitStart >= w.start && visitEnd <= w.end) ||
+      (w.end > 1440 && visitStart + 1440 >= w.start && visitEnd + 1440 <= w.end)
+  );
+
+  if (!fitsWindow) {
+    const endLabel = stop.end_time || timeFromMinutes(visitEnd % 1440);
+    return {
+      status: 'outside_hours',
+      warningMessage: `Khung ${stop.start_time}–${endLabel} ngoài giờ mở cửa (${openRangeLabel}).`,
+      openRangeLabel,
+    };
+  }
+
+  return { status: 'ok', warningMessage: null, openRangeLabel };
 }
 
 export function optimizeDays(

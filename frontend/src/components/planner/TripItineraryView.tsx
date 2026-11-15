@@ -30,6 +30,12 @@ import {
   LayoutGrid,
   MapPin,
   Info,
+  AlertTriangle,
+  Leaf,
+  Route as RouteIcon,
+  Bike,
+  Bus,
+  Footprints,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import {
@@ -44,6 +50,7 @@ import {
 } from '@/data/pois';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import PoiMap from '@/components/poi/PoiMap';
+import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
 import {
   createEmptyItinerary,
   getTripItinerary,
@@ -55,6 +62,14 @@ import {
   minutesFromTime,
   updateDateRangeWithDays,
   getRoutePositionsForStops,
+  calculateStopsPathKm,
+  optimizeDayRouteOrder,
+  optimizeItineraryRouteOrder,
+  estimateCarbonFootprint,
+  formatCarbonAmount,
+  checkStopOpeningHours,
+  TRANSPORT_MODES_META,
+  type RouteTransportMode,
   type TripItinerary,
   type ItineraryDay,
   type ItineraryStop,
@@ -148,10 +163,12 @@ function getGoogleMapsDirectionsUrl(
   originLat?: number | null,
   originLng?: number | null,
   destLat?: number | null,
-  destLng?: number | null
+  destLng?: number | null,
+  mode: RouteTransportMode = 'driving'
 ): string {
   if (originLat != null && originLng != null && destLat != null && destLng != null) {
-    return `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destLat},${destLng}&travelmode=driving`;
+    const travelMode = mode === 'transit' ? 'transit' : mode === 'walking' ? 'walking' : 'driving';
+    return `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destLat},${destLng}&travelmode=${travelMode}`;
   }
   return 'https://www.google.com/maps';
 }
@@ -227,6 +244,8 @@ export default function TripItineraryView({
 
   const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set());
   const [showDistances, setShowDistances] = useState(true);
+  const [transportMode, setTransportMode] = useState<RouteTransportMode>('motorcycle');
+  const [optimizeFeedback, setOptimizeFeedback] = useState<string | null>(null);
   const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
@@ -305,6 +324,8 @@ export default function TripItineraryView({
       })
       .filter((p): p is Poi => p !== null);
   }, [tripIdeas, allPois, trip.destination]);
+
+  const poiById = useMemo(() => new Map(allPois.map((p) => [p.id, p])), [allPois]);
 
   // Cuộn dải thẻ ý tưởng
   const handleScrollIdeas = (dir: 'left' | 'right') => {
@@ -645,6 +666,62 @@ export default function TripItineraryView({
     });
   };
 
+  // Thống kê tổng quãng đường, phát thải CO₂ và cảnh báo giờ mở cửa toàn chuyến
+  const tripRouteSummary = useMemo(() => {
+    let totalRoadKm = 0;
+    let openingConflictCount = 0;
+
+    for (const day of plan.days) {
+      totalRoadKm += calculateStopsPathKm(day.stops, poiById, true);
+      for (const stop of day.stops) {
+        if (stop.stop_type === 'rest') continue;
+        const matched = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
+        const check = checkStopOpeningHours(stop, matched, day.date);
+        if (check.status === 'closed' || check.status === 'outside_hours') {
+          openingConflictCount += 1;
+        }
+      }
+    }
+
+    const carbon = estimateCarbonFootprint(totalRoadKm * 1000, transportMode);
+    return {
+      totalRoadKm: Math.round(totalRoadKm * 10) / 10,
+      carbon,
+      openingConflictCount,
+    };
+  }, [plan.days, poiById, transportMode]);
+
+  // Tối ưu cụm điểm giảm zig-zag cho toàn bộ các ngày
+  const handleOptimizeAllDays = () => {
+    const res = optimizeItineraryRouteOrder(plan.days, poiById);
+    if (res.reorderedDaysCount > 0) {
+      persistPlan({ ...plan, days: res.days });
+      const savedCarbon = estimateCarbonFootprint(res.totalSavedKm * 1000, transportMode);
+      setOptimizeFeedback(
+        `Đã gom cụm tránh đi zig-zag ở ${res.reorderedDaysCount} ngày: ${res.totalBeforeKm.toFixed(1)} → ${res.totalAfterKm.toFixed(1)} km (giảm ${res.totalSavedKm.toFixed(1)} km · ${formatCarbonAmount(savedCarbon.co2Grams)}).`
+      );
+    } else {
+      setOptimizeFeedback('Thứ tự các điểm hiện tại đã tối ưu theo cụm gần nhất, chưa phát hiện đoạn vòng lặp.');
+    }
+  };
+
+  // Tối ưu cụm điểm giảm zig-zag cho một ngày cụ thể
+  const handleOptimizeSingleDay = (dayNumber: number) => {
+    const targetDay = plan.days.find((d) => d.day_number === dayNumber);
+    if (!targetDay) return;
+    const res = optimizeDayRouteOrder(targetDay, poiById);
+    if (res.reordered) {
+      const nextDays = plan.days.map((d) => (d.day_number === dayNumber ? res.day : d));
+      persistPlan({ ...plan, days: nextDays });
+      const savedCarbon = estimateCarbonFootprint(res.savedKm * 1000, transportMode);
+      setOptimizeFeedback(
+        `Đã tối ưu Ngày ${dayNumber}: ${res.beforeKm.toFixed(1)} → ${res.afterKm.toFixed(1)} km (giảm ${res.savedKm.toFixed(1)} km · ${formatCarbonAmount(savedCarbon.co2Grams)}).`
+      );
+    } else {
+      setOptimizeFeedback(`Ngày ${dayNumber} đã được sắp xếp theo thứ tự gần nhất.`);
+    }
+  };
+
   // Thêm ngày mới vào lịch
   const handleAddDay = () => {
     const nextNumber = plan.days.length + 1;
@@ -930,13 +1007,13 @@ export default function TripItineraryView({
       }}
       className={
         isDrawerMode
-          ? "fixed inset-y-0 right-0 w-full sm:w-[620px] lg:w-[calc(50vw)] xl:w-[calc(50vw)] z-50 bg-white rounded-l-[24px] border-l border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.08),-4px_0_12px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden animate-slideInRight select-none"
-          : "flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn"
+          ? "no-print fixed inset-y-0 right-0 w-full sm:w-[620px] lg:w-[calc(50vw)] xl:w-[calc(50vw)] z-50 bg-white rounded-l-[24px] border-l border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.08),-4px_0_12px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden animate-slideInRight select-none"
+          : "flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn print-scroll-unlock"
       }
     >
       {/* ─── TOP HEADER (DRAWER MODE HOẶC FULL PAGE CHUẨN MINDTRIP) ─── */}
       {isDrawerMode ? (
-        <header className="px-6 py-4 bg-white border-b border-gray-100 flex items-center justify-between shrink-0 z-30">
+        <header className="no-print px-6 py-4 bg-white border-b border-gray-100 flex items-center justify-between shrink-0 z-30">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -996,7 +1073,7 @@ export default function TripItineraryView({
           </div>
         </header>
       ) : (
-        <header className="h-[60px] px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
+        <header className="no-print h-[60px] px-4 sm:px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between gap-2 shrink-0 z-30">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
@@ -1080,15 +1157,24 @@ export default function TripItineraryView({
       )}
 
       {/* ─── NỘI DUNG CHÍNH (2 CỘT HOẶC 1 CỘT CHO DRAWER) ─── */}
-      <div className={isDrawerMode ? "flex-1 w-full min-h-0 overflow-hidden flex flex-col" : "flex-1 min-h-0 flex items-stretch overflow-hidden bg-white"}>
+      <div className={isDrawerMode ? "flex-1 w-full min-h-0 overflow-hidden flex flex-col" : "flex-1 min-h-0 flex items-stretch overflow-hidden bg-white print-scroll-unlock"}>
         {/* ════════════════════════════════════════════════════════
             CỘT: Ý TƯỞNG + LỊCH THEO NGÀY (THỦ CÔNG CHUẨN)
         ════════════════════════════════════════════════════════ */}
-        <div className={`${isDrawerMode ? 'w-full' : (isMapExpanded ? 'hidden' : 'w-[560px] lg:w-[620px] xl:w-[660px] shrink-0')} flex flex-col h-full bg-white overflow-y-auto px-5 sm:px-6 py-4 border-r border-gray-100 auto-hide-scrollbar select-none transition-[width] duration-300 ease-in-out`}>
+        <div className={`${isDrawerMode ? 'w-full' : (isMapExpanded ? 'hidden' : 'w-full md:w-[560px] lg:w-[620px] xl:w-[660px] shrink-0')} flex flex-col h-full bg-white overflow-y-auto px-4 sm:px-6 py-4 border-r border-gray-100 auto-hide-scrollbar select-none transition-[width] duration-300 ease-in-out print-scroll-unlock print-full-width`}>
+          {/* Header chỉ hiển thị khi In / Lưu PDF */}
+          <div className="hidden print:block mb-5 pb-3 border-b-2 border-neutral-900">
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+              GreenTrip AI • Lịch trình du lịch xanh
+            </p>
+            <h1 className="text-xl font-extrabold text-neutral-950 mt-1">{displayTitle}</h1>
+            <p className="text-xs text-neutral-700 mt-1">{displaySubtitle}</p>
+          </div>
+
           {/* ────────────────────────────────────────────────────────
               1. PHẦN Ý TƯỞNG (CHUẨN MINDTRIP ẢNH 3, 4 - BỘ LỌC BÊN PHẢI)
           ──────────────────────────────────────────────────────── */}
-          <section ref={ideasSectionRef} className="shrink-0 mb-4">
+          <section ref={ideasSectionRef} className="no-print shrink-0 mb-4">
             <div className="flex items-center justify-between mb-2.5">
               {/* Tiêu đề bên trái */}
               <button
@@ -1472,7 +1558,7 @@ export default function TripItineraryView({
               </div>
 
               {/* Menu ba chấm ... cạnh tiêu đề Lịch trình */}
-              <div className="relative">
+              <div className="no-print relative">
                 <button
                   type="button"
                   onClick={() => setShowItinerarySettingsMenu(!showItinerarySettingsMenu)}
@@ -1499,15 +1585,111 @@ export default function TripItineraryView({
               </div>
             </div>
 
+            {/* Thanh công cụ Delighters: Checklist hành trang, Xuất .ics, In / Lưu PDF */}
+            <TripExportToolbar
+              trip={trip}
+              plan={plan}
+              onBeforePrint={() => setCollapsedDays(new Set())}
+              className="mb-3"
+            />
+
+            {/* Bảng Tối ưu Lộ trình & Ước tính Carbon (Phần 1) */}
+            <div className="no-print mb-3 rounded-2xl border border-emerald-200/80 bg-[#F7FBF8] p-3 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-800">
+                  <span className="inline-flex items-center gap-1.5 font-bold text-emerald-900">
+                    <Leaf size={14} className="text-emerald-700 shrink-0" />
+                    <span>{tripRouteSummary.totalRoadKm.toFixed(1)} km</span>
+                  </span>
+                  <span className="text-gray-400" aria-hidden="true">·</span>
+                  <span className="font-semibold text-gray-900">
+                    {formatCarbonAmount(tripRouteSummary.carbon.co2Grams)}
+                  </span>
+                  {tripRouteSummary.carbon.savedPercent > 0 && tripRouteSummary.totalRoadKm > 0 && (
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900">
+                      -{tripRouteSummary.carbon.savedPercent}% so với ô tô
+                    </span>
+                  )}
+                  {tripRouteSummary.openingConflictCount > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-950 border border-amber-300">
+                      <AlertTriangle size={12} className="shrink-0" />
+                      <span>{tripRouteSummary.openingConflictCount} điểm cần xem giờ mở cửa</span>
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleOptimizeAllDays}
+                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-gray-950 px-3.5 text-xs font-bold text-white hover:bg-gray-800 active:scale-95 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  title="Sắp xếp lại các điểm trong mỗi ngày theo cụm gần nhau để giảm đi vòng (zig-zag)"
+                >
+                  <RouteIcon size={14} aria-hidden="true" />
+                  <span>Tối ưu đường đi</span>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Chọn phương tiện ước tính phát thải CO2">
+                {TRANSPORT_MODES_META.map((mode) => {
+                  const active = transportMode === mode.id;
+                  const ModeIcon =
+                    mode.id === 'driving'
+                      ? Car
+                      : mode.id === 'motorcycle'
+                        ? Bike
+                        : mode.id === 'transit'
+                          ? Bus
+                          : Footprints;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setTransportMode(mode.id)}
+                      className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                        active
+                          ? 'border-emerald-800 bg-emerald-800 text-white shadow-2xs'
+                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <ModeIcon size={13} aria-hidden="true" />
+                      <span>{mode.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {optimizeFeedback && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex items-start justify-between gap-2 rounded-xl bg-white border border-emerald-200 px-3 py-2 text-xs text-emerald-950 font-medium"
+                >
+                  <span>{optimizeFeedback}</span>
+                  <button
+                    type="button"
+                    onClick={() => setOptimizeFeedback(null)}
+                    aria-label="Đóng thông báo tối ưu"
+                    className="text-gray-500 hover:text-gray-900 cursor-pointer shrink-0 p-0.5"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Danh sách các ngày theo chiều dọc (Chuẩn Ảnh 1, 4 - ĐÃ BỎ DẤU CỘNG Ở HEADER NGÀY) */}
             <div className="space-y-4 pb-10">
               {plan.days.map((day) => {
                 const hasStops = day.stops.length > 0;
                 const isCollapsed = collapsedDays.has(day.day_number);
                 const hasLunchBreak = day.stops.some((s) => s.stop_type === 'rest');
+                const nonRestCount = day.stops.filter((s) => s.stop_type !== 'rest').length;
+                const dayRoadKm = calculateStopsPathKm(day.stops, poiById, true);
+                const dayCarbon = estimateCarbonFootprint(dayRoadKm * 1000, transportMode);
 
                 return (
-                  <div key={day.day_id} className="border-b border-gray-100 pb-3">
+                  <div key={day.day_id || `day-${day.day_number}`} className="border-b border-gray-100 pb-3">
                     {/* Header Ngày: Không còn dấu cộng lặp lại, chỉ có chevron và tiêu đề ngày */}
                     <div
                       onClick={() => toggleDayCollapse(day.day_number)}
@@ -1532,7 +1714,12 @@ export default function TripItineraryView({
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 font-medium">
+                        {dayRoadKm > 0 && (
+                          <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded-full">
+                            ~{dayRoadKm.toFixed(1)} km · {formatCarbonAmount(dayCarbon.co2Grams)}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-600 font-medium">
                           {day.stops.length > 0 ? `${day.stops.length} điểm` : ''}
                         </span>
                         {plan.days.length > 1 && (
@@ -1558,7 +1745,7 @@ export default function TripItineraryView({
                       <div className="mt-1 space-y-3 pl-2">
                         {!hasStops ? (
                           /* Trạng thái chưa có điểm: Đúng 1 nút + Thêm (Chuẩn Ảnh 1, 4) */
-                          <div className="py-1 pl-4">
+                          <div className="no-print py-1 pl-4">
                             <button
                               type="button"
                               onClick={() => {
@@ -1578,24 +1765,36 @@ export default function TripItineraryView({
                           <>
                             {day.stops.map((stop, sIdx) => {
                               const isRest = stop.stop_type === 'rest';
-                              const matchedPoi = allPois.find((p) => p.id === stop.poi_id);
+                              const matchedPoi = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
+                              const openingCheck = checkStopOpeningHours(stop, matchedPoi, day.date);
                               const isEditingTime = editingStopId === stop.stop_id;
                               const isEditingNote = editingNoteStopId === stop.stop_id;
                               const isMenuOpen = activeMenuStopId === stop.stop_id;
 
                               const nextStop = day.stops[sIdx + 1];
+                              const nextMatchedPoi = nextStop?.poi_id ? poiById.get(nextStop.poi_id) : undefined;
                               let transitDistKm: number | null = null;
                               if (nextStop && !isRest && nextStop.stop_type !== 'rest') {
-                                transitDistKm = distanceKm(stop, nextStop);
+                                const straightKm = distanceKm(
+                                  {
+                                    latitude: stop.latitude ?? matchedPoi?.lat ?? null,
+                                    longitude: stop.longitude ?? matchedPoi?.lng ?? null,
+                                  },
+                                  {
+                                    latitude: nextStop.latitude ?? nextMatchedPoi?.lat ?? null,
+                                    longitude: nextStop.longitude ?? nextMatchedPoi?.lng ?? null,
+                                  }
+                                );
+                                transitDistKm = straightKm != null ? Math.round(straightKm * 1.18 * 10) / 10 : null;
                               }
 
                               return (
-                                <React.Fragment key={stop.stop_id}>
+                                <React.Fragment key={stop.stop_id || `stop-${sIdx}`}>
                                   {/* Thẻ lịch trình trong ngày */}
                                   <div
                                     onMouseEnter={() => setHoveredStopId(stop.poi_id || stop.stop_id)}
                                     onMouseLeave={() => setHoveredStopId(null)}
-                                    className={`min-h-[110px] rounded-[22px] border border-[#e6e6e6] p-3 flex items-start gap-3.5 transition-all relative group ${
+                                    className={`print-avoid-break min-h-[110px] rounded-[22px] border border-[#e6e6e6] p-3 flex items-start gap-3.5 transition-all relative group ${
                                       isRest ? 'bg-amber-50/70 border-amber-200' : 'bg-white hover:border-gray-400 shadow-2xs'
                                     }`}
                                   >
@@ -1674,9 +1873,20 @@ export default function TripItineraryView({
                                           </button>
                                         )}
 
-                                        <p className="text-[11px] text-gray-500 mt-1 truncate">
+                                        <p className="text-xs text-gray-600 mt-1 truncate">
                                           {stop.address || stop.city || trip.destination}
                                         </p>
+
+                                        {(openingCheck.status === 'closed' || openingCheck.status === 'outside_hours') &&
+                                          openingCheck.warningMessage && (
+                                            <div
+                                              role="status"
+                                              className="mt-1.5 inline-flex items-start gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-950"
+                                            >
+                                              <AlertTriangle size={13} className="text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
+                                              <span className="leading-snug">{openingCheck.warningMessage}</span>
+                                            </div>
+                                          )}
                                       </div>
 
                                       {/* Ghi chú Note */}
@@ -1832,34 +2042,48 @@ export default function TripItineraryView({
                                     </div>
                                   </div>
 
-                                  {/* Dòng khoảng cách giữa 2 thẻ */}
-                                  {showDistances && transitDistKm !== null && (
-                                    <div className="h-[44px] ml-7 pl-6 border-l-2 border-[#ddd] flex items-center gap-3 text-xs text-gray-600 font-semibold animate-fadeIn">
-                                      <Car size={13} className="text-gray-400 shrink-0" />
-                                      <span>~{transitDistKm.toFixed(1)} km</span>
-                                      <a
-                                        href={getGoogleMapsDirectionsUrl(
-                                          stop.latitude,
-                                          stop.longitude,
-                                          nextStop.latitude,
-                                          nextStop.longitude
-                                        )}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1 font-bold ml-1"
-                                        title="Mở chỉ đường trên Google Maps"
-                                      >
-                                        <span>Chỉ đường</span>
-                                        <ExternalLink size={11} />
-                                      </a>
-                                    </div>
-                                  )}
+                                  {/* Dòng khoảng cách & CO₂ giữa 2 thẻ */}
+                                  {showDistances && transitDistKm !== null && (() => {
+                                    const legCarbon = estimateCarbonFootprint(transitDistKm * 1000, transportMode);
+                                    const LegIcon =
+                                      transportMode === 'driving'
+                                        ? Car
+                                        : transportMode === 'motorcycle'
+                                          ? Bike
+                                          : transportMode === 'transit'
+                                            ? Bus
+                                            : Footprints;
+                                    return (
+                                      <div className="min-h-[44px] ml-7 pl-6 border-l-2 border-[#ddd] flex flex-wrap items-center gap-2.5 text-xs text-gray-700 font-semibold animate-fadeIn">
+                                        <LegIcon size={13} className="text-emerald-700 shrink-0" aria-hidden="true" />
+                                        <span>~{transitDistKm.toFixed(1)} km</span>
+                                        <span className="text-gray-400" aria-hidden="true">·</span>
+                                        <span className="text-emerald-800">{formatCarbonAmount(legCarbon.co2Grams)}</span>
+                                        <a
+                                          href={getGoogleMapsDirectionsUrl(
+                                            stop.latitude ?? matchedPoi?.lat,
+                                            stop.longitude ?? matchedPoi?.lng,
+                                            nextStop.latitude ?? nextMatchedPoi?.lat,
+                                            nextStop.longitude ?? nextMatchedPoi?.lng,
+                                            transportMode
+                                          )}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-emerald-800 hover:text-emerald-950 hover:underline flex items-center gap-1 font-bold ml-1"
+                                          title="Mở chỉ đường trên Google Maps"
+                                        >
+                                          <span>Chỉ đường</span>
+                                          <ExternalLink size={12} />
+                                        </a>
+                                      </div>
+                                    );
+                                  })()}
                                 </React.Fragment>
                               );
                             })}
 
                             {/* Nút hành động ở cuối ngày khi đã có điểm */}
-                            <div className="pt-2 pl-4 flex items-center gap-2">
+                            <div className="pt-2 pl-4 flex flex-wrap items-center gap-2">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1869,7 +2093,7 @@ export default function TripItineraryView({
                                   setModalSearch('');
                                   setShowAddIdeasModal(true);
                                 }}
-                                className="inline-flex items-center gap-1.5 h-8 px-4 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-800 transition cursor-pointer shadow-2xs"
+                                className="inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-800 transition cursor-pointer shadow-2xs"
                               >
                                 <Plus size={13} />
                                 <span>Thêm</span>
@@ -1879,10 +2103,22 @@ export default function TripItineraryView({
                                 <button
                                   type="button"
                                   onClick={() => handleAddLunchBreak(day.day_number)}
-                                  className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full border border-amber-200 bg-amber-50 hover:bg-amber-100 text-xs font-semibold text-amber-900 transition cursor-pointer shadow-2xs"
+                                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 rounded-full border border-amber-200 bg-amber-50 hover:bg-amber-100 text-xs font-semibold text-amber-900 transition cursor-pointer shadow-2xs"
                                 >
                                   <Coffee size={13} className="text-amber-700" />
                                   <span>+ Nghỉ trưa (12:00 – 13:30)</span>
+                                </button>
+                              )}
+
+                              {nonRestCount >= 3 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOptimizeSingleDay(day.day_number)}
+                                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 rounded-full border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold text-emerald-900 transition cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                                  title="Tối ưu thứ tự các điểm trong ngày này để giảm đi vòng"
+                                >
+                                  <RouteIcon size={13} className="text-emerald-700" aria-hidden="true" />
+                                  <span>Tối ưu ngày</span>
                                 </button>
                               )}
                             </div>
@@ -1895,7 +2131,7 @@ export default function TripItineraryView({
               })}
 
               {/* Nút thêm ngày mới ở cuối danh sách ngày */}
-              <div className="pt-2 flex items-center justify-center">
+              <div className="no-print pt-2 flex items-center justify-center">
                 <button
                   type="button"
                   onClick={handleAddDay}

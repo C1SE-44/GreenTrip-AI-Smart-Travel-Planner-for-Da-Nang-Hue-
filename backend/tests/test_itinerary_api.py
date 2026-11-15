@@ -253,3 +253,80 @@ def test_itinerary_rejects_overlapping_activity_times() -> None:
 
     assert response.status_code == 422
     assert "khung giờ bị trùng" in response.json()["detail"][0]["msg"].lower()
+
+
+def test_guest_can_read_and_update_seeded_sample_trip_while_private_trip_stays_404(tmp_path, monkeypatch) -> None:
+    from app.db import postgres
+
+    monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", tmp_path / "sample_access.sqlite")
+    monkeypatch.setattr(postgres, "get_settings", lambda: Settings(DATABASE_URL=""))
+
+    with postgres.get_connection() as conn:
+        cur = conn.cursor()
+        from app.trips.itinerary_repository import _ensure_local_tables
+
+        _ensure_local_tables(conn, cur)
+        cur.execute(
+            "INSERT INTO public.itineraries (trip_id, user_id, title, destination, days_count) VALUES (?, ?, ?, ?, ?)",
+            ("sample-demo-3d", "demo-user", "Demo 3N", "Đà Nẵng", 1),
+        )
+        cur.execute(
+            "INSERT INTO public.itinerary_days (day_id, trip_id, day_number, title) VALUES (?, ?, ?, ?)",
+            ("sample-demo-3d-d1", "sample-demo-3d", 1, "Ngày 1"),
+        )
+        cur.execute(
+            """
+            INSERT INTO public.itinerary_stops
+                (stop_id, day_id, poi_id, title, sequence, start_time, end_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("sample-demo-3d-d1-s1", "sample-demo-3d-d1", "poi_cau_rong", "Cầu Rồng", 1, "09:00", None),
+        )
+        cur.execute(
+            "INSERT INTO public.itineraries (trip_id, user_id, title, destination, days_count) VALUES (?, ?, ?, ?, ?)",
+            ("private-user-trip", "other-user", "Private", "Huế", 1),
+        )
+        conn.commit()
+
+    with TestClient(app) as client:
+        guest_get = client.get("/trips/sample-demo-3d/itinerary")
+        assert guest_get.status_code == 200
+        body = guest_get.json()
+        assert body["days"][0]["stops"][0]["sequence"] == 0
+        assert body["days"][0]["stops"][0]["stop_type"] == "poi"
+        assert body["days"][0]["stops"][0]["source"] == "idea"
+
+        guest_put = client.put(
+            "/trips/sample-demo-3d/itinerary",
+            json={
+                "trip_id": "sample-demo-3d",
+                "title": "Demo 3N Updated",
+                "destination": "Đà Nẵng & Huế",
+                "days_count": 1,
+                "days": [
+                    {
+                        "day_id": "sample-demo-3d-d1",
+                        "day_number": 1,
+                        "date": None,
+                        "title": "Ngày 1",
+                        "stops": [
+                            {
+                                "stop_id": "sample-demo-3d-d1-s1",
+                                "poi_id": "poi_cau_rong",
+                                "title": "Cầu Rồng",
+                                "sequence": 0,
+                                "start_time": "09:00",
+                                "end_time": "10:00",
+                                "stop_type": "poi",
+                                "source": "assistant",
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+        assert guest_put.status_code == 200
+
+        private_get = client.get("/trips/private-user-trip/itinerary")
+        assert private_get.status_code == 404
+

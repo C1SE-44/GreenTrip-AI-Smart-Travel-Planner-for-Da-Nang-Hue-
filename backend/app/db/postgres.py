@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import sqlite3
+import time
 from pathlib import Path
 from typing import Any
 
@@ -48,8 +49,18 @@ class SQLiteCursorWrapper:
         clean_query = re.sub(r"\(\s*(SELECT[\s\S]*?LIMIT\s+\d+)\s*\)", r"SELECT * FROM (\1)", clean_query, flags=re.IGNORECASE)
         # 1e. Chuyển đổi jsonb extraction ->> sang json_extract cho SQLite
         clean_query = re.sub(r"(\w+)\.ai_metadata->>'(\w+)'", r"json_extract(\1.ai_metadata, '$.\2')", clean_query)
-        # 1f. Chuẩn hóa giá trị boolean nếu có
-        clean_query = clean_query.replace("TRUE", "1").replace("FALSE", "0")
+        # 1f. Chuẩn hóa giá trị boolean nếu có (chỉ thay keyword đứng độc lập ngoài chuỗi SQL)
+        # ponytail: preserve SQL single-quoted literals and column names containing TRUE/FALSE
+        clean_query = re.sub(
+            r"('(?:''|[^'])*')|\b(TRUE|FALSE)\b",
+            lambda match: (
+                match.group(1)
+                if match.group(1) is not None
+                else ("1" if match.group(2).upper() == "TRUE" else "0")
+            ),
+            clean_query,
+            flags=re.IGNORECASE,
+        )
         # 1g. SQLite không hỗ trợ IF NOT EXISTS trong ALTER TABLE ADD COLUMN
         clean_query = re.sub(r"\bADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\b", "ADD COLUMN", clean_query, flags=re.IGNORECASE)
 
@@ -220,6 +231,29 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
         longitude REAL
     );
     """)
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS saved_place_collections (
+        collection_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS saved_place_collection_items (
+        user_id TEXT NOT NULL,
+        collection_id TEXT NOT NULL,
+        poi_id TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (collection_id, poi_id)
+    );
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_pois_city_active ON pois(city_id, is_active);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_otps_lookup ON email_otps(email, created_at);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_place_collections_user ON saved_place_collections(user_id, is_default, created_at);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_place_collection_items_user_poi ON saved_place_collection_items(user_id, poi_id);")
 
     cur = conn.cursor()
     cur.execute("SELECT count(*) FROM cities")
@@ -318,7 +352,9 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
     conn.commit()
 
 
-_POSTGRES_AVAILABLE: bool = True
+# ponytail: 30s monotonic cooldown on Postgres connection failure instead of sticky disable; replace with pool/probe if needed
+_POSTGRES_RETRY_COOLDOWN_SECONDS = 30.0
+_POSTGRES_RETRY_AFTER: float = 0.0
 
 
 def get_connection() -> Any:
@@ -327,17 +363,17 @@ def get_connection() -> Any:
     Nếu không có PostgreSQL (hoặc người dùng không bật Docker),
     hệ thống tự động sử dụng CSDL SQLite cục bộ giúp tính năng Đăng nhập/Đăng ký hoạt động mượt mà.
     """
-    global _POSTGRES_AVAILABLE
+    global _POSTGRES_RETRY_AFTER
     settings = get_settings()
 
-    if settings.DATABASE_URL and _POSTGRES_AVAILABLE:
+    if settings.DATABASE_URL and time.monotonic() >= _POSTGRES_RETRY_AFTER:
         try:
             return connect(
                 settings.DATABASE_URL,
                 connect_timeout=3,
             )
         except Exception as e:
-            _POSTGRES_AVAILABLE = False
+            _POSTGRES_RETRY_AFTER = time.monotonic() + _POSTGRES_RETRY_COOLDOWN_SECONDS
             logger.warning(
                 "Không thể kết nối đến PostgreSQL từ DATABASE_URL (%s). Tự động chuyển sang CSDL SQLite cục bộ.",
                 e,

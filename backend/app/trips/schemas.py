@@ -350,6 +350,41 @@ class TripItineraryResponse(TripItinerarySyncRequest):
     updated_at: datetime | None = None
 
 
+class MyTripSummaryResponse(BaseModel):
+    trip_id: str
+    title: str
+    destination: str
+    start_date: str | None = None
+    days_count: int = Field(ge=1, le=31)
+    total_stops: int = Field(default=0, ge=0)
+    updated_at: datetime | str | None = None
+
+
+class UpdateTripRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    destination: str | None = Field(default=None, min_length=1, max_length=200)
+    start_date: str | None = None
+
+    @field_validator("start_date")
+    @classmethod
+    def validate_start_date(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            parsed = date.fromisoformat(value)
+        except ValueError as error:
+            raise ValueError("Ngày bắt đầu cần có định dạng YYYY-MM-DD.") from error
+        if parsed.isoformat() != value:
+            raise ValueError("Ngày bắt đầu cần có định dạng YYYY-MM-DD.")
+        return value
+
+
+class DeleteTripResponse(BaseModel):
+    success: bool = True
+    message: str
+    trip_id: str
+
+
 class ValidatedTripData(BaseModel):
     destination: str
     days: int

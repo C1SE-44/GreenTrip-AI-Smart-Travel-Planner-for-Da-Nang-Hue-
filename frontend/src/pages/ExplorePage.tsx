@@ -6,6 +6,8 @@ import TripItineraryView from '@/components/planner/TripItineraryView';
 import TripCalendarView from '@/components/planner/TripCalendarView';
 import { MorphFavoriteButton, MorphAddButton } from '@/components/ui/MorphButton';
 import CreateTripCopilotModal from '@/components/planner/CreateTripCopilotModal';
+import IdeationChatView from '@/components/planner/IdeationChatView';
+import type { CopilotTripMessage } from '@/components/planner/copilotTripData';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse, isCuratedHighlight } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
@@ -254,12 +256,16 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
   },
 ];
 
-export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'home' | 'explore' | 'trips' | 'saved' }) {
+export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'home' | 'explore' | 'trips' | 'saved' | 'chat' }) {
   const navigate = useNavigate();
   const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
-  const [viewMode, setViewMode] = useState<'home' | 'explore' | 'trips' | 'saved'>(initialView);
+  const [viewMode, setViewMode] = useState<'home' | 'explore' | 'trips' | 'saved' | 'chat'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
+  const [ideationDraft, setIdeationDraft] = useState<{
+    initialPrompt: string;
+    chatHistory: CopilotTripMessage[];
+  } | null>(null);
   const [addToTripSelection, setAddToTripSelection] = useState<AddToTripSelection | null>(null);
   const [pendingAddToTripPoiIds, setPendingAddToTripPoiIds] = useState<string[] | null>(null);
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
@@ -987,7 +993,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilter;
 
   return (
-    <div className="flex h-screen overflow-hidden font-sans bg-white select-none">
+    <div className="flex h-screen overflow-hidden font-sans bg-white select-none print-scroll-unlock">
       {/* 1. LEFT SIDEBAR: Padding px-4 cố định, các icon giữ nguyên tọa độ 100%, không bị dịch chuyển */}
       <aside 
         className={`${
@@ -1226,30 +1232,80 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             })}
           </nav>
 
-          {/* Button Tạo chuyến đi - Nút hành động chính chuẩn Mindtrip */}
+          {/* Button Trò chuyện mới & Tạo chuyến đi cạnh nhau ở cuối sidebar */}
           <div className="pt-6">
             {isSidebarCollapsed ? (
-              <div className="w-9 h-9 flex items-center justify-center shrink-0">
-                <button
-                  onClick={() => setIsCreateTripModalOpen(true)}
-                  className="w-9 h-9 bg-black hover:bg-neutral-800 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 group/newchat relative"
-                  title="Tạo chuyến đi"
-                >
-                  <i className="ph ph-plus text-[18px] text-white font-bold"></i>
-                  <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 bg-black text-white text-[11.5px] font-medium px-2.5 py-1 rounded-md shadow-md whitespace-nowrap pointer-events-none opacity-0 group-hover/newchat:opacity-100 transition-opacity z-50">
-                    Tạo chuyến đi
-                  </div>
-                </button>
+              <div className="flex flex-col gap-2.5 items-center shrink-0">
+                <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMode('chat');
+                      navigate('/chat');
+                    }}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 group/ideation relative border ${
+                      viewMode === 'chat'
+                        ? 'bg-emerald-800 text-white border-emerald-800'
+                        : 'bg-white hover:bg-neutral-100 text-neutral-900 border-neutral-300'
+                    }`}
+                    title="Trò chuyện mới"
+                    aria-label="Trò chuyện mới"
+                  >
+                    <i className="ph ph-chat-circle-dots text-[18px]"></i>
+                    <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 bg-black text-white text-xs font-medium px-2.5 py-1 rounded-md shadow-md whitespace-nowrap pointer-events-none opacity-0 group-hover/ideation:opacity-100 transition-opacity z-50">
+                      Trò chuyện mới
+                    </div>
+                  </button>
+                </div>
+                <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdeationDraft(null);
+                      setIsCreateTripModalOpen(true);
+                    }}
+                    className="w-9 h-9 bg-black hover:bg-neutral-800 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 group/newchat relative"
+                    title="Tạo chuyến đi"
+                    aria-label="Tạo chuyến đi"
+                  >
+                    <i className="ph ph-plus text-[18px] text-white font-bold"></i>
+                    <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 bg-black text-white text-xs font-medium px-2.5 py-1 rounded-md shadow-md whitespace-nowrap pointer-events-none opacity-0 group-hover/newchat:opacity-100 transition-opacity z-50">
+                      Tạo chuyến đi
+                    </div>
+                  </button>
+                </div>
               </div>
             ) : (
-              <button 
-                onClick={() => setIsCreateTripModalOpen(true)}
-                className="w-full h-[48px] px-3 bg-black hover:bg-neutral-800 text-white font-semibold text-[13.5px] rounded-full transition-all text-center border border-black shadow-xs cursor-pointer flex items-center justify-center gap-2 active:scale-98 group/create-btn"
-                title="Tạo chuyến đi mới đến Đà Nẵng hoặc Huế"
-              >
-                <i className="ph ph-plus text-white text-[15px] font-bold"></i>
-                <span className="truncate">Tạo chuyến đi</span>
-              </button>
+              <div className="flex flex-col gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('chat');
+                    navigate('/chat');
+                  }}
+                  className={`w-full h-[44px] px-3 font-semibold text-[13.5px] rounded-full transition-all text-center border shadow-xs cursor-pointer flex items-center justify-center gap-2 active:scale-98 ${
+                    viewMode === 'chat'
+                      ? 'bg-emerald-800 hover:bg-emerald-900 text-white border-emerald-800'
+                      : 'bg-white hover:bg-neutral-100 text-neutral-900 border-neutral-300'
+                  }`}
+                  title="Hỏi AI vu vơ trước chuyến đi (thời tiết, đặc sản, số ngày)"
+                >
+                  <i className="ph ph-chat-circle-dots text-[16px]"></i>
+                  <span className="truncate">Trò chuyện mới</span>
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setIdeationDraft(null);
+                    setIsCreateTripModalOpen(true);
+                  }}
+                  className="w-full h-[46px] px-3 bg-black hover:bg-neutral-800 text-white font-semibold text-[13.5px] rounded-full transition-all text-center border border-black shadow-xs cursor-pointer flex items-center justify-center gap-2 active:scale-98 group/create-btn"
+                  title="Tạo chuyến đi mới đến Đà Nẵng hoặc Huế"
+                >
+                  <i className="ph ph-plus text-white text-[15px] font-bold"></i>
+                  <span className="truncate">Tạo chuyến đi</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -1691,6 +1747,15 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         )
       ) : viewMode === 'saved' ? (
         <SavedPlacesView addedTrips={addedTrips} onToggleAddTrip={toggleAddTrip} onAddAlbumToTrip={addAlbumToTrip} />
+      ) : viewMode === 'chat' ? (
+        <IdeationChatView
+          allPois={allPois}
+          onCreateTripFromIdea={({ initialPrompt, selectedPoiIds, chatHistory }) => {
+            setIdeationDraft({ initialPrompt, chatHistory });
+            setPendingAddToTripPoiIds(selectedPoiIds.length > 0 ? selectedPoiIds : null);
+            setIsCreateTripModalOpen(true);
+          }}
+        />
       ) : (
         <>
       {/* 2. MIDDLE LIST (EXPLORE): Khi thu gọn sidebar, phần giữa to rộng hơn (715px) có hiệu ứng chuyển động mượt mà, map chỉ nhích nhẹ */}
@@ -2002,9 +2067,12 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
       {isCreateTripModalOpen && (
         <CreateTripCopilotModal
           isOpen={isCreateTripModalOpen}
+          initialPrompt={ideationDraft?.initialPrompt}
+          initialChatHistory={ideationDraft?.chatHistory}
           onClose={() => {
             setIsCreateTripModalOpen(false);
             setPendingAddToTripPoiIds(null);
+            setIdeationDraft(null);
           }}
           onCreateTrip={(newTrip) => {
             const rawTitle = (newTrip.title || '').trim();
@@ -2043,6 +2111,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             setActiveTripSubTab('ideas');
             setViewMode('trips');
             setPendingAddToTripPoiIds(null);
+            setIdeationDraft(null);
             setIsCreateTripModalOpen(false);
           }}
           onCreated={(newTrip) => {
@@ -2082,6 +2151,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             setActiveTripSubTab('ideas');
             setViewMode('trips');
             setPendingAddToTripPoiIds(null);
+            setIdeationDraft(null);
             setIsCreateTripModalOpen(false);
           }}
         />

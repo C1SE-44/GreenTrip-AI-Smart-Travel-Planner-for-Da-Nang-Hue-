@@ -314,6 +314,102 @@ export const buildDefaultCopilotItinerary = (
     });
   }
 
+  // Day 5+: Mở rộng linh hoạt cho hành trình 5–14 ngày (VD: 2 ngày Đà Nẵng + 3 ngày Huế = 5 ngày)
+  const extraDayTemplates: Array<{
+    theme: string;
+    focus_city: string;
+    hotelName: string;
+    stops: CopilotStop[];
+  }> = [
+    {
+      theme: isBoth ? 'Đầm Lập An, Vịnh Lăng Cô & Làng hương Thủy Xuân (Huế)' : 'Khám phá Phố cổ Hội An & Rừng dừa Bảy Mẫu',
+      focus_city: isBoth ? 'Huế' : normDest,
+      hotelName: isBoth ? 'Nghỉ tại Khách sạn Cố Đô Huế' : 'Nghỉ tại Red Palace Hotel',
+      stops: [
+        {
+          id: 'stop-5-1',
+          timeSlot: '08:30 - 10:30',
+          name: isBoth ? 'Làng hương Thủy Xuân & Đồi Vọng Cảnh' : 'Rừng dừa Bảy Mẫu (Thuyền thúng sinh thái)',
+          category: 'canh-quan',
+          distanceKm: 5.5,
+          note: isBoth ? 'Làng nghề làm hương truyền thống 700 năm bên bờ sông Hương' : 'Trải nghiệm thuyền thúng mộc giữa rừng dừa nước xanh mát',
+          estimatedCost: isBoth ? 'Miễn phí' : '150.000 đ / thuyền',
+          image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
+          greenScore: 95,
+        },
+        {
+          id: 'stop-5-2',
+          timeSlot: '11:30 - 13:00',
+          name: isBoth ? 'Cơm Hến Hoa Đông (Cồn Hến)' : 'Cao Lầu Không Gian Xanh',
+          category: 'quan-an',
+          distanceKm: 3.8,
+          note: isBoth ? 'Đặc sản cơm hến, bún hến truyền thống xứ Huế' : 'Cao lầu sợi tươi truyền thống trong không gian sân vườn cổ',
+          estimatedCost: '45.000 đ / tô',
+          image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80',
+          greenScore: 92,
+        },
+        {
+          id: 'stop-5-3',
+          timeSlot: '15:00 - 17:30',
+          name: isBoth ? 'Phá Tam Giang & Rừng ngập mặn Rú Chá' : 'Phố cổ Hội An (Khu phố không động cơ)',
+          category: 'canh-quan',
+          distanceKm: 12.0,
+          note: isBoth ? 'Ngắm hoàng hôn tím trên hệ đầm phá lớn nhất Đông Nam Á' : 'Dạo bộ phố đèn lồng di sản UNESCO hoàn toàn không khói xe',
+          estimatedCost: '120.000 đ / vé',
+          image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+          greenScore: 98,
+        },
+      ],
+    },
+    {
+      theme: 'Trải nghiệm Làng nghề Sinh thái & Thư giãn Khoáng nóng',
+      focus_city: isBoth ? 'Huế' : normDest,
+      hotelName: isBoth ? 'Nghỉ tại Alba Wellness / Cố Đô Huế' : 'Nghỉ tại Red Palace Hotel',
+      stops: [
+        {
+          id: 'stop-6-1',
+          timeSlot: '09:00 - 11:30',
+          name: 'Nhà vườn An Hiên & Cầu ngói Thanh Toàn',
+          category: 'di-tich',
+          distanceKm: 6.2,
+          note: 'Kiến trúc nhà rường cổ kính giữa vườn cây trái bản địa',
+          estimatedCost: '50.000 đ / vé',
+          image: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800&auto=format&fit=crop&q=80',
+          greenScore: 96,
+        },
+        {
+          id: 'stop-6-2',
+          timeSlot: '12:00 - 13:30',
+          name: 'Nhà hàng Chay Liên Hoa',
+          category: 'quan-an',
+          distanceKm: 2.8,
+          note: 'Thực đơn chay phong phú hơn 50 món từ rau củ hữu cơ địa phương',
+          estimatedCost: '75.000 đ / phần',
+          image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&auto=format&fit=crop&q=80',
+          greenScore: 97,
+        },
+      ],
+    },
+  ];
+
+  for (let d = 5; d <= days; d++) {
+    const tpl = extraDayTemplates[(d - 5) % extraDayTemplates.length];
+    defaultDays.push({
+      day: d,
+      theme: tpl.theme,
+      focus_city: tpl.focus_city,
+      hotel: {
+        name: tpl.hotelName,
+        checkInNote: d === days ? 'Trả phòng & kết thúc hành trình xanh' : 'Lưu trú tiêu chuẩn xanh',
+        isEcoCertified: true,
+      },
+      stops: tpl.stops.map((s, idx) => ({
+        ...s,
+        id: `stop-${d}-${idx + 1}`,
+      })),
+    });
+  }
+
   return defaultDays;
 };
 

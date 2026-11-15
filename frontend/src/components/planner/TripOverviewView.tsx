@@ -69,16 +69,65 @@ export interface CopilotChatMessageItem {
   greenImpact?: string | null;
   budgetImpact?: string | null;
   actionType?: string;
+  factCheckWarning?: string | null;
+  mutationSummary?: string[];
+  updatedDaysCount?: number | null;
+  updatedDestination?: string | null;
+  hasMutatedItinerary?: boolean;
+  reasoningTrace?: string;
 }
 
+function findMatchingPoiIdForLabel(
+  label: string,
+  entityLookup?: Array<{ id: string; name: string }>
+): string | null {
+  if (!entityLookup || entityLookup.length === 0) return null;
+  const cleaned = label.replace(/\(.*?\)/g, '').trim().toLowerCase();
+  if (cleaned.length < 3) return null;
+  for (const item of entityLookup) {
+    const itemName = item.name.toLowerCase();
+    const itemClean = itemName.replace(/\(.*?\)/g, '').trim();
+    if (
+      itemName === cleaned ||
+      itemClean === cleaned ||
+      (cleaned.length >= 5 && (itemName.includes(cleaned) || cleaned.includes(itemClean)))
+    ) {
+      return item.id;
+    }
+  }
+  return null;
+}
 
-function renderInlineMarkdown(text: string) {
+function renderInlineMarkdown(
+  text: string,
+  entityLookup?: Array<{ id: string; name: string }>,
+  onHoverPoi?: (id: string | null) => void,
+  onSelectPoi?: (id: string) => void
+) {
   const parts = text.split(/(\*\*.*?\*\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
+      const inner = part.slice(2, -2);
+      const matchedPoiId = findMatchingPoiIdForLabel(inner, entityLookup);
+      if (matchedPoiId && (onHoverPoi || onSelectPoi)) {
+        return (
+          <button
+            key={i}
+            type="button"
+            onMouseEnter={() => onHoverPoi?.(matchedPoiId)}
+            onMouseLeave={() => onHoverPoi?.(null)}
+            onClick={() => onSelectPoi?.(matchedPoiId)}
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded-md bg-emerald-50/90 hover:bg-emerald-100 text-emerald-950 font-semibold border border-emerald-300/80 transition-colors cursor-pointer align-baseline shadow-2xs"
+            title="Di chuột để sáng ghim trên bản đồ • Bấm để xem chi tiết địa điểm"
+          >
+            <MapPin size={11} className="text-emerald-700 shrink-0" />
+            <span className="underline decoration-emerald-600/50 underline-offset-2">{inner}</span>
+          </button>
+        );
+      }
       return (
         <strong key={i} className="font-semibold text-neutral-950">
-          {part.slice(2, -2)}
+          {inner}
         </strong>
       );
     }
@@ -86,7 +135,17 @@ function renderInlineMarkdown(text: string) {
   });
 }
 
-function FormattedCopilotMessage({ text }: { text: string }) {
+export function FormattedCopilotMessage({
+  text,
+  entityLookup,
+  onHoverPoi,
+  onSelectPoi,
+}: {
+  text: string;
+  entityLookup?: Array<{ id: string; name: string }>;
+  onHoverPoi?: (id: string | null) => void;
+  onSelectPoi?: (id: string) => void;
+}) {
   const lines = text.split('\n');
 
   return (
@@ -103,7 +162,7 @@ function FormattedCopilotMessage({ text }: { text: string }) {
             <div key={idx} className="flex items-start gap-1.5 pl-2 my-1 text-[12px] text-neutral-700 bg-neutral-100/70 p-2 rounded-xl border border-neutral-200/50">
               <span className="shrink-0 text-xs">📍</span>
               <div className="flex-1 leading-normal">
-                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''))}
+                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''), entityLookup, onHoverPoi, onSelectPoi)}
               </div>
             </div>
           );
@@ -114,7 +173,7 @@ function FormattedCopilotMessage({ text }: { text: string }) {
             <div key={idx} className="flex items-start gap-1.5 pl-2 my-1 text-[12px] text-amber-950 bg-amber-50/70 p-2 rounded-xl border border-amber-200/50 font-mono">
               <span className="shrink-0 text-xs">💸</span>
               <div className="flex-1 leading-normal">
-                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''))}
+                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''), entityLookup, onHoverPoi, onSelectPoi)}
               </div>
             </div>
           );
@@ -125,7 +184,7 @@ function FormattedCopilotMessage({ text }: { text: string }) {
             <div key={idx} className="flex items-start gap-1.5 pl-2 my-1 text-[12px] text-emerald-950 bg-emerald-50/70 p-2 rounded-xl border border-emerald-200/50">
               <span className="shrink-0 text-xs">✅</span>
               <div className="flex-1 leading-normal">
-                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''))}
+                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''), entityLookup, onHoverPoi, onSelectPoi)}
               </div>
             </div>
           );
@@ -142,7 +201,7 @@ function FormattedCopilotMessage({ text }: { text: string }) {
                 {num}.
               </span>
               <div className="flex-1 leading-normal text-neutral-800">
-                {renderInlineMarkdown(content)}
+                {renderInlineMarkdown(content, entityLookup, onHoverPoi, onSelectPoi)}
               </div>
             </div>
           );
@@ -155,7 +214,7 @@ function FormattedCopilotMessage({ text }: { text: string }) {
             <div key={idx} className="flex items-start gap-2 pl-1 my-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-2 shrink-0" />
               <div className="flex-1 leading-normal text-neutral-800">
-                {renderInlineMarkdown(content)}
+                {renderInlineMarkdown(content, entityLookup, onHoverPoi, onSelectPoi)}
               </div>
             </div>
           );
@@ -176,7 +235,7 @@ function FormattedCopilotMessage({ text }: { text: string }) {
 
         return (
           <p key={idx} className="leading-relaxed">
-            {renderInlineMarkdown(trimmed)}
+            {renderInlineMarkdown(trimmed, entityLookup, onHoverPoi, onSelectPoi)}
           </p>
         );
       })}
@@ -351,12 +410,44 @@ export default function TripOverviewView({
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
-  const [quickPrompts, setQuickPrompts] = useState<string[]>([
-    'Ẩm thực xanh bản địa',
-    'Di tích & bảo tàng gần',
-    'Thuê xe máy điện',
-  ]);
+  const [activeConstraints, setActiveConstraints] = useState<string[]>([]);
+  const [tripMemory, setTripMemory] = useState<Record<string, string>>({});
+  const [quickPrompts, setQuickPrompts] = useState<string[]>(() => {
+    const dest = (trip.destination || '').toLowerCase();
+    if (dest.includes('huế') && !dest.includes('đà nẵng')) {
+      return [
+        'Quán cafe ngắm hoàng hôn sông Hương?',
+        'Đặc sản Cố đô Huế chuẩn vị bản địa?',
+        'Lịch trình Huế nhẹ nhàng cho gia đình',
+      ];
+    }
+    if (dest.includes('đà nẵng') && !dest.includes('huế')) {
+      return [
+        'Quán cafe yên tĩnh nhiều cây xanh ở Đà Nẵng?',
+        'Ăn hải sản & đặc sản Đà Nẵng ở đâu ngon?',
+        'Phương án đi Bán đảo Sơn Trà & Ngũ Hành Sơn',
+      ];
+    }
+    return [
+      'So sánh nhịp độ Đà Nẵng hay Huế hợp gu hơn?',
+      'Gợi ý quán cafe chill yên tĩnh không ồn ào',
+      'Chia lịch trình Đà Nẵng & Huế theo cụm gần nhau',
+    ];
+  });
   const [chatMessages, setChatMessages] = useState<CopilotChatMessageItem[]>([]);
+
+  const handleRemoveMemoryConstraint = (constraintKey: string) => {
+    setActiveConstraints((prev) => prev.filter((c) => c !== constraintKey));
+    setTripMemory((prev) => {
+      const next = { ...prev };
+      delete next[constraintKey];
+      return next;
+    });
+  };
+
+  const [actionCardIdx, setActionCardIdx] = useState<0 | 1>(0);
+  const [showActionCards, setShowActionCards] = useState<boolean>(true);
+  const [showLearnDrawer, setShowLearnDrawer] = useState<boolean>(false);
 
   // ─── TAB ĐIỀU HƯỚNG CỘT GIỮA CHUẨN EXPLORE (CHAT / LỊCH TRÌNH / Ý TƯỞNG) ───
   const [activeMainTab, setActiveMainTab] = useState<'chat' | 'itinerary' | 'ideas'>('chat');
@@ -383,9 +474,10 @@ export default function TripOverviewView({
     const newStop = stopFromPoi(poi);
     const updatedDays = itineraryPlan.days.map((d) => {
       if (d.day_number === dayNum) {
+        const stops = [...d.stops, newStop].map((s, idx) => ({ ...s, sequence: idx }));
         return {
           ...d,
-          stops: [...d.stops, newStop],
+          stops,
         };
       }
       return d;
@@ -963,7 +1055,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   );
 
   // Thêm địa điểm do Copilot gợi ý trực tiếp vào Ý tưởng chuyến đi
-    const handleSaveCopilotPoiToIdeas = (poi: CopilotSuggestedPoi | Poi) => {
+  const handleSaveCopilotPoiToIdeas = (poi: CopilotSuggestedPoi | Poi) => {
     const alreadySaved = tripIdeas.some(
       (id) => id === poi.id || id.toLowerCase() === poi.name.toLowerCase()
     );
@@ -983,7 +1075,74 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Xử lý gửi tin nhắn trò chuyện với Trợ lý AI Copilot (PB14)
+  // Thêm trực tiếp địa điểm từ thẻ Copilot vào Ngày X trong Kế hoạch chi tiết
+  const handleAddCopilotPoiToDay = (p: CopilotSuggestedPoi, targetDayNum: number = 1) => {
+    const matchedFullPoi = allPois.find(
+      (ap) => ap.id === p.id || ap.name.toLowerCase() === p.name.toLowerCase()
+    );
+    const poiForStop: Poi = matchedFullPoi || {
+      id: p.id,
+      name: p.name,
+      category: normalizeCategory(p.category),
+      city: normalizeCity(p.city || trip.destination),
+      lat: p.lat || 16.0615,
+      lng: p.lng || 108.2235,
+      image: p.image_url || getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination),
+      description: p.kg_explanation || p.swap_reason || p.address,
+      address: p.address,
+      rating: p.rating || 4.8,
+      visitDuration: '1–2 giờ',
+      isGreen: (p.green_score || 90) >= 80,
+      ecoScore: p.green_score || 90,
+      estimatedCost: p.estimated_cost || 60000,
+    };
+    handleAddPoiToItinerary(poiForStop, targetDayNum);
+    setSelectedMapPoiId(poiForStop.id);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Bảng tra cứu thực thể cho Inline Entity Linking trong tin nhắn Copilot
+  const chatEntityLookup = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    allPois.forEach((p) => map.set(p.id, { id: p.id, name: p.name }));
+    recommendedPois.forEach((p) => map.set(p.id, { id: p.id, name: p.name }));
+    chatMessages.forEach((m) => {
+      (m.suggestedPois || []).forEach((sp) => {
+        const found = allPois.find(
+          (ap) => ap.id === sp.id || ap.name.toLowerCase() === sp.name.toLowerCase()
+        );
+        const targetId = found ? found.id : sp.id;
+        map.set(targetId, { id: targetId, name: sp.name });
+      });
+    });
+    return Array.from(map.values());
+  }, [allPois, recommendedPois, chatMessages]);
+
+  // Đường nối thứ tự điểm dừng (1 -> 2 -> 3) trên PoiMap khi Copilot trả về gợi ý
+  const { copilotRouteCoordinates, copilotNumberedOrderMap } = useMemo(() => {
+    const lastAiWithPois = [...chatMessages]
+      .reverse()
+      .find((m) => m.sender === 'ai' && m.suggestedPois && m.suggestedPois.length >= 2);
+    const coords: [number, number][] = [];
+    const orderMap = new Map<string, number>();
+    if (lastAiWithPois && lastAiWithPois.suggestedPois) {
+      lastAiWithPois.suggestedPois.forEach((sp, idx) => {
+        const matched = relevantPois.find(
+          (rp) => rp.id === sp.id || rp.name.toLowerCase() === sp.name.toLowerCase()
+        );
+        const lat = matched?.lat || sp.lat;
+        const lng = matched?.lng || sp.lng;
+        const keyId = matched?.id || sp.id;
+        if (lat && lng) {
+          coords.push([lat, lng]);
+          orderMap.set(keyId, idx + 1);
+        }
+      });
+    }
+    return { copilotRouteCoordinates: coords, copilotNumberedOrderMap: orderMap };
+  }, [chatMessages, relevantPois]);
+
+  // Xử lý gửi tin nhắn trò chuyện với Trợ lý AI Copilot (PB14 - 6 Core Mindtrip MVPs)
   const handleSendChatMessage = async (overridePrompt?: string) => {
     const promptToSend = (overridePrompt ?? chatInput).trim();
     if (!promptToSend || isAiThinking) return;
@@ -996,6 +1155,11 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
     };
 
+    const historyForRequest = chatMessages.slice(-8).map((m) => ({
+      role: m.sender === 'user' ? 'user' : 'assistant',
+      content: m.text,
+    }));
+
     setChatMessages((prev) => [...prev, newUserMsg]);
     setChatInput('');
     setIsAiThinking(true);
@@ -1006,10 +1170,158 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         trip_context: {
           destination: trip.destination || 'Đà Nẵng & Huế',
           days_count: trip.daysCount || 4,
-          current_day: 1,
+          current_day: dayTargetForAdd || 1,
+          traveler_name: 'Nguyên',
           saved_ideas: tripIdeas,
+          active_constraints: activeConstraints,
+          trip_memory: tripMemory,
+          conversation_history: historyForRequest,
+          current_itinerary_state: itineraryPlan.days as unknown as Array<Record<string, unknown>>,
         },
       });
+
+      // 1. Đồng bộ Multi-turn Session Memory & Active Constraints (MVP #3)
+      if (res.detected_constraints) {
+        setActiveConstraints(res.detected_constraints);
+      }
+      if (res.trip_memory) {
+        setTripMemory(res.trip_memory);
+      }
+
+      // 2. Đồng bộ gợi ý địa điểm của Copilot lên Bản đồ PoiMap ngay lập tức (MVP #2 & #4)
+      if (res.suggested_pois && res.suggested_pois.length > 0) {
+        const mappedCopilotPois: Poi[] = res.suggested_pois.map((sp, i) => {
+          const foundInAll = allPois.find(
+            (ap) => ap.id === sp.id || ap.name.toLowerCase() === sp.name.toLowerCase()
+          );
+          const cat = foundInAll?.category || normalizeCategory(sp.category);
+          const city = foundInAll?.city || normalizeCity(sp.city || trip.destination);
+          return {
+            ...(foundInAll || {}),
+            id: foundInAll?.id || sp.id,
+            name: foundInAll?.name || sp.name,
+            category: cat,
+            city,
+            lat: sp.lat || foundInAll?.lat || 16.0615 + i * 0.004,
+            lng: sp.lng || foundInAll?.lng || 108.2235 + i * 0.004,
+            image:
+              sp.image_url ||
+              foundInAll?.image ||
+              getDeterministicImage(sp.name, sp.id, cat, city),
+            description: sp.kg_explanation || sp.swap_reason || foundInAll?.description || sp.address,
+            address: sp.address || foundInAll?.address || '',
+            rating: sp.rating || foundInAll?.rating || 4.8,
+            visitDuration: foundInAll?.visitDuration || '1–2 giờ',
+            isGreen: (sp.green_score || 90) >= 80,
+            ecoScore: sp.green_score || 90,
+            estimatedCost: sp.estimated_cost || foundInAll?.estimatedCost || 50000,
+          };
+        });
+        setRecommendedPois(mappedCopilotPois);
+      }
+
+      // 3. Đồng bộ Conversational Trip Mutation: cập nhật Header + lưu Itinerary (MVP #1)
+      let hasMutated = false;
+      if (res.updated_itinerary_state && res.updated_itinerary_state.length > 0) {
+        hasMutated = true;
+        const seenStopIds = new Set<string>();
+        const toHHMM = (raw: unknown): string | null => {
+          if (typeof raw !== 'string') return null;
+          const m = raw.trim().match(/^(\d{1,2}):(\d{2})$/);
+          if (!m) return null;
+          const hh = Number(m[1]);
+          const mm = Number(m[2]);
+          if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+          return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+        };
+
+        const sortedRawDays = [...res.updated_itinerary_state].sort(
+          (a, b) => Number(a.day_number || a.day || 0) - Number(b.day_number || b.day || 0)
+        );
+        const nextDays: ItineraryDay[] = sortedRawDays.map((rawDay, idx) => {
+          const dayNum = idx + 1;
+          const existingDay = itineraryPlan.days.find((d) => d.day_number === dayNum);
+          const rawStops = Array.isArray(rawDay.stops)
+            ? (rawDay.stops as Array<Record<string, unknown>>)
+            : [];
+          const scheduledRanges: Array<[string, string]> = [];
+          const normalizedStops: ItineraryStop[] = rawStops.map((st, sIdx) => {
+            let stopId = String(st.stop_id || st.poi_id || `mut-d${dayNum}-s${sIdx}`);
+            if (seenStopIds.has(stopId)) stopId = `${stopId}-d${dayNum}-s${sIdx}`;
+            seenStopIds.add(stopId);
+
+            let startTime = toHHMM(st.start_time);
+            let endTime = toHHMM(st.end_time);
+            if (!startTime || !endTime || endTime <= startTime) {
+              startTime = null;
+              endTime = null;
+            } else if (scheduledRanges.some(([rs, re]) => startTime! < re && rs < endTime!)) {
+              // Avoid 422 overlap rejection when prepending mutated stops into existing day
+              startTime = null;
+              endTime = null;
+            } else {
+              scheduledRanges.push([startTime, endTime]);
+            }
+
+            const rawDur = Number(st.duration_minutes ?? st.duration_mins);
+            const durationMinutes = Number.isFinite(rawDur) && rawDur > 0 && rawDur <= 1440 ? Math.round(rawDur) : 120;
+            const rawType = st.stop_type;
+            const stopType = rawType === 'rest' || rawType === 'custom' ? rawType : 'poi';
+            const rawSource = st.source;
+            const source = rawSource === 'idea' || rawSource === 'manual' ? rawSource : 'assistant';
+
+            return {
+              stop_id: stopId,
+              poi_id: st.poi_id ? String(st.poi_id) : null,
+              title: String(st.title || st.name || 'Điểm dừng lịch trình').slice(0, 200),
+              city: st.city ? String(st.city) : rawDay.focus_city ? String(rawDay.focus_city) : trip.destination,
+              address: st.address ? String(st.address) : null,
+              category: st.category ? String(st.category) : 'Điểm tham quan',
+              stop_type: stopType,
+              source,
+              sequence: sIdx,
+              duration_minutes: durationMinutes,
+              start_time: startTime,
+              end_time: endTime,
+              comment: st.comment ? String(st.comment) : st.notes ? String(st.notes) : null,
+              latitude: typeof st.latitude === 'number' && Number.isFinite(st.latitude) ? st.latitude : null,
+              longitude: typeof st.longitude === 'number' && Number.isFinite(st.longitude) ? st.longitude : null,
+            };
+          });
+          return {
+            day_id: String(rawDay.day_id || existingDay?.day_id || `${trip.id}-day-${dayNum}`),
+            day_number: dayNum,
+            date: existingDay?.date ?? null,
+            title: String(rawDay.title || `Ngày ${dayNum}: ${rawDay.focus_city || trip.destination}`),
+            stops: normalizedStops,
+          };
+        });
+        const nextPlan: TripItinerary = {
+          ...itineraryPlan,
+          destination: res.updated_destination || trip.destination,
+          days_count: nextDays.length,
+          days: nextDays,
+        };
+        setItineraryPlan(nextPlan);
+        saveTripItinerary(nextPlan);
+      }
+
+      if (res.updated_days_count || res.updated_destination) {
+        hasMutated = true;
+        const nextDaysCount = res.updated_days_count || trip.daysCount || 4;
+        const nextDest = res.updated_destination || trip.destination;
+        setFlexibleDays(nextDaysCount);
+        setWhereTarget(nextDest);
+        onUpdateTrip?.({
+          ...trip,
+          destination: nextDest,
+          daysCount: nextDaysCount,
+          startDate: `${nextDaysCount} ngày • ${selectedMonth}`,
+          title: `Chuyến đi ${nextDest} (${nextDaysCount} ngày)`,
+        });
+        setToastMessage(`Đã cập nhật lịch trình: ${nextDest} (${nextDaysCount} ngày)`);
+        setTimeout(() => setToastMessage(null), 3500);
+      }
 
       const aiMsgId = `ai-${Date.now()}`;
       const newAiMsg: CopilotChatMessageItem = {
@@ -1022,6 +1334,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         greenImpact: res.green_impact_summary || null,
         budgetImpact: res.budget_impact_summary || null,
         actionType: res.action_type,
+        factCheckWarning: res.fact_check_warning || null,
+        mutationSummary: res.mutation_summary || [],
+        updatedDaysCount: res.updated_days_count || null,
+        updatedDestination: res.updated_destination || null,
+        hasMutatedItinerary: hasMutated || res.action_type === 'mutate_itinerary',
+        reasoningTrace: res.reasoning_trace,
       };
 
       setChatMessages((prev) => [...prev, newAiMsg]);
@@ -1290,7 +1608,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           } h-full bg-white flex flex-col justify-between pl-6 lg:pl-[36px] pr-5 pt-3.5 pb-5 border-r border-gray-100 select-none transition-[width] duration-300 ease-in-out`}
         >
           {/* Header Chat: Chats 1 chuẩn Mindtrip */}
-          <div className="flex items-center justify-between mb-2 shrink-0">
+          <div className="flex items-center justify-between mb-1.5 shrink-0">
             <h3 className="text-[15px] font-bold text-gray-950 tracking-tight flex items-center gap-1.5">
               <span>Chats</span>
               <span className="text-gray-400 font-normal text-xs">1</span>
@@ -1298,6 +1616,136 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             </h3>
             <span className="text-[11px] text-gray-400 font-medium">Hỏi AI để gợi ý & đồng bộ ý tưởng lên bản đồ</span>
           </div>
+
+          {/* MVP #3: Removable Session Memory Badges (Bộ nhớ ngữ cảnh xuyên suốt) */}
+          {Object.keys(tripMemory).length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 mb-2.5 pb-2 border-b border-gray-100 shrink-0">
+              <span className="text-[10.5px] font-bold text-emerald-800 uppercase tracking-wider mr-0.5">
+                AI đang ghi nhớ:
+              </span>
+              {Object.entries(tripMemory).map(([key, label]) => (
+                <span
+                  key={key}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-900 text-[11px] font-medium shadow-2xs"
+                >
+                  <span>{label}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveMemoryConstraint(key)}
+                    className="w-3.5 h-3.5 rounded-full hover:bg-emerald-200/80 flex items-center justify-center text-emerald-700 hover:text-emerald-950 cursor-pointer ml-0.5"
+                    title="Gỡ bỏ ràng buộc này"
+                  >
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Mindtrip Action Cards (1 / 2 & 2 / 2): Gợi ý bước tiếp theo gọn gàng */}
+          {showActionCards && !isAiThinking && (
+            <div
+              className="rounded-2xl border border-emerald-200/80 bg-emerald-50/45 px-3.5 py-2.5 mb-2.5 shrink-0 shadow-2xs"
+              role="region"
+              aria-label="Gợi ý bước tiếp theo"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                  <Compass size={14} className="text-emerald-700 shrink-0" />
+                  <span>Gợi ý tiếp theo ({actionCardIdx + 1} / 2)</span>
+                </span>
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setActionCardIdx((prev) => (prev === 0 ? 1 : 0))}
+                    aria-label="Xem thẻ gợi ý trước"
+                    className="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-neutral-700 hover:bg-emerald-100/70 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActionCardIdx((prev) => (prev === 0 ? 1 : 0))}
+                    aria-label="Xem thẻ gợi ý tiếp theo"
+                    className="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-neutral-700 hover:bg-emerald-100/70 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowActionCards(false)}
+                    aria-label="Ẩn thẻ gợi ý bước tiếp theo"
+                    className="min-h-[40px] min-w-[40px] rounded-xl flex items-center justify-center text-neutral-600 hover:bg-neutral-200/70 hover:text-neutral-900 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              </div>
+
+              {actionCardIdx === 0 ? (
+                <div className="mt-1 space-y-2">
+                  <div>
+                    <p className="text-xs font-bold text-neutral-900 leading-snug">
+                      Lịch trình {trip.destination || 'Đà Nẵng & Huế'} đã sẵn sàng đồng bộ
+                    </p>
+                    <p className="text-xs text-neutral-600 leading-relaxed">
+                      Xem nhanh điểm di sản tiêu biểu hoặc mở cẩm nang phong thủy, trang phục &amp; mẹo đi lại bản địa.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const preferred = relevantPois[0] || allPois[0];
+                        setShowLearnDrawer(false);
+                        setShowIdeasView(false);
+                        setShowItineraryDrawer(false);
+                        if (preferred) setSelectedMapPoiId(preferred.id);
+                      }}
+                      className="min-h-[40px] px-3.5 rounded-xl bg-white hover:bg-neutral-100 border border-neutral-200/90 text-neutral-900 text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    >
+                      <MapPin size={14} className="text-emerald-700 shrink-0" />
+                      <span>Xem điểm tiêu biểu</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMapPoiId(null);
+                        setShowIdeasView(false);
+                        setShowItineraryDrawer(false);
+                        setShowLearnDrawer(true);
+                      }}
+                      className="min-h-[40px] px-3.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    >
+                      <Info size={14} className="shrink-0" />
+                      <span>Tìm hiểu Huế – Đà Nẵng</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-1 space-y-2">
+                  <div>
+                    <p className="text-xs font-bold text-neutral-900 leading-snug">
+                      Sẵn sàng khám phá thêm ý tưởng du lịch xanh?
+                    </p>
+                    <p className="text-xs text-neutral-600 leading-relaxed">
+                      Duyệt danh sách điểm ăn chay, làng sinh thái &amp; di tích bản địa để thêm vào Ý tưởng trước khi xếp giờ.
+                    </p>
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddIdeasModal(true)}
+                      className="min-h-[40px] px-3.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    >
+                      <Plus size={14} className="shrink-0" />
+                      <span>Thêm ý tưởng</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Luồng tin nhắn chat (cuộn độc lập bên trong) */}
           <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3.5 auto-hide-scrollbar">
@@ -1329,7 +1777,41 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 {msg.sender === 'user' ? (
                   <div className="whitespace-pre-line">{msg.text}</div>
                 ) : (
-                  <FormattedCopilotMessage text={msg.text} />
+                  <>
+                    {msg.reasoningTrace && (
+                      <details className="mb-1.5 group">
+                        <summary className="list-none min-h-[40px] inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/90 text-xs font-semibold text-neutral-700 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 [&::-webkit-details-marker]:hidden">
+                          <Sparkles size={13} className="text-emerald-700 shrink-0" />
+                          <span>
+                            {msg.hasMutatedItinerary
+                              ? '🔄 Đã đồng bộ cập nhật lịch trình'
+                              : '🧠 Đã phân tích · Đồng bộ Đồ thị Tri thức'}
+                          </span>
+                          <ChevronDown
+                            size={14}
+                            className="text-neutral-600 transition-transform duration-200 shrink-0 group-open:rotate-180"
+                          />
+                        </summary>
+                        <div className="mt-1.5 px-3 py-2 rounded-xl bg-neutral-50/90 border border-neutral-200/80 text-xs text-neutral-700 leading-relaxed whitespace-pre-line">
+                          {msg.reasoningTrace}
+                        </div>
+                      </details>
+                    )}
+                    <FormattedCopilotMessage
+                      text={msg.text}
+                      entityLookup={chatEntityLookup}
+                      onHoverPoi={handleDebouncedHover}
+                      onSelectPoi={(poiId) => setSelectedMapPoiId(poiId)}
+                    />
+                  </>
+                )}
+
+                {/* Cảnh báo đính chính địa lý / Fact-Check Guardrail */}
+                {msg.factCheckWarning && (
+                  <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-300/80 text-amber-950 text-xs flex items-start gap-2">
+                    <span className="shrink-0 mt-0.5">🧭</span>
+                    <span className="leading-relaxed font-medium">{msg.factCheckWarning}</span>
+                  </div>
                 )}
 
                 {/* Cảnh báo an toàn / Lưu ý tránh mưa */}
@@ -1337,6 +1819,42 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
                     <span className="shrink-0 mt-0.5">⚠️</span>
                     <span className="leading-relaxed">{msg.avoidNotice}</span>
+                  </div>
+                )}
+
+                {/* MVP #1: Tóm tắt thao tác sửa lịch trình & Nút [Xem kế hoạch chi tiết (X ngày)] chuẩn Mindtrip */}
+                {(msg.hasMutatedItinerary || (msg.mutationSummary && msg.mutationSummary.length > 0)) && (
+                  <div className="p-3 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-950 text-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="font-bold flex items-center gap-1.5 text-emerald-900">
+                        <Check size={14} className="text-emerald-700 shrink-0" />
+                        <span>Đã đồng bộ trực tiếp vào Kế hoạch chi tiết</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowIdeasView(false);
+                          setShowItineraryDrawer(true);
+                        }}
+                        className="px-3 py-1.5 rounded-full bg-black hover:bg-neutral-800 text-white font-bold text-[11.5px] flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 transition"
+                      >
+                        <Compass size={13} className="text-emerald-400 shrink-0" />
+                        <span>
+                          Xem kế hoạch chi tiết ({msg.updatedDaysCount || itineraryPlan.days.length || trip.daysCount || 4} ngày)
+                        </span>
+                        <ChevronRight size={12} />
+                      </button>
+                    </div>
+                    {msg.mutationSummary && msg.mutationSummary.length > 0 && (
+                      <ul className="space-y-1 pl-1 text-[11.5px] text-emerald-900/90">
+                        {msg.mutationSummary.map((line, mIdx) => (
+                          <li key={mIdx} className="flex items-start gap-1.5">
+                            <span className="text-emerald-600 font-bold">•</span>
+                            <span>{line}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 )}
 
@@ -1358,10 +1876,10 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   </div>
                 )}
 
-                {/* Thẻ gợi ý địa điểm từ Copilot (căn phẳng mép phải w-full) */}
+                {/* Thẻ gợi ý địa điểm từ Copilot (MVP #5: KG Explanation + Giá chuẩn đơn vị + Nút đôi [+ Ý tưởng] & [+ Ngày X]) */}
                 {msg.suggestedPois && msg.suggestedPois.length > 0 && (
                   <div className="space-y-2 pt-1 w-full">
-                    {msg.suggestedPois.map((p) => {
+                    {msg.suggestedPois.map((p, pIdx) => {
                       const isSaved = isPoiSavedInIdeas(p);
                       const img = p.image_url || getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
                       return (
@@ -1369,20 +1887,26 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                           key={p.id}
                           onMouseEnter={() => handleDebouncedHover(p.id)}
                           onMouseLeave={() => handleDebouncedHover(null)}
-                          className="p-2.5 rounded-xl border border-gray-200/90 hover:border-black/30 bg-gray-50/70 hover:bg-white transition-all flex flex-col sm:flex-row gap-2.5 items-start sm:items-center justify-between shadow-2xs group w-full"
+                          onClick={() => setSelectedMapPoiId(p.id)}
+                          className="p-2.5 rounded-xl border border-gray-200/90 hover:border-black/40 bg-gray-50/70 hover:bg-white transition-all flex flex-col sm:flex-row gap-2.5 items-start sm:items-center justify-between shadow-2xs group w-full cursor-pointer"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <img
-                              src={img}
-                              alt={p.name}
-                              className="w-12 h-12 rounded-lg object-cover shrink-0 border border-gray-200/60"
-                              onError={(e) => {
-                                e.currentTarget.src = getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
-                              }}
-                            />
+                            <div className="relative shrink-0">
+                              <img
+                                src={img}
+                                alt={p.name}
+                                className="w-12 h-12 rounded-lg object-cover shrink-0 border border-gray-200/60"
+                                onError={(e) => {
+                                  e.currentTarget.src = getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
+                                }}
+                              />
+                              <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-black text-white text-[10px] font-extrabold flex items-center justify-center shadow-xs">
+                                {pIdx + 1}
+                              </span>
+                            </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <h5 className="font-bold text-[13px] text-gray-900 truncate">
+                                <h5 className="font-bold text-[13px] text-gray-900 truncate group-hover:text-emerald-800 transition-colors">
                                   {p.name}
                                 </h5>
                                 <span className="text-[10.5px] px-1.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 font-semibold shrink-0">
@@ -1395,18 +1919,31 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11.5px] text-gray-600 line-clamp-1 mt-0.5">
-                                {p.swap_reason || p.address}
+                              <p className="text-[11.5px] text-gray-600 line-clamp-2 mt-0.5">
+                                {p.kg_explanation || p.swap_reason || p.address}
                               </p>
                               {(p.price_range_display || p.budget_delta) && (
-                                <p className="text-[10.5px] text-gray-500 mt-0.5">
-                                  {p.price_range_display || p.budget_delta}
+                                <p className="text-[10.5px] font-medium text-gray-500 mt-0.5">
+                                  💰 {p.price_range_display || p.budget_delta}
                                 </p>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                          <div
+                            className="flex items-center gap-1.5 shrink-0 self-end sm:self-center"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleAddCopilotPoiToDay(p, dayTargetForAdd || 1)}
+                              className="px-2 py-1.5 rounded-lg text-[11px] font-semibold border border-gray-300 hover:border-black bg-white hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 active:scale-95"
+                              title={`Chèn trực tiếp vào Ngày ${dayTargetForAdd || 1} trong Kế hoạch chi tiết`}
+                            >
+                              <CalendarIcon size={11} className="text-emerald-700" />
+                              <span>+ Ngày {dayTargetForAdd || 1}</span>
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => handleSaveCopilotPoiToIdeas(p)}
@@ -1420,12 +1957,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                               {isSaved ? (
                                 <>
                                   <Check size={12} className="text-emerald-700" />
-                                  <span>Đã thêm</span>
+                                  <span>Đã lưu</span>
                                 </>
                               ) : (
                                 <>
                                   <Plus size={12} />
-                                  <span>Thêm vào ý tưởng</span>
+                                  <span>+ Ý tưởng</span>
                                 </>
                               )}
                             </button>
@@ -1439,16 +1976,21 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             ))}
 
             {isAiThinking && (
-              <div className="p-3 rounded-2xl bg-white border border-gray-200/80 text-gray-600 text-[13px] mr-auto max-w-[90%] shadow-2xs flex items-center gap-2">
-                <Sparkles size={15} className="text-emerald-600 animate-spin shrink-0" />
-                <span>Trợ lý GreenTrip AI đang tìm kiếm & tối ưu lịch trình xanh...</span>
+              <div className="p-3.5 rounded-2xl bg-white border border-emerald-200/90 text-neutral-700 text-[13px] mr-auto max-w-[92%] shadow-2xs space-y-1">
+                <div className="flex items-center gap-2 font-semibold text-emerald-900">
+                  <Sparkles size={15} className="text-emerald-700 animate-spin shrink-0" />
+                  <span>Trợ lý GreenTrip AI đang suy nghĩ &amp; cập nhật lịch trình...</span>
+                </div>
+                <p className="text-xs text-neutral-600 pl-6">
+                  Đang truy vấn Neo4j Knowledge Graph · Kiểm chứng địa lý &amp; phương tiện xanh
+                </p>
               </div>
             )}
 
             <div ref={chatEndRef} />
           </div>
 
-          {/* Chip gợi ý câu hỏi (3 chip ngắn ≤ 22 ký tự, đặt sát ngay trên ô nhập) */}
+          {/* Chip gợi ý câu hỏi (3 chip động bám sát ngữ cảnh hội thoại) */}
           <div className="flex flex-wrap gap-1.5 w-full pt-2 pb-2 shrink-0">
             {quickPrompts.slice(0, 3).map((q, idx) => (
               <button
@@ -1552,6 +2094,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 onToggleFavorite={handleOpenSavedCollections}
                 addedTrips={new Set(tripIdeas)}
                 onToggleAddTrip={handleToggleIdea}
+                routeCoordinates={copilotRouteCoordinates.length >= 2 ? copilotRouteCoordinates : undefined}
+                numberedOrderMap={copilotNumberedOrderMap.size > 0 ? copilotNumberedOrderMap : undefined}
               />
             </div>
           </div>
@@ -2835,7 +3379,113 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               setHoveredMapPoiId(selectedPoi.id);
               setSelectedMapPoiId(null);
             }}
+            onAskCopilot={(question) => {
+              setSelectedMapPoiId(null);
+              void handleSendChatMessage(question);
+            }}
+            nearbyPois={allPois
+              .filter(
+                (p) =>
+                  normalizeCity(p.city) === normalizeCity(selectedPoi.city) &&
+                  p.id !== selectedPoi.id
+              )
+              .slice(0, 3)}
+            onSelectNearbyPoi={(poiId) => setSelectedMapPoiId(poiId)}
           />
+        </div>
+      )}
+
+      {/* ─── NGĂN CẨM NANG VĂN HÓA & DU LỊCH XANH HUẾ – ĐÀ NẴNG (MINDTRIP LEARN PRIMER) ─── */}
+      {showLearnDrawer && !selectedPoi && (
+        <div
+          className="fixed inset-y-0 right-0 w-full sm:w-[620px] lg:w-[calc(50vw)] xl:w-[calc(50vw)] z-50 bg-white rounded-l-[24px] border-l border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.08),-4px_0_12px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden animate-slideInRight"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="learn-drawer-title"
+        >
+          <div className="px-6 py-4 border-b border-neutral-200/80 flex items-center justify-between gap-3 shrink-0 bg-emerald-50/40">
+            <div className="min-w-0">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-800">
+                <Leaf size={14} className="shrink-0" />
+                <span>Cẩm nang Bản địa Xanh</span>
+              </span>
+              <h3
+                id="learn-drawer-title"
+                className="text-base sm:text-lg font-bold text-neutral-900 tracking-tight mt-0.5 truncate"
+              >
+                Văn hóa, Phong thủy &amp; Mẹo đi Huế – Đà Nẵng
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowLearnDrawer(false)}
+              aria-label="Đóng cẩm nang Huế – Đà Nẵng"
+              className="min-h-[40px] min-w-[40px] rounded-full bg-white hover:bg-neutral-100 border border-neutral-200 text-neutral-700 flex items-center justify-center transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4 text-neutral-700">
+            <section className="p-4 rounded-2xl bg-neutral-50/90 border border-neutral-200/80 space-y-1.5">
+              <h4 className="text-sm font-bold text-neutral-900">
+                1. Phong thủy Cố đô &amp; Cấu trúc 3 vòng thành Đại Nội
+              </h4>
+              <p className="text-xs text-neutral-600 leading-relaxed">
+                Kinh thành Huế quy hoạch theo triết lý phong thủy truyền thống: tựa thế &ldquo;tiền án, hậu chẩm&rdquo; lấy Sông Hương làm minh đường và Núi Ngự Bình làm bình phong. Bên trong gồm 3 vòng thành đồng tâm: <strong>Kinh thành</strong> (phòng thủ ngoài cùng), <strong>Hoàng thành</strong> (cơ quan triều đình &amp; Điện Thái Hòa) và <strong>Tử Cấm Thành</strong> (nơi sinh hoạt của hoàng gia). Tại Đà Nẵng, <strong>Bán đảo Sơn Trà</strong> giữ vai trò lá phổi xanh chắn gió và bảo tồn Voọc chà vá chân nâu quý hiếm.
+              </p>
+            </section>
+
+            <section className="p-4 rounded-2xl bg-neutral-50/90 border border-neutral-200/80 space-y-1.5">
+              <h4 className="text-sm font-bold text-neutral-900">
+                2. Quy tắc Trang phục &amp; Ứng xử Di sản Xanh
+              </h4>
+              <p className="text-xs text-neutral-600 leading-relaxed">
+                Khi tham quan Đại Nội, Hệ thống Lăng tẩm (Tự Đức, Minh Mạng, Khải Định), Chùa Thiên Mụ hoặc Chùa Linh Ứng, du khách cần mặc áo có tay, quần hoặc váy dài qua gối. Giữ giọng nói nhỏ nhẹ nơi thờ tự, mang bình nước cá nhân để nạp lại tại các trạm xanh và hạn chế túi nylon sử dụng một lần.
+              </p>
+            </section>
+
+            <section className="p-4 rounded-2xl bg-emerald-50/55 border border-emerald-200/80 space-y-1.5">
+              <h4 className="text-sm font-bold text-emerald-950">
+                3. Mẹo Di chuyển Cho Người Lớn Tuổi &amp; Phương tiện Ít Phát thải
+              </h4>
+              <p className="text-xs text-neutral-700 leading-relaxed">
+                Thay vì đi ô tô leo đèo nhiều khúc cua gấp, hãy chọn <strong>Tàu hỏa Di sản Đà Nẵng → Huế</strong> men theo triền núi Đèo Hải Vân và Vịnh Lăng Cô — vừa êm ái cho người lớn tuổi vừa giảm ~60–75% phát thải CO₂. Trong khu di sản Đại Nội nên thuê xe điện nội khu; buổi chiều dạo thuyền rồng điện/chèo tay Sông Hương hoặc đi xe đạp nhẹ quanh vườn thanh trà Làng sinh thái Thủy Biều.
+              </p>
+            </section>
+
+            <section className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-1.5">
+              <h4 className="text-sm font-bold text-amber-950">
+                4. Phương án Dự phòng Mùa Mưa Miền Trung (Tháng 10 – Tháng 12)
+              </h4>
+              <p className="text-xs text-neutral-700 leading-relaxed">
+                Nếu gặp mưa dầm đặc trưng của Huế hoặc gió lớn ven biển Đà Nẵng, hãy chuyển sang các trải nghiệm trong nhà giàu giá trị văn hóa: Bảo tàng Cổ vật Cung đình Huế, Bảo tàng Điêu khắc Chăm Đà Nẵng, thưởng trà sen cung đình, hoặc trải nghiệm ngâm chân thảo mộc &amp; làm mứt thanh trà trong không gian nhà rường ấm cúng tại Làng Thủy Biều.
+              </p>
+            </section>
+          </div>
+
+          <div className="px-6 py-4 border-t border-neutral-200/80 bg-white flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setShowLearnDrawer(false);
+                void handleSendChatMessage(
+                  'Gợi ý mẹo lịch trình Huế – Đà Nẵng nhẹ nhàng cho bố mẹ lớn tuổi và phương án dự phòng trời mưa'
+                );
+              }}
+              className="min-h-[40px] px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            >
+              <Sparkles size={14} className="shrink-0" />
+              <span>Hỏi AI theo mẹo cẩm nang này</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowLearnDrawer(false)}
+              className="min-h-[40px] px-4 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-900 text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            >
+              Đóng lại
+            </button>
+          </div>
         </div>
       )}
 

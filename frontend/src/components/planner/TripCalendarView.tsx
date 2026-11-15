@@ -34,6 +34,7 @@ import {
   updateDateRangeWithDays,
 } from '@/services/itineraryService';
 import PoiMap from '@/components/poi/PoiMap';
+import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 
 export interface TripCalendarViewProps {
@@ -236,9 +237,9 @@ export default function TripCalendarView({
   const displayTitle = isGibberish ? `Chuyến đi ${trip.destination || 'Đà Nẵng & Huế'}` : cleanTitle;
 
   return (
-    <div className="flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn">
+    <div className="flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn print-scroll-unlock">
       {/* ─── HEADER: TIÊU ĐỀ CHUYẾN ĐI & NÚT QUAY LẠI ─── */}
-      <header className="h-[60px] px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between shrink-0 z-30">
+      <header className="no-print h-[60px] px-4 sm:px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between gap-2 shrink-0 z-30">
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
@@ -305,13 +306,24 @@ export default function TripCalendarView({
       </header>
 
       {/* ─── NỘI DUNG CHÍNH: BỐ CỤC 2 CỘT (LỊCH CALENDAR + BẢN ĐỒ / Ý TƯỞNG) ─── */}
-      <div className="flex-1 min-h-0 flex items-stretch overflow-hidden bg-white">
+      <div className="flex-1 min-h-0 flex items-stretch overflow-hidden bg-white print-scroll-unlock">
         {/* ════════════════════════════════════════════════════════
             CỘT TRÁI: BẢNG LỊCH THỜI GIAN BIỂU (GOOGLE CALENDAR STYLE)
         ════════════════════════════════════════════════════════ */}
-        <div className={`${isMapExpanded ? 'hidden' : 'w-[560px] lg:w-[620px] xl:w-[660px] shrink-0'} h-full flex flex-col bg-white border-r border-gray-100 select-none overflow-hidden transition-[width] duration-300 ease-in-out`}>
+        <div className={`${isMapExpanded ? 'hidden' : 'w-full md:w-[560px] lg:w-[620px] xl:w-[660px] shrink-0'} h-full flex flex-col bg-white border-r border-gray-100 select-none overflow-hidden transition-[width] duration-300 ease-in-out print-scroll-unlock print-full-width`}>
+          {/* Header chỉ hiện khi In / Lưu PDF */}
+          <div className="hidden print:block mb-4 pb-3 border-b-2 border-neutral-900">
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+              GreenTrip AI • Thời gian biểu chuyến đi
+            </p>
+            <h1 className="text-xl font-extrabold text-neutral-950 mt-1">{displayTitle}</h1>
+            <p className="text-xs text-neutral-700 mt-1">
+              {trip.destination} • {calendarRangeText} ({plan.days.length} ngày)
+            </p>
+          </div>
+
           {/* Header Lịch: Calendar + Điều hướng ngày */}
-          <div className="px-6 pt-5 pb-3 shrink-0 flex items-center justify-between border-b border-gray-100">
+          <div className="no-print px-4 sm:px-6 pt-5 pb-3 shrink-0 flex items-center justify-between gap-2 border-b border-gray-100">
             <div>
               <h2 className="text-[26px] font-extrabold text-gray-950 tracking-tight leading-none">
                 Calendar
@@ -357,8 +369,14 @@ export default function TripCalendarView({
             </div>
           </div>
 
+          <TripExportToolbar
+            trip={trip}
+            plan={plan}
+            className="px-4 sm:px-6 py-2.5 border-b border-gray-100 bg-white shrink-0"
+          />
+
           {/* Lưới thời gian cuộn */}
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative auto-hide-scrollbar">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative auto-hide-scrollbar print-scroll-unlock">
             {/* Header cột các ngày */}
             <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-2xs flex items-stretch">
               <div className="w-14 shrink-0 text-center py-2.5 text-[11px] font-semibold text-gray-400 border-r border-gray-100 select-none">

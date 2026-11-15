@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Header, HTTPException, status
 from psycopg.errors import UniqueViolation
@@ -98,6 +98,7 @@ def get_current_user_profile(authorization: str | None = Header(default=None)) -
 
 @router.post("/check-email", response_model=CheckEmailResponse)
 def check_email(request: CheckEmailRequest) -> CheckEmailResponse:
+    email = request.email.strip().lower()
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
@@ -105,14 +106,14 @@ def check_email(request: CheckEmailRequest) -> CheckEmailResponse:
                     """
                     SELECT status
                     FROM public.users
-                    WHERE email = %s
+                    WHERE LOWER(email) = %s
                     """,
-                    (request.email.lower(),),
+                    (email,),
                 )
                 user = cursor.fetchone()
                 if user:
-                    return CheckEmailResponse(exists=True, email=request.email.lower(), status=user[0])
-                return CheckEmailResponse(exists=False, email=request.email.lower(), status=None)
+                    return CheckEmailResponse(exists=True, email=email, status=user[0])
+                return CheckEmailResponse(exists=False, email=email, status=None)
     except Exception as error:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -145,12 +146,22 @@ def login(request: LoginRequest) -> TokenResponse:
 
 
 
+def _as_utc_datetime(value: datetime | str) -> datetime:
+    """Coerce SQLite ISO strings and naive datetimes to timezone-aware UTC."""
+    if isinstance(value, str):
+        value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 @router.post(
     "/signup",
     status_code=status.HTTP_201_CREATED,
     response_model=SignupResponse,
 )
 def signup(request: SignupRequest) -> dict:
+    email = request.email.strip().lower()
     password_hash = hash_password(request.password)
 
     try:
@@ -160,64 +171,15 @@ def signup(request: SignupRequest) -> dict:
                     """
                     SELECT user_id, status
                     FROM public.users
-                    WHERE email = %s
+                    WHERE LOWER(email) = %s
                     """,
-                    (request.email,),
+                    (email,),
                 )
 
                 existing_user = cursor.fetchone()
 
                 if existing_user:
-                    user_id = existing_user[0]
-                    existing_status = existing_user[1] if len(existing_user) > 1 else "ACTIVE"
-                    if existing_status == "INACTIVE":
-                        cursor.execute(
-                            """
-                            UPDATE public.users
-                            SET full_name = %s,
-                                phone = %s,
-                                password_hash = %s,
-                                status = 'ACTIVE',
-                                updated_at = CURRENT_TIMESTAMP
-                            WHERE user_id = %s
-                            RETURNING
-                                user_id,
-                                full_name,
-                                email,
-                                phone,
-                                role,
-                                status,
-                                created_at,
-                                updated_at
-                            """,
-                            (
-                                request.full_name,
-                                request.phone,
-                                password_hash,
-                                user_id,
-                            ),
-                        )
-                        user = cursor.fetchone()
-                        connection.commit()
-
-                        access_token = create_access_token(str(user[0]))
-                        return {
-                            "message": "User registered successfully.",
-                            "user": {
-                                "user_id": str(user[0]),
-                                "full_name": user[1],
-                                "email": user[2],
-                                "phone": user[3],
-                                "role": user[4],
-                                "status": user[5],
-                                "created_at": user[6],
-                                "updated_at": user[7],
-                            },
-                            "require_otp": False,
-                            "access_token": access_token,
-                            "token_type": "bearer",
-                        }
-
+                    # ponytail: never overwrite/auto-activate INACTIVE accounts during signup
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
                         detail="Email is already registered.",
@@ -246,7 +208,7 @@ def signup(request: SignupRequest) -> dict:
                         """,
                         (
                             request.full_name,
-                            request.email,
+                            email,
                             request.phone,
                             password_hash,
                         ),
@@ -258,8 +220,8 @@ def signup(request: SignupRequest) -> dict:
                     access_token = create_access_token(str(user[0]))
                     # Dispatch verification email (for notification & verification)
                     try:
-                        token = create_verification_token(request.email)
-                        send_verification_email(request.email, request.full_name, token)
+                        token = create_verification_token(email)
+                        send_verification_email(email, request.full_name, token)
                     except Exception:
                         pass
 
@@ -312,6 +274,7 @@ def verify_email(request: VerifyEmailRequest) -> VerifyEmailResponse:
             detail="Liên kết xác nhận không hợp lệ hoặc đã hết hạn.",
         )
 
+    normalized_email = email.strip().lower()
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
@@ -319,9 +282,9 @@ def verify_email(request: VerifyEmailRequest) -> VerifyEmailResponse:
                     """
                     SELECT user_id, status
                     FROM public.users
-                    WHERE email = %s
+                    WHERE LOWER(email) = %s
                     """,
-                    (email,),
+                    (normalized_email,),
                 )
                 user = cursor.fetchone()
 
@@ -364,6 +327,7 @@ def verify_email(request: VerifyEmailRequest) -> VerifyEmailResponse:
 
 @router.post("/resend-verification", response_model=VerifyEmailResponse)
 def resend_verification(request: ResendVerificationRequest) -> VerifyEmailResponse:
+    email = request.email.strip().lower()
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
@@ -371,9 +335,9 @@ def resend_verification(request: ResendVerificationRequest) -> VerifyEmailRespon
                     """
                     SELECT user_id, full_name, status
                     FROM public.users
-                    WHERE email = %s
+                    WHERE LOWER(email) = %s
                     """,
-                    (request.email,),
+                    (email,),
                 )
                 user = cursor.fetchone()
 
@@ -425,7 +389,7 @@ def google_login(request: GoogleLoginRequest) -> GoogleLoginResponse:
                     """
                     SELECT user_id, full_name, email, phone, role, status, created_at, updated_at
                     FROM public.users
-                    WHERE email = %s
+                    WHERE LOWER(email) = %s
                     """,
                     (email,),
                 )
@@ -542,7 +506,7 @@ def verify_otp(request: VerifyOtpRequest) -> TokenResponse:
                     )
 
                 now = datetime.now(timezone.utc)
-                if expires_at < now:
+                if _as_utc_datetime(expires_at) < now:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Mã OTP đã hết hạn. Vui lòng bấm gửi lại mã mới.",
@@ -629,7 +593,7 @@ def resend_otp(request: ResendOtpRequest) -> ResendOtpResponse:
                     last_created = last_otp[0]
                     if len(last_otp) > 1 and last_otp[1]:
                         last_purpose = last_otp[1]
-                    diff_sec = (datetime.now(timezone.utc) - last_created).total_seconds()
+                    diff_sec = (datetime.now(timezone.utc) - _as_utc_datetime(last_created)).total_seconds()
                     if diff_sec < 60:
                         wait_time = int(60 - diff_sec)
                         raise HTTPException(
@@ -649,6 +613,7 @@ def resend_otp(request: ResendOtpRequest) -> ResendOtpResponse:
                 full_name = user_row[0] if user_row else request.email.split("@")[0]
 
                 otp_code = generate_otp_code()
+                expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
                 cursor.execute(
                     """
                     INSERT INTO public.email_otps (
@@ -657,9 +622,9 @@ def resend_otp(request: ResendOtpRequest) -> ResendOtpResponse:
                         purpose,
                         expires_at
                     )
-                    VALUES (%s, %s, %s, CURRENT_TIMESTAMP + INTERVAL '10 minutes')
+                    VALUES (%s, %s, %s, %s)
                     """,
-                    (request.email.lower(), otp_code, last_purpose),
+                    (request.email.strip().lower(), otp_code, last_purpose, expires_at),
                 )
                 connection.commit()
 

@@ -533,7 +533,7 @@ def validate_and_process_trip_parameters(params: TripParametersRequest) -> Valid
 # ============================================================================
 
 from psycopg import Connection
-from app.trips.schemas import CopilotChatRequest, CopilotChatResponse
+from app.trips.schemas import CopilotChatRequest, CopilotChatResponse, TripContextPayload
 from app.trips.handlers.swap_meal_handler import handle_swap_meal
 from app.trips.handlers.rainy_day_handler import handle_rainy_day
 from app.trips.handlers.night_eco_handler import handle_night_eco
@@ -543,96 +543,25 @@ from app.trips.handlers.culinary_guide_handler import handle_culinary_guide
 from app.trips.handlers.cafe_culture_handler import handle_cafe_culture
 from app.trips.handlers.travel_tips_handler import handle_travel_tips
 from app.trips.handlers.smart_concierge_handler import handle_smart_concierge
+from app.trips.copilot_consultant import (
+    classify_copilot_request,
+    extract_persistent_constraints,
+    handle_city_comparison_consultative,
+    handle_city_mismatch_and_mutation,
+    handle_elderly_constraints_consultation,
+    handle_itinerary_mutation_request,
+    handle_out_of_scope_request,
+    handle_over_scheduling_guardrail,
+    finalize_copilot_response,
+    normalize_vietnamese_query,
+    upgrade_handler_response_to_mindtrip_standard,
+)
 
 
-def detect_copilot_intent(message: str) -> str:
-    msg = message.strip().lower()
-    
-    # 1. Late schedule / pacing adjustment intent (Live Trip Adjuster)
-    late_keywords = [
-        "trễ giờ", "muộn giờ", "chậm giờ", "không kịp", "cháy giáo án", 
-        "lỡ giờ", "rút gọn", "tối ưu lại", "tối ưu chiều", "gọn hơn", 
-        "late", "running late", "delay", "chậm tiến độ", "bị trễ"
-    ]
-    if any(k in msg for k in late_keywords):
-        return "late_schedule_adjust"
-
-    # 2. Vegetarian meal swap intent
-    veg_keywords = [
-        "quán chay", "ăn chay", "cơm chay", "thực dưỡng", "vegan", 
-        "vegetarian", "đồ chay", "món chay", "thanh đạm", "thanh tịnh",
-        "đổi quán chay", "đổi sang quán chay"
-    ]
-    if any(k in msg for k in veg_keywords):
-        return "swap_meal_vegetarian"
-
-    # 3. Culinary & Local Dining Guide (Quán ăn, Đặc sản, Món ngon bản địa)
-    culinary_keywords = [
-        "quán ăn", "quán ngon", "ăn ngon", "đặc sản", "ăn gì", "món ngon",
-        "quán nhậu", "hải sản", "bún chả cá", "mì quảng", "bánh tráng cuốn",
-        "bánh xèo", "bò thui", "bún bò", "cơm hến", "bánh bèo", "bánh nậm",
-        "bánh lọc", "bánh ép", "nem lụi", "ăn trưa", "ăn tối", "ăn sáng",
-        "ẩm thực", "nhà hàng", "quán cơm", "điểm tâm", "món ăn", "chợ hải sản",
-        "chè sầu", "ăn vặt", "ốc"
-    ]
-    if any(k in msg for k in culinary_keywords):
-        return "culinary_guide"
-
-    # 4. Cafe, Coffee Culture & Chill Spaces
-    cafe_keywords = [
-        "quán cafe", "cà phê", "cafe", "coffee", "uống trà", "trà quán",
-        "specialty coffee", "cà phê muối", "uống nước", "chill", "sống ảo",
-        "view biển", "view sông hàn", "ngắm hoàng hôn", "làm việc", "workspace"
-    ]
-    if any(k in msg for k in cafe_keywords):
-        return "cafe_culture"
-
-    # 5. Rainy day / Indoor alternatives
-    rain_keywords = [
-        "mưa", "trời mưa", "mưa to", "mưa bão", "thời tiết xấu", 
-        "trong nhà", "có mái che", "ướt", "bảo tàng", "rain", "rainy"
-    ]
-    if any(k in msg for k in rain_keywords):
-        return "rainy_day_alternatives"
-
-    # 6. POI advice / landmark feasibility inquiry intent
-    advice_keywords = [
-        "có nên đi", "có nên ghé", "có nên tham quan", "có gì hay", 
-        "có đáng đi", "có nên đến", "tôi có nên đi", "có nên chọn",
-        "đáng đi không", "có đẹp không", "chơi gì ở", "có gì đẹp",
-        "thế nào", "review", "kinh nghiệm đi"
-    ]
-    landmark_names = [
-        "sơn trà", "cầu rồng", "nam sơn", "linh ứng", "ngũ hành sơn",
-        "bàn cờ", "bà nà", "đại nội", "thiên mụ", "khải định",
-        "tự đức", "từ hiếu", "tam giang", "mỹ khê", "hải vân"
-    ]
-    if any(k in msg for k in advice_keywords):
-        return "poi_advice"
-    if any(lm in msg for lm in landmark_names) and any(q in msg for q in ["không", "sao", "nên", "thế nào", "?", "gì"]):
-        return "poi_advice"
-
-    # 7. Night eco activities intent
-    night_keywords = [
-        "buổi tối", "tối nay", "về đêm", "ban đêm", "đi chơi đêm", 
-        "hoạt động đêm", "trải nghiệm đêm", "ngắm cảnh đêm", 
-        "phun lửa", "sông hàn", "ca huế", "sông hương", "chợ đêm", "night"
-    ]
-    if any(k in msg for k in night_keywords):
-        return "night_eco_activities"
-
-    # 8. Travel Tips, Budget, Transport & Souvenirs
-    tips_keywords = [
-        "chi phí", "ngân sách", "bao nhiêu tiền", "tiết kiệm", "kinh nghiệm",
-        "thời tiết", "mùa nào", "chuẩn bị gì", "hành lý", "mua quà", "làm quà",
-        "quà lưu niệm", "chợ hàn", "chợ cồn", "chợ đông ba", "phương tiện",
-        "di chuyển", "xe buýt", "xe bus", "taxi điện", "thuê xe", "xe máy",
-        "gia đình", "trẻ em", "em bé", "người già", "người lớn tuổi"
-    ]
-    if any(k in msg for k in tips_keywords):
-        return "travel_tips_budget"
-        
-    return "general_chat"
+def detect_copilot_intent(message: str, trip_context: TripContextPayload | None = None) -> str:
+    ctx = trip_context or TripContextPayload()
+    _, sub_intent, _ = classify_copilot_request(message, ctx)
+    return sub_intent
 
 
 def process_copilot_chat(
@@ -640,12 +569,76 @@ def process_copilot_chat(
     connection: Connection,
 ) -> CopilotChatResponse:
     """
-    Main entrypoint for In-Planner Copilot Chat (PB14 - MindTrip-grade Local Concierge).
+    Main entrypoint for In-Planner Copilot Chat (PB14 - MindTrip-grade Eco-Travel Consultant).
+    Enforces the 6 Core Rules across 4 canonical intent branches:
+    QA_AND_COMPARE, POI_RECOMMENDATION, ITINERARY_MUTATION, OUT_OF_SCOPE.
     """
-    intent = detect_copilot_intent(request.message)
     ctx = request.trip_context
+    constraints = extract_persistent_constraints(request.message, ctx)
+    intent_category, intent, fact_check = classify_copilot_request(request.message, ctx)
 
-    if intent == "culinary_guide":
+    # 1. OUT_OF_SCOPE branch (Rule 5)
+    if intent_category == "OUT_OF_SCOPE":
+        oos_target = fact_check.get("oos_target") if fact_check else None
+        return finalize_copilot_response(
+            handle_out_of_scope_request(request.message, oos_target, ctx, constraints),
+            ctx,
+            constraints,
+        )
+
+    # 2. Fact-Check & Feasibility Guardrails (Rule 2)
+    if fact_check:
+        if fact_check.get("type") == "over_scheduling":
+            return finalize_copilot_response(
+                handle_over_scheduling_guardrail(request.message, fact_check, ctx, constraints),
+                ctx,
+                constraints,
+            )
+        if fact_check.get("type") == "city_mismatch":
+            return finalize_copilot_response(
+                handle_city_mismatch_and_mutation(
+                    request.message, fact_check, ctx, connection, constraints
+                ),
+                ctx,
+                constraints,
+            )
+
+    # 3. Consultative City Comparison ('Đà Nẵng hay Huế?') (Rule 1, 2, 4, 6)
+    if intent == "qa_compare":
+        return finalize_copilot_response(
+            handle_city_comparison_consultative(request.message, ctx, connection, constraints),
+            ctx,
+            constraints,
+        )
+
+    # 4. Direct Itinerary State Mutation ('Chia 4 đêm Đà Nẵng, 3 đêm Huế', 'Bỏ Lăng Khải Định ngày 6', 'Đổi lịch đi Hội An từ ngày 3 sang ngày 2')
+    if intent == "itinerary_mutation":
+        return finalize_copilot_response(
+            handle_itinerary_mutation_request(request.message, ctx, connection, constraints),
+            ctx,
+            constraints,
+        )
+
+    # 5. Elderly / Senior Family Persistent Constraint Consultation ('Đi cùng bố mẹ lớn tuổi...')
+    norm_msg = normalize_vietnamese_query(request.message)
+    if intent == "travel_tips_budget" and any(
+        k in norm_msg for k in ["bố mẹ", "ba mẹ", "người lớn tuổi", "người già", "ông bà"]
+    ):
+        return finalize_copilot_response(
+            handle_elderly_constraints_consultation(request.message, ctx, connection, constraints),
+            ctx,
+            constraints,
+        )
+
+    # 6. Delegate to domain handlers and upgrade output to Mindtrip 6-Rule Standard
+    standard_handlers = {
+        "culinary_guide": (handle_culinary_guide, "lunch"),
+        "cafe_culture": (handle_cafe_culture, "afternoon"),
+        "travel_tips_budget": (handle_travel_tips, "morning"),
+        "poi_advice": (handle_poi_advice, "morning"),
+    }
+    if intent in standard_handlers:
+        handler_fn, default_slot = standard_handlers[intent]
         (
             reply_text,
             suggested_pois,
@@ -654,11 +647,11 @@ def process_copilot_chat(
             avoid_notice,
             green_impact,
             budget_impact,
-        ) = handle_culinary_guide(request.message, ctx, connection)
-        return CopilotChatResponse(
+        ) = handler_fn(request.message, ctx, connection)
+        raw_resp = CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
-            target_slot=ctx.current_slot or "lunch",
+            target_slot=ctx.current_slot or default_slot,
             suggested_pois=suggested_pois,
             action_type=action_type,
             next_suggested_prompts=next_prompts,
@@ -666,76 +659,11 @@ def process_copilot_chat(
             green_impact_summary=green_impact,
             budget_impact_summary=budget_impact,
         )
-
-    if intent == "cafe_culture":
-        (
-            reply_text,
-            suggested_pois,
-            action_type,
-            next_prompts,
-            avoid_notice,
-            green_impact,
-            budget_impact,
-        ) = handle_cafe_culture(request.message, ctx, connection)
-        return CopilotChatResponse(
-            reply_text=reply_text,
-            intent=intent,
-            target_slot=ctx.current_slot or "afternoon",
-            suggested_pois=suggested_pois,
-            action_type=action_type,
-            next_suggested_prompts=next_prompts,
-            avoid_notice=avoid_notice,
-            green_impact_summary=green_impact,
-            budget_impact_summary=budget_impact,
-        )
-
-    if intent == "travel_tips_budget":
-        (
-            reply_text,
-            suggested_pois,
-            action_type,
-            next_prompts,
-            avoid_notice,
-            green_impact,
-            budget_impact,
-        ) = handle_travel_tips(request.message, ctx, connection)
-        return CopilotChatResponse(
-            reply_text=reply_text,
-            intent=intent,
-            target_slot=ctx.current_slot or "morning",
-            suggested_pois=suggested_pois,
-            action_type=action_type,
-            next_suggested_prompts=next_prompts,
-            avoid_notice=avoid_notice,
-            green_impact_summary=green_impact,
-            budget_impact_summary=budget_impact,
-        )
-
-    if intent == "poi_advice":
-        (
-            reply_text,
-            suggested_pois,
-            action_type,
-            next_prompts,
-            avoid_notice,
-            green_impact,
-            budget_impact,
-        ) = handle_poi_advice(request.message, ctx, connection)
-        return CopilotChatResponse(
-            reply_text=reply_text,
-            intent=intent,
-            target_slot=ctx.current_slot or "morning",
-            suggested_pois=suggested_pois,
-            action_type=action_type,
-            next_suggested_prompts=next_prompts,
-            avoid_notice=avoid_notice,
-            green_impact_summary=green_impact,
-            budget_impact_summary=budget_impact,
-        )
+        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)
 
     if intent == "late_schedule_adjust":
         reply_text, suggested_pois = handle_late_adjust(ctx, connection)
-        return CopilotChatResponse(
+        raw_resp = CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
             target_slot=ctx.current_slot or "afternoon",
@@ -749,10 +677,11 @@ def process_copilot_chat(
             budget_impact_summary="Lựa chọn điểm dừng gần trung tâm giúp tiết kiệm chi phí taxi ~50.000 ₫ và tránh kẹt xe giờ cao điểm.",
             green_impact_summary="Giảm khoảng cách di chuyển giúp giảm phát thải phương tiện, khuyến khích tản bộ thư thái.",
         )
+        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)
 
     if intent == "swap_meal_vegetarian":
         reply_text, suggested_pois = handle_swap_meal(ctx, connection)
-        return CopilotChatResponse(
+        raw_resp = CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
             target_slot=ctx.current_slot or "lunch",
@@ -766,10 +695,11 @@ def process_copilot_chat(
             budget_impact_summary="Bữa ăn thanh đạm tại quán địa phương tiết kiệm ~35.000 ₫/người so với nhà hàng thông thường.",
             green_impact_summary="Bữa ăn thuần chay giúp giảm ~60% lượng phát thải carbon so với bữa ăn thông thường, bảo vệ nguồn nước và sức khỏe.",
         )
+        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)
 
     if intent == "rainy_day_alternatives":
         reply_text, suggested_pois = handle_rainy_day(ctx, connection)
-        return CopilotChatResponse(
+        raw_resp = CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
             target_slot=ctx.current_slot or "afternoon",
@@ -782,10 +712,11 @@ def process_copilot_chat(
                 "Thời gian mở cửa và giá vé của các điểm này?",
             ],
         )
+        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)
 
     if intent == "night_eco_activities":
         reply_text, suggested_pois = handle_night_eco(ctx, connection)
-        return CopilotChatResponse(
+        raw_resp = CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
             target_slot="dinner",
@@ -798,8 +729,9 @@ def process_copilot_chat(
             ],
             green_impact_summary="Khám phá phố đi bộ và phương tiện công cộng về đêm giúp giảm phát thải, tận hưởng không khí trong lành của thành phố.",
         )
+        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)
 
-    # Universal Smart Concierge: Warm, deeply grounded, no more dry boilerplate!
+    # Universal Smart Concierge
     (
         reply_text,
         suggested_pois,
@@ -810,7 +742,7 @@ def process_copilot_chat(
         budget_impact,
     ) = handle_smart_concierge(request.message, ctx, connection)
 
-    return CopilotChatResponse(
+    raw_resp = CopilotChatResponse(
         reply_text=reply_text,
         intent="general_chat",
         target_slot=None,
@@ -821,3 +753,4 @@ def process_copilot_chat(
         green_impact_summary=green_impact,
         budget_impact_summary=budget_impact,
     )
+    return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)

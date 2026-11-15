@@ -7,7 +7,9 @@ from __future__ import annotations
 import logging
 from psycopg import Connection
 from app.trips.schemas import CopilotSuggestedPoiItem, TripContextPayload
-from app.trips.handlers.swap_meal_handler import normalize_city_query, format_green_score
+from app.trips.handlers.swap_meal_handler import format_green_score
+from app.trips.copilot_consultant import resolve_effective_city, normalize_vietnamese_query
+from app.trips.text_utils import contains_any_phrase, strip_vietnamese_accents
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +24,30 @@ def handle_cafe_culture(
     Returns:
         (reply_text, suggested_pois, action_type, next_prompts, avoid_notice, green_impact, budget_impact)
     """
-    msg = message.strip().lower()
-    city_pattern, is_both = normalize_city_query(trip_context.destination)
-    is_hue = "hue" in trip_context.destination.lower() or "huế" in trip_context.destination.lower()
+    msg = normalize_vietnamese_query(message)
+    folded_msg = strip_vietnamese_accents(msg)
+    city_pattern, is_both, city_display = resolve_effective_city(message, trip_context.destination)
+    is_hue = city_display == "Huế"
 
     # Detect sub-vibes
-    is_work = any(k in msg for k in ["làm việc", "work", "yên tĩnh", "học bài", "wifi"])
-    is_view = any(k in msg for k in ["view biển", "sông hàn", "ngắm cảnh", "hoàng hôn", "sống ảo", "checkin", "đẹp"])
-    is_specialty = any(k in msg for k in ["specialty", "pha máy", "pha phin", "cà phê muối", "pha thủ công"])
+    is_work = contains_any_phrase(
+        msg,
+        folded_msg,
+        ["làm việc", "work", "yên tĩnh", "không ồn ào", "chill", "trong hẻm", "học bài", "wifi"],
+        ["lam viec", "work", "yen tinh", "khong on ao", "chill", "trong hem", "hoc bai", "wifi"],
+    )
+    is_view = contains_any_phrase(
+        msg,
+        folded_msg,
+        ["view biển", "sông hàn", "ngắm cảnh", "hoàng hôn", "sống ảo", "checkin", "đẹp"],
+        ["view bien", "song han", "ngam canh", "hoang hon", "song ao", "checkin", "view dep", "quan dep"],
+    )
+    is_specialty = contains_any_phrase(
+        msg,
+        folded_msg,
+        ["specialty", "pha máy", "pha phin", "cà phê muối", "pha thủ công"],
+        ["specialty", "pha may", "pha phin", "ca phe muoi", "pha thu cong"],
+    )
 
     suggested_pois: list[CopilotSuggestedPoiItem] = []
 
@@ -82,6 +100,7 @@ def handle_cafe_culture(
                 address = r[7] or "Đang cập nhật địa chỉ"
                 cost = float(r[8]) if r[8] is not None else None
                 meta = r[9] if isinstance(r[9], dict) else {}
+                row_city = "Đà Nẵng" if "da nang" in str(r[10] or "").lower() else "Huế"
                 gallery = r[11] if r[11] else None
 
                 price_display = meta.get("price_range_display") if isinstance(meta, dict) else None
@@ -94,6 +113,7 @@ def handle_cafe_culture(
                         name=name,
                         category=category,
                         sub_category=sub_cat,
+                        city=row_city,
                         image_url=image_url,
                         green_score=green_score,
                         rating=rating,

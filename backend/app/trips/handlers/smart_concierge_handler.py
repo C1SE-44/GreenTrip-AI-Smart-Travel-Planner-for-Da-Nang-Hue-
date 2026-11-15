@@ -6,11 +6,29 @@ and top-rated green recommendations from the database.
 from __future__ import annotations
 
 import logging
+import re
 from psycopg import Connection
 from app.trips.schemas import CopilotSuggestedPoiItem, TripContextPayload
 from app.trips.handlers.swap_meal_handler import normalize_city_query, format_green_score
+from app.trips.text_utils import strip_vietnamese_accents
 
 logger = logging.getLogger(__name__)
+
+_GREETING_WORDS = (
+    r"xin|ch[aà]o|b[aạ]n|tr[oợ]|l[yý]|ai|copilot|hello|hi|hey|alo|ad|admin|"
+    r"shop|bot|[oơ]i|nh[eéa]|v[oớ]i|m[iì]nh|em|anh|ch[iị]|t[oô]i|"
+    r"bu[oổ]i|s[aá]ng|tr[uư]a|chi[eề]u|t[oố]i|good|morning|afternoon|evening"
+)
+_GREETING_RE = re.compile(
+    rf"^(?=.*\b(?:xin ch[aà]o|ch[aà]o|hello|hi|hey|alo|good (?:morning|afternoon|evening))\b)"
+    rf"(?:{_GREETING_WORDS})(?:\s+(?:{_GREETING_WORDS})){{0,7}}$"
+)
+
+
+def is_simple_social_greeting(message: str) -> bool:
+    """Return True only for short, pure social greetings with no travel request."""
+    norm = " ".join(re.sub(r"[^\w\s]|_", " ", strip_vietnamese_accents((message or "").lower())).split())
+    return not norm or bool(_GREETING_RE.fullmatch(norm))
 
 
 def handle_smart_concierge(
@@ -27,6 +45,62 @@ def handle_smart_concierge(
     days = trip_context.days_count or 3
     is_hue = "hue" in dest.lower() or "huế" in dest.lower()
     city_pattern, is_both = normalize_city_query(dest)
+    caller = (
+        trip_context.traveler_name.strip().split()[-1]
+        if trip_context.traveler_name and trip_context.traveler_name.strip()
+        else "bạn"
+    )
+
+    if is_hue:
+        prompts = [
+            "Gợi ý các quán ăn ngon nhất ở Huế",
+            "Quán cafe muối ngon chuẩn gốc ở đâu?",
+            "Lịch trình tham quan lăng tẩm và Đại Nội",
+            "Đặc sản Huế nên mua về làm quà?",
+        ]
+    else:
+        prompts = [
+            "Gợi ý các quán ăn ngon nhất ở Đà Nẵng",
+            "Có nên đi Bán Đảo Sơn Trà không?",
+            "Quán cafe view biển hoặc sông Hàn đẹp?",
+            "Trời mưa thì đi đâu chơi?",
+        ]
+
+    # Pure social greeting ('xin chào', 'hello', 'hi'): short 2-sentence reply, no unsolicited POIs/map pins
+    if is_simple_social_greeting(message):
+        if getattr(trip_context, "mode", "trip") == "ideation":
+            ideation_prompts = [
+                "Tháng 11 đi Đà Nẵng – Huế thời tiết thế nào, có hay mưa không?",
+                "Đặc sản nhất định phải thử ở Đà Nẵng và Huế là gì?",
+                "Nên đi Đà Nẵng – Huế mấy ngày thì vừa đẹp?",
+                "Gợi ý trải nghiệm du lịch xanh ít đông đúc ở miền Trung?",
+            ]
+            reply_text = (
+                f"Chào {caller}! Mình là trợ lý GreenTrip — bạn cứ hỏi tự do về **thời tiết, đặc sản, chi phí hay nên đi Đà Nẵng – Huế mấy ngày**.\n"
+                "Khi nào có ý tưởng ưng ý, bấm **\"Tạo lịch trình từ ý tưởng này\"** để mình dựng ngay kế hoạch chi tiết cho bạn nhé!"
+            )
+            return (
+                reply_text,
+                [],
+                "none",
+                ideation_prompts,
+                None,
+                None,
+                None,
+            )
+        reply_text = (
+            f"Chào {caller}! Mình là GreenTrip Copilot đồng hành cùng bạn trong chuyến đi **{dest} ({days} ngày)**.\n"
+            "Bạn muốn mình gợi ý quán ăn bản địa, điểm tham quan xanh hay tinh chỉnh lại lịch trình ngày nào trước?"
+        )
+        return (
+            reply_text,
+            [],
+            "none",
+            prompts,
+            None,
+            None,
+            None,
+        )
 
     suggested_pois: list[CopilotSuggestedPoiItem] = []
 
@@ -116,43 +190,10 @@ def handle_smart_concierge(
     except Exception as e:
         logger.error("Failed to query concierge POIs: %s", e)
 
-    welcome_intro = (
-        f"Chào bạn! Mình là GreenTrip Copilot — người bạn đồng hành địa phương cho hành trình **{dest} {days} ngày** của bạn. "
-        f"Mình ở đây để giúp bạn tìm kiếm quán ăn ngon chuẩn vị, góc ngắm cảnh đẹp nhất và tối ưu lịch trình theo tiêu chí xanh thảnh thơi."
+    reply_text = (
+        f"Chào {caller}! Mình đã sẵn sàng hỗ trợ điều chỉnh lịch trình và gợi ý địa điểm xanh cho chuyến đi **{dest} ({days} ngày)**.\n"
+        "Bạn muốn mình tập trung tìm quán ăn bản địa, lọc điểm tham quan theo sở thích, hay sắp xếp lại lịch từng ngày?"
     )
-
-    if is_hue:
-        city_highlights = (
-            "**Gợi ý 3 trải nghiệm vàng khi đến Cố Đô:**\n"
-            "- **Di sản ngàn năm**: Thong dong dạo bước tại Đại Nội và Chùa Thiên Mụ trong làn gió sớm sông Hương.\n"
-            "- **Tinh hoa ẩm thực**: Thưởng thức một tô bún bò cay nồng hay đĩa bánh bèo nậm lọc thanh tao đượm tình xứ Huế.\n"
-            "- **Khoảnh khắc lắng đọng**: Thưởng thức cà phê muối hoặc trà cung đình tại những ngôi nhà rường cổ tích rợp bóng cây xanh."
-        )
-        prompts = [
-            "Gợi ý các quán ăn ngon nhất ở Huế",
-            "Quán cafe muối ngon chuẩn gốc ở đâu?",
-            "Lịch trình tham quan lăng tẩm và Đại Nội",
-            "Đặc sản Huế nên mua về làm quà?",
-        ]
-    else:
-        city_highlights = (
-            "**Gợi ý 3 trải nghiệm vàng khi đến Đà Nẵng:**\n"
-            "- **Hòa mình vào thiên nhiên**: Đón bình minh trên đỉnh Bán đảo Sơn Trà và dạo bước dọc bãi biển Mỹ Khê cát trắng mịn.\n"
-            "- **Bản đồ ẩm thực phong phú**: Nếm thử Mì Quảng đậm đà, Bánh tráng cuốn thịt heo hai đầu da và hải sản tươi sống.\n"
-            "- **Thành phố của những cây cầu**: Ngắm Cầu Rồng rực sáng về đêm và thưởng thức cà phê specialty bên bờ sông Hàn lộng gió."
-        )
-        prompts = [
-            "Gợi ý các quán ăn ngon nhất ở Đà Nẵng",
-            "Có nên đi Bán Đảo Sơn Trà không?",
-            "Quán cafe view biển hoặc sông Hàn đẹp?",
-            "Trời mưa thì đi đâu chơi?",
-        ]
-
-    eco_advice = (
-        "Bạn có thể nhắn cho mình bất kỳ câu hỏi nào về: món ăn đặc sản, quán cafe đẹp, thời tiết, kinh nghiệm chuẩn bị hoặc muốn điều chỉnh nhịp độ lịch trình nhé!"
-    )
-
-    reply_text = f"{welcome_intro}\n\n{city_highlights}\n\n{eco_advice}"
 
     return (
         reply_text,
@@ -160,6 +201,6 @@ def handle_smart_concierge(
         "view_on_map",
         prompts,
         None,
-        "Đồng hành cùng GreenTrip để bảo vệ môi trường và lan tỏa văn hóa du lịch văn minh.",
-        "Thông tin giá cả được niêm yết rõ ràng, giúp bạn luôn chủ động ngân sách.",
+        None,
+        None,
     )

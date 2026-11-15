@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "noreply@greentrip.vn"
     SMTP_FROM_NAME: str = "GreenTrip AI"
     GOOGLE_CLIENT_ID: str = ""
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+
+    @property
+    def gemini_configured(self) -> bool:
+        return bool(self.GEMINI_API_KEY and self.GEMINI_API_KEY.strip())
 
     @property
     def smtp_configured(self) -> bool:

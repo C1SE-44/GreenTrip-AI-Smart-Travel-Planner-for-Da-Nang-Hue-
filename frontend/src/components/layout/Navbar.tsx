@@ -4,6 +4,7 @@ import { Menu, X, Compass, CalendarCheck, MapPinned, LogIn, UserPlus, LogOut } f
 import Logo from '@/components/ui/Logo';
 import LoginModal from '@/components/auth/LoginModal';
 import OnboardingModal from '@/components/auth/OnboardingModal';
+import { clearAuthSession } from '@/services/auth';
 
 const navItems = [
   { to: '/explore', label: 'Khám Phá', icon: Compass },
@@ -83,9 +84,7 @@ export default function Navbar() {
   }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    sessionStorage.removeItem('access_token');
-    window.dispatchEvent(new Event('auth-change'));
+    clearAuthSession();
     setIsAuthenticated(false);
     navigate('/');
   };

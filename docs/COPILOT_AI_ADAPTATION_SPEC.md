@@ -77,7 +77,7 @@ flowchart TD
 
     subgraph QUANTITATIVE_SOLVER ["TẦNG TỐI ƯU HÓA ĐỊNH LƯỢNG (Constraint Solver)"]
         CandidateFilter --> Solver["Multi-Objective Itinerary Solver"]
-        Solver --> Constraints{"Kiểm Tra Ràng Buộc Thực Tế:<br/>1. Thời gian mở cửa / Đóng cửa<br/>2. Thời gian di chuyển (OSRM/Distance)<br/>3. Ngân sách tối đa/ngày<br/>4. Tổng phát thải CO2 tối thiểu"}
+        Solver --> Constraints{"Kiểm Tra Ràng Buộc Thực Tế:<br/>1. Thời gian mở cửa / Đóng cửa<br/>2. Thời gian di chuyển (OSRM/Distance)<br/>3. Ngân sách tối đa/ngày<br/>4. Tổng phát thải CO2 tối thiểu<br/>5. Nhịp độ & Nghỉ phục hồi (Fatigue F(d))"}
         Constraints -->|Hợp lệ| OptimizedSchedule["Lịch trình Khả thi 100% (Day-by-Day Timeline)"]
     end
 
@@ -89,6 +89,8 @@ flowchart TD
 
     OptimizedSchedule --> UI["Giao diện Người Dùng (React + Leaflet Map)"]
 ```
+
+> **Tham chiếu triển khai (Part 2 Solver)**: Xem `backend/app/trips/itinerary_constraints.py`, `frontend/src/services/itineraryService.ts` và `.ecc/memory/ADR-001-quantitative-solver-and-lean-planner.md`.
 
 ### Tại sao không để LLM tự sinh 100% lịch trình?
 - **Ảo giác (Hallucination)**: LLM có thể tự bịa ra giờ mở cửa, vị trí địa lý sai lệch (ví dụ: xếp đi Chùa Linh Ứng rồi ăn bánh bèo ở Huế trong vòng 30 phút).

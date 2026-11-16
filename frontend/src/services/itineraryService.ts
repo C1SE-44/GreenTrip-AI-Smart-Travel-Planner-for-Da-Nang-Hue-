@@ -551,14 +551,30 @@ export async function getTripItinerary(tripId: string): Promise<TripItinerary> {
 }
 
 export function scheduleError(next: TripItinerary, previous?: TripItinerary | null): string {
-  const old = new Map(previous?.days.flatMap(day => day.stops.map(stop => [stop.stop_id, { date: day.date || (previous.start_date ? dateAt(previous.start_date, day.day_number - 1) : null), time: stop.start_time, end: stop.end_time }] as const)));
+  const old = new Map(previous?.days.flatMap(day => day.stops.map(stop => [stop.stop_id, {
+    date: day.date || (previous.start_date ? dateAt(previous.start_date, day.day_number - 1) : null),
+    time: stop.start_time,
+    end: stop.end_time
+  }] as const)));
   const now = vietnamNow();
+  const prevStart = tripStartDate(previous?.start_date);
+  const nextStart = tripStartDate(next.start_date);
+  const isTripShiftForward = Boolean(
+    previous &&
+    nextStart &&
+    nextStart >= now.date &&
+    (!prevStart || nextStart > prevStart)
+  );
+
   for (const day of next.days) {
     const date = day.date || (next.start_date ? dateAt(next.start_date, day.day_number - 1) : null);
     for (const stop of day.stops) {
       if (!date || !stop.start_time) continue;
       const before = old.get(stop.stop_id);
       if (before?.date === date && before.time === stop.start_time && before.end === stop.end_time) continue;
+      if (isTripShiftForward && before && before.time === stop.start_time && before.end === stop.end_time && date >= now.date) {
+        continue;
+      }
       const [hour, minute] = stop.start_time.split(':').map(Number);
       if (date < now.date || (date === now.date && hour * 60 + minute < now.minutes)) {
         return 'Không thể thêm hoặc dời hoạt động vào quá khứ (giờ Việt Nam).';

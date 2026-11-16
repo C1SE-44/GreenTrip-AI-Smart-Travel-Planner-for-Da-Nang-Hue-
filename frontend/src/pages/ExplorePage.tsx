@@ -269,6 +269,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
   const [selectedTripForDetails, setSelectedTripForDetails] = useState<UserTrip | null>(null);
   const [activeTripSubTab, setActiveTripSubTab] = useState<'ideas' | 'itinerary' | 'calendar'>('ideas');
+  const [autoOpenWhenModal, setAutoOpenWhenModal] = useState(false);
 
   useEffect(() => {
     setViewMode(initialView);
@@ -1514,6 +1515,13 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               trip={(activeOverviewTrip || selectedTripForDetails)!}
               allPois={allPois}
               activeWorkspaceTab="calendar"
+              onOpenWhen={() => {
+                const target = activeOverviewTrip || selectedTripForDetails;
+                setActiveTripSubTab('ideas');
+                setSelectedTripForDetails(null);
+                setActiveOverviewTrip(target);
+                setAutoOpenWhenModal(true);
+              }}
               onNavigateToTab={(tab) => {
                 const target = activeOverviewTrip || selectedTripForDetails;
                 setActiveTripSubTab(tab);
@@ -1555,6 +1563,13 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               trip={selectedTripForDetails}
               allPois={allPois}
               activeWorkspaceTab="itinerary"
+              onOpenWhen={() => {
+                const target = activeOverviewTrip || selectedTripForDetails;
+                setActiveTripSubTab('ideas');
+                setSelectedTripForDetails(null);
+                setActiveOverviewTrip(target);
+                setAutoOpenWhenModal(true);
+              }}
               onNavigateToTab={(tab) => {
                 const target = activeOverviewTrip || selectedTripForDetails;
                 setActiveTripSubTab(tab);
@@ -1600,6 +1615,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               trip={activeOverviewTrip}
               allPois={allPois}
               activeWorkspaceTab="ideas"
+              autoOpenWhenModal={autoOpenWhenModal}
+              onResetAutoOpenWhenModal={() => setAutoOpenWhenModal(false)}
               onNavigateToTab={(tab) => {
                 const target = activeOverviewTrip || selectedTripForDetails;
                 setActiveTripSubTab(tab);
@@ -1621,6 +1638,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               }}
               onUpdateTrip={(updatedTrip) => {
                 setActiveOverviewTrip(updatedTrip);
+                setSelectedTripForDetails(updatedTrip);
                 setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
                 try {
                   const raw = localStorage.getItem('greentrip_user_trips');

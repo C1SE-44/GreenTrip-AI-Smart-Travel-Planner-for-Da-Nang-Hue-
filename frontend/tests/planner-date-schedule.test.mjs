@@ -59,3 +59,60 @@ test('Saving rejects past edits before local writes, while unchanged history rem
   assert.equal(data.size, 0);
   assert.equal(requests, 0);
 });
+
+test('Expired trip shift forward (10-13 Nov -> 16-19 Nov) preserves morning stops and syncs cleanly', async () => {
+  const data = new Map();
+  const storage = { getItem: key => data.get(key) || null, setItem: (key, value) => data.set(key, value) };
+  let apiSaves = 0;
+  // Today is 2026-11-16 11:43 (minutes = 703)
+  const fixedDates = { ...dates, vietnamNow: () => ({ date: '2026-11-16', minutes: 703 }) };
+  const service = load('../src/services/itineraryService.ts', {
+    '@/utils/tripDates': fixedDates,
+    '@/lib/api': {
+      fetchJson: async (url, options) => {
+        apiSaves++;
+        return JSON.parse(options.body);
+      },
+    },
+  }, { localStorage: storage });
+
+  // 1. Existing past trip (10 - 13 Nov 2026)
+  const pastTrip = { id: 'trip-past', title: 'Chuyến đi Đà Nẵng', destination: 'Đà Nẵng', startDate: '2026-11-10', daysCount: 4 };
+  const pastPlan = service.createEmptyItinerary(pastTrip);
+  pastPlan.days[0].stops.push({ stop_id: 's1', title: 'Bán đảo Sơn Trà', sequence: 0, start_time: '08:30', end_time: '10:00' });
+  pastPlan.days[0].stops.push({ stop_id: 's2', title: 'Cầu Rồng', sequence: 1, start_time: '14:00', end_time: '15:30' });
+  pastPlan.days[1].stops.push({ stop_id: 's3', title: 'Bà Nà Hills', sequence: 0, start_time: '09:00', end_time: '16:00' });
+  storage.setItem('greentrip_itinerary_trip-past', JSON.stringify(pastPlan));
+
+  // 2. User shifts trip forward to start on 2026-11-16 (today)
+  const updatedTrip = { ...pastTrip, startDate: '2026-11-16' };
+  const aligned = service.alignItineraryToTrip(pastPlan, updatedTrip);
+
+  // Day dates are shifted
+  assert.equal(aligned.itinerary.start_date, '2026-11-16');
+  assert.equal(aligned.itinerary.days[0].date, '2026-11-16');
+  assert.equal(aligned.itinerary.days[1].date, '2026-11-17');
+  assert.equal(aligned.itinerary.days[2].date, '2026-11-18');
+  assert.equal(aligned.itinerary.days[3].date, '2026-11-19');
+
+  // Stop s1 on Day 1 is at 08:30 (before current clock 11:43), but because it is a forward trip roll, scheduleError allows it!
+  const error = service.scheduleError(aligned.itinerary, pastPlan);
+  assert.equal(error, '', 'Shifting entire trip forward to today must not fail with past-time error for existing stops');
+
+  // Saving succeeds to localStorage and backend
+  const saved = await service.saveTripItinerary(aligned.itinerary);
+  assert.equal(saved.start_date, '2026-11-16');
+  assert.equal(apiSaves, 1);
+  assert.ok(storage.getItem('greentrip_itinerary_trip-past'));
+
+  // 3. Adding a new stop in the past (e.g. 09:30 AM today) is still rejected!
+  const planWithNewPastStop = JSON.parse(JSON.stringify(aligned.itinerary));
+  planWithNewPastStop.days[0].stops.push({ stop_id: 's_new', title: 'Chợ Hàn', sequence: 2, start_time: '09:30', end_time: '11:00' });
+  assert.ok(service.scheduleError(planWithNewPastStop, aligned.itinerary).includes('quá khứ'));
+
+  // 4. Shifting trip back into the past (e.g. 2026-11-12) is rejected!
+  const planShiftedBack = JSON.parse(JSON.stringify(aligned.itinerary));
+  planShiftedBack.start_date = '2026-11-12';
+  planShiftedBack.days.forEach((day, idx) => { day.date = fixedDates.dateAt('2026-11-12', idx); });
+  assert.ok(service.scheduleError(planShiftedBack, pastPlan).includes('quá khứ'));
+});

@@ -1,4 +1,5 @@
 import { tripStartDate, dateAt, dateKey, vietnamNow } from '@/utils/tripDates';
+import ExpiredTripBanner from './ExpiredTripBanner';
 // TripOverviewView - Updated with Ideas & 2-Stage PB09 Recommendations
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
@@ -202,6 +203,8 @@ export interface TripOverviewViewProps {
   onUpdateTrip?: (updatedTrip: UserTrip) => void;
   activeWorkspaceTab?: 'ideas' | 'itinerary' | 'calendar';
   onNavigateToTab?: (tab: 'ideas' | 'itinerary' | 'calendar') => void;
+  autoOpenWhenModal?: boolean;
+  onResetAutoOpenWhenModal?: () => void;
 }
 
 // 5 lựa chọn ngân sách chuẩn Mindtrip theo ảnh người dùng gửi
@@ -296,6 +299,8 @@ export default function TripOverviewView({
   onUpdateTrip,
   activeWorkspaceTab = 'ideas',
   onNavigateToTab,
+  autoOpenWhenModal,
+  onResetAutoOpenWhenModal,
 }: TripOverviewViewProps) {
   const { savedIds, pendingIds, openCollectionPicker, places } = useSavedPlaces();
   const handleOpenSavedCollections = (_poiId: string, poi?: Poi) => {
@@ -345,15 +350,23 @@ export default function TripOverviewView({
   const [whenSaving, setWhenSaving] = useState(false);
   const today = vietnamNow().date;
   useEffect(() => {
+    if (autoOpenWhenModal) {
+      setShowWhenModal(true);
+      onResetAutoOpenWhenModal?.();
+    }
+  }, [autoOpenWhenModal, onResetAutoOpenWhenModal]);
+
+  useEffect(() => {
     if (!showWhenModal) return;
     const start = tripStartDate(trip.startDate);
+    const baseDate = start && start >= today ? start : today;
     setRangeStart(start ? new Date(`${start}T12:00:00`) : null);
     setRangeEnd(start ? new Date(`${dateAt(start, (trip.daysCount || 1) - 1)}T12:00:00`) : null);
-    setCalendarBaseMonth(new Date(`${start || vietnamNow().date}T12:00:00`));
+    setCalendarBaseMonth(new Date(`${baseDate}T12:00:00`));
     setWhenTab(start ? 'dates' : 'flex');
     setFlexibleDays(trip.daysCount || 4);
     setWhenError('');
-  }, [showWhenModal, trip.startDate, trip.daysCount]);
+  }, [showWhenModal, trip.startDate, trip.daysCount, today]);
 
   const [selectedMonth, setSelectedMonth] = useState('Tháng 11');
 
@@ -1034,12 +1047,18 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   // 2. Cập nhật Thời gian
   const handleSaveWhen = async () => {
     setWhenError('');
-    if (whenTab === 'dates' && (!rangeStart || !rangeEnd)) {
-      setWhenError('Chọn đủ ngày bắt đầu và kết thúc.');
+    let effectiveEnd = rangeEnd;
+    if (whenTab === 'dates' && rangeStart && !effectiveEnd) {
+      const defaultDays = trip.daysCount || flexibleDays || 4;
+      effectiveEnd = new Date(rangeStart);
+      effectiveEnd.setDate(effectiveEnd.getDate() + defaultDays - 1);
+    }
+    if (whenTab === 'dates' && (!rangeStart || !effectiveEnd)) {
+      setWhenError('Chọn ngày bắt đầu chuyến đi.');
       return;
     }
     const start = whenTab === 'dates' && rangeStart ? dateKey(rangeStart) : null;
-    const count = start && rangeEnd ? Math.round((rangeEnd.getTime() - rangeStart!.getTime()) / 86400000) + 1 : flexibleDays;
+    const count = start && effectiveEnd ? Math.max(1, Math.round((effectiveEnd.getTime() - rangeStart!.getTime()) / 86400000) + 1) : flexibleDays;
     if (start && start < vietnamNow().date && (start !== tripStartDate(trip.startDate) || count !== trip.daysCount)) {
       setWhenError('Không thể chọn khoảng ngày mới trước hôm nay.');
       return;
@@ -1371,6 +1390,14 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         onOpenWhen={() => setShowWhenModal(true)}
         onOpenWho={() => setShowWhoModal(true)}
         onOpenBudget={() => setShowBudgetModal(true)}
+      />
+
+      <ExpiredTripBanner
+        trip={trip}
+        plan={itineraryPlan}
+        onUpdateTrip={onUpdateTrip}
+        onPlanUpdated={(next) => setItineraryPlan(next)}
+        onOpenWhen={() => setShowWhenModal(true)}
       />
 
       {/* Hidden tags to preserve test invariants */}

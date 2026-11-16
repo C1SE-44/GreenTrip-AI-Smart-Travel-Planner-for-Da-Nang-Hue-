@@ -1,4 +1,5 @@
 import { tripStartDate as getTripStartDate, dateAt } from '@/utils/tripDates';
+import ExpiredTripBanner from './ExpiredTripBanner';
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   ChevronLeft,
@@ -81,6 +82,7 @@ export interface TripItineraryViewProps {
   onNavigateToCalendar?: () => void;
   activeWorkspaceTab?: 'ideas' | 'itinerary' | 'calendar';
   onNavigateToTab?: (tab: 'ideas' | 'itinerary' | 'calendar') => void;
+  onOpenWhen?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -200,6 +202,7 @@ export default function TripItineraryView({
   onNavigateToCalendar,
   activeWorkspaceTab = 'itinerary',
   onNavigateToTab,
+  onOpenWhen,
 }: TripItineraryViewProps) {
   // ─── 0. Hệ thống địa điểm đã lưu (Favorites / Đã thích) của Thiện ───
   const { savedIds, pendingIds, toggleSaved, openCollectionPicker, places } = useSavedPlaces();
@@ -1078,11 +1081,24 @@ export default function TripItineraryView({
           showCustomSettings={showCustomSettings}
           setShowCustomSettings={setShowCustomSettings}
           onOpenWhere={() => onNavigateToTab?.('ideas')}
-          onOpenWhen={() => onNavigateToTab?.('ideas')}
+          onOpenWhen={onOpenWhen || (() => onNavigateToTab?.('ideas'))}
           onOpenWho={() => onNavigateToTab?.('ideas')}
           onOpenBudget={() => onNavigateToTab?.('ideas')}
           isSaving={isSaving}
           daysCount={plan.days.length}
+        />
+      )}
+
+      {!isDrawerMode && (
+        <ExpiredTripBanner
+          trip={trip}
+          plan={plan}
+          onUpdateTrip={onUpdateTrip}
+          onPlanUpdated={(next) => {
+            latestPlan.current = next;
+            setPlan(next);
+          }}
+          onOpenWhen={onOpenWhen || (() => onNavigateToTab?.('ideas'))}
         />
       )}
 

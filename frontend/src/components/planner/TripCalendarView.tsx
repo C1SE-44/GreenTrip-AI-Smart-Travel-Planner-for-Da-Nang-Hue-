@@ -1,4 +1,5 @@
 import { vietnamNow, tripStartDate, dateAt } from '@/utils/tripDates';
+import ExpiredTripBanner from './ExpiredTripBanner';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ChevronLeft,
@@ -52,6 +53,7 @@ export interface TripCalendarViewProps {
   onNavigateToItinerary?: () => void;
   activeWorkspaceTab?: 'ideas' | 'itinerary' | 'calendar';
   onNavigateToTab?: (tab: 'ideas' | 'itinerary' | 'calendar') => void;
+  onOpenWhen?: () => void;
 }
 
 const CALENDAR_HOURS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
@@ -96,6 +98,7 @@ export default function TripCalendarView({
   onNavigateToItinerary,
   activeWorkspaceTab = 'calendar',
   onNavigateToTab,
+  onOpenWhen,
 }: TripCalendarViewProps) {
   const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
 
@@ -264,12 +267,20 @@ export default function TripCalendarView({
         showCustomSettings={showCustomSettings}
         setShowCustomSettings={setShowCustomSettings}
         onOpenWhere={() => onNavigateToTab?.('ideas')}
-        onOpenWhen={() => onNavigateToTab?.('ideas')}
+        onOpenWhen={onOpenWhen || (() => onNavigateToTab?.('ideas'))}
         onOpenWho={() => onNavigateToTab?.('ideas')}
         onOpenBudget={() => onNavigateToTab?.('ideas')}
         isSaving={isSaving}
         saveError={saveError}
         daysCount={plan.days.length}
+      />
+
+      <ExpiredTripBanner
+        trip={trip}
+        plan={plan}
+        onUpdateTrip={onUpdateTrip}
+        onPlanUpdated={(next) => setPlan(next)}
+        onOpenWhen={onOpenWhen || (() => onNavigateToTab?.('ideas'))}
       />
 
       {/* ─── NỘI DUNG CHÍNH: BỐ CỤC 2 CỘT (LỊCH CALENDAR + BẢN ĐỒ / Ý TƯỞNG) ─── */}

@@ -426,21 +426,54 @@ class TripParametersResponse(BaseModel):
 # PB14: In-Planner AI Travel Copilot Schemas
 # ============================================================================
 
+IntentCategoryType = Literal[
+    "QA_AND_COMPARE",
+    "POI_RECOMMENDATION",
+    "ITINERARY_MUTATION",
+    "OUT_OF_SCOPE",
+]
+
+
 class TripContextPayload(BaseModel):
-    destination: str = Field(default="Đà Nẵng", description="Thành phố mục tiêu: 'Đà Nẵng' hoặc 'Huế'")
-    days_count: int = Field(default=3, ge=1, le=14, description="Tổng số ngày chuyến đi")
+    mode: Literal["trip", "ideation"] = Field(
+        default="trip",
+        description="Chế độ trò chuyện: 'trip' (trong chuyến đi có sẵn) hoặc 'ideation' (hỏi vu vơ khởi tạo ý tưởng trước chuyến đi)",
+    )
+    destination: str = Field(default="Đà Nẵng", description="Thành phố mục tiêu: 'Đà Nẵng', 'Huế', hoặc 'Đà Nẵng & Huế'")
+    days_count: int = Field(default=3, ge=1, le=31, description="Tổng số ngày chuyến đi")
     current_day: int = Field(default=1, ge=1, description="Ngày đang xem trong lịch trình")
     current_slot: str | None = Field(default="lunch", description="Khung giờ: morning, lunch, afternoon, dinner")
     current_stop_name: str | None = Field(default=None, description="Tên điểm dừng hiện tại cần đổi")
     current_stop_id: str | None = Field(default=None, description="ID của điểm dừng hiện tại")
     saved_ideas: list[str] = Field(default_factory=list, description="Danh sách địa điểm người dùng đã lưu vào Ý tưởng")
+    traveler_name: str | None = Field(default=None, description="Tên người dùng để cá nhân hóa xưng hô")
+    companions: str | None = Field(default=None, description="Đối tượng đi cùng (bố mẹ lớn tuổi, trẻ nhỏ, cặp đôi, solo)")
+    preferences: list[str] = Field(default_factory=list, description="Danh sách sở thích ưu tiên")
+    start_date: str | None = None
+    end_date: str | None = None
+    active_constraints: list[str] = Field(
+        default_factory=list,
+        description="Các ràng buộc ngầm duy trì xuyên suốt hội thoại (elderly_friendly, kid_friendly, rainy_season, quiet_vibe, vegetarian)",
+    )
+    trip_memory: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Đối tượng bộ nhớ ngữ cảnh đa tầng (companions, vibe, diet, weather_concern, pace)",
+    )
+    conversation_history: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="Lịch sử tin nhắn trước đó [{'role': 'user'|'assistant', 'content': '...'}]",
+    )
+    current_itinerary_state: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Trạng thái lịch trình hiện tại dưới dạng danh sách các ngày và điểm dừng",
+    )
 
 
 class CopilotChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=1000, description="Nội dung người dùng gửi cho Copilot")
     trip_context: TripContextPayload = Field(
         default_factory=TripContextPayload,
-        description="Ngữ cảnh chuyến đi hiện tại (thành phố, ngày, điểm dừng)"
+        description="Ngữ cảnh chuyến đi hiện tại (thành phố, ngày, điểm dừng)",
     )
 
 
@@ -449,11 +482,16 @@ class CopilotSuggestedPoiItem(BaseModel):
     name: str
     category: str
     sub_category: str | None = None
+    city: str | None = None
+    lat: float | None = None
+    lng: float | None = None
     image_url: str
     green_score: int
     rating: float
     address: str
     swap_reason: str
+    kg_explanation: str | None = None
+    eco_practices: list[str] = Field(default_factory=list)
     distance_info: str | None = None
     estimated_cost: float | None = None
     price_range_display: str | None = None
@@ -464,11 +502,21 @@ class CopilotSuggestedPoiItem(BaseModel):
 
 class CopilotChatResponse(BaseModel):
     reply_text: str
-    intent: str  # 'swap_meal_vegetarian', 'rainy_day_alternatives', 'night_eco_activities', 'late_schedule_adjust', 'general_chat'
+    intent: str
+    intent_category: IntentCategoryType = "QA_AND_COMPARE"
+    reasoning_trace: str = ""
+    recommended_poi_ids: list[str] = Field(default_factory=list)
+    detected_constraints: list[str] = Field(default_factory=list)
+    trip_memory: dict[str, Any] = Field(default_factory=dict)
+    fact_check_warning: str | None = None
     target_slot: str | None = None
-    suggested_pois: list[CopilotSuggestedPoiItem] = []
-    action_type: str = "none"  # 'replace_stop', 'add_stop', 'none'
-    next_suggested_prompts: list[str] = []
+    suggested_pois: list[CopilotSuggestedPoiItem] = Field(default_factory=list)
+    action_type: str = "none"  # 'replace_stop', 'add_stop', 'mutate_itinerary', 'view_on_map', 'none'
+    next_suggested_prompts: list[str] = Field(default_factory=list)
     avoid_notice: str | None = None
     green_impact_summary: str | None = None
     budget_impact_summary: str | None = None
+    updated_itinerary_state: list[dict[str, Any]] | None = None
+    updated_days_count: int | None = None
+    updated_destination: str | None = None
+    mutation_summary: list[str] = Field(default_factory=list)

@@ -12,6 +12,7 @@ from typing import Any
 from psycopg import Connection
 from app.trips.schemas import CopilotSuggestedPoiItem, TripContextPayload
 from app.trips.handlers.swap_meal_handler import format_green_score
+from app.trips.text_utils import contains_any_phrase, normalize_vietnamese_query, strip_vietnamese_accents
 
 logger = logging.getLogger(__name__)
 
@@ -120,32 +121,33 @@ CURATED_POI_ADVICE: dict[str, dict[str, Any]] = {
 
 def extract_advice_target(message: str) -> str | None:
     """Extract known place identifier from natural user query."""
-    msg = message.strip().lower()
-    
+    msg = normalize_vietnamese_query(message)
+    folded_msg = strip_vietnamese_accents(msg)
+
     # Check specific curated targets first
-    if "sơn trà" in msg or "son tra" in msg:
-        if "chợ đêm" in msg:
+    if contains_any_phrase(msg, folded_msg, ["sơn trà"], ["son tra"]):
+        if contains_any_phrase(msg, folded_msg, ["chợ đêm"], ["cho dem"]):
             return "chợ đêm sơn trà"
         return "bán đảo sơn trà"
-    if "cầu rồng" in msg or "cau rong" in msg or "phun lửa" in msg:
+    if contains_any_phrase(msg, folded_msg, ["cầu rồng", "phun lửa"], ["cau rong", "phun lua"]):
         return "cầu rồng"
-    if "nam sơn" in msg:
+    if contains_any_phrase(msg, folded_msg, ["nam sơn"], ["nam son"]):
         return "chùa nam sơn"
-    if "linh ứng" in msg:
+    if contains_any_phrase(msg, folded_msg, ["linh ứng"], ["linh ung"]):
         return "chùa linh ứng"
-    if "ngũ hành sơn" in msg or "non nước" in msg:
+    if contains_any_phrase(msg, folded_msg, ["ngũ hành sơn", "non nước"], ["ngu hanh son", "non nuoc"]):
         return "ngũ hành sơn"
-    if "bàn cờ" in msg:
+    if contains_any_phrase(msg, folded_msg, ["bàn cờ"], ["dinh ban co"]):
         return "đỉnh bàn cờ"
-    if "bà nà" in msg:
+    if contains_any_phrase(msg, folded_msg, ["bà nà"], ["ba na"]):
         return "bà nà hills"
-    if "đại nội" in msg or "hoàng thành" in msg:
+    if contains_any_phrase(msg, folded_msg, ["đại nội", "hoàng thành"], ["dai noi", "hoang thanh"]):
         return "đại nội"
-    if "thiên mụ" in msg:
+    if contains_any_phrase(msg, folded_msg, ["thiên mụ"], ["thien mu"]):
         return "thiên mụ"
-    if "khải định" in msg:
+    if contains_any_phrase(msg, folded_msg, ["khải định"], ["khai dinh"]):
         return "khải định"
-        
+
     return None
 
 

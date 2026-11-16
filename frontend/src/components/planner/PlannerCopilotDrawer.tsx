@@ -29,6 +29,7 @@ import {
   buildDayNarrativesFromOutline,
   buildDefaultMindtripItinerary,
   type MindtripCopilotMessage,
+  type MindtripDayOutline,
 } from './copilotTripData';
 
 function getInitialMessagesForTrip(t: UserTrip): CopilotMessage[] {
@@ -249,6 +250,7 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [swappedPoiIds, setSwappedPoiIds] = useState<Record<string, boolean>>({});
   const [dynamicPrompts, setDynamicPrompts] = useState<string[]>([]);
+  const [activeConstraints, setActiveConstraints] = useState<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -301,6 +303,10 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
     setIsLoading(true);
 
     try {
+      const currentOutline =
+        trip.itineraryOutline ||
+        buildDefaultMindtripItinerary(trip.destination || 'Đà Nẵng & Huế', trip.daysCount || 4);
+
       const response: CopilotChatResponse = await sendCopilotChat({
         message: rawText,
         trip_context: {
@@ -310,15 +316,43 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
           current_slot: 'lunch',
           current_stop_name: `Điểm dừng Ngày ${selectedDay}`,
           saved_ideas: savedIdeas,
+          start_date: trip.startDate,
+          active_constraints: activeConstraints,
+          conversation_history: messages.slice(-6).map((m) => ({
+            role: m.sender,
+            content: m.text,
+          })),
+          current_itinerary_state: currentOutline as unknown as Array<Record<string, unknown>>,
         },
       });
+
+      if (response.detected_constraints && response.detected_constraints.length > 0) {
+        setActiveConstraints(response.detected_constraints);
+      }
+
+      // Synchronize POI cards strictly with recommended_poi_ids when provided
+      const synchronizedPois = Array.isArray(response.recommended_poi_ids)
+        ? (response.suggested_pois || []).filter((p) => response.recommended_poi_ids!.includes(p.id))
+        : response.suggested_pois;
+
+      const updatedOutline =
+        response.updated_itinerary_state && response.updated_itinerary_state.length > 0
+          ? (response.updated_itinerary_state as unknown as MindtripDayOutline[])
+          : null;
+
+      const updatedNarratives = updatedOutline
+        ? buildDayNarrativesFromOutline(updatedOutline, trip.startDate)
+        : undefined;
 
       const assistantMsg: CopilotMessage = {
         id: `assistant_${Date.now()}`,
         sender: 'assistant',
         text: response.reply_text,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestedPois: response.suggested_pois,
+        thinkingProcess: response.reasoning_trace || undefined,
+        thinkingDuration: '1.6s',
+        dayNarratives: updatedNarratives,
+        suggestedPois: synchronizedPois,
         actionType: response.action_type,
         targetSlot: response.target_slot || 'lunch',
         avoidNotice: response.avoid_notice,
@@ -337,6 +371,9 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
       if (onUpdateTrip) {
         onUpdateTrip({
           ...trip,
+          destination: response.updated_destination || trip.destination,
+          daysCount: response.updated_days_count || (updatedOutline ? updatedOutline.length : trip.daysCount),
+          itineraryOutline: updatedOutline || trip.itineraryOutline,
           copilotChatHistory: finalMessages,
         });
       }
@@ -840,17 +877,23 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
                               {poi.name}
                             </h4>
                             <div className="flex items-center gap-1.5 text-[11.5px] text-neutral-500 mt-0.5">
-                              <span className="capitalize">{poi.category}</span>
+                              {poi.city && (
+                                <>
+                                  <span className="font-semibold text-emerald-800">{poi.city}</span>
+                                  <span>•</span>
+                                </>
+                              )}
+                              <span className="capitalize truncate">{poi.category}</span>
                               <span>•</span>
-                              <span className="flex items-center text-amber-500 font-medium">
+                              <span className="flex items-center text-amber-500 font-medium shrink-0">
                                 <Star size={10} className="fill-amber-500 mr-0.5" />
                                 {poi.rating.toFixed(1)}
                               </span>
                             </div>
-                            {/* Community note / Saved proof */}
-                            <div className="text-[11px] text-neutral-500 flex items-center gap-1 mt-1 truncate">
-                              <span className="text-red-500">❤</span>
-                              <span className="truncate">Được đề xuất bởi GreenTrip AI</span>
+                            {/* KG Explanation / Community proof */}
+                            <div className="text-[11px] text-neutral-600 flex items-center gap-1 mt-1 truncate" title={poi.kg_explanation || poi.swap_reason}>
+                              <span className="text-emerald-600 shrink-0">🌱</span>
+                              <span className="truncate">{poi.kg_explanation || poi.swap_reason || 'Được đề xuất bởi GreenTrip AI'}</span>
                             </div>
                           </div>
                         </div>

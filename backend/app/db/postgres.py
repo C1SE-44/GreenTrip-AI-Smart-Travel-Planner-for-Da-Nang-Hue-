@@ -228,9 +228,14 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
         cuisine TEXT,
         indoor_outdoor TEXT,
         latitude REAL,
-        longitude REAL
+        longitude REAL,
+        opening_hours TEXT
     );
     """)
+    try:
+        conn.execute("ALTER TABLE pois ADD COLUMN opening_hours TEXT;")
+    except sqlite3.OperationalError:
+        pass
     conn.execute("""
     CREATE TABLE IF NOT EXISTS saved_place_collections (
         collection_id TEXT PRIMARY KEY,
@@ -279,6 +284,15 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
         if csv_path.exists():
             import csv
             import json
+            contacts_path = _PROJECT_ROOT / "data" / "processed" / "poi_contacts_cache.json"
+            opening_hours_by_id: dict[str, str] = {}
+            if contacts_path.exists():
+                try:
+                    for item in json.loads(contacts_path.read_text(encoding="utf-8")):
+                        if isinstance(item, dict) and item.get("poi_id") and item.get("opening_hours"):
+                            opening_hours_by_id[str(item["poi_id"])] = json.dumps(item["opening_hours"], ensure_ascii=False)
+                except Exception:
+                    pass
             try:
                 with open(csv_path, mode="r", encoding="utf-8") as f:
                     reader = csv.DictReader(f)
@@ -338,16 +352,30 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
                                 poi_id, name, category_id, city_id, sub_category,
                                 image_url, green_score, satisfaction_score, popularity_score,
                                 address, description, estimated_cost, ai_metadata,
-                                is_active, cuisine, indoor_outdoor, latitude, longitude
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                is_active, cuisine, indoor_outdoor, latitude, longitude, opening_hours
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
                             pid, name, cat_id, city_id, sub_cat,
                             r.get("image_url", ""), gs, sat, 95.0,
                             r.get("address", ""), r.get("description", ""), cost, ai_meta,
-                            1, cuisine, indoor, float(r.get("latitude") or 0), float(r.get("longitude") or 0)
+                            1, cuisine, indoor, float(r.get("latitude") or 0), float(r.get("longitude") or 0),
+                            opening_hours_by_id.get(str(pid), "{}"),
                         ))
             except Exception as e:
                 logger.warning("Không thể nạp POIs vào CSDL SQLite: %s", e)
+
+    # Correct corrupted downtown geocoding for Ba Na Wax Museum if an existing DB row carries old coords
+    try:
+        cur.execute(
+            """
+            UPDATE pois
+            SET latitude = 15.9977, longitude = 107.9885
+            WHERE poi_id = '5c0d99bb-4e57-4869-8fdc-38470cf34a0d'
+              AND latitude BETWEEN 16.07 AND 16.08
+            """
+        )
+    except Exception:
+        pass
 
     conn.commit()
 
@@ -355,6 +383,7 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
 # ponytail: 30s monotonic cooldown on Postgres connection failure instead of sticky disable; replace with pool/probe if needed
 _POSTGRES_RETRY_COOLDOWN_SECONDS = 30.0
 _POSTGRES_RETRY_AFTER: float = 0.0
+_PG_COORDS_PATCHED = False
 
 
 def get_connection() -> Any:
@@ -363,15 +392,32 @@ def get_connection() -> Any:
     Nếu không có PostgreSQL (hoặc người dùng không bật Docker),
     hệ thống tự động sử dụng CSDL SQLite cục bộ giúp tính năng Đăng nhập/Đăng ký hoạt động mượt mà.
     """
-    global _POSTGRES_RETRY_AFTER
+    global _POSTGRES_RETRY_AFTER, _PG_COORDS_PATCHED
     settings = get_settings()
 
     if settings.DATABASE_URL and time.monotonic() >= _POSTGRES_RETRY_AFTER:
         try:
-            return connect(
+            pg_conn = connect(
                 settings.DATABASE_URL,
                 connect_timeout=3,
             )
+            if not _PG_COORDS_PATCHED and hasattr(pg_conn, "cursor"):
+                try:
+                    with pg_conn.cursor() as pg_cur:
+                        pg_cur.execute(
+                            """
+                            UPDATE public.pois
+                            SET latitude = 15.9977, longitude = 107.9885
+                            WHERE poi_id = '5c0d99bb-4e57-4869-8fdc-38470cf34a0d'
+                              AND latitude BETWEEN 16.07 AND 16.08
+                            """
+                        )
+                    pg_conn.commit()
+                    _PG_COORDS_PATCHED = True
+                except Exception:
+                    if hasattr(pg_conn, "rollback"):
+                        pg_conn.rollback()
+            return pg_conn
         except Exception as e:
             _POSTGRES_RETRY_AFTER = time.monotonic() + _POSTGRES_RETRY_COOLDOWN_SECONDS
             logger.warning(

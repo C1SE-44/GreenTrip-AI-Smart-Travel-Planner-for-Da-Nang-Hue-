@@ -317,6 +317,12 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
           current_stop_name: `Điểm dừng Ngày ${selectedDay}`,
           saved_ideas: savedIdeas,
           start_date: trip.startDate,
+          total_budget: trip.totalBudget && trip.totalBudget > 0 ? trip.totalBudget : undefined,
+          num_people: trip.peopleCount || 2,
+          budget_tier:
+            trip.budgetTier === 'budget' || trip.budgetTier === 'standard' || trip.budgetTier === 'luxury'
+              ? trip.budgetTier
+              : undefined,
           active_constraints: activeConstraints,
           conversation_history: messages.slice(-6).map((m) => ({
             role: m.sender,

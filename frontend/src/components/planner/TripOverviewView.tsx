@@ -1173,6 +1173,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           current_day: dayTargetForAdd || 1,
           traveler_name: 'Nguyên',
           saved_ideas: tripIdeas,
+          total_budget: trip.totalBudget && trip.totalBudget > 0 ? trip.totalBudget : undefined,
+          num_people: trip.peopleCount || 2,
+          budget_tier:
+            trip.budgetTier === 'budget' || trip.budgetTier === 'standard' || trip.budgetTier === 'luxury'
+              ? trip.budgetTier
+              : undefined,
           active_constraints: activeConstraints,
           trip_memory: tripMemory,
           conversation_history: historyForRequest,

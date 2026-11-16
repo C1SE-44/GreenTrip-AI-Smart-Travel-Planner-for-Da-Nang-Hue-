@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronDown,
@@ -36,6 +37,10 @@ import {
   Bike,
   Bus,
   Footprints,
+  CloudRain,
+  RotateCcw,
+  Share2,
+  Wallet,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import {
@@ -53,6 +58,9 @@ import PoiMap from '@/components/poi/PoiMap';
 import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
 import {
   createEmptyItinerary,
+  buildItineraryFromOutline,
+  hydrateItineraryWithPois,
+  matchPoiForStop,
   getTripItinerary,
   saveTripItinerary,
   stopFromPoi,
@@ -60,6 +68,8 @@ import {
   normalizeLegacyLunchBreaks,
   distanceKm,
   minutesFromTime,
+  findRestSlot,
+  insertRestInOrder,
   updateDateRangeWithDays,
   getRoutePositionsForStops,
   calculateStopsPathKm,
@@ -68,6 +78,12 @@ import {
   estimateCarbonFootprint,
   formatCarbonAmount,
   checkStopOpeningHours,
+  isPoiOutdoor,
+  suggestIndoorAlternativesForDay,
+  suggestNearbyAlternativesForStop,
+  getStopShortReason,
+  computeTripBudgetSummary,
+  computeDayFatigue,
   TRANSPORT_MODES_META,
   type RouteTransportMode,
   type TripItinerary,
@@ -199,6 +215,7 @@ export default function TripItineraryView({
   onNavigateToCalendar,
 }: TripItineraryViewProps) {
   // ─── 0. Hệ thống địa điểm đã lưu (Favorites / Đã thích) của Thiện ───
+  const navigate = useNavigate();
   const { savedIds, pendingIds, toggleSaved, openCollectionPicker, places } = useSavedPlaces();
 
   // Đếm số lượng địa điểm đã thích từ hệ thống Đã lưu
@@ -229,6 +246,8 @@ export default function TripItineraryView({
   const latestPlan = useRef(plan);
   const currentTrip = useRef(trip);
   currentTrip.current = trip;
+  const latestAllPois = useRef(allPois);
+  latestAllPois.current = allPois;
 
   // ─── 2. Quản lý Ý tưởng (Ideas List) ───
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => {
@@ -246,6 +265,17 @@ export default function TripItineraryView({
   const [showDistances, setShowDistances] = useState(true);
   const [transportMode, setTransportMode] = useState<RouteTransportMode>('motorcycle');
   const [optimizeFeedback, setOptimizeFeedback] = useState<string | null>(null);
+  const [showGuestSyncPrompt, setShowGuestSyncPrompt] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [rainSwapBackup, setRainSwapBackup] = useState<{
+    dayNumber: number;
+    previousStops: ItineraryStop[];
+    message: string;
+  } | null>(null);
+  const [nearbyPickerTarget, setNearbyPickerTarget] = useState<{
+    dayNumber: number;
+    stopId: string;
+  } | null>(null);
   const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
@@ -421,7 +451,7 @@ export default function TripItineraryView({
         setPlan(aligned.itinerary);
       } catch {
         if (isCancelled) return;
-        const fresh = createEmptyItinerary(currentTrip.current);
+        const fresh = buildItineraryFromOutline(currentTrip.current, latestAllPois.current);
         const aligned = alignItineraryToTrip(fresh, currentTrip.current);
         latestPlan.current = aligned.itinerary;
         setPlan(aligned.itinerary);
@@ -441,6 +471,17 @@ export default function TripItineraryView({
       setTripIdeas(trip.ideas);
     }
   }, [trip.ideas]);
+
+  // Hydrate stops with real coordinates/ids once allPois finishes loading asynchronously
+  useEffect(() => {
+    if (isLoading || allPois.length === 0) return;
+    setPlan((prev) => {
+      const hydrated = hydrateItineraryWithPois(prev, allPois);
+      if (!hydrated.changed) return prev;
+      latestPlan.current = hydrated.itinerary;
+      return hydrated.itinerary;
+    });
+  }, [allPois, isLoading]);
 
   // Đồng bộ số ngày khi trip.daysCount thay đổi từ bên ngoài (ví dụ: đổi popup 'Khi' ở Ý tưởng)
   useEffect(() => {
@@ -625,32 +666,32 @@ export default function TripItineraryView({
     setEditingNoteStopId(null);
   };
 
-  // Thêm khoảng nghỉ trưa (12:00 - 13:30)
+  // Thêm khoảng nghỉ 90 phút không trùng khung giờ hiện có
   const handleAddLunchBreak = (dayNumber: number) => {
     const nextDays = plan.days.map((day) => {
       if (day.day_number !== dayNumber) return day;
+      const slot =
+        findRestSlot(day, '11:00–15:00', 90) ?? findRestSlot(day, '09:00–20:00', 90);
+      const isAfternoon = Boolean(slot?.start && slot.start >= '14:30');
       const restStop: ItineraryStop = {
         stop_id: `rest-${dayNumber}-${Date.now()}`,
-        poi_id: `rest-${dayNumber}`,
-        title: 'Nghỉ trưa & Thưởng thức ẩm thực',
-        city: null,
+        poi_id: null,
+        title: isAfternoon ? 'Nghỉ chiều & Cà phê thư giãn' : 'Nghỉ trưa & Thưởng thức ẩm thực',
+        city: day.stops.find((s) => s.city)?.city || null,
         address: null,
         category: 'quan-an',
         stop_type: 'rest',
         source: 'manual',
-        start_time: '12:00',
-        end_time: '13:30',
+        start_time: slot?.start ?? null,
+        end_time: slot?.end ?? null,
         duration_minutes: 90,
         sequence: day.stops.length,
         latitude: null,
         longitude: null,
         comment: 'Khoảng thời gian nghỉ ngơi thư giãn và thưởng thức ẩm thực địa phương.',
       };
-      const stops = [...day.stops, restStop].sort((a, b) => {
-        const timeA = minutesFromTime(a.start_time || '00:00');
-        const timeB = minutesFromTime(b.start_time || '00:00');
-        return timeA - timeB;
-      });
+      const stops = [...day.stops];
+      insertRestInOrder(stops, restStop);
       return { ...day, stops: stops.map((s, idx) => ({ ...s, sequence: idx })) };
     });
     persistPlan({ ...plan, days: nextDays });
@@ -665,6 +706,32 @@ export default function TripItineraryView({
       return next;
     });
   };
+
+  const usedPoiIds = useMemo(
+    () =>
+      new Set(
+        plan.days.flatMap((d) =>
+          d.stops.map((s) => s.poi_id).filter((id): id is string => Boolean(id))
+        )
+      ),
+    [plan.days]
+  );
+
+  const budgetSummary = useMemo(
+    () =>
+      computeTripBudgetSummary(
+        plan.days,
+        poiById,
+        trip.peopleCount || 1,
+        trip.totalBudget ?? null
+      ),
+    [plan.days, poiById, trip.peopleCount, trip.totalBudget]
+  );
+
+  const formatVnd = useCallback(
+    (amount: number) => `${new Intl.NumberFormat('vi-VN').format(Math.round(amount))} ₫`,
+    []
+  );
 
   // Thống kê tổng quãng đường, phát thải CO₂ và cảnh báo giờ mở cửa toàn chuyến
   const tripRouteSummary = useMemo(() => {
@@ -720,6 +787,125 @@ export default function TripItineraryView({
     } else {
       setOptimizeFeedback(`Ngày ${dayNumber} đã được sắp xếp theo thứ tự gần nhất.`);
     }
+  };
+
+  // Lưu & Chia sẻ (Soft-Prompt cho khách chưa đăng nhập)
+  const handleSaveAndShare = async () => {
+    const token =
+      typeof localStorage !== 'undefined'
+        ? localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+        : null;
+    if (!token) {
+      setShowGuestSyncPrompt(true);
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await saveTripItinerary(plan);
+      setHasUnsavedChanges(false);
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof window !== 'undefined') {
+        await navigator.clipboard.writeText(window.location.href).catch(() => {});
+      }
+      setSyncFeedback('Đã đồng bộ lịch trình & sao chép liên kết chia sẻ.');
+      window.setTimeout(() => setSyncFeedback(null), 3500);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Đổi điểm ngoài trời sang điểm trong nhà khi trời mưa (1-tap + Hoàn tác)
+  const handleSwapRainyDay = (dayNumber: number) => {
+    const targetDay = plan.days.find((d) => d.day_number === dayNumber);
+    if (!targetDay) return;
+    const swaps = suggestIndoorAlternativesForDay(
+      targetDay,
+      allPois,
+      usedPoiIds,
+      trip.destination
+    );
+    if (swaps.length === 0) {
+      setOptimizeFeedback(
+        `Ngày ${dayNumber} chưa tìm thấy điểm trong nhà khác chưa có trong lịch trình.`
+      );
+      return;
+    }
+
+    const swapByStopId = new Map(swaps.map((s) => [s.originalStop.stop_id, s]));
+    const nextDays = plan.days.map((d) => {
+      if (d.day_number !== dayNumber) return d;
+      return {
+        ...d,
+        stops: d.stops.map((st, idx) => {
+          const match = swapByStopId.get(st.stop_id);
+          if (!match) return st;
+          const rep = match.replacement;
+          return {
+            ...st,
+            poi_id: rep.id,
+            title: rep.name,
+            city: rep.city,
+            address: rep.address || null,
+            category: rep.category,
+            stop_type: 'poi' as const,
+            source: 'assistant' as const,
+            sequence: idx,
+            comment: null,
+            latitude: Number.isFinite(rep.lat) ? rep.lat : null,
+            longitude: Number.isFinite(rep.lng) ? rep.lng : null,
+          };
+        }),
+      };
+    });
+
+    setRainSwapBackup({
+      dayNumber,
+      previousStops: targetDay.stops,
+      message: `Đã đổi ${swaps.length} điểm ngoài trời sang không gian trong nhà cho Ngày ${dayNumber}.`,
+    });
+    persistPlan({ ...plan, days: nextDays });
+  };
+
+  const handleUndoRainSwap = () => {
+    if (!rainSwapBackup) return;
+    const nextDays = plan.days.map((d) =>
+      d.day_number === rainSwapBackup.dayNumber
+        ? { ...d, stops: rainSwapBackup.previousStops }
+        : d
+    );
+    persistPlan({ ...plan, days: nextDays });
+    setRainSwapBackup(null);
+  };
+
+  // Đổi 1 điểm dừng sang điểm gợi ý gần đó
+  const handleSwapStopToNearby = (
+    dayNumber: number,
+    stopId: string,
+    replacement: Poi
+  ) => {
+    const nextDays = plan.days.map((d) => {
+      if (d.day_number !== dayNumber) return d;
+      return {
+        ...d,
+        stops: d.stops.map((st) => {
+          if (st.stop_id !== stopId) return st;
+          return {
+            ...st,
+            poi_id: replacement.id,
+            title: replacement.name,
+            city: replacement.city,
+            address: replacement.address || null,
+            category: replacement.category,
+            stop_type: 'poi' as const,
+            source: 'assistant' as const,
+            comment: null,
+            latitude: Number.isFinite(replacement.lat) ? replacement.lat : null,
+            longitude: Number.isFinite(replacement.lng) ? replacement.lng : null,
+          };
+        }),
+      };
+    });
+    persistPlan({ ...plan, days: nextDays });
+    setNearbyPickerTarget(null);
   };
 
   // Thêm ngày mới vào lịch
@@ -1008,7 +1194,7 @@ export default function TripItineraryView({
       className={
         isDrawerMode
           ? "no-print fixed inset-y-0 right-0 w-full sm:w-[620px] lg:w-[calc(50vw)] xl:w-[calc(50vw)] z-50 bg-white rounded-l-[24px] border-l border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.08),-4px_0_12px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden animate-slideInRight select-none"
-          : "flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn print-scroll-unlock"
+          : "flex flex-col flex-1 min-w-0 min-h-0 h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn print-scroll-unlock"
       }
     >
       {/* ─── TOP HEADER (DRAWER MODE HOẶC FULL PAGE CHUẨN MINDTRIP) ─── */}
@@ -1064,8 +1250,18 @@ export default function TripItineraryView({
 
             <button
               type="button"
+              onClick={handleSaveAndShare}
+              className="min-h-[40px] flex items-center gap-1.5 px-3.5 rounded-full border border-emerald-700/30 bg-emerald-50 hover:bg-emerald-100 text-xs font-bold text-emerald-900 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+              title="Lưu & Chia sẻ lịch trình"
+            >
+              <Share2 size={13} aria-hidden="true" />
+              <span>Lưu &amp; Chia sẻ</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleDone}
-              className="h-8 px-4 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95"
+              className="min-h-[40px] px-4 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
               title="Xong và đóng lịch trình"
             >
               Xong
@@ -1101,8 +1297,22 @@ export default function TripItineraryView({
             </div>
           </div>
 
-          {/* Nút hành động phải: Chuyển sang Lịch + Trạng thái lưu & Nút Xong */}
-          <div className="flex items-center gap-2.5">
+          {/* Nút hành động phải: Bản đồ mobile + Chuyển sang Lịch + Trạng thái lưu & Nút Xong */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setIsMapExpanded((prev) => !prev);
+                setTimeout(() => window.dispatchEvent(new Event('resize')), 150);
+              }}
+              aria-pressed={isMapExpanded}
+              className="md:hidden min-h-[40px] flex items-center gap-1 px-2.5 rounded-full border border-gray-200 hover:border-black text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+              title={isMapExpanded ? 'Quay lại danh sách lịch trình' : 'Xem bản đồ lộ trình'}
+            >
+              <MapPin size={14} className="text-emerald-700" aria-hidden="true" />
+              <span>{isMapExpanded ? 'Danh sách' : 'Bản đồ'}</span>
+            </button>
+
             {onNavigateToCalendar && (
               <button
                 type="button"
@@ -1132,14 +1342,76 @@ export default function TripItineraryView({
 
             <button
               type="button"
+              onClick={handleSaveAndShare}
+              className="min-h-[40px] flex items-center gap-1.5 px-3.5 rounded-full border border-emerald-700/30 bg-emerald-50 hover:bg-emerald-100 text-xs font-bold text-emerald-900 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+              title="Lưu & Chia sẻ lịch trình"
+            >
+              <Share2 size={13} aria-hidden="true" />
+              <span className="hidden sm:inline">Lưu &amp; Chia sẻ</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleDone}
-              className="h-9 px-5 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95"
+              className="min-h-[40px] px-5 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
               title="Lưu lịch trình và quay lại tổng quan"
             >
               Xong
             </button>
           </div>
         </header>
+      )}
+
+      {/* Guest Soft-Prompt & Sync Feedback Banner (non-blocking) */}
+      {showGuestSyncPrompt && (
+        <div
+          role="dialog"
+          aria-label="Đăng nhập để đồng bộ và chia sẻ lịch trình"
+          className="no-print px-4 sm:px-6 py-3 bg-amber-50/90 border-b border-amber-200 flex flex-wrap items-center justify-between gap-3 shrink-0"
+        >
+          <div className="min-w-0">
+            <p className="text-xs sm:text-sm font-bold text-neutral-900">
+              Đăng nhập để đồng bộ &amp; chia sẻ lịch trình
+            </p>
+            <p className="text-xs text-neutral-700 mt-0.5">
+              Bạn vẫn có thể chỉnh sửa, xuất .ics và in PDF tự do ở chế độ khách.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/login', { state: { returnTo: '/planner' } })}
+              className="min-h-[40px] px-4 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            >
+              Đăng nhập / Tạo tài khoản
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowGuestSyncPrompt(false)}
+              className="min-h-[40px] px-3.5 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 text-xs font-semibold text-neutral-800 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            >
+              Tiếp tục dùng khách
+            </button>
+          </div>
+        </div>
+      )}
+
+      {syncFeedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="no-print px-4 sm:px-6 py-2.5 bg-emerald-50 border-b border-emerald-200 flex items-center justify-between gap-2 text-xs font-semibold text-emerald-900 shrink-0"
+        >
+          <span>{syncFeedback}</span>
+          <button
+            type="button"
+            onClick={() => setSyncFeedback(null)}
+            aria-label="Đóng thông báo đồng bộ"
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center text-neutral-600 hover:text-neutral-900 cursor-pointer"
+          >
+            <X size={14} />
+          </button>
+        </div>
       )}
 
       {/* Drawer Title Section */}
@@ -1157,7 +1429,7 @@ export default function TripItineraryView({
       )}
 
       {/* ─── NỘI DUNG CHÍNH (2 CỘT HOẶC 1 CỘT CHO DRAWER) ─── */}
-      <div className={isDrawerMode ? "flex-1 w-full min-h-0 overflow-hidden flex flex-col" : "flex-1 min-h-0 flex items-stretch overflow-hidden bg-white print-scroll-unlock"}>
+      <div className={isDrawerMode ? "flex-1 w-full min-h-0 overflow-hidden flex flex-col" : "flex-1 min-h-0 flex flex-col md:flex-row items-stretch overflow-hidden bg-white print-scroll-unlock"}>
         {/* ════════════════════════════════════════════════════════
             CỘT: Ý TƯỞNG + LỊCH THEO NGÀY (THỦ CÔNG CHUẨN)
         ════════════════════════════════════════════════════════ */}
@@ -1659,6 +1931,35 @@ export default function TripItineraryView({
                 })}
               </div>
 
+              {/* Real-time Budget Cap Summary (C_total vs B_max) */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-emerald-200/70">
+                <div
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
+                    budgetSummary.isOverBudget
+                      ? 'border-amber-300 bg-amber-100 text-amber-950'
+                      : 'border-emerald-300 bg-emerald-100/80 text-emerald-950'
+                  }`}
+                >
+                  <Wallet size={13} className="shrink-0" aria-hidden="true" />
+                  {budgetSummary.maxBudget !== null ? (
+                    budgetSummary.isOverBudget ? (
+                      <span>
+                        Vượt ngân sách {formatVnd(Math.abs(budgetSummary.remaining || 0))}:{' '}
+                        {formatVnd(budgetSummary.totalCost)} / {formatVnd(budgetSummary.maxBudget)}
+                      </span>
+                    ) : (
+                      <span>
+                        Ngân sách: {formatVnd(budgetSummary.totalCost)} / {formatVnd(budgetSummary.maxBudget)} ({budgetSummary.percentUsed}%)
+                      </span>
+                    )
+                  ) : (
+                    <span>
+                      Chi phí dự kiến: {formatVnd(budgetSummary.totalCost)} ({trip.peopleCount || 1} khách)
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {optimizeFeedback && (
                 <div
                   role="status"
@@ -1687,39 +1988,69 @@ export default function TripItineraryView({
                 const nonRestCount = day.stops.filter((s) => s.stop_type !== 'rest').length;
                 const dayRoadKm = calculateStopsPathKm(day.stops, poiById, true);
                 const dayCarbon = estimateCarbonFootprint(dayRoadKm * 1000, transportMode);
+                const dayFatigue = computeDayFatigue(day, poiById);
+                const hasOutdoorStop = day.stops.some(
+                  (s) => s.stop_type !== 'rest' && isPoiOutdoor(s.poi_id ? poiById.get(s.poi_id) : undefined, s)
+                );
 
                 return (
                   <div key={day.day_id || `day-${day.day_number}`} className="border-b border-gray-100 pb-3">
-                    {/* Header Ngày: Không còn dấu cộng lặp lại, chỉ có chevron và tiêu đề ngày */}
+                    {/* Header Ngày */}
                     <div
                       onClick={() => toggleDayCollapse(day.day_number)}
-                      className="flex items-center justify-between py-2 cursor-pointer group select-none"
+                      className="flex flex-wrap items-center justify-between gap-2 py-2 cursor-pointer group select-none"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <button
                           type="button"
-                          className="text-gray-500 group-hover:text-black transition cursor-pointer"
+                          className="text-neutral-600 group-hover:text-black transition cursor-pointer"
                           title={isCollapsed ? 'Mở rộng ngày' : 'Thu gọn ngày'}
                         >
                           {isCollapsed ? <ChevronRight size={17} /> : <ChevronDown size={17} />}
                         </button>
-                        <h3 className="font-extrabold text-[15px] text-gray-950 flex items-center gap-2">
+                        <h3 className="font-extrabold text-[15px] text-gray-950 flex flex-wrap items-center gap-2">
                           <span>Ngày {day.day_number}</span>
                           {day.date && (
-                            <span className="font-normal text-xs text-gray-500">
+                            <span className="font-normal text-xs text-neutral-600">
                               {displayDateVi(day.date)}
                             </span>
                           )}
                         </h3>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {day.stops.length > 0 && (
+                          <span
+                            className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                              dayFatigue.needsRest && !dayFatigue.hasRestBlock
+                                ? 'bg-amber-50 border-amber-300 text-amber-950'
+                                : 'bg-neutral-100 border-neutral-200 text-neutral-800'
+                            }`}
+                            title="Chỉ số nhịp độ trong ngày F(d) = giờ hoạt động + 0.5 × điểm ngoài trời"
+                          >
+                            Nhịp {dayFatigue.fatigueHours.toFixed(1)}h
+                          </span>
+                        )}
+                        {dayFatigue.needsRest && !dayFatigue.hasRestBlock && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddLunchBreak(day.day_number);
+                            }}
+                            className="no-print min-h-[40px] inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 hover:bg-amber-100 px-3 text-xs font-bold text-amber-950 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                            title="Thêm khoảng nghỉ trưa 90 phút để giảm mệt mỏi"
+                          >
+                            <Coffee size={12} aria-hidden="true" />
+                            <span>+ Thêm nghỉ</span>
+                          </button>
+                        )}
                         {dayRoadKm > 0 && (
                           <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded-full">
                             ~{dayRoadKm.toFixed(1)} km · {formatCarbonAmount(dayCarbon.co2Grams)}
                           </span>
                         )}
-                        <span className="text-xs text-gray-600 font-medium">
+                        <span className="text-xs text-neutral-600 font-medium">
                           {day.stops.length > 0 ? `${day.stops.length} điểm` : ''}
                         </span>
                         {plan.days.length > 1 && (
@@ -1731,7 +2062,7 @@ export default function TripItineraryView({
                                 handleDeleteDay(day.day_number);
                               }
                             }}
-                            className="w-7 h-7 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition cursor-pointer opacity-0 group-hover:opacity-100"
+                            className="w-7 h-7 rounded-full text-neutral-500 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition cursor-pointer opacity-0 group-hover:opacity-100"
                             title={`Xóa Ngày ${day.day_number}`}
                           >
                             <Trash2 size={13} />
@@ -1743,6 +2074,37 @@ export default function TripItineraryView({
                     {/* Nội dung ngày khi mở rộng */}
                     {!isCollapsed && (
                       <div className="mt-1 space-y-3 pl-2">
+                        {/* 1-tap Rainy Day Switch + Inline Undo */}
+                        {hasOutdoorStop && (
+                          <div className="no-print flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSwapRainyDay(day.day_number)}
+                              className="min-h-[40px] inline-flex items-center gap-1.5 rounded-full border border-neutral-300 bg-white hover:bg-neutral-50 px-3.5 text-xs font-semibold text-neutral-900 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                            >
+                              <CloudRain size={14} className="text-emerald-800 shrink-0" aria-hidden="true" />
+                              <span>Trời mưa? Đổi điểm trong nhà</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {rainSwapBackup?.dayNumber === day.day_number && (
+                          <div
+                            role="status"
+                            aria-live="polite"
+                            className="no-print flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-950 font-medium"
+                          >
+                            <span>{rainSwapBackup.message}</span>
+                            <button
+                              type="button"
+                              onClick={handleUndoRainSwap}
+                              className="min-h-[40px] inline-flex items-center gap-1 rounded-full bg-neutral-900 hover:bg-neutral-800 px-3.5 text-xs font-bold text-white transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                            >
+                              <RotateCcw size={12} aria-hidden="true" />
+                              <span>Hoàn tác</span>
+                            </button>
+                          </div>
+                        )}
                         {!hasStops ? (
                           /* Trạng thái chưa có điểm: Đúng 1 nút + Thêm (Chuẩn Ảnh 1, 4) */
                           <div className="no-print py-1 pl-4">
@@ -1765,7 +2127,10 @@ export default function TripItineraryView({
                           <>
                             {day.stops.map((stop, sIdx) => {
                               const isRest = stop.stop_type === 'rest';
-                              const matchedPoi = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
+                              const matchedPoi = isRest
+                                ? undefined
+                                : (stop.poi_id ? poiById.get(stop.poi_id) : undefined) ??
+                                  matchPoiForStop(stop.poi_id, stop.title, allPois);
                               const openingCheck = checkStopOpeningHours(stop, matchedPoi, day.date);
                               const isEditingTime = editingStopId === stop.stop_id;
                               const isEditingNote = editingNoteStopId === stop.stop_id;
@@ -1873,9 +2238,19 @@ export default function TripItineraryView({
                                           </button>
                                         )}
 
-                                        <p className="text-xs text-gray-600 mt-1 truncate">
+                                        <p className="text-xs text-neutral-600 mt-1 truncate">
                                           {stop.address || stop.city || trip.destination}
                                         </p>
+
+                                        {!stop.comment && !isRest && (
+                                          <p className="text-xs text-neutral-600 mt-0.5 truncate">
+                                            {getStopShortReason(
+                                              stop,
+                                              matchedPoi,
+                                              sIdx > 0 ? day.stops[sIdx - 1] : null
+                                            )}
+                                          </p>
+                                        )}
 
                                         {(openingCheck.status === 'closed' || openingCheck.status === 'outside_hours') &&
                                           openingCheck.warningMessage && (
@@ -1960,7 +2335,7 @@ export default function TripItineraryView({
                                           e.stopPropagation();
                                           setActiveMenuStopId(isMenuOpen ? null : stop.stop_id);
                                         }}
-                                        className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-black cursor-pointer"
+                                        className="min-w-[40px] min-h-[40px] rounded-xl border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-black cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                                         title="Tùy chọn khác"
                                       >
                                         <MoreHorizontal size={14} />
@@ -1971,6 +2346,21 @@ export default function TripItineraryView({
                                           className="absolute right-0 top-8 w-48 bg-white rounded-2xl shadow-xl border border-gray-200 p-1.5 z-40 text-xs animate-fadeIn"
                                           onClick={(e) => e.stopPropagation()}
                                         >
+                                          {!isRest && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setNearbyPickerTarget({
+                                                  dayNumber: day.day_number,
+                                                  stopId: stop.stop_id,
+                                                });
+                                                setActiveMenuStopId(null);
+                                              }}
+                                              className="w-full min-h-[40px] text-left px-3 py-1.5 rounded-xl hover:bg-emerald-50 font-semibold text-emerald-900 flex items-center gap-2 cursor-pointer"
+                                            >
+                                              <MapPin size={13} aria-hidden="true" /> Đổi điểm khác gần đây
+                                            </button>
+                                          )}
                                           <button
                                             type="button"
                                             onClick={() => {
@@ -2042,6 +2432,75 @@ export default function TripItineraryView({
                                     </div>
                                   </div>
 
+                                  {/* Inline Nearby Replacement Picker */}
+                                  {!isRest &&
+                                    nearbyPickerTarget?.dayNumber === day.day_number &&
+                                    nearbyPickerTarget?.stopId === stop.stop_id && (() => {
+                                      const nearbyList = suggestNearbyAlternativesForStop(
+                                        stop,
+                                        day,
+                                        allPois,
+                                        usedPoiIds,
+                                        3
+                                      );
+                                      return (
+                                        <div
+                                          role="region"
+                                          aria-label={`Chọn điểm gần ${stop.title}`}
+                                          className="no-print ml-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-2"
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="text-xs font-bold text-neutral-900">
+                                              Điểm gợi ý gần {stop.title}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => setNearbyPickerTarget(null)}
+                                              className="min-h-[40px] px-3 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 text-xs font-semibold text-neutral-800 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                                            >
+                                              Đóng
+                                            </button>
+                                          </div>
+                                          {nearbyList.length === 0 ? (
+                                            <p className="text-xs text-neutral-600">
+                                              Chưa có điểm thay thế gần đây chưa nằm trong lịch trình.
+                                            </p>
+                                          ) : (
+                                            <div className="space-y-1.5">
+                                              {nearbyList.map((cand) => (
+                                                <div
+                                                  key={cand.poi.id}
+                                                  className="flex items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white p-2.5"
+                                                >
+                                                  <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-neutral-950 truncate">
+                                                      {cand.poi.name}
+                                                    </p>
+                                                    <p className="text-xs text-neutral-600 truncate">
+                                                      {cand.reason}
+                                                    </p>
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      handleSwapStopToNearby(
+                                                        day.day_number,
+                                                        stop.stop_id,
+                                                        cand.poi
+                                                      )
+                                                    }
+                                                    className="min-h-[40px] px-3.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-xs font-bold text-white shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                                                  >
+                                                    Đổi
+                                                  </button>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+
                                   {/* Dòng khoảng cách & CO₂ giữa 2 thẻ */}
                                   {showDistances && transitDistKm !== null && (() => {
                                     const legCarbon = estimateCarbonFootprint(transitDistKm * 1000, transportMode);
@@ -2099,14 +2558,14 @@ export default function TripItineraryView({
                                 <span>Thêm</span>
                               </button>
 
-                              {!hasLunchBreak && (
+                              {!hasLunchBreak && !dayFatigue.needsRest && (
                                 <button
                                   type="button"
                                   onClick={() => handleAddLunchBreak(day.day_number)}
-                                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 rounded-full border border-amber-200 bg-amber-50 hover:bg-amber-100 text-xs font-semibold text-amber-900 transition cursor-pointer shadow-2xs"
+                                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 rounded-full border border-amber-200 bg-amber-50 hover:bg-amber-100 text-xs font-semibold text-amber-900 transition cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                                 >
-                                  <Coffee size={13} className="text-amber-700" />
-                                  <span>+ Nghỉ trưa (12:00 – 13:30)</span>
+                                  <Coffee size={13} className="text-amber-700" aria-hidden="true" />
+                                  <span>+ Nghỉ trưa (90 phút)</span>
                                 </button>
                               )}
 
@@ -2149,8 +2608,8 @@ export default function TripItineraryView({
             CỘT PHẢI: BẢN ĐỒ LỘ TRÌNH ĐỒNG BỘ (CHỈ HIỆN KHI KHÔNG PHẢI DRAWER MODE)
         ════════════════════════════════════════════════════════ */}
         {!isDrawerMode && (
-          <section className="flex-1 h-full relative bg-white overflow-hidden" data-purpose="right-panel-container">
-            <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] py-4 pb-6">
+          <section className={`${isMapExpanded ? 'block' : 'hidden md:block'} flex-1 h-full relative bg-white overflow-hidden`} data-purpose="right-panel-container">
+            <div className="w-full h-full p-2 md:pl-3 md:pr-6 lg:pr-[36px] md:py-4 md:pb-6">
               <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
                 {/* Bộ chọn xem đường đi theo ngày dạng Dropdown dọc (Chuẩn yêu cầu: "thay cái dãy ngày, thành kiểu xem đường đi của ngày, khi mở thì sẽ hiện hàng dọc ngày nào ngày nào") */}
                 <div className="absolute top-3.5 right-3.5 z-[400] flex flex-col items-end">

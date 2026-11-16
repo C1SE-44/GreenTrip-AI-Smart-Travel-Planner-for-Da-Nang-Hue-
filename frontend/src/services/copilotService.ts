@@ -14,6 +14,10 @@ export interface TripContextPayload {
   preferences?: string[];
   start_date?: string | null;
   end_date?: string | null;
+  total_budget?: number | null;
+  num_people?: number;
+  budget_tier?: 'budget' | 'standard' | 'luxury' | null;
+  transport_mode?: 'driving' | 'motorcycle' | 'transit' | 'walking';
   active_constraints?: string[];
   trip_memory?: Record<string, string>;
   conversation_history?: Array<{ role: string; content: string }>;
@@ -41,6 +45,9 @@ export interface CopilotSuggestedPoi {
   gallery_urls?: string[] | null;
   lat?: number | null;
   lng?: number | null;
+  opening_hours_status?: 'ok' | 'closed' | 'outside_hours' | 'unknown' | null;
+  opening_hours_warning?: string | null;
+  open_range_label?: string | null;
 }
 
 export interface CopilotChatRequest {
@@ -64,6 +71,9 @@ export interface CopilotChatResponse {
   avoid_notice?: string | null;
   green_impact_summary?: string | null;
   budget_impact_summary?: string | null;
+  budget_status?: Record<string, unknown> | null;
+  route_metrics?: Record<string, unknown> | null;
+  fatigue_metrics?: Array<Record<string, unknown>> | null;
   updated_itinerary_state?: Array<Record<string, unknown>> | null;
   updated_days_count?: number | null;
   updated_destination?: string | null;

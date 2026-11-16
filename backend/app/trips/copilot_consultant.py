@@ -25,6 +25,7 @@ from app.pois.explanation_repository import fetch_poi_explanation_facts
 from app.pois.price_normalizer import normalize_poi_price_display
 from app.trips.handlers.smart_concierge_handler import is_simple_social_greeting
 from app.trips.handlers.swap_meal_handler import format_green_score
+from app.trips.itinerary_constraints import apply_quantitative_constraints_to_response
 from app.trips.text_utils import (
     SLANG_REPLACEMENTS,
     contains_any_phrase,
@@ -1407,11 +1408,15 @@ def handle_city_mismatch_and_mutation(
 # 8. ITINERARY STATE MANAGEMENT & MUTATION ENGINE (Rule 1, 2, 3, 6)
 # ============================================================================
 
-def _ensure_editable_outline(trip_context: TripContextPayload) -> list[dict[str, Any]]:
+def _ensure_editable_outline(
+    trip_context: TripContextPayload,
+    constraints: list[str] | None = None,
+) -> list[dict[str, Any]]:
     """Return a deep copy of current_itinerary_state or build a default outline if empty."""
     if trip_context.current_itinerary_state:
         return json.loads(json.dumps(trip_context.current_itinerary_state))
 
+    want_veg = "vegetarian" in (constraints or [])
     days_count = max(1, trip_context.days_count or 4)
     dest = trip_context.destination or "Đà Nẵng & Huế"
     is_both = "đà nẵng" in dest.lower() and "huế" in dest.lower()
@@ -1422,6 +1427,13 @@ def _ensure_editable_outline(trip_context: TripContextPayload) -> list[dict[str,
         if is_hue_only or (is_both and d > max(2, days_count // 2)):
             city = "Huế"
             theme = "Di sản Hoàng thành & Lăng tẩm Cố đô Huế" if d % 2 == 1 else "Lăng Tự Đức, Chùa Thiên Mụ & Ẩm thực chay xứ Huế"
+            hue_meal = (
+                "An Nhiên Garden Vegetarian - Nhà Hàng & Cafe"
+                if (want_veg or d % 2 == 0)
+                else "Bún Bò Huế Bà Cam"
+            )
+            if want_veg and d % 2 == 1:
+                hue_meal = "Nhà Hàng Chay Sân Mây (San May Vegetarian Restaurant)"
             stops = [
                 {
                     "id": f"stop-{d}-1",
@@ -1436,11 +1448,11 @@ def _ensure_editable_outline(trip_context: TripContextPayload) -> list[dict[str,
                 {
                     "id": f"stop-{d}-2",
                     "timeSlot": "11:30 - 13:00",
-                    "name": "Cơm chay thực dưỡng An Nhiên Garden" if d % 2 == 0 else "Bún Bò Huế Bà Cam",
+                    "name": hue_meal,
                     "category": "quan-an",
                     "distanceKm": 1.8,
-                    "note": "Ẩm thực truyền thống nguyên liệu bản địa sạch",
-                    "estimatedCost": "65.000 đ",
+                    "note": "Ẩm thực chay thực dưỡng thanh đạm nguyên liệu bản địa sạch" if want_veg else "Ẩm thực truyền thống nguyên liệu bản địa sạch",
+                    "estimatedCost": "85.000 đ" if want_veg else "65.000 đ",
                     "greenScore": 94,
                 },
                 {
@@ -1457,6 +1469,11 @@ def _ensure_editable_outline(trip_context: TripContextPayload) -> list[dict[str,
         else:
             city = "Đà Nẵng"
             theme = "Văn hóa Chăm, Biển Mỹ Khê & Nhịp sống Sông Hàn" if d == 1 else "Núi đá Ngũ Hành Sơn, Sơn Trà & Phố cổ Hội An"
+            dn_meal = (
+                ("Ans - Vegetarian Cuisine" if d == 1 else "Kurumi Vegan – Cơ sở Hải Châu (Hoàng Văn Thụ)")
+                if want_veg
+                else ("Mì Quảng 1A Hải Phòng" if d == 1 else "Bếp Vừng (Cơm nhà miền Trung)")
+            )
             stops = [
                 {
                     "id": f"stop-{d}-1",
@@ -1471,11 +1488,11 @@ def _ensure_editable_outline(trip_context: TripContextPayload) -> list[dict[str,
                 {
                     "id": f"stop-{d}-2",
                     "timeSlot": "11:30 - 13:00",
-                    "name": "Mì Quảng 1A Hải Phòng" if d == 1 else "Bếp Vừng (Cơm nhà miền Trung)",
+                    "name": dn_meal,
                     "category": "quan-an",
                     "distanceKm": 1.5,
-                    "note": "Ẩm thực bản địa Đà Nẵng tươi ngon, hạn chế rác thải nhựa",
-                    "estimatedCost": "65.000 đ",
+                    "note": "Thực đơn thuần chay thanh đạm, nguyên liệu địa phương bền vững" if want_veg else "Ẩm thực bản địa Đà Nẵng tươi ngon, hạn chế rác thải nhựa",
+                    "estimatedCost": "90.000 đ" if want_veg else "65.000 đ",
                     "greenScore": 92,
                 },
                 {
@@ -1507,7 +1524,7 @@ def _insert_landmark_into_day(
     constraints: list[str],
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Insert a verified landmark into the target day of the itinerary."""
-    outline = _ensure_editable_outline(trip_context)
+    outline = _ensure_editable_outline(trip_context, constraints)
     target_idx = max(0, min(len(outline) - 1, day_number - 1))
     day_obj = outline[target_idx]
 
@@ -1626,7 +1643,7 @@ def handle_itinerary_mutation_request(
     """
     norm_msg = normalize_vietnamese_query(message)
     folded_msg = strip_vietnamese_accents(norm_msg)
-    outline = _ensure_editable_outline(trip_context)
+    outline = _ensure_editable_outline(trip_context, constraints)
     old_days_count = len(outline)
 
     raw_name = (trip_context.traveler_name or "").strip()
@@ -2329,6 +2346,7 @@ def upgrade_handler_response_to_mindtrip_standard(
     raw_response: CopilotChatResponse,
     intent_category: IntentCategoryType,
     constraints: list[str],
+    connection: Connection | None = None,
 ) -> CopilotChatResponse:
     """
     Upgrade any handler output so it strictly satisfies all 6 Core Rules:
@@ -2429,6 +2447,21 @@ def upgrade_handler_response_to_mindtrip_standard(
         f"4. Đồng bộ Knowledge Graph & Thẻ POI (recommended_poi_ids): {rec_ids} ({len(filtered_pois)} địa điểm khớp nội dung)."
     )
 
+    raw_response.suggested_pois = filtered_pois
+    raw_response.recommended_poi_ids = rec_ids
+    raw_response.detected_constraints = constraints
+    raw_response.reasoning_trace = reasoning_trace
+    apply_quantitative_constraints_to_response(
+        raw_response,
+        request.trip_context,
+        connection=connection,
+        constraints=constraints,
+        coords_resolver=resolve_poi_coordinates,
+    )
+    filtered_pois = raw_response.suggested_pois
+    rec_ids = [p.id for p in filtered_pois]
+    reasoning_trace = raw_response.reasoning_trace or reasoning_trace
+
     # 5. Optional Gemini API synthesis when GEMINI_API_KEY is configured
     settings = get_settings()
     if settings.gemini_configured:
@@ -2458,8 +2491,10 @@ def finalize_copilot_response(
     response: CopilotChatResponse,
     trip_context: TripContextPayload,
     constraints: list[str],
+    connection: Connection | None = None,
+    protected_keywords: list[str] | None = None,
 ) -> CopilotChatResponse:
-    """Ensure every CopilotChatResponse carries trip_memory, normalized price units, and map coordinates."""
+    """Ensure every CopilotChatResponse carries trip_memory, normalized prices, coordinates, and Part-2 constraints."""
     response.detected_constraints = constraints
     response.trip_memory = build_trip_memory_dict(constraints, trip_context)
     for idx, p in enumerate(response.suggested_pois or []):
@@ -2473,7 +2508,14 @@ def finalize_copilot_response(
         lat_val, lng_val = resolve_poi_coordinates(p.name, p.city or "Đà Nẵng", p.lat, p.lng, idx)
         p.lat = lat_val
         p.lng = lng_val
-    return response
+    return apply_quantitative_constraints_to_response(
+        response,
+        trip_context,
+        connection=connection,
+        constraints=constraints,
+        coords_resolver=resolve_poi_coordinates,
+        protected_keywords=protected_keywords,
+    )
 
 
 def _try_gemini_synthesis(
@@ -2498,6 +2540,10 @@ def _try_gemini_synthesis(
                 "category": p.category,
                 "address": p.address,
                 "green_score": p.green_score,
+                "estimated_cost": p.estimated_cost,
+                "opening_hours_status": p.opening_hours_status,
+                "open_range_label": p.open_range_label,
+                "opening_hours_warning": p.opening_hours_warning,
                 "kg_explanation": p.kg_explanation,
                 "eco_practices": p.eco_practices,
             }
@@ -2510,7 +2556,9 @@ def _try_gemini_synthesis(
         prompt_payload = (
             f"MODE: {getattr(trip_context, 'mode', 'trip')} | "
             f"USER_PROFILE & CONSTRAINTS: destination={trip_context.destination}, days={trip_context.days_count}, "
-            f"current_day={trip_context.current_day}, active_constraints={constraints}\n"
+            f"current_day={trip_context.current_day}, total_budget={trip_context.total_budget}, "
+            f"num_people={trip_context.num_people}, transport_mode={trip_context.transport_mode}, "
+            f"active_constraints={constraints}\n"
             f"RECENT_HISTORY: {json.dumps(history_snippet, ensure_ascii=False)}\n"
             f"RETRIEVED_POIS & KG_PATHS: {json.dumps(pois_context, ensure_ascii=False)}\n"
             f"REFERENCE_DRAFT (giữ nguyên các dữ kiện thực tế và tên địa điểm): {fallback_reply}\n"

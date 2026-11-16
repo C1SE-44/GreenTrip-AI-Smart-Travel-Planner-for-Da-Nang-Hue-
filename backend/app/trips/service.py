@@ -584,6 +584,7 @@ def process_copilot_chat(
             handle_out_of_scope_request(request.message, oos_target, ctx, constraints),
             ctx,
             constraints,
+            connection=connection,
         )
 
     # 2. Fact-Check & Feasibility Guardrails (Rule 2)
@@ -593,6 +594,7 @@ def process_copilot_chat(
                 handle_over_scheduling_guardrail(request.message, fact_check, ctx, constraints),
                 ctx,
                 constraints,
+                connection=connection,
             )
         if fact_check.get("type") == "city_mismatch":
             return finalize_copilot_response(
@@ -601,6 +603,11 @@ def process_copilot_chat(
                 ),
                 ctx,
                 constraints,
+                connection=connection,
+                protected_keywords=[
+                    str(fact_check.get("canonical_name") or ""),
+                    str(fact_check.get("landmark_key") or ""),
+                ],
             )
 
     # 3. Consultative City Comparison ('Đà Nẵng hay Huế?') (Rule 1, 2, 4, 6)
@@ -609,6 +616,7 @@ def process_copilot_chat(
             handle_city_comparison_consultative(request.message, ctx, connection, constraints),
             ctx,
             constraints,
+            connection=connection,
         )
 
     # 4. Direct Itinerary State Mutation ('Chia 4 đêm Đà Nẵng, 3 đêm Huế', 'Bỏ Lăng Khải Định ngày 6', 'Đổi lịch đi Hội An từ ngày 3 sang ngày 2')
@@ -617,6 +625,7 @@ def process_copilot_chat(
             handle_itinerary_mutation_request(request.message, ctx, connection, constraints),
             ctx,
             constraints,
+            connection=connection,
         )
 
     # 5. Elderly / Senior Family Persistent Constraint Consultation ('Đi cùng bố mẹ lớn tuổi...')
@@ -628,6 +637,7 @@ def process_copilot_chat(
             handle_elderly_constraints_consultation(request.message, ctx, connection, constraints),
             ctx,
             constraints,
+            connection=connection,
         )
 
     # 6. Delegate to domain handlers and upgrade output to Mindtrip 6-Rule Standard
@@ -659,7 +669,7 @@ def process_copilot_chat(
             green_impact_summary=green_impact,
             budget_impact_summary=budget_impact,
         )
-        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)
+        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)
 
     if intent == "late_schedule_adjust":
         reply_text, suggested_pois = handle_late_adjust(ctx, connection)
@@ -677,7 +687,7 @@ def process_copilot_chat(
             budget_impact_summary="Lựa chọn điểm dừng gần trung tâm giúp tiết kiệm chi phí taxi ~50.000 ₫ và tránh kẹt xe giờ cao điểm.",
             green_impact_summary="Giảm khoảng cách di chuyển giúp giảm phát thải phương tiện, khuyến khích tản bộ thư thái.",
         )
-        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)
+        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)
 
     if intent == "swap_meal_vegetarian":
         reply_text, suggested_pois = handle_swap_meal(ctx, connection)
@@ -695,7 +705,7 @@ def process_copilot_chat(
             budget_impact_summary="Bữa ăn thanh đạm tại quán địa phương tiết kiệm ~35.000 ₫/người so với nhà hàng thông thường.",
             green_impact_summary="Bữa ăn thuần chay giúp giảm ~60% lượng phát thải carbon so với bữa ăn thông thường, bảo vệ nguồn nước và sức khỏe.",
         )
-        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)
+        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)
 
     if intent == "rainy_day_alternatives":
         reply_text, suggested_pois = handle_rainy_day(ctx, connection)
@@ -712,7 +722,7 @@ def process_copilot_chat(
                 "Thời gian mở cửa và giá vé của các điểm này?",
             ],
         )
-        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)
+        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)
 
     if intent == "night_eco_activities":
         reply_text, suggested_pois = handle_night_eco(ctx, connection)
@@ -729,7 +739,7 @@ def process_copilot_chat(
             ],
             green_impact_summary="Khám phá phố đi bộ và phương tiện công cộng về đêm giúp giảm phát thải, tận hưởng không khí trong lành của thành phố.",
         )
-        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)
+        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)
 
     # Universal Smart Concierge
     (
@@ -753,4 +763,4 @@ def process_copilot_chat(
         green_impact_summary=green_impact,
         budget_impact_summary=budget_impact,
     )
-    return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints)
+    return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)

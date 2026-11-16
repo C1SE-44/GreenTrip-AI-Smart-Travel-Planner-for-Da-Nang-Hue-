@@ -416,6 +416,13 @@ class TripContextPayload(BaseModel):
     preferences: list[str] = Field(default_factory=list, description="Danh sách sở thích ưu tiên")
     start_date: str | None = Field(default=None, description="Ngày bắt đầu chuyến đi (YYYY-MM-DD)")
     end_date: str | None = Field(default=None, description="Ngày kết thúc chuyến đi (YYYY-MM-DD)")
+    total_budget: float | None = Field(default=None, gt=0, le=1_000_000_000, description="Ngân sách tối đa (VNĐ)")
+    num_people: int = Field(default=1, ge=1, le=20, description="Số lượng du khách")
+    budget_tier: BudgetTier | None = Field(default=None, description="Hạng ngân sách (budget/standard/luxury)")
+    transport_mode: Literal["driving", "motorcycle", "transit", "walking"] = Field(
+        default="motorcycle",
+        description="Phương tiện di chuyển chính để tính phát thải CO2",
+    )
     active_constraints: list[str] = Field(
         default_factory=list,
         description="Các ràng buộc ngầm duy trì xuyên suốt hội thoại (elderly_friendly, kid_friendly, rainy_season, quiet_vibe, vegetarian)",
@@ -463,13 +470,16 @@ class CopilotSuggestedPoiItem(BaseModel):
     budget_delta: str | None = None
     carbon_saved: str | None = None
     gallery_urls: list[str] | None = None
+    opening_hours_status: Literal["ok", "closed", "outside_hours", "unknown"] | None = None
+    opening_hours_warning: str | None = None
+    open_range_label: str | None = None
 
 
 class CopilotChatResponse(BaseModel):
     reply_text: str
     intent: str
     intent_category: IntentCategoryType = "QA_AND_COMPARE"
-    reasoning_trace: str = ""
+    reasoning_trace: str | None = ""
     recommended_poi_ids: list[str] = Field(default_factory=list)
     detected_constraints: list[str] = Field(default_factory=list)
     trip_memory: dict[str, Any] = Field(default_factory=dict)
@@ -481,6 +491,9 @@ class CopilotChatResponse(BaseModel):
     avoid_notice: str | None = None
     green_impact_summary: str | None = None
     budget_impact_summary: str | None = None
+    budget_status: dict[str, Any] | None = None
+    route_metrics: dict[str, Any] | None = None
+    fatigue_metrics: list[dict[str, Any]] | None = None
     updated_itinerary_state: list[dict[str, Any]] | None = None
     updated_days_count: int | None = None
     updated_destination: str | None = None

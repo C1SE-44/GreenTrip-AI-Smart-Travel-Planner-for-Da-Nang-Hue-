@@ -10,7 +10,7 @@ import re
 from psycopg import Connection
 from app.trips.schemas import CopilotSuggestedPoiItem, TripContextPayload
 from app.trips.handlers.swap_meal_handler import normalize_city_query, format_green_score
-from app.trips.text_utils import strip_vietnamese_accents
+from app.trips.text_utils import contains_any_phrase, normalize_vietnamese_query, strip_vietnamese_accents
 
 logger = logging.getLogger(__name__)
 
@@ -103,54 +103,97 @@ def handle_smart_concierge(
         )
 
     suggested_pois: list[CopilotSuggestedPoiItem] = []
+    norm_msg = normalize_vietnamese_query(message)
+    folded_msg = strip_vietnamese_accents(norm_msg)
+    is_eco_uncrowded = contains_any_phrase(
+        norm_msg,
+        folded_msg,
+        [
+            "du lịch xanh", "trải nghiệm xanh", "ít đông", "đông đúc",
+            "sinh thái", "làng nghề", "ẩn mình", "bảo tồn", "yên bình",
+            "vắng vẻ", "ít người", "eco",
+        ],
+        [
+            "du lich xanh", "trai nghiem xanh", "it dong", "dong duc",
+            "sinh thai", "lang nghe", "an minh", "bao ton", "yen binh",
+            "vang ve", "it nguoi", "eco",
+        ],
+    )
 
-    # Query 3 balanced top-tier POIs: 1 nature/heritage, 1 cuisine, 1 cafe
     try:
         with connection.cursor() as cur:
-            query = """
-                (
-                    SELECT 
-                        p.poi_id::text, p.name, c.name, p.sub_category, p.image_url, 
-                        p.green_score, p.satisfaction_score, p.address, p.estimated_cost, 
+            if is_eco_uncrowded:
+                query = """
+                    SELECT
+                        p.poi_id::text, p.name, c.name, p.sub_category, p.image_url,
+                        p.green_score, p.satisfaction_score, p.address, p.estimated_cost,
                         p.ai_metadata, ci.name, p.gallery_urls
                     FROM public.pois p
                     JOIN public.poi_categories c ON p.category_id = c.category_id
                     JOIN public.cities ci ON p.city_id = ci.city_id
-                    WHERE p.is_active IS NOT FALSE AND (ci.name ILIKE %s OR %s = TRUE)
-                      AND (c.name ILIKE '%%cảnh quan%%' OR c.name ILIKE '%%di tích%%')
+                    WHERE p.is_active IS NOT FALSE
+                      AND (ci.name ILIKE %s OR %s = TRUE)
+                      AND p.green_score >= 0.80
+                      AND (
+                        c.name ILIKE '%%cảnh quan%%'
+                        OR c.name ILIKE '%%tâm linh%%'
+                        OR p.sub_category IN ('craft_village', 'lagoon_waterway', 'pine_forest_park', 'historic_zen_temples', 'eco_village')
+                        OR p.name ILIKE '%%sinh thái%%'
+                        OR p.name ILIKE '%%làng%%'
+                        OR p.name ILIKE '%%rú chá%%'
+                        OR p.name ILIKE '%%cu đê%%'
+                        OR p.name ILIKE '%%huyền không%%'
+                        OR p.name ILIKE '%%từ hiếu%%'
+                      )
                     ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
-                    LIMIT 1
-                )
-                UNION ALL
-                (
-                    SELECT 
-                        p.poi_id::text, p.name, c.name, p.sub_category, p.image_url, 
-                        p.green_score, p.satisfaction_score, p.address, p.estimated_cost, 
-                        p.ai_metadata, ci.name, p.gallery_urls
-                    FROM public.pois p
-                    JOIN public.poi_categories c ON p.category_id = c.category_id
-                    JOIN public.cities ci ON p.city_id = ci.city_id
-                    WHERE p.is_active IS NOT FALSE AND (ci.name ILIKE %s OR %s = TRUE)
-                      AND c.name ILIKE '%%ẩm thực%%'
-                    ORDER BY p.satisfaction_score DESC NULLS LAST, p.green_score DESC NULLS LAST
-                    LIMIT 1
-                )
-                UNION ALL
-                (
-                    SELECT 
-                        p.poi_id::text, p.name, c.name, p.sub_category, p.image_url, 
-                        p.green_score, p.satisfaction_score, p.address, p.estimated_cost, 
-                        p.ai_metadata, ci.name, p.gallery_urls
-                    FROM public.pois p
-                    JOIN public.poi_categories c ON p.category_id = c.category_id
-                    JOIN public.cities ci ON p.city_id = ci.city_id
-                    WHERE p.is_active IS NOT FALSE AND (ci.name ILIKE %s OR %s = TRUE)
-                      AND c.name ILIKE '%%cafe%%'
-                    ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
-                    LIMIT 1
-                );
-            """
-            cur.execute(query, (city_pattern, is_both, city_pattern, is_both, city_pattern, is_both))
+                    LIMIT 4;
+                """
+                cur.execute(query, (city_pattern, is_both))
+            else:
+                query = """
+                    (
+                        SELECT 
+                            p.poi_id::text, p.name, c.name, p.sub_category, p.image_url, 
+                            p.green_score, p.satisfaction_score, p.address, p.estimated_cost, 
+                            p.ai_metadata, ci.name, p.gallery_urls
+                        FROM public.pois p
+                        JOIN public.poi_categories c ON p.category_id = c.category_id
+                        JOIN public.cities ci ON p.city_id = ci.city_id
+                        WHERE p.is_active IS NOT FALSE AND (ci.name ILIKE %s OR %s = TRUE)
+                          AND (c.name ILIKE '%%cảnh quan%%' OR c.name ILIKE '%%di tích%%')
+                        ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
+                        LIMIT 1
+                    )
+                    UNION ALL
+                    (
+                        SELECT 
+                            p.poi_id::text, p.name, c.name, p.sub_category, p.image_url, 
+                            p.green_score, p.satisfaction_score, p.address, p.estimated_cost, 
+                            p.ai_metadata, ci.name, p.gallery_urls
+                        FROM public.pois p
+                        JOIN public.poi_categories c ON p.category_id = c.category_id
+                        JOIN public.cities ci ON p.city_id = ci.city_id
+                        WHERE p.is_active IS NOT FALSE AND (ci.name ILIKE %s OR %s = TRUE)
+                          AND c.name ILIKE '%%ẩm thực%%'
+                        ORDER BY p.satisfaction_score DESC NULLS LAST, p.green_score DESC NULLS LAST
+                        LIMIT 1
+                    )
+                    UNION ALL
+                    (
+                        SELECT 
+                            p.poi_id::text, p.name, c.name, p.sub_category, p.image_url, 
+                            p.green_score, p.satisfaction_score, p.address, p.estimated_cost, 
+                            p.ai_metadata, ci.name, p.gallery_urls
+                        FROM public.pois p
+                        JOIN public.poi_categories c ON p.category_id = c.category_id
+                        JOIN public.cities ci ON p.city_id = ci.city_id
+                        WHERE p.is_active IS NOT FALSE AND (ci.name ILIKE %s OR %s = TRUE)
+                          AND c.name ILIKE '%%cafe%%'
+                        ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
+                        LIMIT 1
+                    );
+                """
+                cur.execute(query, (city_pattern, is_both, city_pattern, is_both, city_pattern, is_both))
             rows = cur.fetchall()
 
             for r in rows:
@@ -164,6 +207,8 @@ def handle_smart_concierge(
                 address = r[7] or "Đang cập nhật địa chỉ"
                 cost = float(r[8]) if r[8] is not None else None
                 meta = r[9] if isinstance(r[9], dict) else {}
+                city_raw = str(r[10] or "")
+                city_label = "Huế" if "hue" in city_raw.lower() else "Đà Nẵng"
                 gallery = r[11] if r[11] else None
 
                 price_display = meta.get("price_range_display") if isinstance(meta, dict) else None
@@ -174,25 +219,61 @@ def handle_smart_concierge(
                         name=name,
                         category=category,
                         sub_category=sub_cat,
+                        city=city_label,
                         image_url=image_url,
                         green_score=green_score,
                         rating=rating,
                         address=address,
-                        swap_reason="Điểm đến tiêu biểu đạt đánh giá cao trong mạng lưới du lịch xanh",
-                        distance_info="Điểm dừng gợi ý trong hành trình",
+                        swap_reason=(
+                            f"Trải nghiệm du lịch xanh ít đông đúc tại {city_label}, đạt Green Score {green_score}/100"
+                            if is_eco_uncrowded
+                            else "Điểm đến tiêu biểu đạt đánh giá cao trong mạng lưới du lịch xanh"
+                        ),
+                        distance_info="Không gian sinh thái tách biệt ồn ào" if is_eco_uncrowded else "Điểm dừng gợi ý trong hành trình",
                         estimated_cost=cost,
                         price_range_display=price_display,
-                        budget_delta="Trải nghiệm chất lượng",
-                        carbon_saved="Chuẩn du lịch sinh thái",
+                        budget_delta="Trải nghiệm chậm & tiết kiệm",
+                        carbon_saved="Chuẩn du lịch sinh thái ít phát thải",
                         gallery_urls=gallery,
                     )
                 )
     except Exception as e:
         logger.error("Failed to query concierge POIs: %s", e)
 
+    if is_eco_uncrowded:
+        if suggested_pois:
+            bullets = "\n".join(
+                f"- **{p.name}** ({p.city or dest}) — Green Score **{p.green_score}/100**: {p.address}"
+                for p in suggested_pois[:4]
+            )
+            reply_text = (
+                f"Với tiêu chí **du lịch xanh, ít đông đúc và gần gũi thiên nhiên tại {dest}**, "
+                f"bạn nên ưu tiên các làng sinh thái, đầm phá và không gian thiền – rừng thông tách biệt khỏi điểm check-in đại trà:\n\n"
+                f"{bullets}\n\n"
+                "Kết hợp **Tàu hỏa Di sản qua đèo Hải Vân** hoặc đạp xe nội làng sẽ giúp giảm phát thải và giữ trọn nhịp nghỉ thư thái."
+            )
+        else:
+            reply_text = (
+                f"Để có trải nghiệm **du lịch xanh ít đông đúc tại {dest}**, bạn có thể chọn **Làng sinh thái Thủy Biều**, "
+                "**Rừng ngập mặn Rú Chá**, **Huyền Không Sơn Thượng** (Huế) hoặc **Sông Cu Đê / Hòa Bắc** (Đà Nẵng) vào buổi sáng sớm."
+            )
+        eco_prompts = [
+            "Lên lịch 1 ngày sống chậm ở Làng sinh thái Thủy Biều & Rú Chá",
+            "Gợi ý quán ăn chay / thực dưỡng yên tĩnh gần đây",
+            "Cách đi Tàu di sản Đà Nẵng – Huế qua đèo Hải Vân",
+        ]
+        return (
+            reply_text,
+            suggested_pois,
+            "view_on_map",
+            eco_prompts,
+            None,
+            "Ưu tiên điểm sinh thái mật độ thấp giúp giảm quá tải điểm đến và giảm phát thải di chuyển.",
+            "Phần lớn điểm sinh thái & làng nghề miễn phí hoặc vé 20.000 – 100.000 ₫/người.",
+        )
+
     reply_text = (
-        f"Chào {caller}! Mình đã sẵn sàng hỗ trợ điều chỉnh lịch trình và gợi ý địa điểm xanh cho chuyến đi **{dest} ({days} ngày)**.\n"
-        "Bạn muốn mình tập trung tìm quán ăn bản địa, lọc điểm tham quan theo sở thích, hay sắp xếp lại lịch từng ngày?"
+        f"Dựa trên hành trình **{dest} ({days} ngày)**, mình gợi ý trước một số điểm dừng đạt điểm xanh cao và được đánh giá tốt để bạn cân nhắc thêm vào lịch trình:"
     )
 
     return (

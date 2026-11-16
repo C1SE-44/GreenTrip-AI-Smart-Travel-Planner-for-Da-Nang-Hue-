@@ -2806,6 +2806,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         <TripItineraryView
           trip={trip}
           allPois={allPoisProp || allPois}
+          recommendations={recommendedPois}
+          recommendationsLoading={isLoadingRecommendations}
           onBack={() => setShowItineraryDrawer(false)}
           onClose={() => setShowItineraryDrawer(false)}
           isDrawerMode={true}

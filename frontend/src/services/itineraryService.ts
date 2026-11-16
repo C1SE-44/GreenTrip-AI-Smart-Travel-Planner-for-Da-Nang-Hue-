@@ -500,41 +500,54 @@ export function stopFromPoi(poi: Poi, source: 'idea' | 'manual' | 'assistant' = 
 }
 
 const itineraryWrites = new Map<string, Promise<TripItinerary>>();
+const itineraryReads = new Map<string, Promise<TripItinerary>>();
 
 export async function getTripItinerary(tripId: string): Promise<TripItinerary> {
-  await itineraryWrites.get(tripId)?.catch(() => undefined);
-  const key = `greentrip_itinerary_${tripId}`;
-  const cacheBeforeRead = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
-  try {
-    const remote = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(tripId)}/itinerary`);
-    if (remote && remote.trip_id) {
-      try {
-        if (typeof localStorage !== 'undefined') {
-          const current = localStorage.getItem(key);
-          if (current && current !== cacheBeforeRead) return JSON.parse(current) as TripItinerary;
-          localStorage.setItem(`greentrip_itinerary_${tripId}`, JSON.stringify(remote));
+  const existingRead = itineraryReads.get(tripId);
+  if (existingRead) return existingRead;
+
+  const fetchPromise = (async () => {
+    await itineraryWrites.get(tripId)?.catch(() => undefined);
+    const key = `greentrip_itinerary_${tripId}`;
+    const cacheBeforeRead = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+    try {
+      const remote = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(tripId)}/itinerary`);
+      if (remote && remote.trip_id) {
+        try {
+          if (typeof localStorage !== 'undefined') {
+            const current = localStorage.getItem(key);
+            if (current && current !== cacheBeforeRead) return JSON.parse(current) as TripItinerary;
+            localStorage.setItem(`greentrip_itinerary_${tripId}`, JSON.stringify(remote));
+          }
+        } catch (e) {
+          console.warn('Failed to cache itinerary to localStorage', e);
         }
-      } catch (e) {
-        console.warn('Failed to cache itinerary to localStorage', e);
+        return remote;
       }
-      return remote;
+    } catch (err) {
+      const localRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(`greentrip_itinerary_${tripId}`) : null;
+      if (localRaw) {
+        try {
+          return JSON.parse(localRaw) as TripItinerary;
+        } catch (e) {
+          console.warn('Failed to parse localStorage itinerary', e);
+        }
+      }
+      throw err;
     }
-  } catch (err) {
     const localRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(`greentrip_itinerary_${tripId}`) : null;
     if (localRaw) {
-      try {
-        return JSON.parse(localRaw) as TripItinerary;
-      } catch (e) {
-        console.warn('Failed to parse localStorage itinerary', e);
-      }
+      return JSON.parse(localRaw) as TripItinerary;
     }
-    throw err;
+    throw new Error(`Itinerary not found for trip ${tripId}`);
+  })();
+
+  itineraryReads.set(tripId, fetchPromise);
+  try {
+    return await fetchPromise;
+  } finally {
+    itineraryReads.delete(tripId);
   }
-  const localRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(`greentrip_itinerary_${tripId}`) : null;
-  if (localRaw) {
-    return JSON.parse(localRaw) as TripItinerary;
-  }
-  throw new Error(`Itinerary not found for trip ${tripId}`);
 }
 
 export function scheduleError(next: TripItinerary, previous?: TripItinerary | null): string {

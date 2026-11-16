@@ -20,13 +20,13 @@ def test_itinerary_days_and_stops_persist_and_can_be_reordered(tmp_path, monkeyp
         "trip_id": "pb11-trip-roundtrip",
         "title": "Đà Nẵng & Huế cuối tuần",
         "destination": "Đà Nẵng & Huế",
-        "start_date": "2026-11-15",
+        "start_date": "2026-12-15",
         "days_count": 2,
         "days": [
             {
                 "day_id": "pb11-day-1",
                 "day_number": 1,
-                "date": "2026-11-15",
+                "date": "2026-12-15",
                 "title": "Đà Nẵng",
                 "stops": [
                     {
@@ -64,7 +64,7 @@ def test_itinerary_days_and_stops_persist_and_can_be_reordered(tmp_path, monkeyp
                     },
                 ],
             },
-            {"day_id": "pb11-day-2", "day_number": 2, "date": "2026-11-16", "title": "Huế", "stops": []},
+            {"day_id": "pb11-day-2", "day_number": 2, "date": "2026-12-16", "title": "Huế", "stops": []},
         ],
     }
 

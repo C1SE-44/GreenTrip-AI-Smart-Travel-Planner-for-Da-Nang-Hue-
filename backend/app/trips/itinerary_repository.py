@@ -163,9 +163,12 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
 
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_stops_stop_id ON itinerary_stops(stop_id)")
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_stops_day_seq ON itinerary_stops(day_id, sequence)")
+    cursor.execute("UPDATE itineraries SET user_id = NULL WHERE trip_id LIKE 'sample-%'")
 
 
 def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> TripItineraryResponse:
+    is_sample = payload.trip_id.startswith("sample-")
+    effective_user_id = None if is_sample else user_id
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
@@ -173,7 +176,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                 cursor.execute("SELECT user_id FROM public.itineraries WHERE trip_id = %s", (payload.trip_id,))
                 existing = cursor.fetchone()
                 owner_id = existing[0] if existing else None
-                if owner_id and owner_id != user_id:
+                if not is_sample and owner_id and user_id and owner_id != user_id:
                     raise HTTPException(status_code=404, detail="Không tìm thấy lịch trình.")
 
                 cursor.execute(
@@ -181,7 +184,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                     INSERT INTO public.itineraries (trip_id, user_id, title, destination, start_date, days_count, updated_at, itinerary_id, total_days)
                     VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s)
                     ON CONFLICT (trip_id) DO UPDATE SET
-                        user_id = COALESCE(EXCLUDED.user_id, itineraries.user_id),
+                        user_id = (CASE WHEN EXCLUDED.trip_id LIKE 'sample-%%' THEN NULL ELSE COALESCE(EXCLUDED.user_id, itineraries.user_id) END),
                         title = EXCLUDED.title,
                         destination = EXCLUDED.destination,
                         start_date = EXCLUDED.start_date,
@@ -190,7 +193,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                         total_days = EXCLUDED.days_count,
                         updated_at = CURRENT_TIMESTAMP
                     """,
-                    (payload.trip_id, user_id, payload.title, payload.destination, payload.start_date, payload.days_count, payload.trip_id, payload.days_count),
+                    (payload.trip_id, effective_user_id, payload.title, payload.destination, payload.start_date, payload.days_count, payload.trip_id, payload.days_count),
                 )
                 cursor.execute(
                     "DELETE FROM public.itinerary_stops WHERE day_id IN (SELECT day_id FROM public.itinerary_days WHERE trip_id = %s)",
@@ -229,6 +232,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
 
 
 def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | None:
+    is_sample = trip_id.startswith("sample-")
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
@@ -238,7 +242,9 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                     (trip_id,),
                 )
                 trip = cursor.fetchone()
-                if not trip or (trip[1] and trip[1] != user_id):
+                if not trip:
+                    return None
+                if not is_sample and trip[1] and user_id and trip[1] != user_id:
                     return None
                 cursor.execute(
                     "SELECT day_id, day_number, date, title FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
@@ -333,7 +339,7 @@ def get_itinerary_with_ownership(trip_id: str, user_id: str) -> TripItineraryRes
                 if not trip:
                     raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi.")
                 owner_id = trip[1]
-                if owner_id and owner_id != user_id:
+                if not trip_id.startswith("sample-") and owner_id and user_id and owner_id != user_id:
                     raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập chuyến đi này.")
 
                 cursor.execute(
@@ -390,7 +396,7 @@ def update_itinerary_metadata(
                 if not trip:
                     raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi cần cập nhật.")
                 owner_id = trip[1]
-                if owner_id and owner_id != user_id:
+                if not trip_id.startswith("sample-") and owner_id and user_id and owner_id != user_id:
                     raise HTTPException(status_code=403, detail="Bạn không có quyền chỉnh sửa chuyến đi này.")
 
                 updates = []
@@ -433,7 +439,7 @@ def delete_user_itinerary(trip_id: str, user_id: str) -> bool:
                 if not trip:
                     raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi cần xóa.")
                 owner_id = trip[1]
-                if owner_id and owner_id != user_id:
+                if not trip_id.startswith("sample-") and owner_id and user_id and owner_id != user_id:
                     raise HTTPException(status_code=403, detail="Bạn không có quyền xóa chuyến đi này.")
 
                 cursor.execute(

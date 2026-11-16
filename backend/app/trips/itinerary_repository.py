@@ -99,36 +99,38 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
 
     cursor.execute("PRAGMA table_info(itineraries)")
     itin_columns = {row[1] for row in cursor.fetchall()}
-    if "trip_id" not in itin_columns:
-        cursor.execute("ALTER TABLE itineraries ADD COLUMN trip_id TEXT")
-    if "itinerary_id" not in itin_columns:
-        cursor.execute("ALTER TABLE itineraries ADD COLUMN itinerary_id TEXT")
-    if "total_days" not in itin_columns:
-        cursor.execute("ALTER TABLE itineraries ADD COLUMN total_days INTEGER")
-    if "start_date" not in itin_columns:
-        cursor.execute("ALTER TABLE itineraries ADD COLUMN start_date DATE")
-    if "days_count" not in itin_columns:
-        cursor.execute("ALTER TABLE itineraries ADD COLUMN days_count INTEGER")
+    for col, col_type in [
+        ("trip_id", "TEXT"),
+        ("itinerary_id", "TEXT"),
+        ("start_date", "DATE"),
+        ("days_count", "INTEGER"),
+        ("total_days", "INTEGER"),
+        ("status", "TEXT DEFAULT 'DRAFT'"),
+        ("created_at", "TIMESTAMP"),
+    ]:
+        if col not in itin_columns:
+            cursor.execute(f"ALTER TABLE itineraries ADD COLUMN {col} {col_type}")
     if "itinerary_id" in itin_columns:
         cursor.execute("UPDATE itineraries SET trip_id = itinerary_id WHERE trip_id IS NULL")
         if "total_days" in itin_columns:
             cursor.execute("UPDATE itineraries SET days_count = total_days WHERE days_count IS NULL")
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itineraries_trip_id ON itineraries(trip_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_itineraries_user_id ON itineraries(user_id)")
 
     cursor.execute("PRAGMA table_info(itinerary_days)")
     day_columns = {row[1] for row in cursor.fetchall()}
-    if "day_id" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN day_id TEXT")
-    if "itinerary_day_id" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN itinerary_day_id TEXT")
-    if "trip_id" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN trip_id TEXT")
-    if "itinerary_id" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN itinerary_id TEXT")
-    if "date" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN date DATE")
-    if "title" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN title TEXT DEFAULT ''")
+    for col, col_type in [
+        ("day_id", "TEXT"),
+        ("trip_id", "TEXT"),
+        ("itinerary_day_id", "TEXT"),
+        ("itinerary_id", "TEXT"),
+        ("date", "DATE"),
+        ("title", "TEXT DEFAULT ''"),
+        ("theme", "TEXT"),
+        ("focus_city", "TEXT"),
+    ]:
+        if col not in day_columns:
+            cursor.execute(f"ALTER TABLE itinerary_days ADD COLUMN {col} {col_type}")
     if "itinerary_day_id" in day_columns:
         cursor.execute("UPDATE itinerary_days SET day_id = itinerary_day_id WHERE day_id IS NULL")
     if "itinerary_id" in day_columns:
@@ -151,6 +153,8 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         ("stop_type", "TEXT DEFAULT 'poi'"),
         ("source", "TEXT DEFAULT 'idea'"),
         ("sequence", "INTEGER DEFAULT 0"),
+        ("time_slot", "TEXT"),
+        ("notes", "TEXT"),
         ("duration_minutes", "INTEGER"),
         ("start_time", "TEXT"),
         ("end_time", "TEXT"),
@@ -163,6 +167,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
 
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_stops_stop_id ON itinerary_stops(stop_id)")
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_stops_day_seq ON itinerary_stops(day_id, sequence)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_itinerary_stops_poi_id ON itinerary_stops(poi_id)")
     cursor.execute("UPDATE itineraries SET user_id = NULL WHERE trip_id LIKE 'sample-%'")
 
 
@@ -176,7 +181,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                 cursor.execute("SELECT user_id FROM public.itineraries WHERE trip_id = %s", (payload.trip_id,))
                 existing = cursor.fetchone()
                 owner_id = existing[0] if existing else None
-                if not is_sample and owner_id and user_id and owner_id != user_id:
+                if not is_sample and owner_id and owner_id != user_id:
                     raise HTTPException(status_code=404, detail="Không tìm thấy lịch trình.")
 
                 cursor.execute(
@@ -184,7 +189,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                     INSERT INTO public.itineraries (trip_id, user_id, title, destination, start_date, days_count, updated_at, itinerary_id, total_days)
                     VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s)
                     ON CONFLICT (trip_id) DO UPDATE SET
-                        user_id = (CASE WHEN EXCLUDED.trip_id LIKE 'sample-%%' THEN NULL ELSE COALESCE(EXCLUDED.user_id, itineraries.user_id) END),
+                        user_id = (CASE WHEN EXCLUDED.trip_id LIKE 'sample-%%' THEN NULL ELSE itineraries.user_id END),
                         title = EXCLUDED.title,
                         destination = EXCLUDED.destination,
                         start_date = EXCLUDED.start_date,
@@ -244,7 +249,7 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                 trip = cursor.fetchone()
                 if not trip:
                     return None
-                if not is_sample and trip[1] and user_id and trip[1] != user_id:
+                if not is_sample and trip[1] and trip[1] != user_id:
                     return None
                 cursor.execute(
                     "SELECT day_id, day_number, date, title FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",

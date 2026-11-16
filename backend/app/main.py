@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db.neo4j import close_driver, get_driver
+from app.config import get_settings
+from app.db import neo4j
 from app.auth.router import router as auth_router
 from app.pois.router import router as pois_router
 from app.trips.router import router as trips_router
@@ -22,19 +23,33 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         await asyncio.to_thread(seed_sample_itineraries)
     except Exception as e:
         print(f"Warning: could not seed sample itineraries: {e}")
-    get_driver()
     try:
         yield
     finally:
-        close_driver()
+        neo4j.close_driver()
 
 
 app = FastAPI(title="GreenTrip AI API", lifespan=lifespan)
 
-# Cấu hình cho phép tất cả nguồn (CORS)
+_settings = get_settings()
+_allowed_origins = list(
+    dict.fromkeys(
+        origin.strip().rstrip("/")
+        for origin in [
+            _settings.FRONTEND_URL,
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ]
+        if origin and origin.strip()
+    )
+)
+
+# ponytail: restrict CORS origins to configured frontend and local dev origins when credentials are enabled
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

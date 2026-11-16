@@ -2,6 +2,7 @@ from typing import Any
 
 from app.db.postgres import get_connection
 from app.pois.model import POI
+from app.pois.price_normalizer import normalize_poi_price_display
 from app.pois.weights import ParsedSliderWeights
 
 
@@ -251,5 +252,24 @@ def list_pois(
     if count_row is None:
         raise RuntimeError("POI count query returned no result.")
 
-    items = [POI(*row) for row in rows]
+    items: list[POI] = []
+    for row in rows:
+        poi = POI(*row)
+        raw_meta = poi.ai_metadata
+        if isinstance(raw_meta, dict) and raw_meta.get("price_range_display"):
+            normalized_price = normalize_poi_price_display(
+                poi_name=poi.name,
+                category=poi.category,
+                sub_category=poi.sub_category,
+                raw_price_display=str(raw_meta["price_range_display"]),
+                estimated_cost=poi.estimated_cost,
+            )
+            if normalized_price != raw_meta.get("price_range_display"):
+                poi = POI(
+                    **{
+                        **poi.__dict__,
+                        "ai_metadata": {**raw_meta, "price_range_display": normalized_price},
+                    }
+                )
+        items.append(poi)
     return items, int(count_row[0])

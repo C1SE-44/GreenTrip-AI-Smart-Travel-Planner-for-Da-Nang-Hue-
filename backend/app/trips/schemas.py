@@ -401,8 +401,8 @@ class ValidatedTripData(BaseModel):
     is_budget_sufficient: bool
     min_recommended_budget: float
     budget_warning: str | None = None
-    start_date: str | None = None
-    end_date: str | None = None
+    start_date: str | None = Field(default=None, description="Ngày bắt đầu chuyến đi (YYYY-MM-DD)")
+    end_date: str | None = Field(default=None, description="Ngày kết thúc chuyến đi (YYYY-MM-DD)")
     preferences: list[str]
     cost_breakdown: CostBreakdown
     recommendations: list[str]
@@ -449,8 +449,8 @@ class TripContextPayload(BaseModel):
     traveler_name: str | None = Field(default=None, description="Tên người dùng để cá nhân hóa xưng hô")
     companions: str | None = Field(default=None, description="Đối tượng đi cùng (bố mẹ lớn tuổi, trẻ nhỏ, cặp đôi, solo)")
     preferences: list[str] = Field(default_factory=list, description="Danh sách sở thích ưu tiên")
-    start_date: str | None = None
-    end_date: str | None = None
+    start_date: str | None = Field(default=None, description="Ngày bắt đầu chuyến đi (YYYY-MM-DD)")
+    end_date: str | None = Field(default=None, description="Ngày kết thúc chuyến đi (YYYY-MM-DD)")
     active_constraints: list[str] = Field(
         default_factory=list,
         description="Các ràng buộc ngầm duy trì xuyên suốt hội thoại (elderly_friendly, kid_friendly, rainy_season, quiet_vibe, vegetarian)",

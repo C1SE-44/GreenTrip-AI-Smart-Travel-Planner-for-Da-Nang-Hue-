@@ -3,7 +3,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from app.db.postgres import get_connection
+from app.db.postgres import SQLiteConnectionWrapper, get_connection
+from app.trips.itinerary_repository import _ensure_local_tables
 
 logger = logging.getLogger(__name__)
 
@@ -64,77 +65,16 @@ def _load_csv_poi_lookup() -> dict[str, dict[str, Any]]:
 
 
 def ensure_itinerary_tables():
-    """Ensure itineraries, itinerary_days, and itinerary_stops tables exist in database."""
-    create_tables_sql = """
-    CREATE TABLE IF NOT EXISTS itineraries (
-        itinerary_id TEXT PRIMARY KEY,
-        user_id TEXT,
-        title TEXT NOT NULL,
-        destination TEXT DEFAULT 'Đà Nẵng & Huế',
-        total_days INTEGER NOT NULL DEFAULT 1,
-        total_cost REAL DEFAULT 0,
-        total_carbon_co2e REAL DEFAULT 0,
-        status TEXT DEFAULT 'DRAFT',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS itinerary_days (
-        itinerary_day_id TEXT PRIMARY KEY,
-        itinerary_id TEXT DEFAULT '',
-        day_number INTEGER NOT NULL,
-        theme TEXT,
-        focus_city TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE (itinerary_id, day_number)
-    );
-
-    CREATE TABLE IF NOT EXISTS itinerary_stops (
-        itinerary_stop_id TEXT PRIMARY KEY,
-        itinerary_day_id TEXT DEFAULT '',
-        poi_id TEXT,
-        sequence_no INTEGER NOT NULL DEFAULT 0,
-        time_slot TEXT,
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE (itinerary_day_id, sequence_no)
-    );
-    """
+    """Bootstrap SQLite fallback itinerary tables; PostgreSQL schema is managed by migrations."""
     try:
         with get_connection() as conn:
-            cursor = conn.cursor()
-            for statement in create_tables_sql.strip().split(";"):
-                stmt = statement.strip()
-                if stmt:
-                    cursor.execute(stmt)
-
-            # If connecting to PostgreSQL with legacy schema (trip_id, days_count, etc.), align columns:
-            try:
-                cursor.execute("ALTER TABLE itineraries ADD COLUMN IF NOT EXISTS itinerary_id VARCHAR(64)")
-                cursor.execute("ALTER TABLE itineraries ADD COLUMN IF NOT EXISTS total_days SMALLINT DEFAULT 1")
-                cursor.execute("ALTER TABLE itineraries ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'DRAFT'")
-                cursor.execute("UPDATE itineraries SET itinerary_id = trip_id WHERE itinerary_id IS NULL AND trip_id IS NOT NULL")
-                cursor.execute("UPDATE itineraries SET total_days = days_count WHERE (total_days IS NULL OR total_days = 1) AND days_count IS NOT NULL")
-                cursor.execute("ALTER TABLE itinerary_days ADD COLUMN IF NOT EXISTS itinerary_id VARCHAR(64)")
-                cursor.execute("ALTER TABLE itinerary_days ADD COLUMN IF NOT EXISTS itinerary_day_id VARCHAR(64)")
-                cursor.execute("ALTER TABLE itinerary_days ADD COLUMN IF NOT EXISTS theme VARCHAR(255)")
-                cursor.execute("ALTER TABLE itinerary_days ADD COLUMN IF NOT EXISTS focus_city VARCHAR(100)")
-                cursor.execute("UPDATE itinerary_days SET itinerary_id = trip_id WHERE itinerary_id IS NULL AND trip_id IS NOT NULL")
-                cursor.execute("UPDATE itinerary_days SET itinerary_day_id = day_id WHERE itinerary_day_id IS NULL AND day_id IS NOT NULL")
-                cursor.execute("ALTER TABLE itinerary_stops ADD COLUMN IF NOT EXISTS itinerary_stop_id VARCHAR(64)")
-                cursor.execute("ALTER TABLE itinerary_stops ADD COLUMN IF NOT EXISTS itinerary_day_id VARCHAR(64)")
-                cursor.execute("ALTER TABLE itinerary_stops ADD COLUMN IF NOT EXISTS sequence_no SMALLINT")
-                cursor.execute("ALTER TABLE itinerary_stops ADD COLUMN IF NOT EXISTS time_slot VARCHAR(50)")
-                cursor.execute("ALTER TABLE itinerary_stops ADD COLUMN IF NOT EXISTS notes TEXT")
-                cursor.execute("UPDATE itinerary_stops SET itinerary_stop_id = stop_id WHERE itinerary_stop_id IS NULL AND stop_id IS NOT NULL")
-                cursor.execute("UPDATE itinerary_stops SET itinerary_day_id = day_id WHERE itinerary_day_id IS NULL AND day_id IS NOT NULL")
-                cursor.execute("UPDATE itinerary_stops SET sequence_no = sequence WHERE sequence_no IS NULL AND sequence IS NOT NULL")
-            except Exception:
-                pass
-
+            if not isinstance(conn, SQLiteConnectionWrapper):
+                return
+            with conn.cursor() as cursor:
+                _ensure_local_tables(conn, cursor)
             conn.commit()
     except Exception as exc:
-        logger.warning("Could not execute ensure_itinerary_tables (database may already have them): %s", exc)
+        logger.warning("Could not bootstrap local SQLite itinerary tables: %s", exc)
 
 
 def _is_postgres_conn(conn) -> bool:
@@ -145,69 +85,45 @@ def _is_postgres_conn(conn) -> bool:
     return True
 
 
-def _insert_itinerary(cursor, conn, itinerary_id: str, title: str, destination: str, total_days: int, status: str = "PUBLISHED") -> None:
-    if _is_postgres_conn(conn):
-        cursor.execute(
-            """
-            INSERT INTO itineraries (itinerary_id, trip_id, user_id, title, destination, total_days, days_count, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (itinerary_id, itinerary_id, "demo-user", title, destination, total_days, total_days, status),
-        )
-    else:
-        cursor.execute(
-            """
-            INSERT INTO itineraries (itinerary_id, user_id, title, destination, total_days, status)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """,
-            (itinerary_id, "demo-user", title, destination, total_days, status),
-        )
+def _insert_itinerary(cursor, _conn, itinerary_id: str, title: str, destination: str, total_days: int, status: str = "PUBLISHED") -> None:
+    cursor.execute(
+        """
+        INSERT INTO itineraries (itinerary_id, trip_id, user_id, title, destination, total_days, days_count, status)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (itinerary_id, itinerary_id, "demo-user", title, destination, total_days, total_days, status),
+    )
 
 
-def _insert_itinerary_day(cursor, conn, itinerary_day_id: str, itinerary_id: str, day_number: int, theme: str = "", focus_city: str = "") -> None:
-    if _is_postgres_conn(conn):
-        cursor.execute(
-            """
-            INSERT INTO itinerary_days (itinerary_day_id, day_id, itinerary_id, trip_id, day_number, theme, focus_city)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """,
-            (itinerary_day_id, itinerary_day_id, itinerary_id, itinerary_id, day_number, theme, focus_city),
-        )
-    else:
-        cursor.execute(
-            """
-            INSERT INTO itinerary_days (itinerary_day_id, itinerary_id, day_number, theme, focus_city)
-            VALUES (%s, %s, %s, %s, %s)
-            """,
-            (itinerary_day_id, itinerary_id, day_number, theme, focus_city),
-        )
+def _insert_itinerary_day(cursor, _conn, itinerary_day_id: str, itinerary_id: str, day_number: int, theme: str = "", focus_city: str = "") -> None:
+    cursor.execute(
+        """
+        INSERT INTO itinerary_days (itinerary_day_id, day_id, itinerary_id, trip_id, day_number, title, theme, focus_city)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (itinerary_day_id, itinerary_day_id, itinerary_id, itinerary_id, day_number, theme, theme, focus_city),
+    )
 
 
-def _insert_itinerary_stop(cursor, conn, itinerary_stop_id: str, itinerary_day_id: str, poi_id: str, sequence_no: int, time_slot: str = "", notes: str = "") -> None:
+def _insert_itinerary_stop(cursor, _conn, itinerary_stop_id: str, itinerary_day_id: str, poi_id: str, sequence_no: int, time_slot: str = "", notes: str = "") -> None:
     stop_title = notes or poi_id
-    if _is_postgres_conn(conn):
-        cursor.execute(
-            """
-            INSERT INTO itinerary_stops (itinerary_stop_id, stop_id, itinerary_day_id, day_id, poi_id, title, sequence_no, sequence, time_slot, notes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (itinerary_stop_id, itinerary_stop_id, itinerary_day_id, itinerary_day_id, poi_id, stop_title, sequence_no, sequence_no, time_slot, notes),
+    cursor.execute(
+        """
+        INSERT INTO itinerary_stops (
+            itinerary_stop_id, stop_id, itinerary_day_id, day_id, poi_id, title,
+            sequence_no, sequence, time_slot, start_time, notes, comment
         )
-    else:
-        cursor.execute(
-            """
-            INSERT INTO itinerary_stops (itinerary_stop_id, itinerary_day_id, poi_id, sequence_no, time_slot, notes)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """,
-            (itinerary_stop_id, itinerary_day_id, poi_id, sequence_no, time_slot, notes),
-        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            itinerary_stop_id, itinerary_stop_id, itinerary_day_id, itinerary_day_id, poi_id, stop_title,
+            sequence_no, sequence_no, time_slot, time_slot or None, notes, notes or None,
+        ),
+    )
 
 
-def _check_itinerary_exists(cursor, conn, itin_id: str) -> bool:
-    if _is_postgres_conn(conn):
-        cursor.execute("SELECT itinerary_id FROM itineraries WHERE itinerary_id = %s OR trip_id = %s", (itin_id, itin_id))
-    else:
-        cursor.execute("SELECT itinerary_id FROM itineraries WHERE itinerary_id = %s", (itin_id,))
+def _check_itinerary_exists(cursor, _conn, itin_id: str) -> bool:
+    cursor.execute("SELECT COALESCE(itinerary_id, trip_id) FROM itineraries WHERE itinerary_id = %s OR trip_id = %s", (itin_id, itin_id))
     return cursor.fetchone() is not None
 
 
@@ -300,22 +216,6 @@ def seed_sample_itineraries():
                     _insert_itinerary_day(cursor, conn, f"{itin_7d}-d{d_num}", itin_7d, d_num, f"Hành trình Ngày {d_num}", "Đà Nẵng" if d_num <= 3 else "Huế")
                     _insert_itinerary_stop(cursor, conn, f"{itin_7d}-d{d_num}-s1", f"{itin_7d}-d{d_num}", "poi_cau_rong" if d_num % 2 == 1 else "poi_dai_noi", 1, "09:00", f"Điểm 1 Ngày {d_num}")
                     _insert_itinerary_stop(cursor, conn, f"{itin_7d}-d{d_num}-s2", f"{itin_7d}-d{d_num}", "poi_my_khe" if d_num % 2 == 1 else "poi_thien_mu", 2, "14:00", f"Điểm 2 Ngày {d_num}")
-            else:
-                # Đảm bảo đủ 7 ngày kể cả khi CSDL từ xa (Supabase) đã được seed từ phiên bản cũ ít ngày hơn
-                if _is_postgres_conn(conn):
-                    cursor.execute("UPDATE itineraries SET total_days = 7 WHERE (itinerary_id = %s OR trip_id = %s) AND total_days < 7", (itin_7d, itin_7d))
-                else:
-                    cursor.execute("UPDATE itineraries SET total_days = 7 WHERE itinerary_id = ? AND total_days < 7", (itin_7d,))
-                for d_num in range(1, 8):
-                    day_id = f"{itin_7d}-d{d_num}"
-                    if _is_postgres_conn(conn):
-                        cursor.execute("SELECT itinerary_day_id FROM itinerary_days WHERE (itinerary_id = %s OR trip_id = %s) AND day_number = %s", (itin_7d, itin_7d, d_num))
-                    else:
-                        cursor.execute("SELECT itinerary_day_id FROM itinerary_days WHERE itinerary_id = ? AND day_number = ?", (itin_7d, d_num))
-                    if not cursor.fetchone():
-                        _insert_itinerary_day(cursor, conn, day_id, itin_7d, d_num, f"Hành trình Ngày {d_num}", "Đà Nẵng" if d_num <= 3 else "Huế")
-                        _insert_itinerary_stop(cursor, conn, f"{day_id}-s1", day_id, "poi_cau_rong" if d_num % 2 == 1 else "poi_dai_noi", 1, "09:00", f"Điểm 1 Ngày {d_num}")
-                        _insert_itinerary_stop(cursor, conn, f"{day_id}-s2", day_id, "poi_my_khe" if d_num % 2 == 1 else "poi_thien_mu", 2, "14:00", f"Điểm 2 Ngày {d_num}")
 
             conn.commit()
     except Exception as exc:
@@ -355,16 +255,26 @@ def get_poi_by_id(poi_id: str) -> dict[str, Any] | None:
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
-            # Try by id or osm_id
-            cursor.execute(
-                """
-                SELECT name, latitude, longitude
-                FROM pois
-                WHERE id = %s OR poi_id = %s OR osm_id = %s
-                LIMIT 1
-                """,
-                (clean_id, clean_id, clean_id),
-            )
+            if _is_postgres_conn(conn):
+                cursor.execute(
+                    """
+                    SELECT name, ST_Y(geom::geometry), ST_X(geom::geometry)
+                    FROM public.pois
+                    WHERE poi_id::text = %s OR LOWER(name) = LOWER(%s)
+                    LIMIT 1
+                    """,
+                    (clean_id, clean_id),
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT name, latitude, longitude
+                    FROM pois
+                    WHERE poi_id = %s OR LOWER(name) = LOWER(%s)
+                    LIMIT 1
+                    """,
+                    (clean_id, clean_id),
+                )
             row = cursor.fetchone()
             if row and row[0]:
                 lat = float(row[1]) if row[1] is not None else None
@@ -375,9 +285,8 @@ def get_poi_by_id(poi_id: str) -> dict[str, Any] | None:
                     "latitude": lat,
                     "longitude": lng,
                 }
-    except Exception:
-        # Table might not exist or columns might vary, fallback to CSV
-        pass
+    except Exception as exc:
+        logger.debug("POI DB lookup failed for %s: %s", clean_id, exc)
 
     # 3. Fallback to CSV cache
     csv_lookup = _load_csv_poi_lookup()
@@ -395,26 +304,15 @@ def get_itinerary(itinerary_id: str) -> dict[str, Any] | None:
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
-            if _is_postgres_conn(conn):
-                cursor.execute(
-                    """
-                    SELECT COALESCE(itinerary_id, trip_id), title, destination, COALESCE(total_days, days_count, 1), status
-                    FROM itineraries
-                    WHERE itinerary_id = %s OR trip_id = %s
-                    LIMIT 1
-                    """,
-                    (str(itinerary_id), str(itinerary_id)),
-                )
-            else:
-                cursor.execute(
-                    """
-                    SELECT itinerary_id, title, destination, total_days, status
-                    FROM itineraries
-                    WHERE itinerary_id = ?
-                    LIMIT 1
-                    """,
-                    (str(itinerary_id),),
-                )
+            cursor.execute(
+                """
+                SELECT COALESCE(itinerary_id, trip_id), title, destination, COALESCE(total_days, days_count, 1), status
+                FROM itineraries
+                WHERE itinerary_id = %s OR trip_id = %s
+                LIMIT 1
+                """,
+                (str(itinerary_id), str(itinerary_id)),
+            )
             row = cursor.fetchone()
             if row:
                 return {
@@ -440,26 +338,15 @@ def get_itinerary_day(itinerary_id: str, day_number: int) -> dict[str, Any] | No
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
-            if _is_postgres_conn(conn):
-                cursor.execute(
-                    """
-                    SELECT COALESCE(itinerary_day_id, day_id), COALESCE(itinerary_id, trip_id), day_number, theme, focus_city
-                    FROM itinerary_days
-                    WHERE (itinerary_id = %s OR trip_id = %s) AND day_number = %s
-                    LIMIT 1
-                    """,
-                    (str(itinerary_id), str(itinerary_id), int(day_number)),
-                )
-            else:
-                cursor.execute(
-                    """
-                    SELECT itinerary_day_id, itinerary_id, day_number, theme, focus_city
-                    FROM itinerary_days
-                    WHERE itinerary_id = ? AND day_number = ?
-                    LIMIT 1
-                    """,
-                    (str(itinerary_id), int(day_number)),
-                )
+            cursor.execute(
+                """
+                SELECT COALESCE(itinerary_day_id, day_id), COALESCE(itinerary_id, trip_id), day_number, theme, focus_city
+                FROM itinerary_days
+                WHERE (itinerary_id = %s OR trip_id = %s) AND day_number = %s
+                LIMIT 1
+                """,
+                (str(itinerary_id), str(itinerary_id), int(day_number)),
+            )
             row = cursor.fetchone()
             if row:
                 return {
@@ -486,26 +373,15 @@ def get_itinerary_day_stops(itinerary_day_id: str) -> list[dict[str, Any]]:
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
-            if _is_postgres_conn(conn):
-                cursor.execute(
-                    """
-                    SELECT COALESCE(itinerary_stop_id, stop_id), poi_id, COALESCE(sequence_no, sequence, 1), time_slot
-                    FROM itinerary_stops
-                    WHERE itinerary_day_id = %s OR day_id = %s
-                    ORDER BY COALESCE(sequence_no, sequence, 1) ASC
-                    """,
-                    (str(itinerary_day_id), str(itinerary_day_id)),
-                )
-            else:
-                cursor.execute(
-                    """
-                    SELECT itinerary_stop_id, poi_id, sequence_no, time_slot
-                    FROM itinerary_stops
-                    WHERE itinerary_day_id = ?
-                    ORDER BY sequence_no ASC
-                    """,
-                    (str(itinerary_day_id),),
-                )
+            cursor.execute(
+                """
+                SELECT COALESCE(itinerary_stop_id, stop_id), poi_id, COALESCE(sequence_no, sequence, 1), COALESCE(time_slot, start_time)
+                FROM itinerary_stops
+                WHERE itinerary_day_id = %s OR day_id = %s
+                ORDER BY COALESCE(sequence_no, sequence, 1) ASC
+                """,
+                (str(itinerary_day_id), str(itinerary_day_id)),
+            )
             rows = cursor.fetchall()
             return [
                 {
@@ -529,11 +405,11 @@ def ensure_user_trip_itinerary(trip_id: str, max_days: int = 4) -> dict[str, Any
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
-            # Kiểm tra xem đã có chưa
-            if _is_postgres_conn(conn):
-                cursor.execute("SELECT itinerary_id, title, destination, total_days, status FROM itineraries WHERE itinerary_id = %s OR trip_id = %s", (trip_id, trip_id))
-            else:
-                cursor.execute("SELECT itinerary_id, title, destination, total_days, status FROM itineraries WHERE itinerary_id = ?", (trip_id,))
+            cursor.execute(
+                "SELECT COALESCE(itinerary_id, trip_id), title, destination, COALESCE(total_days, days_count), status "
+                "FROM itineraries WHERE itinerary_id = %s OR trip_id = %s",
+                (trip_id, trip_id),
+            )
             row = cursor.fetchone()
             if row:
                 return {

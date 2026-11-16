@@ -115,4 +115,10 @@ test('Expired trip shift forward (10-13 Nov -> 16-19 Nov) preserves morning stop
   planShiftedBack.start_date = '2026-11-12';
   planShiftedBack.days.forEach((day, idx) => { day.date = fixedDates.dateAt('2026-11-12', idx); });
   assert.ok(service.scheduleError(planShiftedBack, pastPlan).includes('quá khứ'));
+
+  // 5. Moving existing stop between days within an expired trip (dates unchanged) is allowed!
+  const planMovedStopInPast = JSON.parse(JSON.stringify(pastPlan));
+  const moving = planMovedStopInPast.days[0].stops.pop();
+  planMovedStopInPast.days[1].stops.push({ ...moving, sequence: planMovedStopInPast.days[1].stops.length });
+  assert.equal(service.scheduleError(planMovedStopInPast, pastPlan), '', 'Moving existing stop between days in expired trip should succeed');
 });

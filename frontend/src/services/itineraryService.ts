@@ -575,6 +575,14 @@ export function scheduleError(next: TripItinerary, previous?: TripItinerary | nu
       if (isTripShiftForward && before && before.time === stop.start_time && before.end === stop.end_time && date >= now.date) {
         continue;
       }
+      if (
+        prevStart &&
+        nextStart === prevStart &&
+        nextStart < now.date &&
+        before
+      ) {
+        continue;
+      }
       const [hour, minute] = stop.start_time.split(':').map(Number);
       if (date < now.date || (date === now.date && hour * 60 + minute < now.minutes)) {
         return 'Không thể thêm hoặc dời hoạt động vào quá khứ (giờ Việt Nam).';

@@ -157,3 +157,40 @@ def test_shifting_trip_to_still_past_date_is_rejected():
     with pytest.raises(HTTPException) as exc_info:
         validate_schedule_changes(shifted_past, past_plan, now)
     assert exc_info.value.status_code == 422
+
+
+def test_moving_existing_stop_between_days_in_expired_trip_succeeds():
+    past_plan = TripItinerarySyncRequest(
+        trip_id="trip-10-13",
+        title="Chuyến đi Đà Nẵng",
+        destination="Đà Nẵng",
+        start_date="2026-11-10",
+        days_count=2,
+        days=[
+            dict(
+                day_id="day-1",
+                day_number=1,
+                date="2026-11-10",
+                stops=[
+                    dict(stop_id="s1", title="Bán đảo Sơn Trà", sequence=0, start_time="08:30", end_time="10:00"),
+                ],
+            ),
+            dict(
+                day_id="day-2",
+                day_number=2,
+                date="2026-11-11",
+                stops=[],
+            ),
+        ],
+    )
+    now = datetime(2026, 11, 16, 11, 43, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
+
+    # Moving existing stop s1 from Day 1 to Day 2 within expired trip
+    moved_plan = past_plan.model_copy(deep=True)
+    moved_plan.days[0].stops = []
+    moved_plan.days[1].stops = [
+        dict(stop_id="s1", title="Bán đảo Sơn Trà", sequence=0, start_time="09:00", end_time="10:30")
+    ]
+
+    validate_schedule_changes(moved_plan, past_plan, now)
+

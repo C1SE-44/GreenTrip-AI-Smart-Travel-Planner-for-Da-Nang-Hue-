@@ -62,6 +62,13 @@ def validate_schedule_changes(
             and day_date >= current.date().isoformat()
         ):
             continue
+        if (
+            prev_start
+            and new_start == prev_start
+            and new_start < current.date().isoformat()
+            and old_entry
+        ):
+            continue
         hour, minute = map(int, start.split(":"))
         if day_date < current.date().isoformat() or (
             day_date == current.date().isoformat() and hour * 60 + minute < current.hour * 60 + current.minute

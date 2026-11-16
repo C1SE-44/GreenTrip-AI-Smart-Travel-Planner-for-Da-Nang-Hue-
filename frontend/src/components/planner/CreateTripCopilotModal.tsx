@@ -6,10 +6,11 @@ import { validateTripParameters } from '@/services/tripService';
 export interface CreateTripCopilotModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateTrip?: (trip: UserTrip) => void;
-  onCreated?: (trip: UserTrip) => void;
+  onCreateTrip?: (trip: UserTrip, options?: { openInItinerary?: boolean }) => void;
+  onCreated?: (trip: UserTrip, options?: { openInItinerary?: boolean }) => void;
   initialPrompt?: string;
   initialChatHistory?: CopilotTripMessage[];
+  defaultOpenItinerary?: boolean;
 }
 
 import {
@@ -36,10 +37,12 @@ export default function CreateTripCopilotModal({
   onCreated,
   initialPrompt,
   initialChatHistory,
+  defaultOpenItinerary = false,
 }: CreateTripCopilotModalProps) {
   const [tripPrompt, setTripPrompt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [openDirectlyToItinerary, setOpenDirectlyToItinerary] = useState(defaultOpenItinerary);
 
   // 1. WHERE STATE (Ở đâu: Huế, Đà Nẵng, Cả 2)
   const [whereTarget, setWhereTarget] = useState<string>('Đà Nẵng & Huế');
@@ -371,7 +374,7 @@ export default function CreateTripCopilotModal({
 
       const cb = onCreateTrip || onCreated;
       if (cb) {
-        cb(newTrip);
+        cb(newTrip, { openInItinerary: openDirectlyToItinerary });
       }
       onClose();
     } catch (err: unknown) {
@@ -415,7 +418,7 @@ export default function CreateTripCopilotModal({
 
       const cb = onCreateTrip || onCreated;
       if (cb) {
-        cb(newTrip);
+        cb(newTrip, { openInItinerary: openDirectlyToItinerary });
       }
       onClose();
     } finally {
@@ -552,16 +555,24 @@ export default function CreateTripCopilotModal({
           </p>
         )}
 
-        {/* Nút Tạo nên: căn phải (flex justify-end), rộng 300px (w-[166px], +11%), cao 72px (h-[40px], -10%), cách hàng Ai 72px (mt-[40px], +44%), cách đáy 43px (pb-[24px]), đen khi có thông tin, xám khi chưa nhập */}
-        <div className="mt-[40px] flex justify-end">
+        <div className="mt-[32px] flex flex-wrap items-center justify-between gap-3">
+          <label className="inline-flex min-h-[40px] items-center gap-2 text-xs font-medium text-neutral-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={openDirectlyToItinerary}
+              onChange={(e) => setOpenDirectlyToItinerary(e.target.checked)}
+              className="h-4 w-4 rounded border-neutral-300 text-emerald-800 focus:ring-emerald-700"
+            />
+            <span>Mở ngay Lịch trình &amp; Bản đồ</span>
+          </label>
           <button
             type="button"
             onClick={handleCreate}
-            disabled={!tripPrompt.trim() || isSubmitting}
-            className={`w-[166px] h-[40px] rounded-full text-[14px] font-bold transition-all shadow-xs flex items-center justify-center gap-2 ${
-              tripPrompt.trim() && !isSubmitting
+            disabled={(!tripPrompt.trim() && !whereTarget.trim()) || isSubmitting}
+            className={`min-w-[166px] h-[40px] px-5 rounded-full text-[14px] font-bold transition-all shadow-xs flex items-center justify-center gap-2 ${
+              (tripPrompt.trim() || whereTarget.trim()) && !isSubmitting
                 ? 'bg-black text-white hover:bg-neutral-800 active:scale-95 cursor-pointer'
-                : 'bg-[#E5E7EB] text-gray-400 cursor-not-allowed'
+                : 'bg-[#E5E7EB] text-neutral-600 cursor-not-allowed'
             }`}
           >
             {isSubmitting ? (

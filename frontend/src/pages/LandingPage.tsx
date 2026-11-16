@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useRef, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   CalendarCheck,
   Compass,
@@ -13,9 +14,121 @@ import {
   Twitter,
   Facebook,
   Github,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react";
+import { extractTripIntentFromPrompt } from "@/utils/vietnamesePromptExtractor";
+import { buildDefaultCopilotItinerary } from "@/components/planner/copilotTripData";
+import type { UserTrip } from "@/pages/ExplorePage";
+
+const QUICK_DESTINATIONS: Array<"Đà Nẵng" | "Huế" | "Đà Nẵng & Huế"> = [
+  "Đà Nẵng",
+  "Huế",
+  "Đà Nẵng & Huế",
+];
+
+const QUICK_PRESETS: Array<{
+  label: string;
+  destination: "Đà Nẵng" | "Huế" | "Đà Nẵng & Huế";
+  days: number;
+  prompt: string;
+}> = [
+  {
+    label: "3 ngày Đà Nẵng & Huế",
+    destination: "Đà Nẵng & Huế",
+    days: 3,
+    prompt: "3 ngày Đà Nẵng & Huế, tàu di sản Hải Vân, ẩm thực địa phương",
+  },
+  {
+    label: "2 ngày Huế di sản",
+    destination: "Huế",
+    days: 2,
+    prompt: "2 ngày ở Huế khám phá Đại Nội, lăng tẩm và món chay",
+  },
+  {
+    label: "3 ngày biển & ẩm thực Đà Nẵng",
+    destination: "Đà Nẵng",
+    days: 3,
+    prompt: "3 ngày ở Đà Nẵng, biển Mỹ Khê, Sơn Trà và quán cafe yên tĩnh",
+  },
+];
+
+const DAILY_BUDGET_BY_TIER: Record<"budget" | "standard" | "luxury", number> = {
+  budget: 500_000,
+  standard: 1_200_000,
+  luxury: 3_000_000,
+};
 
 export default function LandingPage() {
+  const navigate = useNavigate();
+  const [quickDest, setQuickDest] = useState<"Đà Nẵng" | "Huế" | "Đà Nẵng & Huế">("Đà Nẵng & Huế");
+  const [quickDays, setQuickDays] = useState<number>(3);
+  const [quickPrompt, setQuickPrompt] = useState<string>("");
+  const hasManualDest = useRef(false);
+  const hasManualDays = useRef(false);
+
+  const handleQuickPromptInput = (val: string) => {
+    setQuickPrompt(val);
+    if (val.trim().length > 4) {
+      const intent = extractTripIntentFromPrompt(val);
+      const hasExplicitDest = /(?:đà\s*nẵng|da\s*nang|danang|huế|hue|hội\s*an|hoi\s*an|bà\s*nà|sơn\s*trà|mỹ\s*khê|đại\s*nội|cả\s*hai|cả\s*2)/i.test(
+        val
+      );
+      const hasExplicitDuration =
+        Boolean(intent.startDate) ||
+        /\d+\s*(?:ngày|ngay|đêm|dem|n\s*\d+\s*[đd]|days?|hôm|hom)|\b(?:một|hai|ba|bốn|tư|năm|sáu|bảy)\s+(?:ngày|đêm)/i.test(
+          val
+        );
+
+      if (!hasManualDest.current && hasExplicitDest) {
+        setQuickDest(intent.destination);
+      }
+      if (!hasManualDays.current && hasExplicitDuration && intent.days >= 1 && intent.days <= 7) {
+        setQuickDays(intent.days);
+      }
+    }
+  };
+
+  const handleQuickSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const trimmed = quickPrompt.trim();
+    const intent = extractTripIntentFromPrompt(trimmed || `${quickDays} ngày ở ${quickDest}`);
+    const destination = quickDest;
+    const days = Math.max(1, Math.min(7, quickDays));
+    const peopleCount = Math.max(1, intent.totalGuests || 2);
+    const tier = intent.budgetTier || "standard";
+    const totalBudget =
+      intent.budgetAmountVnd ?? days * peopleCount * DAILY_BUDGET_BY_TIER[tier];
+
+    const quickLaunchTrip: UserTrip = {
+      id: `trip-quick-${Date.now()}`,
+      title: trimmed
+        ? trimmed.length > 56
+          ? `${trimmed.slice(0, 56)}...`
+          : trimmed
+        : `Hành trình ${destination} ${days} ngày`,
+      destination,
+      startDate: `${days} ngày • Tháng 11`,
+      daysCount: days,
+      peopleCount,
+      totalBudget,
+      budgetTier: intent.budgetTier || "standard",
+      pacingLevel: days >= 4 ? "Relaxed" : "Balanced",
+      pacingLabel: days >= 4 ? "🌿 Thong thả" : "⚖️ Cân bằng",
+      createdAt: new Date().toISOString(),
+      status: "upcoming",
+      prompt: trimmed,
+      tags: [destination, `${days} ngày`, "Khởi tạo nhanh"],
+      image:
+        destination === "Huế"
+          ? "https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800&auto=format&fit=crop&q=80"
+          : "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
+      itineraryOutline: buildDefaultCopilotItinerary(destination, days),
+    };
+
+    navigate("/planner", { state: { quickLaunchTrip } });
+  };
+
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
@@ -286,25 +399,119 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-5xl px-4 mt-auto">
-          <h1 className="font-heading text-5xl font-black tracking-tighter text-black sm:text-6xl md:text-7xl lg:text-[5.5rem] leading-[1.05]">
+        <div className="relative z-10 mx-auto w-full max-w-4xl px-4 mt-auto pt-20">
+          <h1 className="font-heading text-4xl font-black tracking-tighter text-neutral-950 sm:text-6xl md:text-7xl leading-[1.06]">
             Khám phá Đà Nẵng, Huế.
           </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-base font-normal text-gray-500 sm:text-[1.05rem] leading-relaxed">
-            Gặp gỡ trợ lý cá nhân giúp tự động tối ưu hóa từng kilomet di
-            chuyển, tiết kiệm thời gian và mở ra những trải nghiệm sinh thái
-            tuyệt vời nhất.
+          <p className="mx-auto mt-4 max-w-2xl text-sm sm:text-base font-normal text-neutral-700 leading-relaxed">
+            Trợ lý lập lịch trình xanh giúp tối ưu từng kilomet di chuyển, cân bằng
+            thời gian nghỉ ngơi và mở khóa lộ trình trên bản đồ ngay lập tức.
           </p>
 
-          <div className="mt-8 mb-2">
-            <Link
-              to="/onboarding"
-              className="inline-flex items-center gap-2 rounded-full bg-black px-10 py-4 text-base font-bold text-white transition-transform hover:scale-105 hover:bg-gray-900 shadow-xl"
-            >
-              Thiết lập lịch trình của bạn
-            </Link>
-          </div>
+          {/* Zero-Friction Quick Planner Card */}
+          <form
+            onSubmit={handleQuickSubmit}
+            className="mt-6 mx-auto w-full max-w-2xl rounded-3xl border border-neutral-200/90 bg-white/95 backdrop-blur-md p-4 sm:p-5 shadow-card text-left space-y-3.5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Chọn điểm đến">
+                {QUICK_DESTINATIONS.map((dest) => {
+                  const active = quickDest === dest;
+                  return (
+                    <button
+                      key={dest}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => {
+                        hasManualDest.current = true;
+                        setQuickDest(dest);
+                      }}
+                      className={`min-h-[40px] px-3.5 rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                        active
+                          ? "bg-emerald-800 text-white shadow-xs"
+                          : "bg-neutral-100 text-neutral-800 hover:bg-neutral-200"
+                      }`}
+                    >
+                      {dest}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="quick-planner-days" className="text-xs font-semibold text-neutral-700">
+                  Số ngày
+                </label>
+                <select
+                  id="quick-planner-days"
+                  value={quickDays}
+                  onChange={(e) => {
+                    hasManualDays.current = true;
+                    setQuickDays(Number(e.target.value));
+                  }}
+                  className="min-h-[40px] rounded-full border border-neutral-300 bg-white px-3 text-xs font-bold text-neutral-900 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                    <option key={d} value={d}>
+                      {d} ngày
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="quick-planner-prompt" className="sr-only">
+                Mô tả nhanh lịch trình mong muốn
+              </label>
+              <input
+                id="quick-planner-prompt"
+                type="text"
+                value={quickPrompt}
+                onChange={(e) => handleQuickPromptInput(e.target.value)}
+                placeholder="Ví dụ: 3 ngày Đà Nẵng & Huế, thích di sản và quán cafe yên tĩnh..."
+                className="w-full min-h-[44px] rounded-2xl border border-neutral-300 bg-white px-4 text-sm text-neutral-900 placeholder:text-neutral-600 focus:border-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {QUICK_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => {
+                    hasManualDest.current = true;
+                    hasManualDays.current = true;
+                    setQuickDest(preset.destination);
+                    setQuickDays(preset.days);
+                    setQuickPrompt(preset.prompt);
+                  }}
+                  className="min-h-[40px] inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 px-3 text-xs font-medium text-neutral-800 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                >
+                  <Sparkles size={12} className="text-emerald-700 shrink-0" aria-hidden="true" />
+                  <span>{preset.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-1">
+              <button
+                type="submit"
+                className="min-h-[44px] w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-emerald-800 hover:bg-emerald-900 px-6 py-2.5 text-sm font-bold text-white transition cursor-pointer shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+              >
+                <span>Xem lộ trình & Bản đồ ngay</span>
+                <ArrowRight size={16} aria-hidden="true" />
+              </button>
+
+              <Link
+                to="/onboarding"
+                className="min-h-[40px] inline-flex items-center justify-center text-xs sm:text-sm font-semibold text-neutral-700 hover:text-neutral-950 underline underline-offset-4 px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 rounded-lg"
+              >
+                Tùy chỉnh chi tiết
+              </Link>
+            </div>
+          </form>
         </div>
 
         <div className="absolute bottom-4 z-10 animate-bounce">

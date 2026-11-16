@@ -1,6 +1,6 @@
 import { Leaf } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import TripOverviewView from '@/components/planner/TripOverviewView';
 import TripItineraryView from '@/components/planner/TripItineraryView';
 import TripCalendarView from '@/components/planner/TripCalendarView';
@@ -258,6 +258,7 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
 
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'home' | 'explore' | 'trips' | 'saved' | 'chat' }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
   const [viewMode, setViewMode] = useState<'home' | 'explore' | 'trips' | 'saved' | 'chat'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
@@ -317,6 +318,28 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       console.error(e);
     }
   }, [userTrips]);
+
+  // Consume zero-friction quickLaunchTrip from LandingPage Hero
+  useEffect(() => {
+    const state = location.state as { quickLaunchTrip?: UserTrip } | null;
+    const quickTrip = state?.quickLaunchTrip;
+    if (!quickTrip) return;
+
+    setUserTrips((prev) => {
+      const next = [quickTrip, ...prev.filter((t) => t.id !== quickTrip.id)];
+      try {
+        localStorage.setItem('greentrip_user_trips', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+    setActiveOverviewTrip(quickTrip);
+    setSelectedTripForDetails(quickTrip);
+    setActiveTripSubTab('itinerary');
+    setViewMode('trips');
+    navigate('/planner', { replace: true, state: null });
+  }, [location.state, navigate]);
 
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
@@ -2074,7 +2097,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             setPendingAddToTripPoiIds(null);
             setIdeationDraft(null);
           }}
-          onCreateTrip={(newTrip) => {
+          onCreateTrip={(newTrip, options) => {
             const rawTitle = (newTrip.title || '').trim();
             const isBadTitle = !rawTitle || rawTitle.length <= 3 || ['ư', 'a', 'ơi', 'alo'].includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().startsWith('bắt đầu');
             const safeTitle = isBadTitle ? `Chuyến đi ${newTrip.destination || 'Đà Nẵng & Huế'}` : rawTitle;
@@ -2107,48 +2130,13 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             };
             setUserTrips((prev) => [trip, ...prev]);
             setActiveOverviewTrip(trip);
-            setSelectedTripForDetails(null);
-            setActiveTripSubTab('ideas');
-            setViewMode('trips');
-            setPendingAddToTripPoiIds(null);
-            setIdeationDraft(null);
-            setIsCreateTripModalOpen(false);
-          }}
-          onCreated={(newTrip) => {
-            const rawTitle = (newTrip.title || '').trim();
-            const isBadTitle = !rawTitle || rawTitle.length <= 3 || ['ư', 'a', 'ơi', 'alo'].includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().startsWith('bắt đầu');
-            const safeTitle = isBadTitle ? `Chuyến đi ${newTrip.destination || 'Đà Nẵng & Huế'}` : rawTitle;
-
-            const savedPlaces = pendingAddToTripPoiIds
-              ? Array.from(new Set([...(newTrip.savedPlaces ?? []), ...pendingAddToTripPoiIds]))
-              : newTrip.savedPlaces;
-            const ideas = pendingAddToTripPoiIds
-              ? Array.from(new Set([...(newTrip.ideas ?? []), ...pendingAddToTripPoiIds]))
-              : newTrip.ideas;
-
-            const trip: UserTrip = {
-              ...newTrip,
-              title: safeTitle,
-              id: newTrip.id || `trip-${Date.now()}`,
-              savedPlaces,
-              ideas,
-              image:
-                newTrip.coverImage ||
-                newTrip.image ||
-                (newTrip.destination === 'Huế'
-                  ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
-                  : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
-              tags: newTrip.tags || [
-                newTrip.destination,
-                newTrip.startDate || '4 ngày • Tháng 12',
-                `${newTrip.peopleCount} du khách`,
-                'Ngân sách',
-              ],
-            };
-            setUserTrips((prev) => [trip, ...prev]);
-            setActiveOverviewTrip(trip);
-            setSelectedTripForDetails(null);
-            setActiveTripSubTab('ideas');
+            if (options?.openInItinerary) {
+              setSelectedTripForDetails(trip);
+              setActiveTripSubTab('itinerary');
+            } else {
+              setSelectedTripForDetails(null);
+              setActiveTripSubTab('ideas');
+            }
             setViewMode('trips');
             setPendingAddToTripPoiIds(null);
             setIdeationDraft(null);

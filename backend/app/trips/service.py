@@ -539,6 +539,7 @@ from app.trips.handlers.rainy_day_handler import handle_rainy_day
 from app.trips.handlers.night_eco_handler import handle_night_eco
 from app.trips.handlers.late_adjust_handler import handle_late_adjust
 from app.trips.handlers.poi_advice_handler import handle_poi_advice
+from app.trips.handlers.poi_search_handler import handle_poi_search
 from app.trips.handlers.culinary_guide_handler import handle_culinary_guide
 from app.trips.handlers.cafe_culture_handler import handle_cafe_culture
 from app.trips.handlers.travel_tips_handler import handle_travel_tips
@@ -642,6 +643,7 @@ def process_copilot_chat(
 
     # 6. Delegate to domain handlers and upgrade output to Mindtrip 6-Rule Standard
     standard_handlers = {
+        "poi_search": (handle_poi_search, "morning"),
         "culinary_guide": (handle_culinary_guide, "lunch"),
         "cafe_culture": (handle_cafe_culture, "afternoon"),
         "travel_tips_budget": (handle_travel_tips, "morning"),

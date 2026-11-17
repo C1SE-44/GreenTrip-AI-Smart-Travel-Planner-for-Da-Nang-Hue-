@@ -436,6 +436,11 @@ IntentCategoryType = Literal[
 
 
 class TripContextPayload(BaseModel):
+    trip_id: str | None = Field(
+        default=None,
+        max_length=100,
+        description="Mã chuyến đi đang trò chuyện (nếu có) để tải ngữ cảnh và lưu lịch sử hội thoại",
+    )
     mode: Literal["trip", "ideation"] = Field(
         default="trip",
         description="Chế độ trò chuyện: 'trip' (trong chuyến đi có sẵn) hoặc 'ideation' (hỏi vu vơ khởi tạo ý tưởng trước chuyến đi)",
@@ -512,6 +517,8 @@ class CopilotSuggestedPoiItem(BaseModel):
 
 
 class CopilotChatResponse(BaseModel):
+    message_id: str | None = None
+    requires_confirmation: bool = False
     reply_text: str
     intent: str
     intent_category: IntentCategoryType = "QA_AND_COMPARE"
@@ -534,3 +541,21 @@ class CopilotChatResponse(BaseModel):
     updated_days_count: int | None = None
     updated_destination: str | None = None
     mutation_summary: list[str] = Field(default_factory=list)
+
+
+class CopilotHistoryMessage(BaseModel):
+    message_id: str
+    sender: Literal["user", "assistant"]
+    content: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: str = ""
+
+
+class CopilotHistoryResponse(BaseModel):
+    conversation_id: str | None = None
+    trip_id: str
+    title: str = ""
+    trip_memory: dict[str, Any] = Field(default_factory=dict)
+    active_constraints: list[str] = Field(default_factory=list)
+    messages: list[CopilotHistoryMessage] = Field(default_factory=list)
+

@@ -23,9 +23,13 @@ from psycopg import Connection
 from app.config import get_settings
 from app.pois.explanation_repository import fetch_poi_explanation_facts
 from app.pois.price_normalizer import normalize_poi_price_display
+from app.trips.handlers.poi_search_handler import is_explicit_poi_search_query
 from app.trips.handlers.smart_concierge_handler import is_simple_social_greeting
 from app.trips.handlers.swap_meal_handler import format_green_score
-from app.trips.itinerary_constraints import apply_quantitative_constraints_to_response
+from app.trips.itinerary_constraints import (
+    _lookup_poi_reference,
+    apply_quantitative_constraints_to_response,
+)
 from app.trips.text_utils import (
     SLANG_REPLACEMENTS,
     contains_any_phrase,
@@ -531,6 +535,10 @@ def classify_copilot_request(
     if night_split_match or has_day_mutation_verb or has_green_train_or_eco_hue:
         return "ITINERARY_MUTATION", "itinerary_mutation", None
 
+    # 4b. Explicit filtered POI search (by city, category, distance, price, preferences)
+    if is_explicit_poi_search_query(message):
+        return "POI_RECOMMENDATION", "poi_search", None
+
     # 5. Check Live Schedule / Meal Swap Mutations (compatible with existing tests)
     late_keywords = [
         "trễ giờ", "muộn giờ", "chậm giờ", "không kịp", "cháy giáo án",
@@ -775,8 +783,19 @@ def resolve_poi_coordinates(
 def build_trip_memory_dict(constraints: list[str], trip_context: TripContextPayload) -> dict[str, str]:
     """Build structured human-readable session memory dictionary for removable UI badges."""
     memory: dict[str, str] = dict(trip_context.trip_memory or {})
+    if trip_context.total_budget:
+        memory["budget"] = f"💰 Ngân sách {int(trip_context.total_budget):,} ₫ ({trip_context.num_people} người)".replace(",", ".")
+    elif trip_context.budget_tier:
+        tier_labels = {"budget": "Tiết kiệm", "standard": "Hợp lý", "luxury": "Cao cấp"}
+        memory["budget"] = f"💰 Hạng {tier_labels.get(trip_context.budget_tier.value, 'Hợp lý')} ({trip_context.num_people} người)"
+    transport_labels = {"driving": "Ô tô", "motorcycle": "Xe máy", "transit": "Buýt xanh", "walking": "Đi bộ"}
+    memory["transport"] = f"🧭 {transport_labels.get(trip_context.transport_mode, 'Xe máy')}"
+    if trip_context.preferences:
+        memory["preferences"] = "🎯 " + ", ".join(trip_context.preferences[:4])
     if "elderly_friendly" in constraints:
         memory["elderly_friendly"] = "👴 Đi cùng người lớn tuổi (Ưu tiên đường phẳng, ít bậc thang)"
+    if "kid_friendly" in constraints:
+        memory["kid_friendly"] = "🧒 Đi cùng trẻ nhỏ (Ưu tiên điểm an toàn, ít leo dốc)"
     if "vegetarian" in constraints:
         memory["vegetarian"] = "🥗 Ưu tiên ẩm thực chay / thực dưỡng"
     if "rainy_season" in constraints:
@@ -2497,17 +2516,30 @@ def finalize_copilot_response(
     """Ensure every CopilotChatResponse carries trip_memory, normalized prices, coordinates, and Part-2 constraints."""
     response.detected_constraints = constraints
     response.trip_memory = build_trip_memory_dict(constraints, trip_context)
-    for idx, p in enumerate(response.suggested_pois or []):
-        p.price_range_display = normalize_poi_price_display(
-            poi_name=p.name,
-            category=p.category,
-            sub_category=p.sub_category,
-            raw_price_display=p.price_range_display,
-            estimated_cost=p.estimated_cost,
-        )
-        lat_val, lng_val = resolve_poi_coordinates(p.name, p.city or "Đà Nẵng", p.lat, p.lng, idx)
-        p.lat = lat_val
-        p.lng = lng_val
+    for p in response.suggested_pois or []:
+        if p.price_range_display == "Chưa có thông tin giá" and p.estimated_cost is None:
+            pass
+        else:
+            p.price_range_display = normalize_poi_price_display(
+                poi_name=p.name,
+                category=p.category,
+                sub_category=p.sub_category,
+                raw_price_display=p.price_range_display,
+                estimated_cost=p.estimated_cost,
+            )
+        if p.lat is None or p.lng is None or p.lat == 0 or p.lng == 0:
+            ref = _lookup_poi_reference(p.id, p.name)
+            if ref and ref.get("lat") is not None and ref.get("lng") is not None:
+                p.lat = float(ref["lat"])
+                p.lng = float(ref["lng"])
+            else:
+                p.lat = None
+                p.lng = None
+    response.requires_confirmation = bool(
+        response.updated_itinerary_state
+        or response.updated_days_count is not None
+        or response.updated_destination is not None
+    )
     return apply_quantitative_constraints_to_response(
         response,
         trip_context,

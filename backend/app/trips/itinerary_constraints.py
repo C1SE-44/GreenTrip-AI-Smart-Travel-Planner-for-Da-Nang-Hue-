@@ -19,7 +19,12 @@ from typing import Any, Callable
 
 from psycopg import Connection
 
-from app.itineraries.routing_service import FALLBACK_DETOUR_FACTOR, haversine_distance_meters
+from app.itineraries.routing_service import (
+    FALLBACK_DETOUR_FACTOR,
+    compute_route_geometry,
+    haversine_distance_meters,
+)
+from app.itineraries.schemas import RouteStop
 from app.trips.handlers.rainy_day_handler import INDOOR_SUB_CATEGORIES, OUTDOOR_EXCLUSIONS
 from app.trips.schemas import CopilotChatResponse, CopilotSuggestedPoiItem, TripContextPayload
 from app.trips.text_utils import normalize_vietnamese_query, strip_vietnamese_accents
@@ -575,7 +580,10 @@ def optimize_outline_routes_and_co2(
 
     total_before_km = 0.0
     total_after_km = 0.0
+    total_duration_minutes = 0
     reordered_days: list[int] = []
+    day_routes: list[dict[str, Any]] = []
+    route_sources: list[str] = []
 
     for day_idx, day_obj in enumerate(outline):
         stops = list(day_obj.get("stops") or [])
@@ -597,6 +605,7 @@ def optimize_outline_routes_and_co2(
 
         before_km = _path_distance_km(raw_coords)
         after_km = before_km
+        final_pairs = coord_pairs
 
         if len(coord_pairs) >= 3:
             opt_with_coords = _nearest_neighbor_and_2opt(coord_pairs)
@@ -608,7 +617,42 @@ def optimize_outline_routes_and_co2(
                 day_obj["stops"] = _sync_stop_times_after_reorder(reordered_places, rest_stops, places)
                 after_km = candidate_after_km
                 reordered_days.append(day_num)
+                final_pairs = [
+                    (s, opt_coords[i])
+                    for i, s in enumerate(opt_with_coords)
+                    if opt_coords[i] is not None
+                ]
 
+        day_dur_min = 0
+        day_source = "direct"
+        if len(final_pairs) >= 2:
+            route_stops = [
+                RouteStop(
+                    order=i + 1,
+                    poi_id=str(s.get("poi_id") or s.get("stop_id") or s.get("id") or f"d{day_num}-s{i}"),
+                    name=str(s.get("title") or s.get("name") or f"Stop {i + 1}"),
+                    latitude=c[0],
+                    longitude=c[1],
+                )
+                for i, (s, c) in enumerate(final_pairs)
+            ]
+            _, dist_m, dur_s, _is_fb, day_source = compute_route_geometry(route_stops)
+            if day_source == "osrm" and dist_m > 0:
+                after_km = round(dist_m / 1000.0, 2)
+                if before_km > 0 and day_num not in reordered_days:
+                    before_km = after_km
+            day_dur_min = max(1, round(dur_s / 60.0)) if dur_s > 0 else max(1, round((after_km / 35.0) * 60))
+            route_sources.append(day_source)
+
+        day_routes.append(
+            {
+                "day": day_num,
+                "distance_km": round(after_km, 2),
+                "duration_minutes": day_dur_min,
+                "route_source": day_source,
+            }
+        )
+        total_duration_minutes += day_dur_min
         total_before_km += before_km
         total_after_km += after_km
 
@@ -621,6 +665,7 @@ def optimize_outline_routes_and_co2(
     saved_vs_car_grams = max(0, baseline_car_grams - co2_grams)
     saved_route_grams = round(saved_km * factor)
     saved_vs_car_percent = round((saved_vs_car_grams / baseline_car_grams) * 100) if baseline_car_grams > 0 else 0
+    overall_source = "osrm" if "osrm" in route_sources else ("fallback" if "fallback" in route_sources else "direct")
 
     return {
         "transport_mode": mode,
@@ -628,6 +673,9 @@ def optimize_outline_routes_and_co2(
         "before_km": total_before_km,
         "after_km": total_after_km,
         "saved_km": saved_km,
+        "duration_minutes": total_duration_minutes,
+        "route_source": overall_source,
+        "day_routes": day_routes,
         "reordered_days": reordered_days,
         "co2_grams": co2_grams,
         "baseline_car_grams": baseline_car_grams,
@@ -1126,8 +1174,9 @@ def apply_quantitative_constraints_to_response(
 
     co2_kg = route_metrics["co2_grams"] / 1000.0
     co2_text = f"{route_metrics['co2_grams']} g CO₂" if route_metrics["co2_grams"] < 1000 else f"{co2_kg:.2f} kg CO₂"
+    dur_text = f", ~{route_metrics['duration_minutes']} phút di chuyển" if route_metrics.get("duration_minutes") else ""
     route_line = (
-        f"Lộ trình {route_metrics['after_km']} km ({route_metrics['transport_label']}) ≈ {co2_text}"
+        f"Lộ trình {route_metrics['after_km']} km{dur_text} ({route_metrics['transport_label']}) ≈ {co2_text}"
         + (f" (tiết kiệm {route_metrics['saved_km']} km chống zig-zag)" if route_metrics["saved_km"] > 0 else "")
         + (f" — giảm {route_metrics['saved_vs_car_percent']}% CO₂ so với ô tô." if route_metrics["saved_vs_car_percent"] > 0 else ".")
     )

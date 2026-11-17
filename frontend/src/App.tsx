@@ -56,6 +56,7 @@ function App() {
         <Route path="/explore" element={<ExplorePage initialView="explore" />} />
         <Route path="/saved" element={<ExplorePage initialView="saved" />} />
         <Route path="/chat" element={<ExplorePage initialView="chat" />} />
+        <Route path="/profile" element={<ExplorePage initialView="profile" />} />
 
         {/* Trip Planner page */}
         <Route path="/planner" element={<ExplorePage initialView="trips" />} />

@@ -286,10 +286,22 @@ export interface UserProfile {
   status: string;
   created_at: string;
   updated_at: string;
+  avatar_url?: string | null;
+  has_password?: boolean | null;
+}
+
+export function getAccessToken(): string | null {
+  return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+}
+
+export function clearAuthSession(): void {
+  localStorage.removeItem('access_token');
+  sessionStorage.removeItem('access_token');
+  window.dispatchEvent(new Event('auth-change'));
 }
 
 export async function getMe(): Promise<UserProfile> {
-  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+  const token = getAccessToken();
   if (!token) {
     throw new ApiError('Chưa đăng nhập', 401);
   }

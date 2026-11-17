@@ -1299,6 +1299,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             day_number: dayNum,
             date: existingDay?.date ?? null,
             title: String(rawDay.title || `Ngày ${dayNum}: ${rawDay.focus_city || trip.destination}`),
+            note: String(rawDay.note || existingDay?.note || ''),
             stops: normalizedStops,
           };
         });
@@ -3356,6 +3357,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         <TripItineraryView
           trip={trip}
           allPois={allPoisProp || allPois}
+          recommendations={recommendedPois}
+          recommendationsLoading={isLoadingRecommendations}
           onBack={() => setShowItineraryDrawer(false)}
           onClose={() => setShowItineraryDrawer(false)}
           isDrawerMode={true}

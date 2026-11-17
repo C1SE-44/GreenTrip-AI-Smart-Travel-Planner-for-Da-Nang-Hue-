@@ -78,39 +78,80 @@ function calculateHaversineMeters(lat1: number, lon1: number, lat2: number, lon2
   return R * c;
 }
 
-function buildRoadCorridor(
+// High-fidelity road corridor waypoints [lat, lng] along QL1A hugging the land and coast, never crossing open water
+export const HIGHWAY_QL1A_DANANG_HUE: [number, number][] = [
+  [16.0685, 108.1835], // Cầu vượt Ngã Ba Huế (Trung tâm Đà Nẵng)
+  [16.0780, 108.1750], // Bến xe Trung tâm Đà Nẵng
+  [16.0900, 108.1680], // Đường Tôn Đức Thắng (Hòa Khánh Nam)
+  [16.1150, 108.1550], // Đường Nguyễn Lương Bằng (Liên Chiểu)
+  [16.1360, 108.1360], // Cầu Nam Ô / Ngã ba Nguyễn Tất Thành
+  [16.1600, 108.1250], // Chân đèo Hải Vân / Kim Liên
+  [16.1820, 108.1180], // Dốc đèo Hải Vân Nam
+  [16.1950, 108.1150], // Đỉnh đèo / Hầm Hải Vân
+  [16.2300, 108.0100], // Thị trấn Lăng Cô
+  [16.2650, 107.9700], // Đèo Phú Gia
+  [16.2880, 107.9150], // Đèo Phước Tượng
+  [16.3050, 107.8650], // Thị trấn Phú Lộc / Cầu Hai
+  [16.3250, 107.8200], // QL1A phía nam bờ Đầm Cầu Hai
+  [16.3450, 107.7700], // QL1A ven chân núi Lộc Điền
+  [16.3650, 107.7300], // Ga Nong
+  [16.3880, 107.6950], // Thị xã Hương Thủy / Sân bay Phú Bài
+  [16.4150, 107.6550], // Hương Thủy QL1A
+  [16.4450, 107.6100], // Cửa ngõ An Cựu / TP Huế
+  [16.4650, 107.5900], // Trung tâm TP Huế
+];
+
+// Đường tránh Vịnh Đà Nẵng: Tuyệt đối không vẽ đường thẳng cắt ngang mặt nước vịnh
+export const DA_NANG_BAY_LAND_BYPASS: [number, number][] = [
+  [16.1360, 108.1360], // Cầu Nam Ô
+  [16.1150, 108.1550], // Nguyễn Lương Bằng
+  [16.0900, 108.1680], // Tôn Đức Thắng
+  [16.0780, 108.1750], // Bến xe Trung tâm Đà Nẵng
+  [16.0685, 108.1835], // Cầu vượt Ngã Ba Huế
+  [16.0650, 108.1980], // Đường Điện Biên Phủ
+  [16.0620, 108.2120], // Trung tâm Hải Châu
+];
+
+export function buildRoadCorridor(
   fromLat: number,
   fromLng: number,
   toLat: number,
   toLng: number
 ): [number, number][] {
-  // Tuyến Đà Nẵng <-> Huế (vượt Đèo Hải Vân & Lăng Cô)
-  const isFromDaNang = fromLat < 16.2 && fromLng > 108.0;
-  const isToHue = toLat > 16.35 && toLng < 107.75;
-  const isFromHue = fromLat > 16.35 && fromLng < 107.75;
-  const isToDaNang = toLat < 16.2 && toLng > 108.0;
+  // Tuyến Đà Nẵng <-> Huế (vượt Đèo Hải Vân, Lăng Cô, vòng qua chân núi tránh Đầm Cầu Hai)
+  const isFromDaNang = fromLat < 16.22 && fromLng > 108.0;
+  const isToHue = toLat > 16.32 && toLng < 107.8;
+  const isFromHue = fromLat > 16.32 && fromLng < 107.8;
+  const isToDaNang = toLat < 16.22 && toLng > 108.0;
 
-  if ((isFromDaNang && isToHue) || (isFromHue && isToDaNang)) {
-    const haiVanHighway: [number, number][] = [
-      [16.1250, 108.1400], // Ngã 3 Huế / Liên Chiểu
-      [16.1820, 108.1180], // Dốc Đèo Hải Vân Nam
-      [16.1950, 108.1150], // Đỉnh Đèo / Hầm Hải Vân
-      [16.2300, 108.0100], // Thị trấn Lăng Cô
-      [16.2900, 107.9100], // Đèo Phước Tượng / Phú Lộc
-      [16.3200, 107.8200], // Đầm Cầu Hai
-      [16.3800, 107.7000], // Phú Bài
-      [16.4450, 107.6100], // Cửa ngõ An Cựu Huế
-    ];
-    return isFromDaNang ? haiVanHighway : haiVanHighway.slice().reverse();
+  if (isFromDaNang && isToHue) {
+    return HIGHWAY_QL1A_DANANG_HUE.map(([lat, lng]) => [lat, lng]);
+  }
+  if (isFromHue && isToDaNang) {
+    return HIGHWAY_QL1A_DANANG_HUE.slice().reverse().map(([lat, lng]) => [lat, lng]);
   }
 
-  // Đi trong cùng thành phố: tạo 2 điểm uốn cong tự nhiên theo đường phố
+  // Kết nối giữa Bắc Đà Nẵng (Nam Ô / Hải Vân) và Nam/Đông Đà Nẵng (Hải Châu / Thanh Khê / Sơn Trà)
+  // Tuyệt đối không để đường cắt ngang mặt biển Vịnh Đà Nẵng
+  const isNorthFrom = fromLat > 16.12 && fromLng < 108.15;
+  const isSouthTo = toLat <= 16.10 && toLng >= 108.16;
+  const isSouthFrom = fromLat <= 16.10 && fromLng >= 108.16;
+  const isNorthTo = toLat > 16.12 && toLng < 108.15;
+
+  if (isNorthFrom && isSouthTo) {
+    return DA_NANG_BAY_LAND_BYPASS.map(([lat, lng]) => [lat, lng]);
+  }
+  if (isSouthFrom && isNorthTo) {
+    return DA_NANG_BAY_LAND_BYPASS.slice().reverse().map(([lat, lng]) => [lat, lng]);
+  }
+
+  // Đi trong cùng thành phố / khu vực: tạo 2 điểm uốn cong tự nhiên theo đường phố
   const dLat = toLat - fromLat;
   const dLng = toLng - fromLng;
   const dist = Math.hypot(dLat, dLng);
 
   if (dist > 0.005) {
-    const offset = Math.min(dist * 0.22, 0.007);
+    const offset = Math.min(dist * 0.18, 0.005);
     const p1: [number, number] = [fromLat + dLat * 0.35 + offset, fromLng + dLng * 0.35 - offset * 0.5];
     const p2: [number, number] = [fromLat + dLat * 0.70 - offset * 0.5, fromLng + dLng * 0.70 + offset];
     return [p1, p2];
@@ -182,6 +223,60 @@ const SAMPLE_DAY_ROUTES: Record<number, { coords: [number, number][]; dist: numb
 };
 
 /**
+ * Cache in-memory tuyến đường phía Frontend để chuyển ngày / chuyển tab tức thì (0ms)
+ */
+const routeMemoryCache = new Map<string, ComputedRouteResult>();
+
+/**
+ * Xây dựng lộ trình dự phòng tuân thủ nghiêm ngặt mạng lưới đường bộ trên đất liền,
+ * tuyệt đối không vẽ đường thẳng bay ngang biển Vịnh Đà Nẵng hay Đầm Cầu Hai.
+ */
+export function buildFallbackRoadCorridor(
+  stops: { latitude?: number | null; longitude?: number | null; [key: string]: unknown }[]
+): ComputedRouteResult {
+  const validStops = stops
+    .filter((s) => s.latitude != null && s.longitude != null && Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
+    .map((s) => ({ latitude: Number(s.latitude), longitude: Number(s.longitude) }));
+
+  if (validStops.length < 2) {
+    return {
+      coordinates: validStops.map((s) => [s.latitude, s.longitude]),
+      distanceMeters: 0,
+      durationSeconds: 0,
+      durationText: '',
+    };
+  }
+
+  const fullCoords: [number, number][] = [];
+  let totalDistMeters = 0;
+
+  for (let i = 0; i < validStops.length - 1; i++) {
+    const from = validStops[i];
+    const to = validStops[i + 1];
+
+    if (i === 0) {
+      fullCoords.push([from.latitude, from.longitude]);
+    }
+
+    const corridor = buildRoadCorridor(from.latitude, from.longitude, to.latitude, to.longitude);
+    fullCoords.push(...corridor);
+    fullCoords.push([to.latitude, to.longitude]);
+
+    const legDist = calculateHaversineMeters(from.latitude, from.longitude, to.latitude, to.longitude) * 1.25;
+    totalDistMeters += legDist;
+  }
+
+  const durationSec = Math.max(300, Math.round((totalDistMeters / 1000 / 45) * 3600));
+
+  return {
+    coordinates: fullCoords,
+    distanceMeters: Math.round(totalDistMeters),
+    durationSeconds: durationSec,
+    durationText: `${formatDuration(durationSec)} (${formatDistance(totalDistMeters)})`,
+  };
+}
+
+/**
  * Tính toán tọa độ đường đi (Leaflet [lat, lng]) từ danh sách điểm dừng qua GreenTrip BE hoặc OSRM
  */
 export async function getRoutePositionsForStops(
@@ -209,34 +304,42 @@ export async function getRoutePositionsForStops(
     };
   }
 
-  // 1. Thử gọi backend /api/itineraries/{id}/days/{day}/route với timeout 1.2s nếu có itineraryId và dayNumber
-  if (itineraryId && typeof dayNumber === 'number' && dayNumber >= 1) {
+  // 1. Kiểm tra cache phía Frontend để phản hồi tức thì
+  const cacheKey = `${itineraryId || 'anon'}-${dayNumber || 0}-${validStops.map((s) => `${s.latitude.toFixed(5)},${s.longitude.toFixed(5)}`).join(';')}`;
+  if (routeMemoryCache.has(cacheKey)) {
+    return routeMemoryCache.get(cacheKey)!;
+  }
+
+  // 2. Thử gọi backend /api/itineraries/{id}/days/{day}/route nếu là chuyến đi mẫu có sẵn trong DB
+  if (itineraryId && typeof dayNumber === 'number' && dayNumber >= 1 && (itineraryId.startsWith('sample-') || itineraryId.startsWith('trip-danang'))) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 1200);
+      const timer = setTimeout(() => controller.abort(), 3500);
       const resp = await fetchDayRoute(itineraryId, dayNumber, controller.signal);
       clearTimeout(timer);
       if (resp?.route?.coordinates && resp.route.coordinates.length >= 2) {
         const coords: [number, number][] = resp.route.coordinates.map(([lng, lat]) => [lat, lng]);
         const dist = resp.distance_meters || 0;
         const dur = resp.duration_seconds || 0;
-        return {
+        const result: ComputedRouteResult = {
           coordinates: coords,
           distanceMeters: dist,
           durationSeconds: dur,
           durationText: `${formatDuration(dur)} (${formatDistance(dist)})`,
         };
+        routeMemoryCache.set(cacheKey, result);
+        return result;
       }
     } catch {
-      // Tiếp tục fallback
+      // Tiếp tục qua compute API
     }
   }
 
-  // 2. Thử gọi backend /itineraries/compute với danh sách stops (timeout 1.2s)
+  // 3. Gọi backend /api/itineraries/compute với danh sách stops (timeout 9s để OSRM tính toán đầy đủ hàng nghìn điểm GPS)
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 1200);
-    const computed = await fetchJson<DayRouteResponse>('/itineraries/compute', {
+    const timer = setTimeout(() => controller.abort(), 9000);
+    const computed = await fetchJson<DayRouteResponse>('/api/itineraries/compute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ stops: validStops }),
@@ -247,63 +350,42 @@ export async function getRoutePositionsForStops(
       const coords: [number, number][] = computed.route.coordinates.map(([lng, lat]) => [lat, lng]);
       const dist = computed.distance_meters || 0;
       const dur = computed.duration_seconds || 0;
-      return {
+      const result: ComputedRouteResult = {
         coordinates: coords,
         distanceMeters: dist,
         durationSeconds: dur,
         durationText: `${formatDuration(dur)} (${formatDistance(dist)})`,
       };
+      routeMemoryCache.set(cacheKey, result);
+      return result;
     }
   } catch {
-    // Tiếp tục fallback
+    // Tiếp tục qua fallback
   }
 
-  // 3. Nếu là chuyến đi mẫu Ngày 1 và không có tọa độ cá nhân đặc biệt, dùng lộ trình mẫu của Lợi
+  // 4. Nếu là chuyến đi mẫu Ngày 1 và không có tọa độ cá nhân đặc biệt, dùng lộ trình mẫu của Lợi
   if (typeof dayNumber === 'number' && SAMPLE_DAY_ROUTES[dayNumber]) {
     const tmpl = SAMPLE_DAY_ROUTES[dayNumber];
     const isSampleTrip = Boolean(itineraryId && (itineraryId.startsWith('sample-') || itineraryId.startsWith('trip-danang')));
     if (isSampleTrip && dayNumber === 1 && validStops.length <= 4) {
-      // Kiểm tra nếu các điểm ở trung tâm Đà Nẵng
       const allInDaNang = validStops.every((s) => s.latitude < 16.2 && s.longitude > 108.0);
       if (allInDaNang) {
-        return {
+        const result: ComputedRouteResult = {
           coordinates: tmpl.coords,
           distanceMeters: tmpl.dist,
           durationSeconds: tmpl.dur,
           durationText: `${formatDuration(tmpl.dur)} (${formatDistance(tmpl.dist)})`,
         };
+        routeMemoryCache.set(cacheKey, result);
+        return result;
       }
     }
   }
 
-  // 4. Tạo đường đi thực tế theo các hành lang giao thông (Hải Vân QL1A hoặc đường phố)
-  const fullCoords: [number, number][] = [];
-  let totalDistMeters = 0;
-
-  for (let i = 0; i < validStops.length - 1; i++) {
-    const from = validStops[i];
-    const to = validStops[i + 1];
-
-    if (i === 0) {
-      fullCoords.push([from.latitude, from.longitude]);
-    }
-
-    const corridor = buildRoadCorridor(from.latitude, from.longitude, to.latitude, to.longitude);
-    fullCoords.push(...corridor);
-    fullCoords.push([to.latitude, to.longitude]);
-
-    const legDist = calculateHaversineMeters(from.latitude, from.longitude, to.latitude, to.longitude) * 1.18;
-    totalDistMeters += legDist;
-  }
-
-  const durationSec = Math.max(300, Math.round((totalDistMeters / 1000 / 45) * 3600));
-
-  return {
-    coordinates: fullCoords,
-    distanceMeters: Math.round(totalDistMeters),
-    durationSeconds: durationSec,
-    durationText: `${formatDuration(durationSec)} (${formatDistance(totalDistMeters)})`,
-  };
+  // 5. Fallback chuẩn: Tạo đường đi thực tế men theo các hành lang QL1A trên đất liền, tuyệt đối không ra biển
+  const fallbackResult = buildFallbackRoadCorridor(validStops);
+  routeMemoryCache.set(cacheKey, fallbackResult);
+  return fallbackResult;
 }
 
 export type ItineraryStopType = 'poi' | 'rest' | 'custom';
@@ -331,6 +413,7 @@ export interface ItineraryDay {
   day_number: number;
   date: string | null;
   title: string;
+  note?: string;
   stops: ItineraryStop[];
 }
 
@@ -361,6 +444,7 @@ export function createEmptyItinerary(trip: UserTrip): TripItinerary {
         day_number: index + 1,
         date: date ? date.toISOString().slice(0, 10) : null,
         title: '',
+        note: '',
         stops: [],
       };
     }),
@@ -604,6 +688,11 @@ export async function saveTripItinerary(itinerary: TripItinerary): Promise<TripI
     });
   } catch (err) {
     console.warn('Backend saveTripItinerary failed, using local storage state', err);
+    // Keep offline edits available locally, but do not hide server validation or
+    // authorization errors: the UI needs to let travelers correct those cases.
+    if (typeof err === 'object' && err !== null && 'status' in err && typeof err.status === 'number') {
+      throw err;
+    }
     return {
       ...itinerary,
       updated_at: new Date().toISOString(),
@@ -632,11 +721,134 @@ export function dailyVisitCapacity(level: 'Relaxed' | 'Balanced' | 'Fast'): numb
   return 270;
 }
 
+export interface AutomaticPoiSelection {
+  selected: Poi[];
+  added: Poi[];
+  selectedCost: number;
+  limits: { target: number; destination: number; time: number; budget: number; category: number };
+  targetStops: number;
+  budgetLimit: number;
+}
+
+/** Selects user ideas first, then fills the remaining pace-based capacity with ranked suggestions. */
+export function selectAutomaticPois(
+  days: ItineraryDay[],
+  ideas: Poi[],
+  recommendations: Poi[],
+  trip: UserTrip,
+  pacing: 'Relaxed' | 'Balanced' | 'Fast',
+  dailyCapacity: number,
+): AutomaticPoiSelection {
+  const people = Math.max(1, trip.peopleCount || 1);
+  const dayCount = Math.max(1, days.length);
+  const targetPerDay = pacing === 'Relaxed' ? 2 : pacing === 'Fast' ? 5 : 3;
+  const targetStops = dayCount * targetPerDay;
+  const activityBudget = trip.costBreakdown?.activities_and_tickets
+    ?? (trip.totalBudget != null ? trip.totalBudget * 0.25 : Number.POSITIVE_INFINITY);
+  const budgetLimit = Number.isFinite(activityBudget) ? activityBudget : Number.POSITIVE_INFINITY;
+  const existingStops = days.flatMap((day) => day.stops.filter((stop) => stop.stop_type !== 'rest'));
+  const placedIds = new Set(existingStops.map((stop) => stop.poi_id).filter((id): id is string => Boolean(id)));
+  const placedCustomNames = new Set(existingStops
+    .filter((stop) => stop.stop_type === 'custom')
+    .map((stop) => stop.title.trim().toLocaleLowerCase('vi-VN')));
+  const isAlreadyPlaced = (poi: Poi) => placedIds.has(poi.id)
+    || (poi.id.startsWith('custom-') && placedCustomNames.has(poi.name.trim().toLocaleLowerCase('vi-VN')));
+  const existingIdeaIds = new Set(ideas.map((poi) => poi.id));
+  const recommendationOnly = recommendations.filter((poi) => !existingIdeaIds.has(poi.id));
+  const placedPois = [...ideas, ...recommendationOnly].filter(isAlreadyPlaced);
+  const estimatedGroupCost = (poi: Poi) => Math.max(0, poi.estimatedCost || 0) * people;
+  let selectedCost = [...ideas, ...recommendationOnly.filter(isAlreadyPlaced)]
+    .reduce((total, poi) => total + estimatedGroupCost(poi), 0);
+  const selected = [...ideas];
+  const added: Poi[] = [];
+  const seen = new Set([...placedIds, ...ideas.map((poi) => poi.id)]);
+  const baseMinutes = existingStops.reduce((total, stop) => total + minutesFor(stop), 0)
+    + ideas.filter((poi) => !isAlreadyPlaced(poi)).reduce((total, poi) => total + minutesFor(stopFromPoi(poi)), 0);
+  let remainingMinutes = Math.max(0, dayCount * dailyCapacity - baseMinutes);
+  let remainingSlots = Math.max(0, targetStops - existingStops.length - ideas.filter((poi) => !isAlreadyPlaced(poi)).length);
+  const limits = { target: 0, destination: 0, time: 0, budget: 0, category: 0 };
+  const categoryCounts = new Map<string, number>();
+  [...placedPois, ...ideas.filter((poi) => !isAlreadyPlaced(poi))].forEach((poi) => {
+    categoryCounts.set(poi.category, (categoryCounts.get(poi.category) || 0) + 1);
+  });
+  const categoryCount = Math.max(1, new Set([...ideas, ...recommendationOnly].map((poi) => poi.category)).size);
+  const categoryLimit = Math.max(2, Math.ceil(targetStops / categoryCount));
+  const includesDaNang = /đà\s*nẵng|da\s*nang/i.test(trip.destination);
+  const includesHue = /huế|hue/i.test(trip.destination);
+
+  for (const poi of recommendationOnly) {
+    if (seen.has(poi.id)) continue;
+    if (remainingSlots <= 0) {
+      limits.target += 1;
+      continue;
+    }
+    const inDestination = (includesDaNang && /đà\s*nẵng|da\s*nang/i.test(poi.city))
+      || (includesHue && /huế|hue/i.test(poi.city))
+      || (!includesDaNang && !includesHue);
+    if (!inDestination) {
+      limits.destination += 1;
+      continue;
+    }
+    const candidateMinutes = minutesFor(stopFromPoi(poi));
+    const cost = estimatedGroupCost(poi);
+    if (candidateMinutes > remainingMinutes) {
+      limits.time += 1;
+      continue;
+    }
+    if (selectedCost + cost > budgetLimit) {
+      limits.budget += 1;
+      continue;
+    }
+    if ((categoryCounts.get(poi.category) || 0) >= categoryLimit) {
+      limits.category += 1;
+      continue;
+    }
+    selected.push(poi);
+    added.push(poi);
+    seen.add(poi.id);
+    selectedCost += cost;
+    remainingMinutes -= candidateMinutes;
+    remainingSlots -= 1;
+    categoryCounts.set(poi.category, (categoryCounts.get(poi.category) || 0) + 1);
+  }
+
+  return { selected, added, selectedCost, limits, targetStops, budgetLimit };
+}
+
 export function durationBetween(start: string, end: string): number | null {
   const [startHour, startMinute] = start.split(':').map(Number);
   const [endHour, endMinute] = end.split(':').map(Number);
   const minutes = endHour * 60 + endMinute - (startHour * 60 + startMinute);
   return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
+}
+
+export function clearOverlappingVisitTimes(plan: TripItinerary): { plan: TripItinerary; repairedCount: number } {
+  let repairedCount = 0;
+  const days = plan.days.map((day) => {
+    const stops = day.stops.map((stop) => ({ ...stop }));
+    // Keep explicit user appointments when possible. Clear only the conflicting
+    // visit's time fields so its place and other edits stay intact.
+    for (let pass = 0; pass < stops.length; pass += 1) {
+      const timed = stops
+        .map((stop, index) => ({ stop, index }))
+        .filter(({ stop }) => stop.start_time && stop.end_time)
+        .sort((a, b) => a.stop.start_time!.localeCompare(b.stop.start_time!));
+      const conflict = timed.findIndex(({ stop }, index) => index > 0
+        && stop.start_time! < timed[index - 1].stop.end_time!);
+      if (conflict < 0) break;
+      const previous = timed[conflict - 1];
+      const current = timed[conflict];
+      const victim = previous.stop.source === 'manual' && current.stop.source !== 'manual'
+        ? current
+        : current.stop.source === 'manual' && previous.stop.source !== 'manual'
+          ? previous
+          : current;
+      stops[victim.index] = { ...victim.stop, start_time: null, end_time: null };
+      repairedCount += 1;
+    }
+    return { ...day, stops };
+  });
+  return { plan: { ...plan, days }, repairedCount };
 }
 
 export function minutesFromTime(value: string): number {
@@ -738,6 +950,7 @@ export function alignItineraryToTrip(itinerary: TripItinerary, trip: UserTrip): 
         day_number: dayNumber,
         date,
         title: '',
+        note: '',
         stops: [],
       });
     }
@@ -1267,6 +1480,78 @@ export function checkStopOpeningHours(
   return { status: 'ok', warningMessage: null, openRangeLabel };
 }
 
+type VisitPeriod = 'morning' | 'afternoon' | 'evening';
+
+function experienceGroup(poi: Poi | undefined, stop: ItineraryStop): string {
+  const details = `${poi?.sub_category || ''} ${poi?.name || stop.title} ${poi?.category || stop.category || ''}`.toLocaleLowerCase('vi-VN');
+  if (/cafe|cà phê|coffee/.test(details)) return 'cafe';
+  if (/quan-an|quán ăn|nhà hàng|restaurant|food/.test(details)) return 'dining';
+  return poi?.category || stop.category || 'other';
+}
+
+function preferredVisitPeriods(poi?: Poi): VisitPeriod[] {
+  const hints = (poi?.best_time || []).map((hint) => hint.toLocaleLowerCase('vi-VN'));
+  const recognized = hints.flatMap((hint): VisitPeriod[] => {
+    if (/night|evening|tối|đêm|sunset/.test(hint)) return ['evening'];
+    if (/afternoon|chiều/.test(hint)) return ['afternoon'];
+    if (/morning|sáng|sunrise/.test(hint)) return ['morning'];
+    const startHour = hint.match(/(?:^|\D)(\d{1,2}):\d{2}/)?.[1];
+    if (startHour != null) {
+      const hour = Number(startHour);
+      return [hour >= 17 || hour < 5 ? 'evening' : hour >= 12 ? 'afternoon' : 'morning'];
+    }
+    return [];
+  }).filter((period, index, periods) => periods.indexOf(period) === index);
+  if (recognized.length) return recognized;
+
+  const details = `${poi?.sub_category || ''} ${poi?.name || ''} ${poi?.category || ''}`.toLocaleLowerCase('vi-VN');
+  if (/cafe|cà phê|coffee/.test(details)) return ['afternoon', 'evening', 'morning'];
+  if (/quán ăn|nhà hàng|restaurant|food/.test(details)) return ['afternoon', 'evening', 'morning'];
+  if (/nightlife|bar|pub|đêm|night/.test(details)) return ['evening', 'afternoon', 'morning'];
+  return ['morning', 'afternoon', 'evening'];
+}
+
+function setAssistantVisitTimes(
+  stops: ItineraryStop[],
+  poiById: Map<string, Poi>,
+  restPeriods: Array<{ time_range: string; duration_minutes: number }>,
+): ItineraryStop[] {
+  const windows: Record<VisitPeriod, { start: number; end: number }> = {
+    morning: { start: 8 * 60 + 30, end: 12 * 60 },
+    afternoon: { start: 14 * 60, end: 17 * 60 + 30 },
+    evening: { start: 18 * 60, end: 22 * 60 },
+  };
+  const booked: Array<{ start: number; end: number; gap: number }> = stops.flatMap((stop) => {
+    if (!stop.start_time || !stop.end_time) return [];
+    return [{ start: minutesFromTime(stop.start_time), end: minutesFromTime(stop.end_time), gap: stop.stop_type === 'rest' ? 0 : 30 }];
+  });
+  restPeriods.forEach((period) => {
+    const range = period.time_range.match(/(\d{2}:\d{2})\s*[–—-]\s*(\d{2}:\d{2})/);
+    if (range) booked.push({ start: minutesFromTime(range[1]), end: minutesFromTime(range[2]), gap: 0 });
+  });
+
+  return stops.map((stop) => {
+    if (stop.stop_type === 'rest' || stop.start_time || stop.end_time) return stop;
+    const duration = minutesFor(stop);
+    const periods = preferredVisitPeriods(stop.poi_id ? poiById.get(stop.poi_id) : undefined);
+    let slot: { start: number; end: number } | null = null;
+    for (const period of periods) {
+      const window = windows[period];
+      for (let start = window.start; start + duration <= window.end; start += 15) {
+        const end = start + duration;
+        if (booked.every((range) => end <= range.start - range.gap || start >= range.end + range.gap)) {
+          slot = { start, end };
+          break;
+        }
+      }
+      if (slot) break;
+    }
+    if (!slot) return stop;
+    booked.push({ start: slot.start, end: slot.end, gap: 30 });
+    return { ...stop, start_time: timeFromMinutes(slot.start), end_time: timeFromMinutes(slot.end) };
+  });
+}
+
 export function optimizeDays(
   days: ItineraryDay[],
   ideas: Poi[],
@@ -1279,18 +1564,31 @@ export function optimizeDays(
     .filter((stop) => stop.stop_type === 'custom')
     .map((stop) => stop.title.trim().toLocaleLowerCase('vi-VN'))));
   const pending = ideas.filter((poi) => !placed.has(poi.id) && !(poi.id.startsWith('custom-') && placedCustomNames.has(poi.name.trim().toLocaleLowerCase('vi-VN'))));
+  const poiById = new Map(ideas.map((poi) => [poi.id, poi]));
   let assignedCount = 0;
   let unassignedCount = 0;
 
   pending.forEach((poi) => {
     const candidate = stopFromPoi(poi, 'assistant');
     const duration = minutesFor(candidate);
-    const eligible = next
+    let eligible = next
       .map((day, index) => ({ day, index, stops: day.stops.filter((stop) => stop.stop_type !== 'rest') }))
       .filter(({ stops }) => stops.reduce((total, stop) => total + minutesFor(stop), 0) + duration <= dailyCapacity);
+    const isCafe = experienceGroup(poi, candidate) === 'cafe';
+    if (isCafe) {
+      eligible = eligible.filter(({ stops }) =>
+        stops.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length < 2);
+    }
     if (!eligible.length) {
       unassignedCount += 1;
       return;
+    }
+    const canUseCafeFreeDay = isCafe && eligible.some(({ stops }) =>
+      stops.every((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) !== 'cafe'));
+    if (canUseCafeFreeDay) {
+      const cafeFreeDays = eligible.filter(({ stops }) =>
+        stops.every((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) !== 'cafe'));
+      if (cafeFreeDays.length) eligible = cafeFreeDays;
     }
     eligible.sort((a, b) => {
       const cityPenalty = (stops: ItineraryStop[]) => stops.length && !stops.some((stop) => stop.city === candidate.city) ? 120 : 0;
@@ -1299,7 +1597,9 @@ export function optimizeDays(
         return last ? (distanceKm(last, candidate) ?? 0) * 8 : 0;
       };
       const load = (stops: ItineraryStop[]) => stops.reduce((total, stop) => total + minutesFor(stop), 0);
-      return load(a.stops) + cityPenalty(a.stops) + proximityPenalty(a.stops) - load(b.stops) - cityPenalty(b.stops) - proximityPenalty(b.stops);
+      const cafeCount = (stops: ItineraryStop[]) => stops.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length;
+      const score = (stops: ItineraryStop[]) => load(stops) + cityPenalty(stops) + proximityPenalty(stops) + cafeCount(stops) * 90;
+      return score(a.stops) - score(b.stops);
     });
     const selected = eligible[0].day;
     selected.stops.push(candidate);
@@ -1308,17 +1608,24 @@ export function optimizeDays(
 
   let restCount = 0;
   const scheduled = next.map((day) => {
-    const orderedPlaces = reorderNearStops(day.stops);
-    const ordered = [...orderedPlaces];
     const existingRests = day.stops.filter((stop) => stop.stop_type === 'rest');
-    existingRests.forEach((rest) => insertRestInOrder(ordered, rest));
-    const totalMinutes = orderedPlaces.reduce((total, stop) => total + minutesFor(stop), 0);
     const outline = outlines.find((item) => item.day === day.day_number);
     const periods = outline?.rest_periods?.length ? outline.rest_periods : [{
       time_range: '12:00–14:00',
       activity: 'Ăn trưa chậm rãi và nghỉ tại nơi lưu trú hoặc quán cà phê yên tĩnh.',
       duration_minutes: 90,
     }];
+    const proximityOrdered = reorderNearStops(day.stops);
+    const timedPlaces = setAssistantVisitTimes(proximityOrdered, poiById, periods);
+    const orderedPlaces = timedPlaces.sort((a, b) => {
+      if (a.start_time && b.start_time) return minutesFromTime(a.start_time) - minutesFromTime(b.start_time);
+      if (a.start_time) return -1;
+      if (b.start_time) return 1;
+      return a.sequence - b.sequence;
+    });
+    const ordered = [...orderedPlaces];
+    existingRests.forEach((rest) => insertRestInOrder(ordered, rest));
+    const totalMinutes = orderedPlaces.reduce((total, stop) => total + minutesFor(stop), 0);
     const shouldSuggestRest = orderedPlaces.length >= 2;
 
     periods.forEach((period) => {

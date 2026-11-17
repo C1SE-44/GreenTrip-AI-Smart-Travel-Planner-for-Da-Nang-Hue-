@@ -166,6 +166,7 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
         full_name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         phone TEXT,
+        avatar_path TEXT,
         password_hash TEXT,
         role TEXT DEFAULT 'USER',
         status TEXT DEFAULT 'ACTIVE',
@@ -173,6 +174,9 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """)
+    user_columns = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if "avatar_path" not in user_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN avatar_path TEXT")
     conn.execute("""
     CREATE TABLE IF NOT EXISTS email_otps (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -336,11 +340,10 @@ def get_connection() -> Any:
                 settings.DATABASE_URL,
                 connect_timeout=3,
             )
-        except Exception as e:
+        except Exception:
             _POSTGRES_AVAILABLE = False
             logger.warning(
-                "Không thể kết nối đến PostgreSQL từ DATABASE_URL (%s). Tự động chuyển sang CSDL SQLite cục bộ.",
-                e,
+                "Không thể kết nối đến PostgreSQL bằng cấu hình hiện tại. Tự động chuyển sang CSDL SQLite cục bộ."
             )
 
     # Chế độ CSDL cục bộ (Không phụ thuộc Docker/Postgres ngoài)

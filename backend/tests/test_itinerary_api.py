@@ -28,6 +28,7 @@ def test_itinerary_days_and_stops_persist_and_can_be_reordered(tmp_path, monkeyp
                 "day_number": 1,
                 "date": "2026-11-15",
                 "title": "Đà Nẵng",
+                "note": "Đi chậm, dành thời gian nghỉ trưa.",
                 "stops": [
                     {
                         "stop_id": "pb11-stop-1",
@@ -64,7 +65,7 @@ def test_itinerary_days_and_stops_persist_and_can_be_reordered(tmp_path, monkeyp
                     },
                 ],
             },
-            {"day_id": "pb11-day-2", "day_number": 2, "date": "2026-11-16", "title": "Huế", "stops": []},
+            {"day_id": "pb11-day-2", "day_number": 2, "date": "2026-11-16", "title": "Huế", "note": "", "stops": []},
         ],
     }
 
@@ -81,6 +82,7 @@ def test_itinerary_days_and_stops_persist_and_can_be_reordered(tmp_path, monkeyp
         loaded = client.get(f"/trips/{payload['trip_id']}/itinerary")
         assert loaded.status_code == 200
         assert loaded.json()["days"][0]["stops"][0]["title"] == "Cầu Rồng"
+        assert loaded.json()["days"][0]["note"] == "Đi chậm, dành thời gian nghỉ trưa."
         assert loaded.json()["days"][0]["stops"][1]["comment"] == "Đổi sang buổi chiều"
         assert loaded.json()["days"][0]["stops"][0]["address"] is None
         assert loaded.json()["days"][0]["stops"][1]["address"] == "Võ Nguyên Giáp, Sơn Trà, Đà Nẵng"

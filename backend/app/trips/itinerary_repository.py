@@ -40,6 +40,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
             day_number INTEGER NOT NULL CHECK (day_number BETWEEN 1 AND 31),
             date DATE,
             title TEXT NOT NULL DEFAULT '',
+            note TEXT NOT NULL DEFAULT '',
             UNIQUE (trip_id, day_number)
         )
         """
@@ -129,6 +130,8 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         cursor.execute("ALTER TABLE itinerary_days ADD COLUMN date DATE")
     if "title" not in day_columns:
         cursor.execute("ALTER TABLE itinerary_days ADD COLUMN title TEXT DEFAULT ''")
+    if "note" not in day_columns:
+        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN note TEXT NOT NULL DEFAULT ''")
     if "itinerary_day_id" in day_columns:
         cursor.execute("UPDATE itinerary_days SET day_id = itinerary_day_id WHERE day_id IS NULL")
     if "itinerary_id" in day_columns:
@@ -199,8 +202,8 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                 cursor.execute("DELETE FROM public.itinerary_days WHERE trip_id = %s", (payload.trip_id,))
                 for day in payload.days:
                     cursor.execute(
-                        "INSERT INTO public.itinerary_days (day_id, trip_id, day_number, date, title, itinerary_id, itinerary_day_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                        (day.day_id, payload.trip_id, day.day_number, day.date, day.title, payload.trip_id, day.day_id),
+                        "INSERT INTO public.itinerary_days (day_id, trip_id, day_number, date, title, note, itinerary_id, itinerary_day_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                        (day.day_id, payload.trip_id, day.day_number, day.date, day.title, day.note, payload.trip_id, day.day_id),
                     )
                     for stop in day.stops:
                         cursor.execute(
@@ -241,7 +244,7 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                 if not trip or (trip[1] and trip[1] != user_id):
                     return None
                 cursor.execute(
-                    "SELECT day_id, day_number, date, title FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
+                    "SELECT day_id, day_number, date, title, note FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
                     (trip_id,),
                 )
                 day_rows = cursor.fetchall()
@@ -261,7 +264,7 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                         start_time=row[10], end_time=row[11], comment=row[12], latitude=row[13], longitude=row[14],
                     ) for row in cursor.fetchall()]
                     day_date = day_row[2].isoformat() if hasattr(day_row[2], "isoformat") else day_row[2]
-                    days.append(ItineraryDay(day_id=day_row[0], day_number=day_row[1], date=day_date, title=day_row[3], stops=stops))
+                    days.append(ItineraryDay(day_id=day_row[0], day_number=day_row[1], date=day_date, title=day_row[3], note=day_row[4] or "", stops=stops))
                 return TripItineraryResponse(
                     trip_id=trip[0], title=trip[2], destination=trip[3],
                     start_date=trip[4].isoformat() if hasattr(trip[4], "isoformat") else trip[4],

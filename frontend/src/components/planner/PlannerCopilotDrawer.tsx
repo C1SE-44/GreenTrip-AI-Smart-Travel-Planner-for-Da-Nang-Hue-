@@ -20,10 +20,16 @@ import {
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import {
+  clearCopilotHistory,
+  fetchCopilotHistory,
+  hasAuthToken,
+  markCopilotProposalApplied,
+  markCopilotProposalDismissed,
   sendCopilotChat,
   type CopilotSuggestedPoi,
   type CopilotChatResponse,
 } from '@/services/copilotService';
+import type { ApiError } from '@/lib/api';
 import {
   buildDefaultMindtripConversation,
   buildDayNarrativesFromOutline,
@@ -34,7 +40,7 @@ import {
 
 function getInitialMessagesForTrip(t: UserTrip): CopilotMessage[] {
   let msgs: CopilotMessage[];
-  if (Array.isArray(t.copilotChatHistory) && t.copilotChatHistory.length > 0) {
+  if (hasAuthToken() && Array.isArray(t.copilotChatHistory) && t.copilotChatHistory.length > 0) {
     msgs = [...t.copilotChatHistory];
   } else {
     msgs = buildDefaultMindtripConversation(
@@ -251,6 +257,101 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
   const [swappedPoiIds, setSwappedPoiIds] = useState<Record<string, boolean>>({});
   const [dynamicPrompts, setDynamicPrompts] = useState<string[]>([]);
   const [activeConstraints, setActiveConstraints] = useState<string[]>([]);
+  const [authRequired, setAuthRequired] = useState<boolean>(() => !hasAuthToken());
+  const [confirmingMsgId, setConfirmingMsgId] = useState<string | null>(null);
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const tripRef = useRef(trip);
+  tripRef.current = trip;
+
+  // Hydrate persisted conversation history from backend per (user, trip) and react to auth changes
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncHistory = () => {
+      const currentTrip = tripRef.current;
+      const defaultIntro = getInitialMessagesForTrip({ ...currentTrip, copilotChatHistory: undefined });
+      if (!hasAuthToken()) {
+        setAuthRequired(true);
+        setMessages(defaultIntro);
+        setActiveConstraints([]);
+        setSwappedPoiIds({});
+        setProposalError(null);
+        return;
+      }
+      setAuthRequired(false);
+      setActiveConstraints([]);
+      setSwappedPoiIds({});
+      setProposalError(null);
+      if (!currentTrip.id) {
+        setMessages(defaultIntro);
+        return;
+      }
+
+      fetchCopilotHistory(currentTrip.id)
+        .then((history) => {
+          if (cancelled) return;
+          setActiveConstraints(history.active_constraints || []);
+          if (history.messages && history.messages.length > 0) {
+            const restored: CopilotMessage[] = history.messages.map((m) => {
+              const meta = (m.metadata || {}) as Record<string, unknown>;
+              const proposed = Array.isArray(meta.proposed_itinerary_state)
+                ? (meta.proposed_itinerary_state as Array<Record<string, unknown>>)
+                : null;
+              return {
+                id: m.message_id,
+                serverMessageId: m.message_id,
+                sender: m.sender,
+                text: m.content,
+                timestamp: m.created_at
+                  ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  : '',
+                suggestedPois: Array.isArray(meta.suggested_pois)
+                  ? (meta.suggested_pois as CopilotSuggestedPoi[])
+                  : undefined,
+                actionType: typeof meta.action_type === 'string' ? meta.action_type : undefined,
+                targetSlot: typeof meta.target_slot === 'string' ? meta.target_slot : undefined,
+                avoidNotice: typeof meta.avoid_notice === 'string' ? meta.avoid_notice : null,
+                greenImpactSummary: typeof meta.green_impact_summary === 'string' ? meta.green_impact_summary : null,
+                budgetImpactSummary: typeof meta.budget_impact_summary === 'string' ? meta.budget_impact_summary : null,
+                nextSuggestedPrompts: Array.isArray(meta.next_suggested_prompts)
+                  ? (meta.next_suggested_prompts as string[])
+                  : undefined,
+                thinkingProcess: typeof meta.reasoning_trace === 'string' ? meta.reasoning_trace : undefined,
+                proposedItineraryState: proposed,
+                proposedDaysCount: typeof meta.proposed_days_count === 'number' ? meta.proposed_days_count : null,
+                proposedDestination: typeof meta.proposed_destination === 'string' ? meta.proposed_destination : null,
+                mutationSummary: Array.isArray(meta.mutation_summary) ? (meta.mutation_summary as string[]) : undefined,
+                budgetStatus: (meta.budget_status as Record<string, unknown>) || null,
+                routeMetrics: (meta.route_metrics as Record<string, unknown>) || null,
+                proposalApplied: Boolean(meta.applied),
+                proposalDismissed: Boolean(meta.dismissed || meta.superseded),
+              };
+            });
+            setMessages(defaultIntro.length > 0 ? [defaultIntro[0], ...restored] : restored);
+          } else {
+            setMessages(defaultIntro);
+          }
+        })
+        .catch((err: unknown) => {
+          const apiErr = err as ApiError;
+          if (apiErr?.status === 401) {
+            setAuthRequired(true);
+            setMessages(defaultIntro);
+            setActiveConstraints([]);
+            setSwappedPoiIds({});
+          }
+        });
+    };
+
+    syncHistory();
+    window.addEventListener('auth-change', syncHistory);
+    window.addEventListener('storage', syncHistory);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('auth-change', syncHistory);
+      window.removeEventListener('storage', syncHistory);
+    };
+  }, [trip.id]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -288,6 +389,10 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
   const handleSendMessage = async (textToSend?: string) => {
     const rawText = (textToSend ?? inputValue).trim();
     if (!rawText || isLoading) return;
+    if (!hasAuthToken()) {
+      setAuthRequired(true);
+      return;
+    }
 
     const userMsgId = `user_${Date.now()}`;
     const userMsg: CopilotMessage = {
@@ -310,12 +415,14 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
       const response: CopilotChatResponse = await sendCopilotChat({
         message: rawText,
         trip_context: {
+          trip_id: trip.id,
           destination: trip.destination,
           days_count: trip.daysCount || 3,
           current_day: selectedDay,
           current_slot: 'lunch',
           current_stop_name: `Điểm dừng Ngày ${selectedDay}`,
           saved_ideas: savedIdeas,
+          preferences: trip.preferences || trip.tags || [],
           start_date: trip.startDate,
           total_budget: trip.totalBudget && trip.totalBudget > 0 ? trip.totalBudget : undefined,
           num_people: trip.peopleCount || 2,
@@ -341,23 +448,19 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
         ? (response.suggested_pois || []).filter((p) => response.recommended_poi_ids!.includes(p.id))
         : response.suggested_pois;
 
-      const updatedOutline =
+      const proposedOutline =
         response.updated_itinerary_state && response.updated_itinerary_state.length > 0
-          ? (response.updated_itinerary_state as unknown as MindtripDayOutline[])
+          ? response.updated_itinerary_state
           : null;
 
-      const updatedNarratives = updatedOutline
-        ? buildDayNarrativesFromOutline(updatedOutline, trip.startDate)
-        : undefined;
-
       const assistantMsg: CopilotMessage = {
-        id: `assistant_${Date.now()}`,
+        id: response.message_id || `assistant_${Date.now()}`,
+        serverMessageId: response.message_id || null,
         sender: 'assistant',
         text: response.reply_text,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         thinkingProcess: response.reasoning_trace || undefined,
         thinkingDuration: '1.6s',
-        dayNarratives: updatedNarratives,
         suggestedPois: synchronizedPois,
         actionType: response.action_type,
         targetSlot: response.target_slot || 'lunch',
@@ -365,9 +468,22 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
         greenImpactSummary: response.green_impact_summary,
         budgetImpactSummary: response.budget_impact_summary,
         nextSuggestedPrompts: response.next_suggested_prompts,
+        proposedItineraryState: proposedOutline,
+        proposedDaysCount: response.updated_days_count ?? null,
+        proposedDestination: response.updated_destination ?? null,
+        mutationSummary: response.mutation_summary || [],
+        budgetStatus: response.budget_status || null,
+        routeMetrics: response.route_metrics || null,
+        proposalApplied: false,
+        proposalDismissed: false,
       };
 
-      const finalMessages = [...intermediateMessages, assistantMsg];
+      const baseMessages = proposedOutline
+        ? intermediateMessages.map((m) =>
+            m.proposedItineraryState && !m.proposalApplied ? { ...m, proposalDismissed: true } : m
+          )
+        : intermediateMessages;
+      const finalMessages = [...baseMessages, assistantMsg];
       setMessages(finalMessages);
 
       if (response.next_suggested_prompts && response.next_suggested_prompts.length > 0) {
@@ -377,18 +493,21 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
       if (onUpdateTrip) {
         onUpdateTrip({
           ...trip,
-          destination: response.updated_destination || trip.destination,
-          daysCount: response.updated_days_count || (updatedOutline ? updatedOutline.length : trip.daysCount),
-          itineraryOutline: updatedOutline || trip.itineraryOutline,
           copilotChatHistory: finalMessages,
         });
       }
     } catch (error) {
       console.error('Failed to call copilot API:', error);
+      const apiErr = error as ApiError;
+      if (apiErr?.status === 401) {
+        setAuthRequired(true);
+        setMessages(messages);
+        return;
+      }
       const fallbackMsg: CopilotMessage = {
         id: `assistant_err_${Date.now()}`,
         sender: 'assistant',
-        text: 'Rất tiếc, chưa nhận được phản hồi từ máy chủ. Bạn vui lòng thử lại sau giây lát nhé.',
+        text: apiErr?.detail || 'Rất tiếc, chưa nhận được phản hồi từ máy chủ. Bạn vui lòng thử lại sau giây lát nhé.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       const finalErrMessages = [...intermediateMessages, fallbackMsg];
@@ -404,6 +523,72 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
     }
   };
 
+  const handleConfirmProposal = async (msgId: string) => {
+    if (confirmingMsgId) return;
+    const targetMsg = messages.find((m) => m.id === msgId);
+    if (!targetMsg || !targetMsg.proposedItineraryState || targetMsg.proposalApplied || targetMsg.proposalDismissed) {
+      return;
+    }
+
+    setConfirmingMsgId(msgId);
+    setProposalError(null);
+    try {
+      if (targetMsg.serverMessageId && trip.id && hasAuthToken()) {
+        await markCopilotProposalApplied(targetMsg.serverMessageId, trip.id);
+      }
+
+      const nextOutline = targetMsg.proposedItineraryState as unknown as MindtripDayOutline[];
+      const updatedMessages = messages.map((m) => {
+        if (m.id === msgId) return { ...m, proposalApplied: true };
+        if (m.proposedItineraryState && !m.proposalApplied) return { ...m, proposalDismissed: true };
+        return m;
+      });
+      setMessages(updatedMessages);
+      if (onUpdateTrip) {
+        onUpdateTrip({
+          ...trip,
+          destination: targetMsg.proposedDestination || trip.destination,
+          daysCount: targetMsg.proposedDaysCount || nextOutline.length || trip.daysCount,
+          itineraryOutline: nextOutline,
+          copilotChatHistory: updatedMessages,
+        });
+      }
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr?.status === 401) {
+        setAuthRequired(true);
+        return;
+      }
+      if (apiErr?.status === 409) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msgId ? { ...m, proposalDismissed: true } : m))
+        );
+        setProposalError(apiErr.detail || 'Đề xuất này đã cũ hoặc đã được áp dụng trước đó.');
+        return;
+      }
+      setProposalError(apiErr?.detail || 'Không thể xác nhận áp dụng đề xuất lúc này.');
+    } finally {
+      setConfirmingMsgId(null);
+    }
+  };
+
+  const handleDismissProposal = (msgId: string) => {
+    const targetMsg = messages.find((m) => m.id === msgId);
+    const updatedMessages = messages.map((m) =>
+      m.id === msgId ? { ...m, proposalDismissed: true } : m
+    );
+    setMessages(updatedMessages);
+    if (onUpdateTrip) {
+      onUpdateTrip({
+        ...trip,
+        copilotChatHistory: updatedMessages,
+      });
+    }
+    if (targetMsg?.serverMessageId && trip.id && hasAuthToken()) {
+      markCopilotProposalDismissed(targetMsg.serverMessageId, trip.id).catch(() => {});
+    }
+  };
+
   const handleResetChat = () => {
     const freshMessages: CopilotMessage[] = buildDefaultMindtripConversation(
       trip.destination || 'Đà Nẵng & Huế',
@@ -414,6 +599,9 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
     setMessages(freshMessages);
     setSwappedPoiIds({});
     setDynamicPrompts([]);
+    if (trip.id && hasAuthToken()) {
+      clearCopilotHistory(trip.id).catch(() => {});
+    }
     if (onUpdateTrip) {
       onUpdateTrip({
         ...trip,
@@ -778,6 +966,92 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
                       <span>{msg.budgetImpactSummary}</span>
                     </div>
                   )}
+
+                  {/* Proposed Itinerary Mutation Preview & Confirmation Card */}
+                  {msg.proposedItineraryState && msg.proposedItineraryState.length > 0 && !msg.proposalDismissed && (
+                    <div className="mt-3 p-3.5 rounded-2xl border border-emerald-200 bg-emerald-50/60 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[12.5px] font-bold text-emerald-950 flex items-center gap-1.5">
+                          <Sparkles size={13} className="text-emerald-700 shrink-0" />
+                          <span>Đề xuất chỉnh sửa lịch trình</span>
+                        </span>
+                        {msg.proposalApplied && (
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+                            Đã áp dụng
+                          </span>
+                        )}
+                      </div>
+
+                      {msg.mutationSummary && msg.mutationSummary.length > 0 && (
+                        <ul className="space-y-1 text-[12px] text-emerald-950">
+                          {msg.mutationSummary.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="text-emerald-600 font-bold">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {msg.routeMetrics && (
+                        <div className="flex flex-wrap items-center gap-2 text-[11.5px] text-neutral-700 bg-white/80 px-2.5 py-1.5 rounded-xl border border-emerald-100">
+                          <span>🧭 {String(msg.routeMetrics.after_km ?? 0)} km</span>
+                          {typeof msg.routeMetrics.duration_minutes === 'number' && msg.routeMetrics.duration_minutes > 0 && (
+                            <span>• ⏱️ ~{msg.routeMetrics.duration_minutes} phút</span>
+                          )}
+                          <span>• 🌱 {String(msg.routeMetrics.co2_grams ?? 0)} g CO₂</span>
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                        {msg.proposedItineraryState.map((dayObj, dIdx) => {
+                          const dNum = Number(dayObj.day_number ?? dayObj.day ?? dIdx + 1);
+                          const dStops = Array.isArray(dayObj.stops)
+                            ? (dayObj.stops as Array<Record<string, unknown>>)
+                            : [];
+                          return (
+                            <div key={dIdx} className="bg-white/90 rounded-xl p-2 border border-neutral-200/70 text-[12px]">
+                              <div className="font-semibold text-neutral-900">
+                                Ngày {dNum}: {String(dayObj.title || dayObj.focus_city || '')} ({dStops.length} điểm)
+                              </div>
+                              <div className="text-[11.5px] text-neutral-600 truncate mt-0.5">
+                                {dStops.map((s) => String(s.title || s.name || '')).filter(Boolean).join(' → ')}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {!msg.proposalApplied && (
+                        <div className="space-y-1.5 pt-1">
+                          {proposalError && (
+                            <p className="text-[11.5px] text-rose-700 font-medium">{proposalError}</p>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={confirmingMsgId === msg.id}
+                              onClick={() => {
+                                void handleConfirmProposal(msg.id);
+                              }}
+                              className="flex-1 min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-[12.5px] font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <Check size={14} />
+                              <span>{confirmingMsgId === msg.id ? 'Đang áp dụng...' : 'Xác nhận áp dụng'}</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={confirmingMsgId === msg.id}
+                              onClick={() => handleDismissProposal(msg.id)}
+                              className="min-h-[38px] px-3 py-1.5 rounded-xl bg-white hover:bg-neutral-100 disabled:opacity-60 text-neutral-700 border border-neutral-200 text-[12.5px] font-medium transition cursor-pointer"
+                            >
+                              Bỏ qua
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -890,12 +1164,38 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
                                 </>
                               )}
                               <span className="capitalize truncate">{poi.category}</span>
-                              <span>•</span>
-                              <span className="flex items-center text-amber-500 font-medium shrink-0">
-                                <Star size={10} className="fill-amber-500 mr-0.5" />
-                                {poi.rating.toFixed(1)}
-                              </span>
+                              {poi.rating > 0 && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center text-amber-500 font-medium shrink-0">
+                                    <Star size={10} className="fill-amber-500 mr-0.5" />
+                                    {poi.rating.toFixed(1)}
+                                  </span>
+                                </>
+                              )}
                             </div>
+                            {(poi.price_range_display || poi.distance_info || poi.opening_hours_status) && (
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-neutral-600">
+                                {poi.price_range_display && (
+                                  <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-800 font-medium">
+                                    {poi.price_range_display}
+                                  </span>
+                                )}
+                                {poi.distance_info && (
+                                  <span className="truncate">{poi.distance_info}</span>
+                                )}
+                                {poi.opening_hours_status === 'ok' && (
+                                  <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">
+                                    Đang mở
+                                  </span>
+                                )}
+                                {(poi.opening_hours_status === 'closed' || poi.opening_hours_status === 'outside_hours') && (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 font-medium">
+                                    Ngoài giờ
+                                  </span>
+                                )}
+                              </div>
+                            )}
                             {/* KG Explanation / Community proof */}
                             <div className="text-[11px] text-neutral-600 flex items-center gap-1 mt-1 truncate" title={poi.kg_explanation || poi.swap_reason}>
                               <span className="text-emerald-600 shrink-0">🌱</span>
@@ -917,6 +1217,22 @@ export const PlannerCopilotDrawer: React.FC<PlannerCopilotDrawerProps> = ({
             </div>
           );
         })}
+
+        {/* Auth Required Banner */}
+        {authRequired && (
+          <div className="mx-1 my-2 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-3">
+            <div className="text-[12.5px] text-amber-950">
+              <p className="font-semibold">Vui lòng đăng nhập để sử dụng Trợ lý AI</p>
+              <p className="text-[11.5px] text-amber-800 mt-0.5">Hội thoại và lịch trình của bạn sẽ được bảo mật và lưu theo tài khoản.</p>
+            </div>
+            <a
+              href="/login"
+              className="shrink-0 px-3.5 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-[12px] font-semibold transition"
+            >
+              Đăng nhập
+            </a>
+          </div>
+        )}
 
         {/* Clean Loading Indicator */}
         {isLoading && (

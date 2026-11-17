@@ -41,14 +41,21 @@ import {
   type PoiCategory
 } from '@/data/pois';
 import { getPois, getAllPois } from '@/services/poi';
-import { fetchJson } from '@/lib/api';
+import { fetchJson, type ApiError } from '@/lib/api';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import ExplanationModal from '@/components/poi/ExplanationModal';
 import TripItineraryView from './TripItineraryView';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
-import { sendCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
+import {
+  fetchCopilotHistory,
+  hasAuthToken,
+  markCopilotProposalApplied,
+  markCopilotProposalDismissed,
+  sendCopilotChat,
+  type CopilotSuggestedPoi,
+} from '@/services/copilotService';
 import {
   createEmptyItinerary,
   getTripItinerary,
@@ -75,6 +82,12 @@ export interface CopilotChatMessageItem {
   updatedDestination?: string | null;
   hasMutatedItinerary?: boolean;
   reasoningTrace?: string;
+  serverMessageId?: string | null;
+  proposedItineraryState?: Array<Record<string, unknown>> | null;
+  routeMetrics?: Record<string, unknown> | null;
+  budgetStatus?: Record<string, unknown> | null;
+  proposalApplied?: boolean;
+  proposalDismissed?: boolean;
 }
 
 function findMatchingPoiIdForLabel(
@@ -1143,9 +1156,243 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   }, [chatMessages, relevantPois]);
 
   // Xử lý gửi tin nhắn trò chuyện với Trợ lý AI Copilot (PB14 - 6 Core Mindtrip MVPs)
+  const [copilotAuthRequired, setCopilotAuthRequired] = useState<boolean>(() => !hasAuthToken());
+  const [confirmingProposalId, setConfirmingProposalId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncHistory = () => {
+      if (!hasAuthToken()) {
+        setCopilotAuthRequired(true);
+        setChatMessages([]);
+        setActiveConstraints([]);
+        setTripMemory({});
+        return;
+      }
+      setCopilotAuthRequired(false);
+      setChatMessages([]);
+      setActiveConstraints([]);
+      setTripMemory({});
+      if (!trip.id) return;
+
+      fetchCopilotHistory(trip.id)
+        .then((history) => {
+          if (cancelled) return;
+          setActiveConstraints(history.active_constraints || []);
+          setTripMemory(history.trip_memory || {});
+          if (history.messages && history.messages.length > 0) {
+            const restored: CopilotChatMessageItem[] = history.messages.map((m) => {
+              const meta = (m.metadata || {}) as Record<string, unknown>;
+              const proposed = Array.isArray(meta.proposed_itinerary_state)
+                ? (meta.proposed_itinerary_state as Array<Record<string, unknown>>)
+                : null;
+              return {
+                id: m.message_id,
+                serverMessageId: m.message_id,
+                sender: m.sender === 'user' ? 'user' : 'ai',
+                text: m.content,
+                timestamp: m.created_at
+                  ? new Date(m.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                  : '',
+                suggestedPois: Array.isArray(meta.suggested_pois)
+                  ? (meta.suggested_pois as CopilotSuggestedPoi[])
+                  : undefined,
+                avoidNotice: typeof meta.avoid_notice === 'string' ? meta.avoid_notice : null,
+                greenImpact: typeof meta.green_impact_summary === 'string' ? meta.green_impact_summary : null,
+                budgetImpact: typeof meta.budget_impact_summary === 'string' ? meta.budget_impact_summary : null,
+                actionType: typeof meta.action_type === 'string' ? meta.action_type : undefined,
+                factCheckWarning: typeof meta.fact_check_warning === 'string' ? meta.fact_check_warning : null,
+                mutationSummary: Array.isArray(meta.mutation_summary) ? (meta.mutation_summary as string[]) : [],
+                updatedDaysCount: typeof meta.proposed_days_count === 'number' ? meta.proposed_days_count : null,
+                updatedDestination: typeof meta.proposed_destination === 'string' ? meta.proposed_destination : null,
+                proposedItineraryState: proposed,
+                routeMetrics: (meta.route_metrics as Record<string, unknown>) || null,
+                budgetStatus: (meta.budget_status as Record<string, unknown>) || null,
+                proposalApplied: Boolean(meta.applied),
+                proposalDismissed: Boolean(meta.dismissed || meta.superseded),
+                hasMutatedItinerary: Boolean(meta.applied),
+                reasoningTrace: typeof meta.reasoning_trace === 'string' ? meta.reasoning_trace : undefined,
+              };
+            });
+            setChatMessages(restored);
+          } else {
+            setChatMessages([]);
+          }
+        })
+        .catch((err: unknown) => {
+          const apiErr = err as ApiError;
+          if (apiErr?.status === 401) {
+            setCopilotAuthRequired(true);
+            setChatMessages([]);
+            setActiveConstraints([]);
+            setTripMemory({});
+          }
+        });
+    };
+
+    syncHistory();
+    window.addEventListener('auth-change', syncHistory);
+    window.addEventListener('storage', syncHistory);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('auth-change', syncHistory);
+      window.removeEventListener('storage', syncHistory);
+    };
+  }, [trip.id]);
+
+  const handleConfirmItineraryProposal = async (msgId: string) => {
+    if (confirmingProposalId) return;
+    const target = chatMessages.find((m) => m.id === msgId);
+    if (!target || !target.proposedItineraryState || target.proposedItineraryState.length === 0) return;
+    if (target.proposalApplied || target.proposalDismissed) return;
+
+    setConfirmingProposalId(msgId);
+    try {
+      if (target.serverMessageId && trip.id && hasAuthToken()) {
+        await markCopilotProposalApplied(target.serverMessageId, trip.id);
+      }
+
+      const seenStopIds = new Set<string>();
+      const toHHMM = (raw: unknown): string | null => {
+        if (typeof raw !== 'string') return null;
+        const m = raw.trim().match(/^(\d{1,2}):(\d{2})$/);
+        if (!m) return null;
+        const hh = Number(m[1]);
+        const mm = Number(m[2]);
+        if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+        return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+      };
+
+      const sortedRawDays = [...target.proposedItineraryState].sort(
+        (a, b) => Number(a.day_number || a.day || 0) - Number(b.day_number || b.day || 0)
+      );
+      const nextDays: ItineraryDay[] = sortedRawDays.map((rawDay, idx) => {
+        const dayNum = idx + 1;
+        const existingDay = itineraryPlan.days.find((d) => d.day_number === dayNum);
+        const rawStops = Array.isArray(rawDay.stops)
+          ? (rawDay.stops as Array<Record<string, unknown>>)
+          : [];
+        const scheduledRanges: Array<[string, string]> = [];
+        const normalizedStops: ItineraryStop[] = rawStops.map((st, sIdx) => {
+          let stopId = String(st.stop_id || st.poi_id || `mut-d${dayNum}-s${sIdx}`);
+          if (seenStopIds.has(stopId)) stopId = `${stopId}-d${dayNum}-s${sIdx}`;
+          seenStopIds.add(stopId);
+
+          let startTime = toHHMM(st.start_time);
+          let endTime = toHHMM(st.end_time);
+          if (!startTime || !endTime || endTime <= startTime) {
+            startTime = null;
+            endTime = null;
+          } else if (scheduledRanges.some(([rs, re]) => startTime! < re && rs < endTime!)) {
+            startTime = null;
+            endTime = null;
+          } else {
+            scheduledRanges.push([startTime, endTime]);
+          }
+
+          const rawDur = Number(st.duration_minutes ?? st.duration_mins);
+          const durationMinutes = Number.isFinite(rawDur) && rawDur > 0 && rawDur <= 1440 ? Math.round(rawDur) : 120;
+          const rawType = st.stop_type;
+          const stopType = rawType === 'rest' || rawType === 'custom' ? rawType : 'poi';
+          const rawSource = st.source;
+          const source = rawSource === 'idea' || rawSource === 'manual' ? rawSource : 'assistant';
+
+          return {
+            stop_id: stopId,
+            poi_id: st.poi_id ? String(st.poi_id) : null,
+            title: String(st.title || st.name || 'Điểm dừng lịch trình').slice(0, 200),
+            city: st.city ? String(st.city) : rawDay.focus_city ? String(rawDay.focus_city) : trip.destination,
+            address: st.address ? String(st.address) : null,
+            category: st.category ? String(st.category) : 'Điểm tham quan',
+            stop_type: stopType,
+            source,
+            sequence: sIdx,
+            duration_minutes: durationMinutes,
+            start_time: startTime,
+            end_time: endTime,
+            comment: st.comment ? String(st.comment) : st.notes ? String(st.notes) : null,
+            latitude: typeof st.latitude === 'number' && Number.isFinite(st.latitude) ? st.latitude : null,
+            longitude: typeof st.longitude === 'number' && Number.isFinite(st.longitude) ? st.longitude : null,
+          };
+        });
+        return {
+          day_id: String(rawDay.day_id || existingDay?.day_id || `${trip.id}-day-${dayNum}`),
+          day_number: dayNum,
+          date: existingDay?.date ?? null,
+          title: String(rawDay.title || `Ngày ${dayNum}: ${rawDay.focus_city || trip.destination}`),
+          note: String(rawDay.note || existingDay?.note || ''),
+          stops: normalizedStops,
+        };
+      });
+
+      const nextDest = target.updatedDestination || trip.destination;
+      const nextDaysCount = target.updatedDaysCount || nextDays.length || trip.daysCount || 4;
+      const nextPlan: TripItinerary = {
+        ...itineraryPlan,
+        destination: nextDest,
+        days_count: nextDays.length,
+        days: nextDays,
+      };
+      await saveTripItinerary(nextPlan);
+      setItineraryPlan(nextPlan);
+      setFlexibleDays(nextDaysCount);
+      setWhereTarget(nextDest);
+      onUpdateTrip?.({
+        ...trip,
+        destination: nextDest,
+        daysCount: nextDaysCount,
+        startDate: `${nextDaysCount} ngày • ${selectedMonth}`,
+        title: `Chuyến đi ${nextDest} (${nextDaysCount} ngày)`,
+      });
+
+      setChatMessages((prev) =>
+        prev.map((m) => {
+          if (m.id === msgId) return { ...m, proposalApplied: true, hasMutatedItinerary: true };
+          if (m.proposedItineraryState && !m.proposalApplied) return { ...m, proposalDismissed: true };
+          return m;
+        })
+      );
+      setToastMessage(`Đã áp dụng & lưu lịch trình: ${nextDest} (${nextDaysCount} ngày)`);
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      if (apiErr?.status === 401) {
+        setCopilotAuthRequired(true);
+        return;
+      }
+      if (apiErr?.status === 409) {
+        setChatMessages((prev) =>
+          prev.map((m) => (m.id === msgId ? { ...m, proposalDismissed: true } : m))
+        );
+        setToastMessage(apiErr.detail || 'Đề xuất này đã cũ hoặc đã được áp dụng trước đó.');
+        setTimeout(() => setToastMessage(null), 4000);
+        return;
+      }
+      setToastMessage(apiErr?.detail || 'Không thể lưu thay đổi lịch trình. Vui lòng thử lại.');
+      setTimeout(() => setToastMessage(null), 4000);
+    } finally {
+      setConfirmingProposalId(null);
+    }
+  };
+
+  const handleDismissItineraryProposal = (msgId: string) => {
+    const target = chatMessages.find((m) => m.id === msgId);
+    setChatMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, proposalDismissed: true } : m))
+    );
+    if (target?.serverMessageId && trip.id && hasAuthToken()) {
+      markCopilotProposalDismissed(target.serverMessageId, trip.id).catch(() => {});
+    }
+  };
+
   const handleSendChatMessage = async (overridePrompt?: string) => {
     const promptToSend = (overridePrompt ?? chatInput).trim();
     if (!promptToSend || isAiThinking) return;
+    if (!hasAuthToken()) {
+      setCopilotAuthRequired(true);
+      return;
+    }
 
     const userMsgId = `user-${Date.now()}`;
     const newUserMsg: CopilotChatMessageItem = {
@@ -1168,11 +1415,13 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       const res = await sendCopilotChat({
         message: promptToSend,
         trip_context: {
+          trip_id: trip.id,
           destination: trip.destination || 'Đà Nẵng & Huế',
           days_count: trip.daysCount || 4,
           current_day: dayTargetForAdd || 1,
           traveler_name: 'Nguyên',
           saved_ideas: tripIdeas,
+          preferences: trip.preferences || trip.tags || [],
           total_budget: trip.totalBudget && trip.totalBudget > 0 ? trip.totalBudget : undefined,
           num_people: trip.peopleCount || 2,
           budget_tier:
@@ -1226,113 +1475,16 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         setRecommendedPois(mappedCopilotPois);
       }
 
-      // 3. Đồng bộ Conversational Trip Mutation: cập nhật Header + lưu Itinerary (MVP #1)
-      let hasMutated = false;
-      if (res.updated_itinerary_state && res.updated_itinerary_state.length > 0) {
-        hasMutated = true;
-        const seenStopIds = new Set<string>();
-        const toHHMM = (raw: unknown): string | null => {
-          if (typeof raw !== 'string') return null;
-          const m = raw.trim().match(/^(\d{1,2}):(\d{2})$/);
-          if (!m) return null;
-          const hh = Number(m[1]);
-          const mm = Number(m[2]);
-          if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
-          return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-        };
+      // 3. Lưu đề xuất chỉnh sửa lịch trình để người dùng xem & xác nhận (không tự động lưu)
+      const proposedOutline =
+        res.updated_itinerary_state && res.updated_itinerary_state.length > 0
+          ? res.updated_itinerary_state
+          : null;
 
-        const sortedRawDays = [...res.updated_itinerary_state].sort(
-          (a, b) => Number(a.day_number || a.day || 0) - Number(b.day_number || b.day || 0)
-        );
-        const nextDays: ItineraryDay[] = sortedRawDays.map((rawDay, idx) => {
-          const dayNum = idx + 1;
-          const existingDay = itineraryPlan.days.find((d) => d.day_number === dayNum);
-          const rawStops = Array.isArray(rawDay.stops)
-            ? (rawDay.stops as Array<Record<string, unknown>>)
-            : [];
-          const scheduledRanges: Array<[string, string]> = [];
-          const normalizedStops: ItineraryStop[] = rawStops.map((st, sIdx) => {
-            let stopId = String(st.stop_id || st.poi_id || `mut-d${dayNum}-s${sIdx}`);
-            if (seenStopIds.has(stopId)) stopId = `${stopId}-d${dayNum}-s${sIdx}`;
-            seenStopIds.add(stopId);
-
-            let startTime = toHHMM(st.start_time);
-            let endTime = toHHMM(st.end_time);
-            if (!startTime || !endTime || endTime <= startTime) {
-              startTime = null;
-              endTime = null;
-            } else if (scheduledRanges.some(([rs, re]) => startTime! < re && rs < endTime!)) {
-              // Avoid 422 overlap rejection when prepending mutated stops into existing day
-              startTime = null;
-              endTime = null;
-            } else {
-              scheduledRanges.push([startTime, endTime]);
-            }
-
-            const rawDur = Number(st.duration_minutes ?? st.duration_mins);
-            const durationMinutes = Number.isFinite(rawDur) && rawDur > 0 && rawDur <= 1440 ? Math.round(rawDur) : 120;
-            const rawType = st.stop_type;
-            const stopType = rawType === 'rest' || rawType === 'custom' ? rawType : 'poi';
-            const rawSource = st.source;
-            const source = rawSource === 'idea' || rawSource === 'manual' ? rawSource : 'assistant';
-
-            return {
-              stop_id: stopId,
-              poi_id: st.poi_id ? String(st.poi_id) : null,
-              title: String(st.title || st.name || 'Điểm dừng lịch trình').slice(0, 200),
-              city: st.city ? String(st.city) : rawDay.focus_city ? String(rawDay.focus_city) : trip.destination,
-              address: st.address ? String(st.address) : null,
-              category: st.category ? String(st.category) : 'Điểm tham quan',
-              stop_type: stopType,
-              source,
-              sequence: sIdx,
-              duration_minutes: durationMinutes,
-              start_time: startTime,
-              end_time: endTime,
-              comment: st.comment ? String(st.comment) : st.notes ? String(st.notes) : null,
-              latitude: typeof st.latitude === 'number' && Number.isFinite(st.latitude) ? st.latitude : null,
-              longitude: typeof st.longitude === 'number' && Number.isFinite(st.longitude) ? st.longitude : null,
-            };
-          });
-          return {
-            day_id: String(rawDay.day_id || existingDay?.day_id || `${trip.id}-day-${dayNum}`),
-            day_number: dayNum,
-            date: existingDay?.date ?? null,
-            title: String(rawDay.title || `Ngày ${dayNum}: ${rawDay.focus_city || trip.destination}`),
-            note: String(rawDay.note || existingDay?.note || ''),
-            stops: normalizedStops,
-          };
-        });
-        const nextPlan: TripItinerary = {
-          ...itineraryPlan,
-          destination: res.updated_destination || trip.destination,
-          days_count: nextDays.length,
-          days: nextDays,
-        };
-        setItineraryPlan(nextPlan);
-        saveTripItinerary(nextPlan);
-      }
-
-      if (res.updated_days_count || res.updated_destination) {
-        hasMutated = true;
-        const nextDaysCount = res.updated_days_count || trip.daysCount || 4;
-        const nextDest = res.updated_destination || trip.destination;
-        setFlexibleDays(nextDaysCount);
-        setWhereTarget(nextDest);
-        onUpdateTrip?.({
-          ...trip,
-          destination: nextDest,
-          daysCount: nextDaysCount,
-          startDate: `${nextDaysCount} ngày • ${selectedMonth}`,
-          title: `Chuyến đi ${nextDest} (${nextDaysCount} ngày)`,
-        });
-        setToastMessage(`Đã cập nhật lịch trình: ${nextDest} (${nextDaysCount} ngày)`);
-        setTimeout(() => setToastMessage(null), 3500);
-      }
-
-      const aiMsgId = `ai-${Date.now()}`;
+      const aiMsgId = res.message_id || `ai-${Date.now()}`;
       const newAiMsg: CopilotChatMessageItem = {
         id: aiMsgId,
+        serverMessageId: res.message_id || null,
         sender: 'ai',
         text: res.reply_text,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -1345,17 +1497,35 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         mutationSummary: res.mutation_summary || [],
         updatedDaysCount: res.updated_days_count || null,
         updatedDestination: res.updated_destination || null,
-        hasMutatedItinerary: hasMutated || res.action_type === 'mutate_itinerary',
+        proposedItineraryState: proposedOutline,
+        routeMetrics: res.route_metrics || null,
+        budgetStatus: res.budget_status || null,
+        proposalApplied: false,
+        proposalDismissed: false,
+        hasMutatedItinerary: false,
         reasoningTrace: res.reasoning_trace,
       };
 
-      setChatMessages((prev) => [...prev, newAiMsg]);
+      setChatMessages((prev) => {
+        const nextPrev = proposedOutline
+          ? prev.map((m) =>
+              m.proposedItineraryState && !m.proposalApplied ? { ...m, proposalDismissed: true } : m
+            )
+          : prev;
+        return [...nextPrev, newAiMsg];
+      });
 
       if (res.next_suggested_prompts && res.next_suggested_prompts.length > 0) {
         setQuickPrompts(res.next_suggested_prompts);
       }
     } catch (err) {
-      console.warn('Copilot backend call error, falling back locally:', err);
+      const apiErr = err as ApiError;
+      if (apiErr?.status === 401) {
+        setCopilotAuthRequired(true);
+        setChatMessages((prev) => prev.filter((m) => m.id !== userMsgId));
+        return;
+      }
+      console.warn('Copilot backend call error:', err);
       // Fallback cục bộ thông minh nếu backend đang offline để giao diện luôn phản hồi mượt mà
       const lower = promptToSend.toLowerCase();
       let fallbackText = `Tôi đã ghi nhận câu hỏi: "${promptToSend}". Dựa trên chuyến đi ${trip.destination}, các điểm tham quan xanh và ẩm thực đặc sản đều đã sẵn sàng!`;
@@ -1829,29 +1999,41 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   </div>
                 )}
 
-                {/* MVP #1: Tóm tắt thao tác sửa lịch trình & Nút [Xem kế hoạch chi tiết (X ngày)] chuẩn Mindtrip */}
-                {(msg.hasMutatedItinerary || (msg.mutationSummary && msg.mutationSummary.length > 0)) && (
-                  <div className="p-3 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-950 text-xs space-y-2">
+                {/* Proposal Preview & Confirmation Card (requires explicit user confirmation before saving) */}
+                {((msg.proposedItineraryState && msg.proposedItineraryState.length > 0 && !msg.proposalDismissed) || msg.hasMutatedItinerary) && (
+                  <div className="p-3 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-950 text-xs space-y-2.5">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <span className="font-bold flex items-center gap-1.5 text-emerald-900">
-                        <Check size={14} className="text-emerald-700 shrink-0" />
-                        <span>Đã đồng bộ trực tiếp vào Kế hoạch chi tiết</span>
+                        {msg.proposalApplied || msg.hasMutatedItinerary ? (
+                          <>
+                            <Check size={14} className="text-emerald-700 shrink-0" />
+                            <span>Đã đồng bộ vào Kế hoạch chi tiết</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={14} className="text-emerald-700 shrink-0" />
+                            <span>Đề xuất chỉnh sửa lịch trình (chờ xác nhận)</span>
+                          </>
+                        )}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowIdeasView(false);
-                          setShowItineraryDrawer(true);
-                        }}
-                        className="px-3 py-1.5 rounded-full bg-black hover:bg-neutral-800 text-white font-bold text-[11.5px] flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 transition"
-                      >
-                        <Compass size={13} className="text-emerald-400 shrink-0" />
-                        <span>
-                          Xem kế hoạch chi tiết ({msg.updatedDaysCount || itineraryPlan.days.length || trip.daysCount || 4} ngày)
-                        </span>
-                        <ChevronRight size={12} />
-                      </button>
+                      {(msg.proposalApplied || msg.hasMutatedItinerary) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowIdeasView(false);
+                            setShowItineraryDrawer(true);
+                          }}
+                          className="px-3 py-1.5 rounded-full bg-black hover:bg-neutral-800 text-white font-bold text-[11.5px] flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 transition"
+                        >
+                          <Compass size={13} className="text-emerald-400 shrink-0" />
+                          <span>
+                            Xem kế hoạch chi tiết ({msg.updatedDaysCount || itineraryPlan.days.length || trip.daysCount || 4} ngày)
+                          </span>
+                          <ChevronRight size={12} />
+                        </button>
+                      )}
                     </div>
+
                     {msg.mutationSummary && msg.mutationSummary.length > 0 && (
                       <ul className="space-y-1 pl-1 text-[11.5px] text-emerald-900/90">
                         {msg.mutationSummary.map((line, mIdx) => (
@@ -1862,6 +2044,72 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                         ))}
                       </ul>
                     )}
+
+                    {msg.routeMetrics && (
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-700 bg-white/80 px-2.5 py-1.5 rounded-lg border border-emerald-100">
+                        <span>🧭 {String(msg.routeMetrics.after_km ?? 0)} km</span>
+                        {typeof msg.routeMetrics.duration_minutes === 'number' && msg.routeMetrics.duration_minutes > 0 && (
+                          <span>• ⏱️ ~{msg.routeMetrics.duration_minutes} phút</span>
+                        )}
+                        <span>• 🌱 {String(msg.routeMetrics.co2_grams ?? 0)} g CO₂</span>
+                      </div>
+                    )}
+
+                    {!msg.proposalApplied && !msg.hasMutatedItinerary && msg.proposedItineraryState && (
+                      <>
+                        <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                          {msg.proposedItineraryState.map((dayObj, dIdx) => {
+                            const dNum = Number(dayObj.day_number ?? dayObj.day ?? dIdx + 1);
+                            const dStops = Array.isArray(dayObj.stops)
+                              ? (dayObj.stops as Array<Record<string, unknown>>)
+                              : [];
+                            return (
+                              <div key={dIdx} className="bg-white/90 rounded-lg p-2 border border-emerald-100 text-[11.5px]">
+                                <div className="font-semibold text-neutral-900">
+                                  Ngày {dNum}: {String(dayObj.title || dayObj.focus_city || '')} ({dStops.length} điểm)
+                                </div>
+                                <div className="text-neutral-600 truncate">
+                                  {dStops.map((s) => String(s.title || s.name || '')).filter(Boolean).join(' → ')}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            disabled={confirmingProposalId === msg.id}
+                            onClick={() => {
+                              void handleConfirmItineraryProposal(msg.id);
+                            }}
+                            className="flex-1 min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-[12px] font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Check size={14} />
+                            <span>{confirmingProposalId === msg.id ? 'Đang áp dụng...' : 'Xác nhận áp dụng'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={confirmingProposalId === msg.id}
+                            onClick={() => handleDismissItineraryProposal(msg.id)}
+                            className="min-h-[38px] px-3 py-1.5 rounded-xl bg-white hover:bg-neutral-100 disabled:opacity-60 text-neutral-700 border border-neutral-200 text-[12px] font-medium transition cursor-pointer"
+                          >
+                            Bỏ qua
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {copilotAuthRequired && (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-2 text-xs text-amber-950">
+                    <span className="font-medium">Vui lòng đăng nhập để sử dụng Trợ lý AI và lưu hội thoại.</span>
+                    <a
+                      href="/login"
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-neutral-900 text-white font-semibold hover:bg-neutral-800 transition"
+                    >
+                      Đăng nhập
+                    </a>
                   </div>
                 )}
 

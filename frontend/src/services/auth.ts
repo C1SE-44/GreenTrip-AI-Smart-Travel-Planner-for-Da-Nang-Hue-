@@ -297,6 +297,12 @@ export function getAccessToken(): string | null {
 export function clearAuthSession(): void {
   localStorage.removeItem('access_token');
   sessionStorage.removeItem('access_token');
+  localStorage.removeItem('greentrip_ideation_chat_v1');
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('greentrip_ideation_chat_v1_')) {
+      localStorage.removeItem(key);
+    }
+  }
   window.dispatchEvent(new Event('auth-change'));
 }
 

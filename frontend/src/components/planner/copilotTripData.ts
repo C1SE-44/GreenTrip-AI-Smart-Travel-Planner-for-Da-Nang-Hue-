@@ -47,6 +47,15 @@ export interface CopilotTripMessage {
   greenImpactSummary?: string | null;
   budgetImpactSummary?: string | null;
   nextSuggestedPrompts?: string[];
+  serverMessageId?: string | null;
+  proposedItineraryState?: Array<Record<string, unknown>> | null;
+  proposedDaysCount?: number | null;
+  proposedDestination?: string | null;
+  mutationSummary?: string[];
+  budgetStatus?: Record<string, unknown> | null;
+  routeMetrics?: Record<string, unknown> | null;
+  proposalApplied?: boolean;
+  proposalDismissed?: boolean;
 }
 
 export interface CopilotStop {

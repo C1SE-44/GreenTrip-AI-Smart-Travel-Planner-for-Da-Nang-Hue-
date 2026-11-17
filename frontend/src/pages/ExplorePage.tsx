@@ -53,6 +53,7 @@ export interface UserTrip {
   startDate?: string;
   peopleCount: number;
   tags?: string[];
+  preferences?: string[];
   budgetTier?: string;
   flexibleDays?: number;
   flexibleMonth?: string;

@@ -1,6 +1,7 @@
 import { fetchJson } from '../lib/api';
 
 export interface TripContextPayload {
+  trip_id?: string | null;
   mode?: 'trip' | 'ideation';
   destination: string;
   days_count: number;
@@ -56,6 +57,8 @@ export interface CopilotChatRequest {
 }
 
 export interface CopilotChatResponse {
+  message_id?: string | null;
+  requires_confirmation?: boolean;
   reply_text: string;
   intent: string;
   intent_category?: 'QA_AND_COMPARE' | 'POI_RECOMMENDATION' | 'ITINERARY_MUTATION' | 'OUT_OF_SCOPE' | string;
@@ -80,6 +83,23 @@ export interface CopilotChatResponse {
   mutation_summary?: string[];
 }
 
+export interface CopilotHistoryMessage {
+  message_id: string;
+  sender: 'user' | 'assistant';
+  content: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface CopilotHistoryResponse {
+  conversation_id: string | null;
+  trip_id: string;
+  title: string;
+  trip_memory: Record<string, string>;
+  active_constraints: string[];
+  messages: CopilotHistoryMessage[];
+}
+
 export async function sendCopilotChat(
   request: CopilotChatRequest
 ): Promise<CopilotChatResponse> {
@@ -90,4 +110,46 @@ export async function sendCopilotChat(
     },
     body: JSON.stringify(request),
   });
+}
+
+export async function fetchCopilotHistory(
+  tripId = 'ideation'
+): Promise<CopilotHistoryResponse> {
+  return await fetchJson<CopilotHistoryResponse>(
+    `/trips/copilot/history?trip_id=${encodeURIComponent(tripId)}`
+  );
+}
+
+export async function clearCopilotHistory(tripId = 'ideation'): Promise<void> {
+  await fetchJson<{ success: boolean }>(
+    `/trips/copilot/history?trip_id=${encodeURIComponent(tripId)}`,
+    { method: 'DELETE' }
+  );
+}
+
+export async function markCopilotProposalApplied(
+  messageId: string,
+  tripId = 'ideation'
+): Promise<void> {
+  await fetchJson<{ success: boolean }>(
+    `/trips/copilot/history/${encodeURIComponent(messageId)}/applied?trip_id=${encodeURIComponent(tripId)}`,
+    { method: 'POST' }
+  );
+}
+
+export async function markCopilotProposalDismissed(
+  messageId: string,
+  tripId = 'ideation'
+): Promise<void> {
+  await fetchJson<{ success: boolean }>(
+    `/trips/copilot/history/${encodeURIComponent(messageId)}/dismissed?trip_id=${encodeURIComponent(tripId)}`,
+    { method: 'POST' }
+  );
+}
+
+export function hasAuthToken(): boolean {
+  if (typeof window === 'undefined') return false;
+  return Boolean(
+    localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+  );
 }

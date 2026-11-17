@@ -15,7 +15,14 @@ import {
 } from 'lucide-react';
 import type { Poi } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
-import { sendCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
+import {
+  clearCopilotHistory,
+  fetchCopilotHistory,
+  hasAuthToken,
+  sendCopilotChat,
+  type CopilotSuggestedPoi,
+} from '@/services/copilotService';
+import type { ApiError } from '@/lib/api';
 import { extractTripIntentFromPrompt } from '@/utils/vietnamesePromptExtractor';
 import { FormattedCopilotMessage } from './TripOverviewView';
 import type { CopilotTripMessage } from './copilotTripData';
@@ -42,6 +49,12 @@ export interface IdeationChatViewProps {
 }
 
 const STORAGE_KEY = 'greentrip_ideation_chat_v1';
+
+function getIdeationStorageKey(): string {
+  if (typeof window === 'undefined') return STORAGE_KEY;
+  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '';
+  return token ? `${STORAGE_KEY}_${token.slice(-16)}` : STORAGE_KEY;
+}
 
 const STARTER_PROMPTS = [
   'Tháng 11 đi Đà Nẵng – Huế thời tiết thế nào, có hay mưa không?',
@@ -86,8 +99,9 @@ function mapSuggestedToPoi(s: CopilotSuggestedPoi, allPois: Poi[]): Poi | null {
 
 export default function IdeationChatView({ allPois, onCreateTripFromIdea }: IdeationChatViewProps) {
   const [messages, setMessages] = useState<IdeationMessage[]>(() => {
+    if (!hasAuthToken()) return [];
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(getIdeationStorageKey());
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed?.messages)) return parsed.messages;
@@ -99,8 +113,9 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
   });
 
   const [selectedIdeaPoiIds, setSelectedIdeaPoiIds] = useState<string[]>(() => {
+    if (!hasAuthToken()) return [];
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(getIdeationStorageKey());
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed?.selectedIdeaPoiIds)) return parsed.selectedIdeaPoiIds;
@@ -120,13 +135,77 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState<boolean>(() => !hasAuthToken());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncIdeationHistory = () => {
+      if (!hasAuthToken()) {
+        setAuthRequired(true);
+        setMessages([]);
+        setSelectedIdeaPoiIds([]);
+        setActiveConstraints([]);
+        setTripMemory({});
+        return;
+      }
+      setAuthRequired(false);
+      fetchCopilotHistory('ideation')
+        .then((history) => {
+          if (cancelled) return;
+          setActiveConstraints(history.active_constraints || []);
+          setTripMemory(history.trip_memory || {});
+          const restored: IdeationMessage[] = (history.messages || []).map((m) => {
+            const meta = (m.metadata || {}) as Record<string, unknown>;
+            return {
+              id: m.message_id,
+              sender: m.sender,
+              text: m.content,
+              timestamp: m.created_at
+                ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : nowHHMM(),
+              suggestedPois: Array.isArray(meta.suggested_pois)
+                ? (meta.suggested_pois as CopilotSuggestedPoi[])
+                : undefined,
+              nextSuggestedPrompts: Array.isArray(meta.next_suggested_prompts)
+                ? (meta.next_suggested_prompts as string[])
+                : undefined,
+              avoidNotice: typeof meta.avoid_notice === 'string' ? meta.avoid_notice : null,
+              greenImpactSummary: typeof meta.green_impact_summary === 'string' ? meta.green_impact_summary : null,
+              budgetImpactSummary: typeof meta.budget_impact_summary === 'string' ? meta.budget_impact_summary : null,
+            };
+          });
+          setMessages(restored);
+        })
+        .catch((err: unknown) => {
+          const apiErr = err as ApiError;
+          if (apiErr?.status === 401) {
+            setAuthRequired(true);
+            setMessages([]);
+            setSelectedIdeaPoiIds([]);
+            setActiveConstraints([]);
+            setTripMemory({});
+          }
+        });
+    };
+
+    syncIdeationHistory();
+    window.addEventListener('auth-change', syncIdeationHistory);
+    window.addEventListener('storage', syncIdeationHistory);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('auth-change', syncIdeationHistory);
+      window.removeEventListener('storage', syncIdeationHistory);
+    };
+  }, []);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
+    if (!hasAuthToken()) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ messages, selectedIdeaPoiIds }));
+      localStorage.setItem(getIdeationStorageKey(), JSON.stringify({ messages, selectedIdeaPoiIds }));
     } catch (e) {
       console.error(e);
     }
@@ -180,11 +259,19 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
     setLastFailedPrompt(null);
     setTripMemory({});
     setActiveConstraints([]);
+    if (hasAuthToken()) {
+      clearCopilotHistory('ideation').catch(() => {});
+    }
   };
 
   const handleSend = async (rawText?: string) => {
     const text = (rawText ?? input).trim();
     if (!text || isSending) return;
+    if (!hasAuthToken()) {
+      setAuthRequired(true);
+      setErrorMessage('Vui lòng đăng nhập để trò chuyện với Trợ lý AI.');
+      return;
+    }
 
     const userMsg: IdeationMessage = {
       id: `idea-u-${Date.now()}`,
@@ -206,6 +293,7 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
       const res = await sendCopilotChat({
         message: text,
         trip_context: {
+          trip_id: 'ideation',
           mode: 'ideation',
           destination: parsed.destination || 'Đà Nẵng & Huế',
           days_count: parsed.days || 4,
@@ -240,6 +328,13 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
       };
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
+      const apiErr = err as ApiError;
+      if (apiErr?.status === 401) {
+        setAuthRequired(true);
+        setMessages(messages);
+        setErrorMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.');
+        return;
+      }
       console.error('Ideation chat error:', err);
       setErrorMessage('Không thể kết nối tới trợ lý AI lúc này. Vui lòng kiểm tra backend và thử lại.');
       setLastFailedPrompt(text);
@@ -560,6 +655,18 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
             <div className="flex items-center gap-2.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-2xl px-4 py-3 w-fit shadow-2xs">
               <Loader2 size={15} className="animate-spin text-emerald-700" />
               <span>Đang tra cứu Đồ thị Tri thức Miền Trung...</span>
+            </div>
+          )}
+
+          {authRequired && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-950">
+              <span className="font-medium">Vui lòng đăng nhập để trò chuyện với Trợ lý AI và lưu lịch sử hội thoại.</span>
+              <a
+                href="/login"
+                className="min-h-[36px] px-3.5 py-2 rounded-full bg-neutral-900 hover:bg-neutral-800 text-white font-semibold inline-flex items-center"
+              >
+                Đăng nhập
+              </a>
             </div>
           )}
 

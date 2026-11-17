@@ -43,12 +43,12 @@ test('Alignment recalculates every date, clears flexible dates and preserves occ
 
 test('Saving rejects past edits before local writes, while unchanged history remains readable', async () => {
   const data = new Map();
-  const storage = { getItem: key => data.get(key) || null, setItem: (key, value) => data.set(key, value) };
+  const storage = { getItem: key => key==='access_token'?'test-session':data.get(key) || null, setItem: (key, value) => data.set(key, value) };
   let requests = 0;
   const fixedDates = { ...dates, vietnamNow: () => ({ date: '2026-11-13', minutes: 1110 }) };
   const service = load('../src/services/itineraryService.ts', {
     '@/utils/tripDates': fixedDates,
-    '@/lib/api': { fetchJson: async () => { requests++; throw new Error('Unexpected API call'); } },
+    '@/lib/api': { fetchJson: async () => { requests++; throw Object.assign(new Error('No previous itinerary'),{status:404}); } },
   }, { localStorage: storage });
   const trip = { id: 'qa', title: 'QA', destination: 'Huế', startDate: '2026-11-13', daysCount: 1 };
   const plan = service.createEmptyItinerary(trip);
@@ -57,12 +57,12 @@ test('Saving rejects past edits before local writes, while unchanged history rem
   assert.ok(service.scheduleError(plan, null));
   await assert.rejects(service.saveTripItinerary(plan), /quá khứ/);
   assert.equal(data.size, 0);
-  assert.equal(requests, 0);
+  assert.equal(requests, 1);
 });
 
 test('Expired trip shift forward (10-13 Nov -> 16-19 Nov) preserves morning stops and syncs cleanly', async () => {
   const data = new Map();
-  const storage = { getItem: key => data.get(key) || null, setItem: (key, value) => data.set(key, value) };
+  const storage = { getItem: key => key==='access_token'?'test-session':data.get(key) || null, setItem: (key, value) => data.set(key, value) };
   let apiSaves = 0;
   // Today is 2026-11-16 11:43 (minutes = 703)
   const fixedDates = { ...dates, vietnamNow: () => ({ date: '2026-11-16', minutes: 703 }) };
@@ -70,6 +70,7 @@ test('Expired trip shift forward (10-13 Nov -> 16-19 Nov) preserves morning stop
     '@/utils/tripDates': fixedDates,
     '@/lib/api': {
       fetchJson: async (url, options) => {
+        if(options?.method!=='PUT')return pastPlan;
         apiSaves++;
         return JSON.parse(options.body);
       },
@@ -99,7 +100,7 @@ test('Expired trip shift forward (10-13 Nov -> 16-19 Nov) preserves morning stop
   const error = service.scheduleError(aligned.itinerary, pastPlan);
   assert.equal(error, '', 'Shifting entire trip forward to today must not fail with past-time error for existing stops');
 
-  // Saving succeeds to localStorage and backend
+  // Saving succeeds only after the backend confirms it
   const saved = await service.saveTripItinerary(aligned.itinerary);
   assert.equal(saved.start_date, '2026-11-16');
   assert.equal(apiSaves, 1);

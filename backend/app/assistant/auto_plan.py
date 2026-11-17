@@ -1,0 +1,53 @@
+"""Explicit consent to complete a trip with catalogue POIs; preview only."""
+import re
+from app.assistant import search, planning
+
+
+def understand(message, state):
+    text = search.fold(message)
+    quota = re.search(r"(?:moi ngay|ngay)\s*(\d+)\s*(?:diem|dia diem)", text) or re.search(r"(\d+)\s*(?:diem|dia diem)\s*(?:/\s*ngay|moi ngay)", text)
+    if re.search(r"(?:khong|dung)(?: duoc)?\s*tu\s*(?:chon|len|lap|xep)", text):
+        return None
+    consent = bool(re.search(r"(?:ban|bot|ai|minh)?\s*tu\s*(?:len|chon|lap|xep)|chon them|bo sung them", text))
+    if quota or consent:
+        return {"per_day": int(quota[1]) if quota else state.get("pending_auto_plan", {}).get("per_day", 2), "consent": consent}
+    return None
+
+
+def preview(spec, state, ctx, current, trip_id, propose):
+    if not trip_id:
+        return {"text": "Bạn chọn chuyến đi trước để mình tạo bản xem trước nhé.", "prompts": []}
+    per_day = spec["per_day"]
+    if not 1 <= per_day <= 5:
+        return {"text": "Bạn chọn từ 1 đến 5 điểm mỗi ngày để mình kiểm tra thời gian nhé.", "prompts": []}
+    needed = ctx.days_count * per_day
+    # Only accept actual IDs in the current request. Never recover stale browser ideas from chat history.
+    saved = search.catalogue(ids=ctx.idea_ids) if ctx.idea_ids else []
+    allowed = {"hue", "danang"} if "&" in ctx.destination else {search.fold(ctx.destination).replace(" ", "")}
+    saved = [p for p in saved if search.fold(p.get("city")).replace(" ", "") in allowed]
+    saved = list({str(p["id"]): p for p in saved}.values())
+    state["pending_auto_plan"] = {"per_day": per_day}
+    if len(saved) < needed and not spec["consent"]:
+        missing = needed - len(saved)
+        return {"text": f"Chuyến này có {len(saved)} điểm đã lưu đủ điều kiện. Bạn muốn mình giữ các điểm đó và chọn thêm {missing} điểm để đủ {ctx.days_count} ngày, mỗi ngày {per_day} điểm không?", "prompts": [{"label": "Tự chọn thêm điểm", "message": "Bạn tự chọn thêm và lên lịch cho tôi đi"}]}
+    points = saved[:needed]
+    if spec["consent"] and len(points) < needed:
+        candidates, _, _ = search.search({"city": ctx.destination, "omit_ids": [str(p["id"]) for p in points]}, ctx.preferences)
+        points += candidates[:needed-len(points)]
+    # Keep cities together and choose successive stops nearby inside each city.
+    points.sort(key=lambda p: (search.fold(p.get("city")), float(p.get("latitude") or 0), float(p.get("longitude") or 0)))
+    before = current or planning.empty_itinerary(trip_id, ctx)
+    after, warnings = planning.create_plan(before, points, per_day=per_day)
+    saved_ids = {str(p["id"]) for p in saved}
+    actual = []
+    for day in after["days"]:
+        for stop in day["stops"]:
+            if stop.get("poi_id"):
+                actual.append(str(stop["poi_id"]))
+                stop["comment"] = ("Đã lưu trong Ý tưởng. " if str(stop["poi_id"]) in saved_ids else "Đề xuất thêm; chưa lưu vào Ý tưởng. ") + (stop.get("comment") or "")
+    counts = [sum(bool(s.get("poi_id")) for s in day["stops"]) for day in after["days"]]
+    if any(n != per_day for n in counts):
+        warnings.append("Chưa xếp đủ số điểm mỗi ngày do dữ liệu hoặc giới hạn thời gian; kiểm tra từng ngày trước khi áp dụng.")
+    state.pop("pending_auto_plan", None)
+    draft = propose(state, current, after, warnings)
+    return {"text": f"Mình tạo bản xem trước {ctx.days_count} ngày với {len(actual)} điểm: {sum(i in saved_ids for i in actual)} điểm đã lưu, {sum(i not in saved_ids for i in actual)} điểm đề xuất thêm. Chưa thay đổi Ý tưởng hoặc lịch đã lưu.", "draft": draft, "prompts": []}

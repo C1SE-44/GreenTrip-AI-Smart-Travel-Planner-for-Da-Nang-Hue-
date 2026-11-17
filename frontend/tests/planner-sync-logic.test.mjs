@@ -105,7 +105,7 @@ test('TripItineraryView: Tích hợp đồng bộ ngày & ý tưởng', () => {
 test('TripOverviewView: Đồng bộ ý tưởng và tab Đã thích', () => {
   const overviewContent = fs.readFileSync(tripOverviewViewPath, 'utf8');
   assert.ok(overviewContent.includes("modalTab === 'saved'"), 'Must handle modal saved tab');
-  assert.ok(overviewContent.includes('handleSaveCopilotPoiToIdeas'), 'Must support saving Copilot ideas');
+  assert.ok(overviewContent.includes('onIdeasChange='), 'Shared assistant must update trip Ideas');
   assert.ok(overviewContent.includes('handleToggleIdea'), 'Must toggle ideas in trip');
 });
 

@@ -1,28 +1,12 @@
+import TravelAssistant from '@/components/planner/TravelAssistant';
+import type { UserTrip } from '@/pages/ExplorePage';
 import React, { useState } from 'react';
-import {
-  Sparkles,
-  Compass,
-  CalendarPlus,
-  Send,
-  Plus,
-  Mic,
-  AudioWaveform as Waveform,
-  ChevronRight,
-  ArrowRight,
-  MapPin,
-  Clock,
-  CheckCircle2,
-  X,
-  Share2,
-  MessageSquare,
-  Flame,
-  Leaf,
-  Layers,
-  Star,
-} from 'lucide-react';
+import { Sparkles, Send, Plus, ChevronRight, ArrowRight, MapPin, Clock, Leaf } from 'lucide-react';
 import OnboardingModal from '@/components/auth/OnboardingModal';
 
 export interface HomeDashboardViewProps {
+  trips?:UserTrip[];
+  onUpdateTrip?:(trip:UserTrip)=>void;
   onNavigateToExplore: () => void;
   onNavigateToTrips: () => void;
   onNavigateToSaved: () => void;
@@ -79,12 +63,13 @@ const MUST_TRY_PACKAGES = [
 ];
 
 const SUGGESTED_PROMPTS = [
-  'Lên ý tưởng chuyến đi Đà Nẵng 3 ngày 2 đêm',
-  'Gợi ý các quán ăn ngon nhất định phải thử tại Huế',
-  'Lịch trình du lịch xanh tiết kiệm CO2 cho gia đình',
+  'Tìm cà phê ở Huế dưới 100k',
+  'Gợi ý điểm thiên nhiên ở Đà Nẵng',
+  'Tìm bảo tàng ở Huế',
 ];
 
 export default function HomeDashboardView({
+  trips=[],onUpdateTrip,
   onNavigateToExplore,
   onNavigateToTrips,
   onNavigateToSaved,
@@ -93,43 +78,16 @@ export default function HomeDashboardView({
 }: HomeDashboardViewProps) {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [chatPrompt, setChatPrompt] = useState('');
-  const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
-  const [generatedIdea, setGeneratedIdea] = useState<{
-    title: string;
-    destination: string;
-    days: string[];
-    summary: string;
-  } | null>(null);
   const [showForumModal, setShowForumModal] = useState(false);
   const [activeTabFilter, setActiveTabFilter] = useState('all');
 
   const displayName = currentUser?.full_name?.split(' ')[0] || 'bạn';
 
   // Xử lý khi gửi prompt lên ý tưởng cho chatbot
-  const handleSendPrompt = (promptText?: string) => {
-    const query = (promptText || chatPrompt).trim();
-    if (!query) return;
-
-    setIsGeneratingIdea(true);
-    setChatPrompt(query);
-
-    // Giả lập tạo ý tưởng thông minh cho người dùng
-    setTimeout(() => {
-      const isHue = /huế|hue/i.test(query);
-      const destination = isHue ? 'Huế' : 'Đà Nẵng';
-      setGeneratedIdea({
-        title: query.length > 40 ? `Hành trình ${destination}` : query,
-        destination,
-        summary: `GreenTrip AI đã phác thảo hành trình tối ưu hóa cung đường và ưu tiên phương tiện giao thông xanh tại ${destination}.`,
-        days: [
-          `Ngày 1: Check-in, ghé quán ăn đặc sản chuẩn vị và dạo ngắm cảnh biểu tượng ${destination}`,
-          `Ngày 2: Trải nghiệm văn hóa di tích lịch sử và danh lam thắng cảnh thiên nhiên`,
-          `Ngày 3: Mua sắm quà lưu niệm địa phương, tận hưởng không khí thư thái trước khi trở về`,
-        ],
-      });
-      setIsGeneratingIdea(false);
-    }, 600);
-  };
+  const [assistantOpen,setAssistantOpen]=useState(false);
+  const [assistantTripId,setAssistantTripId]=useState('');
+  const assistantTrip=trips.find(trip=>trip.id===assistantTripId);
+  const handleSendPrompt=(promptText?:string)=>{const query=(promptText||chatPrompt).trim();if(!query)return;setChatPrompt(query);setAssistantOpen(true);};
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#fcfcfd] overflow-y-auto no-scrollbar relative select-none">
@@ -443,7 +401,7 @@ export default function HomeDashboardView({
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSendPrompt();
             }}
-            placeholder="Hỏi GreenTrip AI... (Lên ý tưởng chuyến đi, hỏi thời tiết, quán ăn ngon...)"
+            placeholder="Hỏi GreenTrip AI... (Tìm địa điểm, lưu Ý tưởng, xếp lịch theo ngày)"
             className="flex-1 bg-transparent text-[13.5px] text-gray-900 placeholder-gray-400 focus:outline-none min-w-0"
           />
 
@@ -451,18 +409,18 @@ export default function HomeDashboardView({
           <div className="flex items-center gap-1.5 shrink-0 pr-1">
             <button
               type="button"
-              onClick={() => handleSendPrompt('Gợi ý cho tôi chuyến đi xanh 2 ngày tại Đà Nẵng')}
+              onClick={() => handleSendPrompt('Gợi ý điểm thiên nhiên ở Đà Nẵng')}
               className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-black transition cursor-pointer"
-              title="Nhập bằng giọng nói (Voice)"
+              title="Gợi ý điểm thiên nhiên"
             >
-              <Mic size={17} />
+              <Sparkles size={17} />
             </button>
 
             {chatPrompt.trim() ? (
               <button
                 type="button"
                 onClick={() => handleSendPrompt()}
-                disabled={isGeneratingIdea}
+
                 className="w-8 h-8 rounded-full bg-black text-white hover:bg-neutral-800 flex items-center justify-center transition shadow-xs cursor-pointer active:scale-95"
                 title="Gửi câu hỏi"
               >
@@ -471,7 +429,7 @@ export default function HomeDashboardView({
             ) : (
               <button
                 type="button"
-                onClick={() => handleSendPrompt('Lên ý tưởng lịch trình ngẫu nhiên')}
+                onClick={() => handleSendPrompt('helo')}
                 className="w-8 h-8 rounded-full bg-black text-white hover:bg-neutral-800 flex items-center justify-center transition shadow-xs cursor-pointer active:scale-95"
                 title="Kích hoạt trợ lý AI"
               >
@@ -482,132 +440,13 @@ export default function HomeDashboardView({
         </div>
       </div>
 
-      {/* ─── POPUP TRẢ LỜI Ý TƯỞNG CỦA CHATBOT (KHI NGƯỜI DÙNG HỎI) ─── */}
-      {generatedIdea && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center">
-                  <Sparkles size={14} className="fill-white" />
-                </div>
-                <h3 className="font-bold text-[15px] text-gray-950">
-                  Gợi ý từ Trợ lý GreenTrip AI
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setGeneratedIdea(null)}
-                className="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-black cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-extrabold text-[16px] text-gray-950">
-                {generatedIdea.title}
-              </h4>
-              <p className="text-[13px] text-gray-600 leading-relaxed">
-                {generatedIdea.summary}
-              </p>
-            </div>
-
-            <div className="bg-gray-50 rounded-2xl p-3.5 space-y-2 border border-gray-100">
-              <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                Khung lịch trình đề xuất:
-              </div>
-              {generatedIdea.days.map((dayText, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-xs text-gray-800 font-medium">
-                  <CheckCircle2 size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-                  <span>{dayText}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-2 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setGeneratedIdea(null)}
-                className="px-4 py-2 rounded-full border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer"
-              >
-                Đóng
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onCreateTrip(generatedIdea.destination, generatedIdea.title);
-                  setGeneratedIdea(null);
-                }}
-                className="px-5 py-2 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
-              >
-                <CalendarPlus size={14} />
-                <span>Tạo lịch trình từ ý tưởng này</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── MODAL DIỄN ĐÀN & CẨM NANG DU LỊCH MUST-TRY ─── */}
-      {showForumModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <i className="ph ph-chat-centered-text text-xl text-black"></i>
-                <h3 className="font-bold text-[16px] text-gray-950">
-                  Diễn đàn & Gói địa điểm Must-Try
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowForumModal(false)}
-                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-black cursor-pointer"
-              >
-                <X size={17} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-5">
-              <p className="text-[13.5px] text-gray-600 leading-relaxed">
-                Nơi tổng hợp các gói địa điểm, lịch trình chuẩn và đánh giá từ cộng đồng du khách xanh. Chọn một gói bất kỳ để đưa thẳng vào kế hoạch của bạn:
-              </p>
-
-              <div className="space-y-4">
-                {MUST_TRY_PACKAGES.map((pkg) => (
-                  <div
-                    key={pkg.id}
-                    className="p-4 rounded-2xl border border-gray-200/90 hover:border-black transition flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-white"
-                  >
-                    <div className="space-y-1 max-w-md">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          {pkg.badge}
-                        </span>
-                        <span className="text-xs text-gray-400 font-medium">{pkg.duration}</span>
-                      </div>
-                      <h4 className="font-bold text-[14px] text-gray-950">{pkg.title}</h4>
-                      <p className="text-xs text-gray-500 line-clamp-1">{pkg.description}</p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onCreateTrip(pkg.destination, pkg.title);
-                        setShowForumModal(false);
-                      }}
-                      className="px-4 py-2 rounded-full bg-black text-white text-xs font-bold hover:bg-neutral-800 transition shrink-0 cursor-pointer shadow-xs active:scale-95"
-                    >
-                      + Lên lịch trình ngay
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {assistantOpen && <aside className="fixed inset-y-0 right-0 z-50 flex w-full flex-col overflow-hidden border-l border-neutral-200 bg-white shadow-xl sm:w-[540px]" aria-label="Trợ lý khám phá">
+        <button type="button" className="min-h-11 shrink-0 self-end px-4 text-sm underline" onClick={()=>setAssistantOpen(false)}>Đóng</button>
+        <label className="px-4 py-2 text-xs text-neutral-700">Chuyến đang dùng<select className="mt-2 min-h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm" value={assistantTripId} onChange={event=>setAssistantTripId(event.target.value)}><option value="">Chưa chọn chuyến · Khám phá trước</option>{trips.map(trip=><option value={trip.id} key={trip.id}>{trip.title}</option>)}</select></label>
+        <TravelAssistant mode="discover" trip={assistantTrip} initialPrompt={assistantTripId?undefined:chatPrompt}
+          onIdeasChange={(ids,revision)=>assistantTrip&&onUpdateTrip?.({...assistantTrip,ideas:ids,workspaceRevision:revision ?? assistantTrip.workspaceRevision})}
+          onBudgetChange={budget=>assistantTrip&&onUpdateTrip?.({...assistantTrip,totalBudget:budget})}/>
+      </aside>}
 
       {/* ─── ONBOARDING MODAL (KHẢO SÁT THIẾT LẬP NGƯỜI DÙNG CỦA BẠN) ─── */}
       <OnboardingModal

@@ -81,21 +81,20 @@ def test_logged_in_user_cannot_hijack_existing_anonymous_trip(tmp_path, monkeypa
     try:
         with TestClient(app) as client:
             created = client.put("/trips/guest-trip-1/itinerary", json=payload)
-            assert created.status_code == 200
-
-            attacker_token = create_access_token("attacker-user-99")
-            payload["title"] = "Lịch trình khách (đã cập nhật)"
-            updated = client.put(
-                "/trips/guest-trip-1/itinerary",
-                json=payload,
-                headers={"Authorization": f"Bearer {attacker_token}"},
-            )
-            assert updated.status_code == 200
-
-            # Still readable anonymously because user_id was NOT hijacked to attacker-user-99
-            guest_read = client.get("/trips/guest-trip-1/itinerary")
-            assert guest_read.status_code == 200
-            assert guest_read.json()["title"] == "Lịch trình khách (đã cập nhật)"
+            assert created.status_code == 401
+            # Seed an old anonymous row internally; the public API no longer creates these.
+            from app.trips.itinerary_repository import save_itinerary
+            from app.trips.schemas import TripItinerarySyncRequest
+            save_itinerary(TripItinerarySyncRequest.model_validate(payload),None)
+            from app.auth.dependencies import get_current_user_id
+            app.dependency_overrides[get_current_user_id]=lambda:'attacker-user-99'
+            try:
+                payload['title']='Attacker changed title'
+                assert client.put('/trips/guest-trip-1/itinerary',json=payload).status_code in (403,404)
+                assert client.get('/trips/guest-trip-1/itinerary').status_code in (403,404)
+            finally:
+                app.dependency_overrides.pop(get_current_user_id,None)
+            assert client.get('/trips/guest-trip-1/itinerary').status_code==401
 
         conn = sqlite3.connect(str(sqlite_file))
         stored_user_id = conn.execute("SELECT user_id FROM itineraries WHERE trip_id = 'guest-trip-1'").fetchone()[0]

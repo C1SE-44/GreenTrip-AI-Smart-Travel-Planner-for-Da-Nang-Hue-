@@ -502,52 +502,23 @@ export function stopFromPoi(poi: Poi, source: 'idea' | 'manual' | 'assistant' = 
 const itineraryWrites = new Map<string, Promise<TripItinerary>>();
 const itineraryReads = new Map<string, Promise<TripItinerary>>();
 
+function itinerarySession() {
+  const token=localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+  if(!token)throw new Error('Đăng nhập để mở hoặc lưu lịch trình.');
+  return token;
+}
 export async function getTripItinerary(tripId: string): Promise<TripItinerary> {
-  const existingRead = itineraryReads.get(tripId);
-  if (existingRead) return existingRead;
-
-  const fetchPromise = (async () => {
-    await itineraryWrites.get(tripId)?.catch(() => undefined);
-    const key = `greentrip_itinerary_${tripId}`;
-    const cacheBeforeRead = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
-    try {
-      const remote = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(tripId)}/itinerary`);
-      if (remote && remote.trip_id) {
-        try {
-          if (typeof localStorage !== 'undefined') {
-            const current = localStorage.getItem(key);
-            if (current && current !== cacheBeforeRead) return JSON.parse(current) as TripItinerary;
-            localStorage.setItem(`greentrip_itinerary_${tripId}`, JSON.stringify(remote));
-          }
-        } catch (e) {
-          console.warn('Failed to cache itinerary to localStorage', e);
-        }
-        return remote;
-      }
-    } catch (err) {
-      const localRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(`greentrip_itinerary_${tripId}`) : null;
-      if (localRaw) {
-        try {
-          return JSON.parse(localRaw) as TripItinerary;
-        } catch (e) {
-          console.warn('Failed to parse localStorage itinerary', e);
-        }
-      }
-      throw err;
-    }
-    const localRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(`greentrip_itinerary_${tripId}`) : null;
-    if (localRaw) {
-      return JSON.parse(localRaw) as TripItinerary;
-    }
-    throw new Error(`Itinerary not found for trip ${tripId}`);
+  const token=itinerarySession(), key=`${token}:${tripId}`;
+  const existing=itineraryReads.get(key); if(existing)return existing;
+  const pending=(async()=>{
+    await itineraryWrites.get(key)?.catch(()=>undefined);
+    if(token!==itinerarySession())throw new Error('Tài khoản đã thay đổi.');
+    const result=await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(tripId)}/itinerary`,{headers:{Authorization:`Bearer ${token}`}});
+    if(token!==itinerarySession())throw new Error('Tài khoản đã thay đổi.');
+    return result;
   })();
-
-  itineraryReads.set(tripId, fetchPromise);
-  try {
-    return await fetchPromise;
-  } finally {
-    itineraryReads.delete(tripId);
-  }
+  itineraryReads.set(key,pending);
+  try{return await pending;}finally{if(itineraryReads.get(key)===pending)itineraryReads.delete(key);}
 }
 
 export function scheduleError(next: TripItinerary, previous?: TripItinerary | null): string {
@@ -593,38 +564,24 @@ export function scheduleError(next: TripItinerary, previous?: TripItinerary | nu
 }
 
 export async function saveTripItinerary(itinerary: TripItinerary): Promise<TripItinerary> {
-  const key = `greentrip_itinerary_${itinerary.trip_id}`;
-  const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
-  const previous = raw ? JSON.parse(raw) as TripItinerary : null;
-  const error = scheduleError(itinerary, previous);
-  if (error) throw new Error(error);
-  const staged = JSON.stringify(itinerary);
-  if (typeof localStorage !== 'undefined') localStorage.setItem(key, staged);
-  const preceding = itineraryWrites.get(itinerary.trip_id);
-  const pending = (async () => {
-    await preceding?.catch(() => undefined);
-    let saved: TripItinerary;
-    try {
-      saved = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(itinerary.trip_id)}/itinerary`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itinerary),
-      });
-    } catch (cause) {
-      const status = (cause as { status?: number }).status;
-      if (status && status < 500) {
-        if (typeof localStorage !== 'undefined' && localStorage.getItem(key) === staged) {
-          if (raw) localStorage.setItem(key, raw); else localStorage.removeItem(key);
-        }
-        throw cause;
-      }
-      console.warn('Backend saveTripItinerary failed, using local storage state', cause);
-      saved = { ...itinerary, updated_at: new Date().toISOString() };
-    }
-    if (typeof localStorage !== 'undefined' && localStorage.getItem(key) === staged) localStorage.setItem(key, JSON.stringify(saved));
+  const token=itinerarySession(), key=`${token}:${itinerary.trip_id}`;
+  const preceding=itineraryWrites.get(key);
+  const pending=(async()=>{
+    await preceding?.catch(()=>undefined);
+    if(token!==itinerarySession())throw new Error('Tài khoản đã thay đổi.');
+    let previous:TripItinerary|null=null;
+    try{previous=await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(itinerary.trip_id)}/itinerary`,{headers:{Authorization:`Bearer ${token}`}});}
+    catch(error){if((error as {status?:number}).status!==404)throw error;}
+    const error=scheduleError(itinerary,previous);if(error)throw new Error(error);
+    if(token!==itinerarySession())throw new Error('Tài khoản đã thay đổi.');
+    const saved=await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(itinerary.trip_id)}/itinerary`,{
+      method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(itinerary),
+    });
+    if(token!==itinerarySession())throw new Error('Tài khoản đã thay đổi.');
     return saved;
   })();
-  itineraryWrites.set(itinerary.trip_id, pending);
-  const clear = () => { if (itineraryWrites.get(itinerary.trip_id) === pending) itineraryWrites.delete(itinerary.trip_id); };
-  void pending.then(clear, clear);
+  itineraryWrites.set(key,pending);
+  void pending.finally(()=>{if(itineraryWrites.get(key)===pending)itineraryWrites.delete(key);}).catch(()=>undefined);
   return pending;
 }
 

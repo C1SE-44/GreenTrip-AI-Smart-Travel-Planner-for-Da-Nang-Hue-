@@ -1,0 +1,545 @@
+{
+  "version": "dialogue-v1",
+  "source": "synthetic, manually labeled; no account/chat export",
+  "cases": [
+    {
+      "id": "train-mix",
+      "split": "train",
+      "message": "Tìm hai quán cafe và một chùa ở Huế",
+      "context": {},
+      "expected": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 2,
+              "temple": 1
+            }
+          }
+        ],
+        "search_scope": "new"
+      },
+      "forbidden_changes": []
+    },
+    {
+      "id": "train-list",
+      "split": "train",
+      "message": "Những chỗ đã lưu trong chuyến này đâu?",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm A",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm B",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm C",
+            "city": "Huế"
+          }
+        ]
+      },
+      "expected": {
+        "intent": "list_ideas",
+        "changes": []
+      },
+      "forbidden_changes": []
+    },
+    {
+      "id": "train-near",
+      "split": "train",
+      "message": "Không cần gần Chùa A nữa, vẫn Huế dưới 80k nhé",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa A",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa A"
+      },
+      "expected": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear",
+            "value": null
+          }
+        ],
+        "search_scope": "refine"
+      },
+      "forbidden_changes": [
+        {
+          "field": "city",
+          "op": "clear"
+        },
+        {
+          "field": "category",
+          "op": "clear"
+        },
+        {
+          "field": "max_price",
+          "op": "clear"
+        }
+      ]
+    },
+    {
+      "id": "train-edit",
+      "split": "train",
+      "message": "Ngày 2 bắt đầu sau 10:00, giữ bữa trưa, thay chỗ cuối thôi",
+      "context": {
+        "filters": {
+          "city": "Huế"
+        },
+        "draft_active": true,
+        "focused_day": 2,
+        "day_stops": [
+          {
+            "position": 1,
+            "title": "Điểm A",
+            "stop_type": "poi",
+            "start_time": "08:00"
+          },
+          {
+            "position": 2,
+            "title": "Ăn trưa",
+            "stop_type": "rest",
+            "start_time": "12:00",
+            "end_time": "13:00"
+          },
+          {
+            "position": 3,
+            "title": "Điểm B",
+            "stop_type": "poi",
+            "start_time": "15:00"
+          }
+        ]
+      },
+      "expected": {
+        "intent": "plan",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:00"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ]
+      },
+      "forbidden_changes": []
+    },
+    {
+      "id": "train-food",
+      "split": "train",
+      "message": "Giờ mình chuyển sang tìm món mì Quảng ở Đà Nẵng",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa A",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa A"
+      },
+      "expected": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "food"
+          },
+          {
+            "field": "dish",
+            "op": "set",
+            "value": "mì Quảng"
+          }
+        ],
+        "search_scope": "new"
+      },
+      "forbidden_changes": []
+    },
+    {
+      "id": "train-quiet",
+      "split": "train",
+      "message": "Trong hai quán vừa đưa, quán nào có dữ liệu yên tĩnh hơn?",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán A",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán B",
+            "city": "Huế"
+          }
+        ]
+      },
+      "expected": {
+        "intent": "compare",
+        "changes": [
+          {
+            "field": "quiet",
+            "op": "prefer",
+            "value": true
+          }
+        ]
+      },
+      "forbidden_changes": []
+    },
+    {
+      "id": "dev-mix",
+      "split": "dev",
+      "message": "Huế nhé: lấy ba ngôi chùa cùng hai tiệm cà phê",
+      "context": {},
+      "expected": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "temple": 3,
+              "cafe": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      },
+      "forbidden_changes": []
+    },
+    {
+      "id": "dev-list",
+      "split": "dev",
+      "message": "Nhắc lại giúp những nơi mình đã bỏ vào Ý tưởng của chuyến này",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm A",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm B",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm C",
+            "city": "Huế"
+          }
+        ]
+      },
+      "expected": {
+        "intent": "list_ideas",
+        "changes": []
+      },
+      "forbidden_changes": []
+    },
+    {
+      "id": "dev-near",
+      "split": "dev",
+      "message": "Khoảng cách tới ngôi chùa đó không quan trọng nữa, các điều kiện khác như cũ",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa A",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa A"
+      },
+      "expected": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear",
+            "value": null
+          }
+        ],
+        "search_scope": "refine"
+      },
+      "forbidden_changes": [
+        {
+          "field": "city",
+          "op": "clear"
+        },
+        {
+          "field": "category",
+          "op": "clear"
+        },
+        {
+          "field": "max_price",
+          "op": "clear"
+        }
+      ]
+    },
+    {
+      "id": "dev-edit",
+      "split": "dev",
+      "message": "Lùi giờ xuất phát ngày hai tới 10:30, ăn trưa giữ chỗ, chỉ thay điểm chốt ngày",
+      "context": {
+        "filters": {
+          "city": "Huế"
+        },
+        "draft_active": true,
+        "focused_day": 2,
+        "day_stops": [
+          {
+            "position": 1,
+            "title": "Điểm A",
+            "stop_type": "poi",
+            "start_time": "08:00"
+          },
+          {
+            "position": 2,
+            "title": "Ăn trưa",
+            "stop_type": "rest",
+            "start_time": "12:00",
+            "end_time": "13:00"
+          },
+          {
+            "position": 3,
+            "title": "Điểm B",
+            "stop_type": "poi",
+            "start_time": "15:00"
+          }
+        ]
+      },
+      "expected": {
+        "intent": "plan",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:30"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ]
+      },
+      "forbidden_changes": []
+    },
+    {
+      "id": "test-mix",
+      "split": "test",
+      "message": "Chọn tổng cộng bốn nơi ở Đà Nẵng: một bảo tàng với ba quán coffee",
+      "context": {},
+      "expected": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "museum": 1,
+              "cafe": 3
+            }
+          }
+        ],
+        "search_scope": "new"
+      },
+      "forbidden_changes": []
+    },
+    {
+      "id": "test-list",
+      "split": "test",
+      "message": "Trong chuyến này mình đã gom được các điểm nào nhỉ?",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm A",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm B",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm C",
+            "city": "Huế"
+          }
+        ]
+      },
+      "expected": {
+        "intent": "list_ideas",
+        "changes": []
+      },
+      "forbidden_changes": []
+    },
+    {
+      "id": "test-exclude",
+      "split": "test",
+      "message": "Gợi ý tiếp nhưng bỏ quán đứng đầu danh sách vừa rồi",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán A",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán B",
+            "city": "Huế"
+          }
+        ]
+      },
+      "expected": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              1
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      },
+      "forbidden_changes": []
+    },
+    {
+      "id": "test-quiet",
+      "split": "test",
+      "message": "Hai quán này thì nơi nào hợp ngồi trò chuyện yên hơn?",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán A",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán B",
+            "city": "Huế"
+          }
+        ]
+      },
+      "expected": {
+        "intent": "compare",
+        "changes": []
+      },
+      "forbidden_changes": [],
+      "one_of_changes": [
+        [
+          {
+            "field": "quiet",
+            "op": "prefer",
+            "value": true
+          }
+        ],
+        [
+          {
+            "field": "ambience",
+            "op": "prefer",
+            "value": "conversation"
+          }
+        ]
+      ]
+    }
+  ]
+}

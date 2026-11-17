@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException
@@ -171,17 +171,52 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
     cursor.execute("UPDATE itineraries SET user_id = NULL WHERE trip_id LIKE 'sample-%'")
 
 
-def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> TripItineraryResponse:
+def _itinerary_revision(value: Any) -> datetime | str:
+    if value == '__missing__':
+        return value
+    parsed = datetime.fromisoformat(str(value))
+    return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
+
+
+def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None, *, expected_updated_at: str | None = None) -> TripItineraryResponse:
+    from app.assistant.workspaces import assert_access
+    assert_access(payload.trip_id,user_id)
     is_sample = payload.trip_id.startswith("sample-")
     effective_user_id = None if is_sample else user_id
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
                 _ensure_local_tables(connection, cursor)
+                if isinstance(connection, SQLiteConnectionWrapper):
+                    connection.commit()
+                    cursor.execute('BEGIN IMMEDIATE')
+                else:
+                    cursor.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))', (payload.trip_id,))
+                if expected_updated_at is not None:
+                    if 'sqlite' not in type(connection).__name__.lower():
+                        # Assistant writes must not put private plans in publicly accessible Data API tables.
+                        cursor.execute("""
+                            SELECT COUNT(*) = 3 AND BOOL_AND(c.relrowsecurity
+                              AND NOT has_table_privilege('anon', c.oid, 'SELECT, INSERT, UPDATE, DELETE')
+                              AND NOT has_table_privilege('authenticated', c.oid, 'SELECT, INSERT, UPDATE, DELETE'))
+                            FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+                            WHERE n.nspname = 'public' AND c.relname IN ('itineraries', 'itinerary_days', 'itinerary_stops')
+                        """)
+                        if not cursor.fetchone()[0]:
+                            raise HTTPException(status_code=503, detail='Lưu lịch online chưa được bật cho bản demo. Bản nháp vẫn được giữ; quản trị viên cần hoàn tất cấu hình bảo vệ dữ liệu.')
+                        cursor.execute('SELECT user_id, updated_at FROM public.itineraries WHERE trip_id = %s FOR UPDATE', (payload.trip_id,))
+                    else:
+                        cursor.execute('SELECT user_id, updated_at FROM public.itineraries WHERE trip_id = %s', (payload.trip_id,))
+                    snapshot = cursor.fetchone()
+                    actual = _itinerary_revision(snapshot[1]) if snapshot else '__missing__'
+                    if actual != _itinerary_revision(expected_updated_at):
+                        raise HTTPException(status_code=409, detail='Lịch vừa thay đổi ở nơi khác. Hãy tạo lại bản nháp.')
+                    if snapshot and str(snapshot[0] or '') != str(user_id):
+                        raise HTTPException(status_code=403, detail='Chuyến đi không thuộc tài khoản này.')
                 cursor.execute("SELECT user_id FROM public.itineraries WHERE trip_id = %s", (payload.trip_id,))
                 existing = cursor.fetchone()
                 owner_id = existing[0] if existing else None
-                if not is_sample and owner_id and owner_id != user_id:
+                if not is_sample and existing and str(owner_id or "") != str(user_id or ""):
                     raise HTTPException(status_code=404, detail="Không tìm thấy lịch trình.")
 
                 cursor.execute(
@@ -200,6 +235,9 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                     """,
                     (payload.trip_id, effective_user_id, payload.title, payload.destination, payload.start_date, payload.days_count, payload.trip_id, payload.days_count),
                 )
+                if isinstance(connection, SQLiteConnectionWrapper):
+                    # SQLite CURRENT_TIMESTAMP has only seconds: two edits must still get different revisions.
+                    cursor.execute('UPDATE public.itineraries SET updated_at = %s WHERE trip_id = %s', (datetime.now(timezone.utc).replace(tzinfo=None).isoformat(), payload.trip_id))
                 cursor.execute(
                     "DELETE FROM public.itinerary_stops WHERE day_id IN (SELECT day_id FROM public.itinerary_days WHERE trip_id = %s)",
                     (payload.trip_id,),
@@ -237,6 +275,8 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
 
 
 def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | None:
+    from app.assistant.workspaces import assert_access
+    assert_access(trip_id,user_id)
     is_sample = trip_id.startswith("sample-")
     try:
         with get_connection() as connection:
@@ -249,7 +289,7 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                 trip = cursor.fetchone()
                 if not trip:
                     return None
-                if not is_sample and trip[1] and trip[1] != user_id:
+                if not is_sample and str(trip[1] or "") != str(user_id or ""):
                     return None
                 cursor.execute(
                     "SELECT day_id, day_number, date, title FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
@@ -332,6 +372,8 @@ def list_user_itineraries(user_id: str) -> list[MyTripSummaryResponse]:
 
 def get_itinerary_with_ownership(trip_id: str, user_id: str) -> TripItineraryResponse:
     """Retrieve itinerary details while strictly enforcing owner permissions."""
+    from app.assistant.workspaces import assert_access
+    assert_access(trip_id,user_id)
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
@@ -344,7 +386,7 @@ def get_itinerary_with_ownership(trip_id: str, user_id: str) -> TripItineraryRes
                 if not trip:
                     raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi.")
                 owner_id = trip[1]
-                if not trip_id.startswith("sample-") and owner_id and user_id and owner_id != user_id:
+                if not trip_id.startswith("sample-") and str(owner_id or "") != str(user_id or ""):
                     raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập chuyến đi này.")
 
                 cursor.execute(
@@ -389,6 +431,8 @@ def update_itinerary_metadata(
     destination: str | None = None,
 ) -> TripItineraryResponse:
     """Update high-level metadata (title, start_date, destination) for a user's trip."""
+    from app.assistant.workspaces import assert_access
+    assert_access(trip_id,user_id)
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
@@ -401,7 +445,7 @@ def update_itinerary_metadata(
                 if not trip:
                     raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi cần cập nhật.")
                 owner_id = trip[1]
-                if not trip_id.startswith("sample-") and owner_id and user_id and owner_id != user_id:
+                if not trip_id.startswith("sample-") and str(owner_id or "") != str(user_id or ""):
                     raise HTTPException(status_code=403, detail="Bạn không có quyền chỉnh sửa chuyến đi này.")
 
                 updates = []
@@ -432,6 +476,8 @@ def update_itinerary_metadata(
 
 def delete_user_itinerary(trip_id: str, user_id: str) -> bool:
     """Permanently delete a trip and all its days and stops with ownership validation."""
+    from app.assistant.workspaces import assert_access
+    assert_access(trip_id,user_id)
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
@@ -444,7 +490,7 @@ def delete_user_itinerary(trip_id: str, user_id: str) -> bool:
                 if not trip:
                     raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi cần xóa.")
                 owner_id = trip[1]
-                if not trip_id.startswith("sample-") and owner_id and user_id and owner_id != user_id:
+                if not trip_id.startswith("sample-") and str(owner_id or "") != str(user_id or ""):
                     raise HTTPException(status_code=403, detail="Bạn không có quyền xóa chuyến đi này.")
 
                 cursor.execute(

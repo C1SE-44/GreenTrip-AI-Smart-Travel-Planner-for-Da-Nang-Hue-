@@ -1,10 +1,10 @@
 from collections.abc import Generator
 import logging
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from psycopg import Connection
 from app.db.postgres import get_connection
 from app.trips.schemas import CopilotChatRequest, CopilotChatResponse
-from app.auth.service import decode_access_token
+from app.auth.dependencies import get_current_user_id
 from app.trips.itinerary_repository import get_itinerary, save_itinerary
 from app.trips.schedule_validation import validate_schedule_changes
 from app.trips.schemas import TripItineraryResponse, TripItinerarySyncRequest, TripParametersRequest, TripParametersResponse
@@ -14,23 +14,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/trips", tags=["Trip Planner"])
 
 
-def _optional_user_id(authorization: str | None) -> str | None:
-    if not authorization:
-        return None
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Phiên đăng nhập không hợp lệ.")
-    user_id = decode_access_token(authorization.split("Bearer ", 1)[1].strip())
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Phiên đăng nhập không hợp lệ.")
-    return user_id
-
-
 @router.get("/{trip_id}/itinerary", response_model=TripItineraryResponse)
 def read_trip_itinerary(
     trip_id: str,
-    authorization: str | None = Header(default=None),
+    user_id: str = Depends(get_current_user_id),
 ) -> TripItineraryResponse:
-    itinerary = get_itinerary(trip_id, _optional_user_id(authorization))
+    itinerary = get_itinerary(trip_id, user_id)
     if itinerary is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chưa có lịch trình được lưu.")
     return itinerary
@@ -40,11 +29,10 @@ def read_trip_itinerary(
 def write_trip_itinerary(
     trip_id: str,
     payload: TripItinerarySyncRequest,
-    authorization: str | None = Header(default=None),
+    user_id: str = Depends(get_current_user_id),
 ) -> TripItineraryResponse:
     if trip_id != payload.trip_id:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Mã chuyến đi không khớp.")
-    user_id = _optional_user_id(authorization)
     previous = get_itinerary(trip_id, user_id)
     validate_schedule_changes(payload, previous)
     return save_itinerary(payload, user_id)
@@ -84,6 +72,7 @@ def get_trips_connection() -> Generator[Connection, None, None]:
 )
 def copilot_chat(
     payload: CopilotChatRequest,
+    _user_id: str = Depends(get_current_user_id),
     connection: Connection = Depends(get_trips_connection),
 ) -> CopilotChatResponse:
     try:

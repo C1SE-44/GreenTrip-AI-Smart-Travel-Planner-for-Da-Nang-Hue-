@@ -1,5 +1,8 @@
-from fastapi import APIRouter, HTTPException, Path, status
+from fastapi import APIRouter, HTTPException, Header, Path, status
 from pydantic import BaseModel
+
+from app.auth.dependencies import get_current_user_id
+from app.trips.itinerary_repository import get_itinerary_with_ownership
 
 from app.itineraries.schemas import DayRouteResponse, RouteStop
 from app.itineraries.service import (
@@ -55,7 +58,11 @@ router = APIRouter(tags=["Itineraries"])
 def get_day_route(
     itinerary_id: str = Path(..., description="Mã định danh lịch trình chuyến đi (ví dụ: 'sample-danang-hue-3d')"),
     day_number: int = Path(..., ge=1, description="Ngày thứ N trong lịch trình (bắt đầu từ 1)"),
+    authorization: str | None = Header(default=None),
 ) -> DayRouteResponse:
+    if not itinerary_id.startswith("sample-"):
+        user_id = get_current_user_id(authorization)
+        get_itinerary_with_ownership(itinerary_id, user_id)
     if day_number < 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

@@ -1,0 +1,5 @@
+
+.training/
+
+# Private local sessions, database snapshots and downloaded model artifacts
+data/

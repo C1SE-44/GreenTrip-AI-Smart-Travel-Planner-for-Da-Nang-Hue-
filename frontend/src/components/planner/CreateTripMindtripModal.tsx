@@ -7,8 +7,8 @@ import { validateTripParameters } from '@/services/tripService';
 export interface CreateTripMindtripModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateTrip?: (trip: UserTrip) => void;
-  onCreated?: (trip: UserTrip) => void;
+  onCreateTrip?: (trip: UserTrip) => void | Promise<void>;
+  onCreated?: (trip: UserTrip) => void | Promise<void>;
 }
 
 function estimatePacing(days: number): { level: 'Relaxed' | 'Balanced' | 'Fast'; label: string } {
@@ -181,6 +181,7 @@ export default function CreateTripMindtripModal({
 
   // Gửi thông số sang Backend API FastAPI để xác thực & sinh lịch trình
   const handleCreate = async () => {
+    if(!(localStorage.getItem('access_token') || sessionStorage.getItem('access_token'))){setErrorMessage('Đăng nhập để tạo chuyến đi.');return;}
     if (whenTab === 'dates' && (!rangeStart || !rangeEnd || dateKey(rangeStart) < vietnamNow().date)) {
       setErrorMessage('Chọn đủ khoảng ngày từ hôm nay trở đi.');
       return;
@@ -197,6 +198,7 @@ export default function CreateTripMindtripModal({
       ? `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, '0')}-${String(rangeStart.getDate()).padStart(2, '0')}`
       : null;
 
+    let savingTrip=false;
     try {
       const backendResponse = await validateTripParameters({
         destination: normDest,
@@ -220,7 +222,7 @@ export default function CreateTripMindtripModal({
         : 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&q=80';
 
       const newTrip: UserTrip = {
-        id: 'trip_' + Date.now(),
+        id: 'trip_' + crypto.randomUUID(),
         title,
         destination: normDest,
         startDate: startDateStr || whenDisplay,
@@ -240,10 +242,12 @@ export default function CreateTripMindtripModal({
 
       const cb = onCreateTrip || onCreated;
       if (cb) {
-        cb(newTrip);
+        savingTrip=true;
+        await cb(newTrip);
       }
       onClose();
     } catch (err: unknown) {
+      if(savingTrip){setErrorMessage(err instanceof Error?err.message:'Chưa lưu được chuyến đi. Thử lại nhé.');return;}
       console.warn('Backend API notification, falling back smoothly:', err);
 
       const cleanPrompt = tripPrompt.trim();
@@ -256,7 +260,7 @@ export default function CreateTripMindtripModal({
       const pacing = estimatePacing(validDays);
 
       const newTrip: UserTrip = {
-        id: 'trip_' + Date.now(),
+        id: 'trip_' + crypto.randomUUID(),
         title,
         destination: normDest,
         startDate: startDateStr || whenDisplay,
@@ -272,10 +276,8 @@ export default function CreateTripMindtripModal({
       };
 
       const cb = onCreateTrip || onCreated;
-      if (cb) {
-        cb(newTrip);
-      }
-      onClose();
+      try { if(cb)await cb(newTrip); onClose(); }
+      catch(error){setErrorMessage(error instanceof Error?error.message:'Chưa lưu được chuyến đi.');}
     } finally {
       setIsSubmitting(false);
     }

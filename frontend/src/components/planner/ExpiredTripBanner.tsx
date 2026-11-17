@@ -2,13 +2,8 @@ import React, { useState } from 'react';
 import { Clock, CalendarCheck, X, RefreshCw } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import { vietnamNow, tripStartDate, dateAt, tripRangeLabel } from '@/utils/tripDates';
-import {
-  type TripItinerary,
-  getTripItinerary,
-  saveTripItinerary,
-  createEmptyItinerary,
-  alignItineraryToTrip,
-} from '@/services/itineraryService';
+import type { TripItinerary } from '@/services/itineraryService';
+import { saveTripSchedule } from '@/services/tripSchedule';
 
 export interface ExpiredTripBannerProps {
   trip: UserTrip;
@@ -20,7 +15,6 @@ export interface ExpiredTripBannerProps {
 
 export default function ExpiredTripBanner({
   trip,
-  plan,
   onUpdateTrip,
   onPlanUpdated,
   onOpenWhen,
@@ -51,24 +45,9 @@ export default function ExpiredTripBanner({
         daysCount: count,
       };
 
-      let current = plan;
-      if (!current) {
-        try {
-          current = await getTripItinerary(trip.id);
-        } catch {
-          current = createEmptyItinerary(trip);
-        }
-      }
-
-      const aligned = alignItineraryToTrip(current, updatedTrip);
-      if (aligned.warning) {
-        setError(aligned.warning);
-        return;
-      }
-
-      await saveTripItinerary(aligned.itinerary);
-      onPlanUpdated?.(aligned.itinerary);
-      onUpdateTrip?.(updatedTrip);
+      const saved = await saveTripSchedule(updatedTrip);
+      onUpdateTrip?.(saved.trip);
+      onPlanUpdated?.(saved.itinerary);
       setDismissed(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Chưa thể cập nhật ngày chuyến đi.');

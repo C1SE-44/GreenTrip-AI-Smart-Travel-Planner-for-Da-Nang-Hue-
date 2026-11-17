@@ -114,6 +114,8 @@ export default function TripCalendarView({
     return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
   }, []);
   const [isLoading, setIsLoading] = useState(true);
+  const loadFailed = useRef(false);
+  const [loadRetry, setLoadRetry] = useState(0);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(1);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
@@ -136,6 +138,8 @@ export default function TripCalendarView({
   useEffect(() => {
     let active = true;
     setIsLoading(true);
+    loadFailed.current = false;
+    setSaveError('');
     getTripItinerary(trip.id)
       .then((p) => {
         if (active && p) {
@@ -143,8 +147,13 @@ export default function TripCalendarView({
           setPlan(aligned.itinerary);
         }
       })
-      .catch(() => {
+      .catch((cause) => {
         if (active) {
+          if ((cause as {status?: number}).status !== 404) {
+            loadFailed.current = true;
+            setSaveError(cause instanceof Error ? cause.message : 'Chưa tải được lịch.');
+            return;
+          }
           const fresh = createEmptyItinerary(trip);
           setPlan(fresh);
         }
@@ -153,7 +162,7 @@ export default function TripCalendarView({
     return () => {
       active = false;
     };
-  }, [trip.id]);
+  }, [trip.id, loadRetry]);
 
   // Đồng bộ số ngày khi trip.daysCount thay đổi
   useEffect(() => {
@@ -167,6 +176,7 @@ export default function TripCalendarView({
   }, [trip.daysCount, trip.startDate, trip, plan, isLoading]);
 
   const persistPlan = (nextPlan: TripItinerary) => {
+    if (isLoading || loadFailed.current) { setSaveError('Chưa tải được lịch đầy đủ. Mở lại tab để thử lại trước khi chỉnh.'); return; }
     const error = scheduleError(nextPlan, plan);
     if (error) { setSaveError(error); return; }
     setSaveError('');
@@ -330,8 +340,9 @@ export default function TripCalendarView({
           </div>
 
           {/* Lời nhắc ngắn nếu chưa có hoạt động xếp giờ */}
-          {isLoading && <div role="status" className="mx-4 sm:mx-7 mb-4 rounded-2xl bg-neutral-50 px-3.5 py-3 text-[13px] text-neutral-600">Đang tải lịch chuyến đi…</div>}
-          {!isLoading && totalStops === 0 && (
+          {saveError && <div role="alert" className="mx-4 mb-4 text-sm text-red-700">{saveError}<button type="button" className="ml-3 min-h-11 underline" onClick={()=>setLoadRetry(value=>value+1)}>Thử tải lại</button></div>}
+            {isLoading && <div role="status" className="mx-4 sm:mx-7 mb-4 rounded-2xl bg-neutral-50 px-3.5 py-3 text-[13px] text-neutral-600">Đang tải lịch chuyến đi…</div>}
+          {!isLoading && !saveError && totalStops === 0 && (
             <div className="mx-4 sm:mx-7 mb-4 px-3.5 py-3 rounded-2xl bg-neutral-50 flex flex-wrap items-center justify-between gap-2 text-[13px] leading-5">
               <span className="text-gray-500">Chưa có hoạt động được xếp giờ.</span>
               <button

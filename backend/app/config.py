@@ -36,7 +36,10 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "GreenTrip AI"
     GOOGLE_CLIENT_ID: str = ""
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
+    ASSISTANT_AI_ENABLED: bool = False
+    ASSISTANT_AI_FREE_TIER_CONFIRMED: bool = False
+    ASSISTANT_AI_DAILY_LIMIT: int = Field(default=40, ge=0, le=1000)
 
     @property
     def gemini_configured(self) -> bool:

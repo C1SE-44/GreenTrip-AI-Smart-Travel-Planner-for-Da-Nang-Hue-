@@ -1,3 +1,6 @@
+import { saveTripWorkspace } from '@/services/tripWorkspace';
+import TravelAssistant from './TravelAssistant';
+import { Sparkles } from 'lucide-react';
 import { tripStartDate as getTripStartDate, dateAt, vietnamNow } from '@/utils/tripDates';
 import ExpiredTripBanner from './ExpiredTripBanner';
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -62,7 +65,6 @@ import {
   normalizeLegacyLunchBreaks,
   distanceKm,
   minutesFromTime,
-  updateDateRangeWithDays,
   parseStartDateFromTrip,
   getRoutePositionsForStops,
   buildFallbackRoadCorridor,
@@ -76,6 +78,7 @@ export interface TripItineraryViewProps {
   allPois?: Poi[];
   onBack: () => void;
   onUpdateTrip?: (updatedTrip: UserTrip) => void;
+  onCreatePrivateTrip?: (ideaIds: string[]) => void;
   isDrawerMode?: boolean;
   onClose?: () => void;
   initialFocus?: 'ideas' | 'itinerary';
@@ -196,6 +199,7 @@ export default function TripItineraryView({
   allPois = [],
   onBack,
   onUpdateTrip,
+  onCreatePrivateTrip,
   isDrawerMode = false,
   onClose,
   initialFocus,
@@ -226,6 +230,10 @@ export default function TripItineraryView({
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const loadFailed = useRef(false);
+  const [loadRetry, setLoadRetry] = useState(0);
+  const onTripUpdated = useRef(onUpdateTrip);
+  onTripUpdated.current = onUpdateTrip;
   const loadingPlan = useRef(true);
   loadingPlan.current = isLoading;
 
@@ -236,6 +244,8 @@ export default function TripItineraryView({
   currentTrip.current = trip;
 
   // ─── 2. Quản lý Ý tưởng (Ideas List) ───
+  const [assistantOpen,setAssistantOpen]=useState(false);
+  const [assistantRefresh,setAssistantRefresh]=useState(0);
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => {
     if (Array.isArray(trip.ideas)) return trip.ideas;
     return [];
@@ -423,7 +433,7 @@ export default function TripItineraryView({
   // ─── 4. Tự động lưu và tải từ Backend / LocalStorage ───
   const persistPlan = useCallback(
     (nextPlan: TripItinerary) => {
-      if (loadingPlan.current) { setErrorMessage('Đang tải lịch trình, vui lòng chờ.'); return false; }
+      if (loadingPlan.current || loadFailed.current) { setErrorMessage('Đang tải lịch trình, vui lòng chờ.'); return false; }
       const validation = scheduleError(nextPlan, latestPlan.current);
       if (validation) { setErrorMessage(validation); return false; }
       const version = ++saveVersion.current;
@@ -436,6 +446,10 @@ export default function TripItineraryView({
         setIsSaving(true);
         try {
           const saved = await saveTripItinerary(nextPlan);
+          if (nextPlan.days_count !== currentTrip.current.daysCount) {
+            const updated = await saveTripWorkspace({...currentTrip.current, daysCount: nextPlan.days_count});
+            onTripUpdated.current?.(updated);
+          }
           if (version === saveVersion.current) {
             setPlan((prev) => ({ ...prev, updated_at: saved.updated_at }));
             setHasUnsavedChanges(false);
@@ -460,6 +474,7 @@ export default function TripItineraryView({
     async function loadData() {
       setIsLoading(true);
       setErrorMessage('');
+      loadFailed.current = false;
       try {
         const saved = await getTripItinerary(trip.id);
         if (isCancelled) return;
@@ -467,8 +482,13 @@ export default function TripItineraryView({
         const aligned = alignItineraryToTrip(normalized.itinerary, currentTrip.current);
         latestPlan.current = aligned.itinerary;
         setPlan(aligned.itinerary);
-      } catch {
+      } catch (cause) {
         if (isCancelled) return;
+        if ((cause as {status?: number}).status !== 404) {
+          loadFailed.current = true;
+          setErrorMessage(cause instanceof Error ? cause.message : 'Chưa tải được lịch trình.');
+          return;
+        }
         const fresh = createEmptyItinerary(currentTrip.current);
         const aligned = alignItineraryToTrip(fresh, currentTrip.current);
         latestPlan.current = aligned.itinerary;
@@ -481,7 +501,7 @@ export default function TripItineraryView({
     return () => {
       isCancelled = true;
     };
-  }, [trip.id]);
+  }, [trip.id, assistantRefresh, loadRetry]);
 
   useEffect(() => {
     if (Array.isArray(trip.ideas)) {
@@ -491,7 +511,7 @@ export default function TripItineraryView({
 
   // Đồng bộ số ngày khi trip.daysCount thay đổi từ bên ngoài (ví dụ: đổi popup 'Khi' ở Ý tưởng)
   useEffect(() => {
-    if (!isLoading && trip.daysCount && (trip.daysCount !== plan.days.length || getTripStartDate(trip.startDate) !== plan.start_date)) {
+    if (!isLoading && !isSaving && !hasUnsavedChanges && trip.daysCount && (trip.daysCount !== plan.days.length || getTripStartDate(trip.startDate) !== plan.start_date)) {
       const aligned = alignItineraryToTrip(latestPlan.current, trip);
       if (aligned.changed) {
         latestPlan.current = aligned.itinerary;
@@ -499,7 +519,7 @@ export default function TripItineraryView({
         persistPlan(aligned.itinerary);
       }
     }
-  }, [trip.daysCount, trip.startDate, isLoading, persistPlan, trip]);
+  }, [trip.daysCount, trip.startDate, isLoading, isSaving, hasUnsavedChanges, persistPlan, trip]);
 
   useEffect(() => {
     if (initialFocus === 'ideas') {
@@ -743,7 +763,7 @@ export default function TripItineraryView({
 
   // Thêm ngày mới vào lịch
   const handleAddDay = () => {
-    if (isLoading) return;
+    if (isLoading || isSaving || loadFailed.current) return;
     const nextNumber = plan.days.length + 1;
     const start = getTripStartDate(trip.startDate);
     const nextDays = [
@@ -756,40 +776,24 @@ export default function TripItineraryView({
         stops: [],
       },
     ];
-    persistPlan({ ...plan, days_count: nextDays.length, days: nextDays });
+    persistPlan(alignItineraryToTrip({ ...plan, days_count: nextDays.length, days: nextDays }, {...trip, daysCount: nextDays.length}).itinerary);
     setShowItinerarySettingsMenu(false);
 
-    // Đồng bộ ngược ra UserTrip: daysCount & startDate (ví dụ: du lịch từ 1-5, thêm 1 ngày thành 1-6)
-    if (onUpdateTrip) {
-      const nextDateStr = updateDateRangeWithDays(trip.startDate, nextDays.length);
-      onUpdateTrip({
-        ...trip,
-        daysCount: nextDays.length,
-        startDate: nextDateStr,
-      });
-    }
+
   };
 
   // Xóa ngày khỏi lịch
   const handleDeleteDay = (dayNumber: number) => {
-    if (plan.days.length <= 1) return;
+    if (isLoading || isSaving || loadFailed.current || plan.days.length <= 1) return;
     const filteredDays = plan.days.filter((d) => d.day_number !== dayNumber);
     const nextDays = filteredDays.map((d, idx) => ({
       ...d,
       day_number: idx + 1,
       title: `Ngày ${idx + 1}`,
     }));
-    persistPlan({ ...plan, days_count: nextDays.length, days: nextDays });
+    persistPlan(alignItineraryToTrip({ ...plan, days_count: nextDays.length, days: nextDays }, {...trip, daysCount: nextDays.length}).itinerary);
 
-    // Đồng bộ ngược ra UserTrip: daysCount & startDate
-    if (onUpdateTrip) {
-      const nextDateStr = updateDateRangeWithDays(trip.startDate, nextDays.length);
-      onUpdateTrip({
-        ...trip,
-        daysCount: nextDays.length,
-        startDate: nextDateStr,
-      });
-    }
+
   };
 
   // Thao tác với kho Ý tưởng
@@ -833,16 +837,22 @@ export default function TripItineraryView({
   };
 
   // Nút Xong: Lưu và quay lại
-  const handleDone = () => {
-    persistPlan(plan);
-    if (onUpdateTrip) {
-      onUpdateTrip({ ...trip, ideas: tripIdeas });
+  const handleDone = async () => {
+    if (loadingPlan.current || loadFailed.current) {
+      setErrorMessage('Chưa tải được lịch đầy đủ. Thử tải lại trước khi lưu.');
+      return;
     }
-    if (onClose) {
-      onClose();
-    } else {
-      onBack();
-    }
+    setIsSaving(true);
+    try {
+      const saved = await saveTripItinerary(latestPlan.current);
+      const updated = await saveTripWorkspace({...currentTrip.current, daysCount: saved.days_count, ideas: tripIdeas});
+      onTripUpdated.current?.(updated);
+      setHasUnsavedChanges(false);
+      if (onClose) onClose(); else onBack();
+    } catch (cause) {
+      setHasUnsavedChanges(true);
+      setErrorMessage(cause instanceof Error ? cause.message : 'Chưa lưu được lịch trình.');
+    } finally { setIsSaving(false); }
   };
 
   // ─── 6. Lọc POI hiển thị trên Bản đồ tương tác theo Bộ lọc ngày nổi ───
@@ -1059,12 +1069,13 @@ export default function TripItineraryView({
           </div>
 
           <div className="flex items-center gap-2.5">
+            <button type="button" aria-label="Trợ lý lên lịch" title={hasUnsavedChanges?'Lưu các thay đổi hiện tại trước khi mở trợ lý':'Trợ lý lên lịch'} disabled={isSaving || hasUnsavedChanges} onClick={()=>setAssistantOpen(true)} className="h-11 w-11 sm:w-auto shrink-0 flex items-center justify-center gap-2 rounded-full border border-neutral-300 px-3 text-xs font-semibold disabled:opacity-50"><Sparkles size={16}/><span className="hidden sm:inline">Trợ lý lên lịch</span></button>
             <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium">
               {isSaving ? (
                 <span className="flex items-center gap-1 text-amber-700">
                   <RefreshCw size={12} className="animate-spin" /> Đang lưu...
                 </span>
-              ) : hasUnsavedChanges ? (
+              ) : isLoading ? <span>Đang tải…</span> : errorMessage ? <span className="text-red-700">Chưa đồng bộ</span> : hasUnsavedChanges ? (
                 <span className="text-gray-400">Chưa lưu</span>
               ) : (
                 <span className="text-emerald-700 flex items-center gap-1">
@@ -1152,7 +1163,7 @@ export default function TripItineraryView({
         ════════════════════════════════════════════════════════ */}
         <div className={`${isDrawerMode ? 'w-full' : (isMapExpanded && showMap ? 'hidden' : plannerStyles.column)} flex flex-col h-full bg-white overflow-y-auto px-4 sm:px-7 pt-6 pb-6 auto-hide-scrollbar select-none transition-[width] duration-300 ease-in-out`}>
           {isLoading && <p role="status" className="text-[13px] text-neutral-600 mb-3">Đang tải lịch trình…</p>}
-          {errorMessage && <p role="alert" className="text-[13px] text-red-700 mb-3">{errorMessage}</p>}
+          {errorMessage && <p role="alert" className="text-[13px] text-red-700 mb-3">{errorMessage}{loadFailed.current && <button type="button" className="ml-3 min-h-11 underline" onClick={()=>setLoadRetry(value=>value+1)}>Thử tải lại</button>}</p>}
           {/* ────────────────────────────────────────────────────────
               1. TIÊU ĐỀ LỊCH TRÌNH VÀ CÁC THAO TÁC ĐIỀU KHIỂN
           ──────────────────────────────────────────────────────── */}
@@ -1561,7 +1572,7 @@ export default function TripItineraryView({
                   >
                     <button
                       type="button"
-                      onClick={handleAddDay} disabled={isLoading}
+                      onClick={handleAddDay} disabled={isLoading || isSaving || loadFailed.current}
                       className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-semibold text-gray-900 flex items-center gap-2 cursor-pointer"
                     >
                       <Plus size={14} /> Thêm ngày mới
@@ -1648,6 +1659,7 @@ export default function TripItineraryView({
                               }
                             }}
                             className="w-7 h-7 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition cursor-pointer opacity-0 group-hover:opacity-100"
+                            disabled={isLoading || isSaving || loadFailed.current}
                             title={`Xóa Ngày ${day.day_number}`}
                           >
                             <Trash2 size={13} />
@@ -2001,7 +2013,7 @@ export default function TripItineraryView({
               <div className="pt-2 flex items-center justify-center">
                 <button
                   type="button"
-                  onClick={handleAddDay} disabled={isLoading}
+                  onClick={handleAddDay} disabled={isLoading || isSaving || loadFailed.current}
                   className="inline-flex items-center gap-2 h-9 px-5 rounded-full border border-dashed border-gray-300 hover:border-black bg-gray-50/70 hover:bg-gray-100 text-xs font-bold text-gray-800 transition cursor-pointer active:scale-95 shadow-2xs"
                 >
                   <Plus size={14} />
@@ -2539,6 +2551,14 @@ export default function TripItineraryView({
           </div>
         </div>
       )}
+      {assistantOpen && <aside className="fixed inset-y-0 right-0 z-[60] flex w-full flex-col overflow-hidden border-l border-neutral-200 bg-white shadow-xl sm:w-[540px]" aria-label="Trợ lý lên lịch">
+        <button type="button" className="min-h-11 shrink-0 self-end px-4 text-sm underline" onClick={()=>setAssistantOpen(false)}>Đóng</button>
+        <TravelAssistant mode="planner" trip={trip} ideaIds={tripIdeas}
+          onCreatePrivateTrip={onCreatePrivateTrip ? ()=>onCreatePrivateTrip(tripIdeas) : undefined}
+          onIdeasChange={(ids,revision)=>{setTripIdeas(ids);onUpdateTrip?.({...trip,ideas:ids,workspaceRevision:revision ?? trip.workspaceRevision});}}
+          onBudgetChange={budget=>onUpdateTrip?.({...trip,totalBudget:budget})}
+          onApplied={()=>setAssistantRefresh(value=>value+1)}/>
+      </aside>}
     </div>
   );
 }

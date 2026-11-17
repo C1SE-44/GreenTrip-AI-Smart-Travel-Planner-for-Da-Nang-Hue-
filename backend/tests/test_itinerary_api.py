@@ -5,10 +5,19 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+import pytest
 from fastapi.testclient import TestClient
+from app.auth.dependencies import get_current_user_id
 
 from app.config import Settings
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def signed_in_user():
+    app.dependency_overrides[get_current_user_id]=lambda:'itinerary-test-user'
+    yield
+    app.dependency_overrides.pop(get_current_user_id,None)
 
 
 def test_itinerary_days_and_stops_persist_and_can_be_reordered(tmp_path, monkeypatch) -> None:

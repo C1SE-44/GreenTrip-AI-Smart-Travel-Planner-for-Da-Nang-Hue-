@@ -37,10 +37,10 @@ test('PoiCard: Hides match percentage and explanation button by default', () => 
   assert.ok(content.includes('{showExplanation && !recommendation && ('), 'Does not show Vì sao nơi này button unless explicitly requested');
 });
 
-test('Planner TripOverview: Left column dedicated to AI insight & Chat (no POI recommendation cards list)', () => {
+test('Planner TripOverview: assistant opens beside the preserved Ideas and map workspace', () => {
   const content = fs.readFileSync(plannerViewPath, 'utf8');
-  assert.ok(content.includes('Đoạn chat (1)'), 'Must have Chats section');
-  assert.ok(content.includes('Bắt đầu một cuộc trò chuyện mới cho chuyến đi này...'), 'Must have chat input placeholder');
+  assert.ok(content.includes('Hỏi trợ lý AI'), 'Must keep a visible assistant entry');
+  assert.ok(content.includes('<TravelAssistant mode="planner"'), 'Must mount the shared planner assistant');
   assert.ok(!content.includes('+ Lưu vào ý tưởng'), 'Must NOT have old POI recommendation cards list in planner overview');
 });
 
@@ -64,28 +64,12 @@ test('Planner Itinerary Drawer: "Xem lịch theo ngày" opens TripItineraryView 
   assert.ok(itineraryContent.includes('!isDrawerMode &&'), 'Map column must only render when NOT in drawer mode');
 });
 
-test('PB14 Copilot: Integrated seamlessly into Left-Column Chat of TripOverviewView without altering external layout', () => {
+test('Planner assistant uses shared confirmation UI and keeps the existing map and drawers', () => {
   const content = fs.readFileSync(plannerViewPath, 'utf8');
-
-  // 1. Integration with copilotService
-  assert.ok(content.includes('sendCopilotChat'), 'Must import and use sendCopilotChat');
-  assert.ok(content.includes('CopilotSuggestedPoi'), 'Must handle CopilotSuggestedPoi type');
-
-  // 2. State & handling
-  assert.ok(content.includes('isAiThinking'), 'Must track AI thinking/loading state');
-  assert.ok(content.includes('quickPrompts'), 'Must support dynamic quick prompt chips');
-  assert.ok(content.includes('handleSaveCopilotPoiToIdeas'), 'Must support saving suggested POIs to ideas');
-
-  // 3. UI rendering in chat stream
-  assert.ok(content.includes('avoidNotice'), 'Must render weather/safety avoid notices');
-  assert.ok(content.includes('greenImpact'), 'Must render green CO2 reduction impact');
-  assert.ok(content.includes('budgetImpact'), 'Must render budget savings impact');
-  assert.ok(content.includes('suggestedPois'), 'Must render suggested POI recommendation cards');
-
-  // 4. Strict layout invariance: Right column & drawers preserved
-  assert.ok(content.includes('showIdeasView'), 'Ideas drawer preserved');
-  assert.ok(content.includes('showItineraryDrawer'), 'Itinerary drawer preserved');
-  assert.ok(content.includes('<PoiMap'), 'Right column map component preserved');
-  assert.ok(content.includes('Xem lịch theo ngày'), 'Itinerary button preserved');
-  assert.ok(content.includes('Ý tưởng'), 'Ideas button preserved');
+  const assistant = fs.readFileSync(path.resolve('src/components/planner/TravelAssistant.tsx'), 'utf8');
+  assert.ok(content.includes('<TravelAssistant mode="planner"'));
+  assert.ok(content.includes('onIdeasChange=') && content.includes('onBudgetChange='));
+  assert.ok(assistant.includes('applyAssistant('));
+  assert.ok(!assistant.includes('greenImpact') && !assistant.includes('setTimeout('));
+  for (const fragment of ['showIdeasView', 'showItineraryDrawer', '<PoiMap', 'Xem lịch theo ngày']) assert.ok(content.includes(fragment));
 });

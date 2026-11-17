@@ -128,8 +128,8 @@ export default function Navbar() {
         <header
           className={`
             w-full transition-all duration-500 ease-out
-            ${scrolled 
-              ? 'max-w-[1400px] bg-white/95 backdrop-blur-md shadow-card border border-gray-100 rounded-full' 
+            ${scrolled
+              ? 'max-w-[1400px] bg-white/95 backdrop-blur-md shadow-card border border-gray-100 rounded-full'
               : 'max-w-full bg-transparent rounded-none border-transparent'
             }
           `}

@@ -11,12 +11,20 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.main import app
+from app.auth.dependencies import get_current_user_id
 
 
 @pytest.fixture
-def client() -> TestClient:
-    with TestClient(app) as test_client:
-        yield test_client
+def client(monkeypatch) -> TestClient:
+    from fastapi import FastAPI
+    from app.trips.router import router
+    from app.config import get_settings
+    from app.trips import copilot_consultant
+    # Authenticate the legacy route without running the app's database-seeding lifespan.
+    isolated=FastAPI();isolated.include_router(router)
+    isolated.dependency_overrides[get_current_user_id]=lambda:'legacy-copilot-test-user'
+    monkeypatch.setattr(copilot_consultant,'get_settings',lambda:get_settings().model_copy(update={'GEMINI_API_KEY':''}))
+    with TestClient(isolated) as test_client:yield test_client
 
 
 def test_copilot_chat_swap_meal_returns_vegetarian_pois(client: TestClient) -> None:

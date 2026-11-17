@@ -325,10 +325,6 @@ def get_itinerary(itinerary_id: str) -> dict[str, Any] | None:
     except Exception as exc:
         logger.error("Error fetching itinerary %s: %s", itinerary_id, exc)
 
-    # Nếu là chuyến đi người dùng tạo động (trip_...) hoặc chưa có trong CSDL, tự động khởi tạo lịch trình mẫu
-    if str(itinerary_id).startswith("trip_") or str(itinerary_id).startswith("trip-"):
-        return ensure_user_trip_itinerary(str(itinerary_id), max_days=4)
-
     return None
 
 
@@ -358,11 +354,6 @@ def get_itinerary_day(itinerary_id: str, day_number: int) -> dict[str, Any] | No
                 }
     except Exception as exc:
         logger.error("Error fetching day %s for itinerary %s: %s", day_number, itinerary_id, exc)
-
-    # Nếu là trip_... tự động khởi tạo nếu chưa có
-    if str(itinerary_id).startswith("trip_") or str(itinerary_id).startswith("trip-"):
-        ensure_user_trip_itinerary(str(itinerary_id), max_days=max(day_number, 4))
-        return get_itinerary_day(itinerary_id, day_number)
 
     return None
 

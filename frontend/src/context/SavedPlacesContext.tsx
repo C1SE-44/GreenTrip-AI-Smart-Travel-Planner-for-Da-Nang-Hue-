@@ -1,5 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- This module exports the shared provider and hook. */
 import {
+  lazy,
+  Suspense,
   createContext,
   useCallback,
   useContext,
@@ -11,7 +13,7 @@ import {
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { Poi } from '@/data/pois';
-import SaveToCollectionModal from '@/components/saved/SaveToCollectionModal';
+const SaveToCollectionModal = lazy(() => import('@/components/saved/SaveToCollectionModal'));
 import {
   getSavedCollections,
   getSavedPlaces,
@@ -236,11 +238,11 @@ export function SavedPlacesProvider({ children }: PropsWithChildren) {
         </div>
       )}
       {collectionPoi && (
-        <SaveToCollectionModal
+        <Suspense fallback={null}><SaveToCollectionModal
           poi={collectionPoi}
           onClose={closeCollectionPicker}
           onChanged={refresh}
-        />
+        /></Suspense>
       )}
     </SavedPlacesContext.Provider>
   );

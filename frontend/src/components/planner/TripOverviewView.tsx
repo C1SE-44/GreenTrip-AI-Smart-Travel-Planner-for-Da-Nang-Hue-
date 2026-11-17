@@ -1,37 +1,10 @@
+import { saveTripSchedule } from '@/services/tripSchedule';
+import TravelAssistant from './TravelAssistant';
 import { tripStartDate, dateAt, dateKey, vietnamNow } from '@/utils/tripDates';
 import ExpiredTripBanner from './ExpiredTripBanner';
 // TripOverviewView - Updated with Ideas & 2-Stage PB09 Recommendations
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import {
-  ChevronLeft, 
-  ChevronRight,
-  Clock,
-  Utensils,
-  Landmark, 
-  Sparkles, 
-  Lightbulb, 
-  Calendar as CalendarIcon, 
-  MapPin, 
-  Info,
-  Heart, 
-  Leaf,
-  Plus, 
-  Minus,
-  Send, 
-  Car, 
-  Mic, 
-  X,
-  Compass,
-  Check,
-  Search,
-  SlidersHorizontal,
-  Trash2,
-  Star,
-  ChevronDown,
-  MoreHorizontal,
-  MessageSquare,
-  RefreshCw,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Utensils, Landmark, Sparkles, Calendar as CalendarIcon, MapPin, Info, Heart, Plus, Minus, X, Compass, Check, Trash2, Star, ChevronDown, MoreHorizontal, RefreshCw } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import {
   pois as defaultAllPois, 
@@ -45,7 +18,7 @@ import {
   type PoiCity,
   type PoiCategory
 } from '@/data/pois';
-import { getPois, getAllPois, getPoisByIds } from '@/services/poi';
+import { getAllPois, getPoisByIds } from '@/services/poi';
 import { fetchJson } from '@/lib/api';
 import PoiMap from '@/components/poi/PoiMap';
 import PoiCard from '@/components/poi/PoiCard';
@@ -57,143 +30,8 @@ import { plannerStyles } from './plannerStyles';
 import PlannerPopover from './PlannerPopover';
 import { usePlannerMapVisible } from './usePlannerMapVisible';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
-import { sendCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
-import { MorphTabIcon, MorphFavoriteButton, MorphAddButton } from '@/components/ui/MorphButton';
-import {
-  createEmptyItinerary,
-  alignItineraryToTrip,
-  getTripItinerary,
-  saveTripItinerary,
-  stopFromPoi,
-  type TripItinerary,
-  type ItineraryDay,
-  type ItineraryStop,
-} from '@/services/itineraryService';
 
-export interface CopilotChatMessageItem {
-  id: string;
-  sender: 'user' | 'ai';
-  text: string;
-  timestamp?: string;
-  suggestedPois?: CopilotSuggestedPoi[];
-  avoidNotice?: string | null;
-  greenImpact?: string | null;
-  budgetImpact?: string | null;
-  actionType?: string;
-}
-
-
-function renderInlineMarkdown(text: string) {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={i} className="font-semibold text-neutral-950">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    return part;
-  });
-}
-
-function FormattedCopilotMessage({ text }: { text: string }) {
-  const lines = text.split('\n');
-
-  return (
-    <div className="space-y-1.5 text-[13px] leading-relaxed text-neutral-800">
-      {lines.map((line, idx) => {
-        const trimmed = line.trim();
-        if (!trimmed) {
-          return <div key={idx} className="h-1" />;
-        }
-
-        // Special Badges: Di chuyển, Chi phí, Lý do
-        if (trimmed.includes('📍') || trimmed.includes('Di chuyển:')) {
-          return (
-            <div key={idx} className="flex items-start gap-1.5 pl-2 my-1 text-[12px] text-neutral-700 bg-neutral-100/70 p-2 rounded-xl border border-neutral-200/50">
-              <span className="shrink-0 text-xs">📍</span>
-              <div className="flex-1 leading-normal">
-                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''))}
-              </div>
-            </div>
-          );
-        }
-
-        if (trimmed.includes('💸') || trimmed.includes('Chi phí')) {
-          return (
-            <div key={idx} className="flex items-start gap-1.5 pl-2 my-1 text-[12px] text-amber-950 bg-amber-50/70 p-2 rounded-xl border border-amber-200/50 font-mono">
-              <span className="shrink-0 text-xs">💸</span>
-              <div className="flex-1 leading-normal">
-                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''))}
-              </div>
-            </div>
-          );
-        }
-
-        if (trimmed.includes('✅') || trimmed.includes('Lý do:')) {
-          return (
-            <div key={idx} className="flex items-start gap-1.5 pl-2 my-1 text-[12px] text-emerald-950 bg-emerald-50/70 p-2 rounded-xl border border-emerald-200/50">
-              <span className="shrink-0 text-xs">✅</span>
-              <div className="flex-1 leading-normal">
-                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''))}
-              </div>
-            </div>
-          );
-        }
-
-        // Numbered list item
-        const numMatch = trimmed.match(/^(\d+)\.\s*(.*)/);
-        if (numMatch) {
-          const num = numMatch[1];
-          const content = numMatch[2];
-          return (
-            <div key={idx} className="flex items-start gap-2.5 pl-1 my-1.5">
-              <span className="font-bold text-[13px] text-neutral-900 shrink-0">
-                {num}.
-              </span>
-              <div className="flex-1 leading-normal text-neutral-800">
-                {renderInlineMarkdown(content)}
-              </div>
-            </div>
-          );
-        }
-
-        // Bullet point lines starting with "- " or "* "
-        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-          const content = trimmed.substring(2);
-          return (
-            <div key={idx} className="flex items-start gap-2 pl-1 my-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-2 shrink-0" />
-              <div className="flex-1 leading-normal text-neutral-800">
-                {renderInlineMarkdown(content)}
-              </div>
-            </div>
-          );
-        }
-
-        // Section header (e.g. "**1. Tiêu đề**" or "**Gợi ý 3 trải nghiệm...**")
-        if (trimmed.startsWith('**') && trimmed.endsWith('**') && !trimmed.slice(2, -2).includes('**')) {
-          const headerText = trimmed.slice(2, -2);
-          return (
-            <h4
-              key={idx}
-              className="font-bold text-[14px] text-neutral-950 mt-3 mb-1.5 pt-2 border-t border-neutral-100 first:border-0 first:pt-0 first:mt-0 tracking-tight"
-            >
-              {headerText}
-            </h4>
-          );
-        }
-
-        return (
-          <p key={idx} className="leading-relaxed">
-            {renderInlineMarkdown(trimmed)}
-          </p>
-        );
-      })}
-    </div>
-  );
-}
+import { createEmptyItinerary, getTripItinerary, saveTripItinerary, stopFromPoi, type TripItinerary } from '@/services/itineraryService';
 
 export interface TripOverviewViewProps {
   trip: UserTrip;
@@ -201,6 +39,7 @@ export interface TripOverviewViewProps {
   onBack: () => void;
   onOpenItineraryDetails?: () => void;
   onUpdateTrip?: (updatedTrip: UserTrip) => void;
+  onCreatePrivateTrip?: (ideaIds: string[]) => void;
   activeWorkspaceTab?: 'ideas' | 'itinerary' | 'calendar';
   onNavigateToTab?: (tab: 'ideas' | 'itinerary' | 'calendar') => void;
   autoOpenWhenModal?: boolean;
@@ -297,6 +136,7 @@ export default function TripOverviewView({
   onBack,
   onOpenItineraryDetails,
   onUpdateTrip,
+  onCreatePrivateTrip,
   activeWorkspaceTab = 'ideas',
   onNavigateToTab,
   autoOpenWhenModal,
@@ -389,18 +229,6 @@ export default function TripOverviewView({
     setAdults(trip.peopleCount || 2);
   }, [trip]);
 
-  // Chat message state (PB14: In-Planner AI Travel Copilot)
-  const chatInputRef = useRef<HTMLInputElement | null>(null);
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const [chatInput, setChatInput] = useState('');
-  const [isAiThinking, setIsAiThinking] = useState(false);
-  const [quickPrompts, setQuickPrompts] = useState<string[]>([
-    'Ẩm thực xanh bản địa',
-    'Di tích & bảo tàng gần',
-    'Thuê xe máy điện',
-  ]);
-  const [chatMessages, setChatMessages] = useState<CopilotChatMessageItem[]>([]);
-
   // ─── TAB ĐIỀU HƯỚNG CỘT GIỮA CHUẨN EXPLORE (CHAT / LỊCH TRÌNH / Ý TƯỞNG) ───
   const [activeMainTab, setActiveMainTab] = useState<'chat' | 'itinerary' | 'ideas'>('chat');
   const [itineraryPlan, setItineraryPlan] = useState<TripItinerary>(() => createEmptyItinerary(trip));
@@ -422,44 +250,27 @@ export default function TripOverviewView({
     };
   }, [trip.id]);
 
-  const handleAddPoiToItinerary = (poi: Poi, dayNum: number = 1) => {
-    const newStop = stopFromPoi(poi);
-    const updatedDays = itineraryPlan.days.map((d) => {
-      if (d.day_number === dayNum) {
-        return {
-          ...d,
-          stops: [...d.stops, newStop],
-        };
+  const editSavedPlan = async (edit: (plan: TripItinerary) => TripItinerary, message?: string) => {
+    try {
+      let current;
+      try { current = await getTripItinerary(trip.id); }
+      catch (error) {
+        if ((error as {status?: number}).status !== 404) throw error;
+        current = createEmptyItinerary(trip);
       }
-      return d;
-    });
-    const nextPlan = { ...itineraryPlan, days: updatedDays };
-    setItineraryPlan(nextPlan);
-    saveTripItinerary(nextPlan);
-    setToastMessage(`Đã thêm "${poi.name}" vào Ngày ${dayNum}`);
+      const saved = await saveTripItinerary(edit(current));
+      setItineraryPlan(saved);
+      if (message) setToastMessage(message);
+    } catch (error) { setToastMessage(error instanceof Error ? error.message : 'Chưa lưu được lịch trình.'); }
   };
-
+  const handleAddPoiToItinerary = (poi: Poi, dayNum = 1) => {
+    void editSavedPlan(current => ({...current, days: current.days.map(day => day.day_number === dayNum
+      ? {...day, stops: [...day.stops, {...stopFromPoi(poi), sequence: day.stops.length}]} : day)}), `Đã thêm "${poi.name}" vào Ngày ${dayNum}`);
+  };
   const handleRemoveStopFromDay = (stopId: string, dayNum: number) => {
-    const updatedDays = itineraryPlan.days.map((d) => {
-      if (d.day_number === dayNum) {
-        return {
-          ...d,
-          stops: d.stops.filter((s) => s.stop_id !== stopId),
-        };
-      }
-      return d;
-    });
-    const nextPlan = { ...itineraryPlan, days: updatedDays };
-    setItineraryPlan(nextPlan);
-    saveTripItinerary(nextPlan);
+    void editSavedPlan(current => ({...current, days: current.days.map(day => day.day_number === dayNum
+      ? {...day, stops: day.stops.filter(stop => stop.stop_id !== stopId).map((stop, sequence) => ({...stop, sequence}))} : day)}));
   };
-
-  // Tự động cuộn xuống khi có tin nhắn mới hoặc AI đang suy nghĩ
-  useEffect(() => {
-    if (chatMessages.length > 0 || isAiThinking) {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatMessages, isAiThinking]);
 
   // Tab con kích hoạt khi bấm vào Ý tưởng hoặc Lịch
   const [activeRightDrawer, setActiveRightDrawer] = useState<'ideas' | 'calendar' | null>(null);
@@ -511,7 +322,8 @@ const [recommendedPois, setRecommendedPois] = useState<Poi[]>([]);
 
   // State điều khiển Drawer Trợ lý AI Copilot (mở từ nút nổi góc dưới)
   const [showCopilotDrawer, setShowCopilotDrawer] = useState(false);
-  const [isAiScheduling, setIsAiScheduling] = useState(false);
+  const [assistantInitialPrompt,setAssistantInitialPrompt]=useState<string|undefined>();
+  const handleAiAutoSchedule=()=>{setAssistantInitialPrompt('Xếp lịch từ Ý tưởng');setShowCopilotDrawer(true);};
 
   // State điều khiển Drawer Lịch trình theo ngày (nhét phần lịch trình vào card chứa y hệt khi mở idea)
   const [showItineraryDrawer, setShowItineraryDrawer] = useState(false);
@@ -609,12 +421,6 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     setSearchedAreaPois([]);
   }, []);
 
-  // 3 địa điểm khởi đầu tiêu biểu cho điểm đến (chỉ dùng làm mốc nếu chuyến đi chưa có điểm nào)
-  const starterPois = useMemo(() => {
-    const destCity = isHue(trip.destination) ? 'Huế' : 'Đà Nẵng';
-    return allPois.filter((p) => normalizeCity(p.city) === destCity).slice(0, 3);
-  }, [allPois, trip.destination]);
-
   // Chỉ hiển thị trên bản đồ các địa điểm ĐÃ LƯU (Ý tưởng chuyến đi & Lịch trình), cộng thêm các điểm vừa tìm kiếm ở khu vực này
   const relevantPois = useMemo(() => {
     const map = new Map<string, Poi>();
@@ -645,14 +451,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       }
     });
 
-    // 3. Nếu chưa lưu bất kỳ địa điểm nào, chỉ hiển thị 3 địa điểm khởi đầu tiêu biểu để bản đồ có điểm neo
-    if (map.size === 0) {
-      starterPois.forEach((p) => {
-        if (p.lat && p.lng) map.set(p.id, p);
-      });
-    }
-
-    // 4. Các địa điểm vừa tìm kiếm khi kéo rê khu vực bản đồ
+    // 3. Các địa điểm vừa tìm kiếm khi kéo rê khu vực bản đồ
     searchedAreaPois.forEach((p) => {
       if (p.lat && p.lng && !map.has(p.id)) {
         map.set(p.id, p);
@@ -660,7 +459,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     });
 
     return Array.from(map.values());
-  }, [allPois, tripIdeas, itineraryPlan, starterPois, searchedAreaPois]);
+  }, [allPois, tripIdeas, itineraryPlan, searchedAreaPois]);
 
   // Bộ lọc danh mục địa điểm gợi ý hiển thị ở cột giữa
   const displayedRecommendedPois = useMemo(() => {
@@ -726,71 +525,6 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     const ideaPoi = ideaPois.find((p) => p.id === selectedMapPoiId || p.name.toLowerCase() === selectedMapPoiId.toLowerCase());
     return recPoi || ideaPoi || relevantPois.find((p) => p.id === selectedMapPoiId) || null;
   }, [allPois, relevantPois, recommendedPois, ideaPois, selectedMapPoiId]);
-
-  const handleAiAutoSchedule = async () => {
-    if (ideaPois.length === 0) {
-      setModalTab('search');
-      setShowAddIdeasModal(true);
-      return;
-    }
-
-    setIsAiScheduling(true);
-    try {
-      let currentPlan = itineraryPlan;
-      if (!currentPlan || currentPlan.days.length === 0) {
-        currentPlan = createEmptyItinerary(trip);
-      }
-
-      const ideaStops: ItineraryStop[] = ideaPois.map((p) => stopFromPoi(p, 'idea'));
-      const daysCount = Math.max(1, currentPlan.days.length || trip.daysCount || 3);
-      const updatedDays: ItineraryDay[] = currentPlan.days.map((day, dIdx) => {
-        const dayStops: ItineraryStop[] = [];
-        ideaStops.forEach((stop, sIdx) => {
-          if (sIdx % daysCount === dIdx) {
-            dayStops.push({
-              ...stop,
-              stop_id: `stop-${day.day_number}-${sIdx + 1}`,
-              sequence: dayStops.length,
-            });
-          }
-        });
-
-        const mergedStops = day.stops.length > 0 ? [...day.stops] : dayStops;
-        return {
-          ...day,
-          stops: mergedStops,
-        };
-      });
-
-      const optimizedPlan: TripItinerary = {
-        ...currentPlan,
-        days: updatedDays,
-      };
-
-      await saveTripItinerary(optimizedPlan);
-      setItineraryPlan(optimizedPlan);
-
-      if (onUpdateTrip) {
-        onUpdateTrip({
-          ...trip,
-          savedPlaces: Array.from(new Set([...(trip.savedPlaces || []), ...tripIdeas])),
-        });
-      }
-
-      // Tự động chuyển sang tab Lịch trình
-      if (onNavigateToTab) {
-        onNavigateToTab('itinerary');
-      } else if (onOpenItineraryDetails) {
-        onOpenItineraryDetails();
-      }
-    } catch (e) {
-      console.error('Failed to auto schedule:', e);
-      if (onNavigateToTab) onNavigateToTab('itinerary');
-      else if (onOpenItineraryDetails) onOpenItineraryDetails();
-    } finally {
-      setIsAiScheduling(false);
-    }
-  };
 
   // Gọi trực tiếp Backend API (/api/v1/recommendations/poi) khi Điểm đến, Ngân sách hoặc Ý tưởng thay đổi
   useEffect(() => {
@@ -1068,17 +802,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     const updated = { ...trip, title, startDate: start || `${count} ngày • ${selectedMonth}`, daysCount: count };
     setWhenSaving(true);
     try {
-      let current: TripItinerary;
-      try { current = await getTripItinerary(trip.id); }
-      catch (cause) {
-        if ((cause as { status?: number }).status !== 404) throw cause;
-        current = createEmptyItinerary(trip);
-      }
-      const aligned = alignItineraryToTrip(current, updated);
-      if (aligned.warning) { setWhenError(aligned.warning); return; }
-      await saveTripItinerary(aligned.itinerary);
-      setItineraryPlan(aligned.itinerary);
-      onUpdateTrip?.(updated);
+      const saved = await saveTripSchedule(updated);
+      setItineraryPlan(saved.itinerary);
+      onUpdateTrip?.(saved.trip);
       setShowWhenModal(false);
     } catch (cause) {
       setWhenError(cause instanceof Error ? cause.message : 'Chưa thể lưu ngày chuyến đi.');
@@ -1178,197 +904,6 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     { id: 'm2', label: 'Tháng 12' },
     { id: 'm3', label: 'Tháng 1' },
   ];
-
-  // Kiểm tra địa điểm Copilot đề xuất đã được lưu trong Ý tưởng hay chưa
-  const isPoiSavedInIdeas = useCallback(
-    (poi: CopilotSuggestedPoi | Poi | { id: string; name: string }) => {
-      return tripIdeas.some(
-        (id) => id === poi.id || id.toLowerCase() === poi.name.toLowerCase()
-      );
-    },
-    [tripIdeas]
-  );
-
-  // Thêm địa điểm do Copilot gợi ý trực tiếp vào Ý tưởng chuyến đi
-    const handleSaveCopilotPoiToIdeas = (poi: CopilotSuggestedPoi | Poi) => {
-    const alreadySaved = tripIdeas.some(
-      (id) => id === poi.id || id.toLowerCase() === poi.name.toLowerCase()
-    );
-    if (alreadySaved) return;
-
-    const nextIdeas = [...tripIdeas, poi.id || poi.name];
-    setTripIdeas(nextIdeas);
-    if (onUpdateTrip) {
-      onUpdateTrip({
-        ...trip,
-        ideas: nextIdeas,
-      });
-    }
-    setSelectedMapPoiId(poi.id);
-    setHoveredMapPoiId(poi.id);
-    setToastMessage(`Đã thêm "${poi.name}" vào danh sách Ý tưởng!`);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
-
-  // Xử lý gửi tin nhắn trò chuyện với Trợ lý AI Copilot (PB14)
-  const handleSendChatMessage = async (overridePrompt?: string) => {
-    const promptToSend = (overridePrompt ?? chatInput).trim();
-    if (!promptToSend || isAiThinking) return;
-
-    const userMsgId = `user-${Date.now()}`;
-    const newUserMsg: CopilotChatMessageItem = {
-      id: userMsgId,
-      sender: 'user',
-      text: promptToSend,
-      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setChatMessages((prev) => [...prev, newUserMsg]);
-    setChatInput('');
-    setIsAiThinking(true);
-
-    try {
-      const res = await sendCopilotChat({
-        message: promptToSend,
-        trip_context: {
-          destination: trip.destination || 'Đà Nẵng & Huế',
-          days_count: trip.daysCount || 4,
-          current_day: 1,
-          saved_ideas: tripIdeas,
-        },
-      });
-
-      const aiMsgId = `ai-${Date.now()}`;
-      const newAiMsg: CopilotChatMessageItem = {
-        id: aiMsgId,
-        sender: 'ai',
-        text: res.reply_text,
-        timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        suggestedPois: res.suggested_pois || [],
-        avoidNotice: res.avoid_notice || null,
-        greenImpact: res.green_impact_summary || null,
-        budgetImpact: res.budget_impact_summary || null,
-        actionType: res.action_type,
-      };
-
-      setChatMessages((prev) => [...prev, newAiMsg]);
-
-      if (res.next_suggested_prompts && res.next_suggested_prompts.length > 0) {
-        setQuickPrompts(res.next_suggested_prompts);
-      }
-    } catch (err) {
-      console.warn('Copilot backend call error, falling back locally:', err);
-      // Fallback cục bộ thông minh nếu backend đang offline để giao diện luôn phản hồi mượt mà
-      const lower = promptToSend.toLowerCase();
-      let fallbackText = `Tôi đã ghi nhận câu hỏi: "${promptToSend}". Dựa trên chuyến đi ${trip.destination}, các điểm tham quan xanh và ẩm thực đặc sản đều đã sẵn sàng!`;
-      let fallbackPois: CopilotSuggestedPoi[] = [];
-      let avoidNotice: string | null = null;
-      let greenImpact: string | null = null;
-      let budgetImpact: string | null = null;
-
-      if (lower.includes('chay') || lower.includes('vegan') || lower.includes('thanh đạm')) {
-        fallbackText = `Mình đã chọn lọc các quán chay thanh tịnh, đạt chuẩn xanh tại ${trip.destination} cho hành trình của bạn:`;
-        greenImpact = 'Bữa ăn chay giúp giảm ~60% lượng phát thải carbon so với bữa thông thường.';
-        budgetImpact = 'Tiết kiệm ~35.000 ₫/người so với nhà hàng thông thường.';
-        fallbackPois = [
-          {
-            id: 'dn-veg-01',
-            name: 'An Nhiên Garden Vegetarian',
-            category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=80',
-            green_score: 94,
-            rating: 4.9,
-            address: 'Tỉnh lộ 10, Phú Thượng, Phú Vang, Thừa Thiên Huế',
-            swap_reason: 'Quán chay sinh thái thanh tịnh trong vườn xanh, nguyên liệu hữu cơ bản địa.',
-            price_range_display: '50.000 – 120.000 ₫',
-          },
-          {
-            id: 'dn-veg-02',
-            name: 'Roots Plant-based Cafe',
-            category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&auto=format&fit=crop&q=80',
-            green_score: 92,
-            rating: 4.8,
-            address: 'An Thượng 30, Bắc Mỹ Phú, Ngũ Hành Sơn, Đà Nẵng',
-            swap_reason: 'Món chay phong cách hiện đại, 100% thực vật tươi sạch thân thiện môi trường.',
-            price_range_display: '60.000 – 150.000 ₫',
-          },
-        ];
-      } else if (lower.includes('mưa') || lower.includes('rain')) {
-        fallbackText = `Trời mưa tại ${trip.destination}, mình gợi ý bạn chuyển sang các điểm tham quan trong nhà có mái che an toàn:`;
-        avoidNotice = 'Lưu ý an toàn: Tạm hoãn tham quan Bán đảo Sơn Trà và Đèo Hải Vân khi trời mưa to do đường trơn trượt.';
-        fallbackPois = [
-          {
-            id: 'dn-indoor-01',
-            name: 'Bảo tàng Điêu khắc Chăm',
-            category: 'Di tích',
-            image_url: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=800&auto=format&fit=crop&q=80',
-            green_score: 95,
-            rating: 4.7,
-            address: 'Số 2, đường 2 Tháng 9, Hải Châu, Đà Nẵng',
-            swap_reason: 'Không gian triển lãm trong nhà thoáng mát, lưu giữ bảo vật vô giá.',
-            price_range_display: '60.000 ₫/vé',
-          },
-          {
-            id: 'dn-indoor-02',
-            name: 'Cà phê Không Gian Xưa',
-            category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80',
-            green_score: 90,
-            rating: 4.6,
-            address: '402 Điện Biên Phủ, Thanh Khê, Đà Nẵng',
-            swap_reason: 'Kiến trúc nhà rường cổ kính có mái che rộng, thưởng thức trà ấm ngắm mưa.',
-            price_range_display: '45.000 – 90.000 ₫',
-          },
-        ];
-      } else if (lower.includes('cà phê') || lower.includes('cafe')) {
-        fallbackText = `Dưới đây là các quán cà phê mang đậm phong cách bản địa và không gian xanh thư thái:`;
-        fallbackPois = [
-          {
-            id: 'dn-cafe-01',
-            name: 'Đi Lạc Coffee – Specialty Coffee Roastery',
-            category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&auto=format&fit=crop&q=80',
-            green_score: 92,
-            rating: 4.9,
-            address: 'Hải Châu, Đà Nẵng',
-            swap_reason: 'Cà phê rang mộc thủ công, không gian ấm cúng thân thiện với môi trường.',
-            price_range_display: '35.000 – 65.000 ₫',
-          },
-          {
-            id: 'dn-cafe-02',
-            name: 'De.Linh Coffee & Espresso',
-            category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1498804103079-a6351b050096?w=800&auto=format&fit=crop&q=80',
-            green_score: 91,
-            rating: 5.0,
-            address: '09 Lê Hồng Phong, Huế',
-            swap_reason: 'Quán cà phê muối trứ danh cố đô ven sông lãng mạn.',
-            price_range_display: '25.000 – 45.000 ₫',
-          },
-        ];
-      } else if (lower.includes('xe') || lower.includes('di chuyển') || lower.includes('đi lại')) {
-        fallbackText = `Để di chuyển xanh và tiết kiệm tại ${trip.destination}, bạn nên kết hợp taxi điện (Xanh SM) hoặc xe buýt trợ giá Danabus, cùng việc tản bộ dọc đường Bạch Đằng hoặc sông Hương.`;
-        greenImpact = 'Di chuyển bằng xe điện và đi bộ giúp giảm hơn 4.2 kg CO₂ phát thải.';
-      }
-
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-${Date.now()}`,
-          sender: 'ai',
-          text: fallbackText,
-          timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-          suggestedPois: fallbackPois,
-          avoidNotice,
-          greenImpact,
-          budgetImpact,
-        },
-      ]);
-    } finally {
-      setIsAiThinking(false);
-    }
-  };
 
   return (
     <div className="flex-1 h-full bg-white overflow-hidden select-none animate-fadeIn flex flex-col">
@@ -1637,7 +1172,6 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   }
                   setShowScheduleMenu((prev) => !prev);
                 }}
-                disabled={isAiScheduling}
                 className={`h-10 px-3 sm:px-5 whitespace-nowrap rounded-full font-semibold text-[12.5px] transition flex items-center gap-2 shadow-2xs active:scale-95 ${
                   ideaPois.length === 0
                     ? 'bg-neutral-100 text-neutral-400 border border-neutral-200/60 cursor-pointer hover:bg-neutral-200/60'
@@ -1645,18 +1179,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 } disabled:opacity-60`}
                 title={ideaPois.length === 0 ? 'Thêm ít nhất 1 địa điểm để tạo lịch trình' : 'Tạo lịch trình chuyến đi'}
               >
-                {isAiScheduling ? (
-                  <>
-                    <RefreshCw size={13} className="animate-spin text-emerald-400" />
-                    <span>Đang tạo lịch trình...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={13} className={ideaPois.length === 0 ? 'text-neutral-400' : 'text-emerald-400'} />
-                    <span>Tạo lịch trình</span>
-                    <ChevronDown size={12} className={`transition-transform duration-200 ${showScheduleMenu ? 'rotate-180' : ''}`} />
-                  </>
-                )}
+                <Sparkles size={13} className={ideaPois.length === 0 ? 'text-neutral-400' : 'text-emerald-400'} />
+                <span>Tạo lịch trình</span>
+                <ChevronDown size={12} className={`transition-transform duration-200 ${showScheduleMenu ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Popover 2 lựa chọn */}
@@ -1677,8 +1202,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                       <Sparkles size={14} />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-[12.5px] font-bold text-gray-900 group-hover:text-emerald-950">Để AI tự động xếp</div>
-                      <div className="text-[12px] text-gray-500 leading-tight mt-0.5">Phân bổ đều các ngày & tối ưu lộ trình xanh</div>
+                      <div className="text-[12.5px] font-bold text-gray-900 group-hover:text-emerald-950">Gợi ý lịch từ Ý tưởng</div>
+                      <div className="text-[12px] text-gray-500 leading-tight mt-0.5">Xem trước theo ngày, rồi xác nhận Áp dụng</div>
                     </div>
                   </button>
 
@@ -3019,6 +2544,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       {/* ─── 2. GIAO DIỆN LỊCH TRÌNH THEO NGÀY (CARD CHỨA Y HỆT KHI MỞ Ý TƯỞNG THEO YÊU CẦU) ─── */}
       {showItineraryDrawer && !showIdeasView && !selectedPoi && (
         <TripItineraryView
+          onCreatePrivateTrip={onCreatePrivateTrip}
           trip={trip}
           allPois={allPoisProp || allPois}
           onBack={() => setShowItineraryDrawer(false)}
@@ -3054,262 +2580,14 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         </div>
       )}
 
-      {/* ─── COPILOT SIDE DRAWER (TRỢ LÝ AI COPILOT) ─── */}
-      {showCopilotDrawer && (
-        <div 
-          className="fixed inset-y-0 right-0 w-full sm:w-[540px] lg:w-[480px] z-50 bg-white rounded-l-[24px] border-l border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.12),-4px_0_12px_rgba(0,0,0,0.06)] flex flex-col overflow-hidden animate-slideInRight select-none"
-        >
-          {/* Header Drawer */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-700">
-                <Sparkles size={16} />
-              </div>
-              <div>
-                <h3 className="text-[14.5px] font-bold text-gray-950 flex items-center gap-1.5 leading-tight">
-                  <span>Trợ lý GreenTrip AI</span>
-                  <span className="text-gray-400 font-normal text-xs">Chats {chatMessages.length > 0 ? chatMessages.length : 1}</span>
-                  <span className="sr-only">Đoạn chat (1)</span>
-                </h3>
-                <p className="text-[12px] text-gray-500 font-medium">Gợi ý địa điểm xanh & tối ưu chuyến đi</p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowCopilotDrawer(false)}
-              className="w-8 h-8 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-600 hover:text-black hover:bg-gray-50 transition cursor-pointer"
-              title="Đóng trợ lý AI"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Chat Messages */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3.5 space-y-3.5 no-scrollbar">
-            {chatMessages.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-center px-4 py-8 text-gray-400">
-                <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-800 mb-2.5 shadow-2xs border border-gray-100">
-                  <Sparkles size={18} className="text-emerald-600" />
-                </div>
-                <h4 className="text-[14px] font-bold text-gray-950 tracking-tight">
-                  Trợ lý GreenTrip AI
-                </h4>
-                <p className="text-[12px] text-gray-500 max-w-[280px] mt-1 leading-relaxed">
-                  Gợi ý địa điểm xanh, ẩm thực bản địa và tối ưu chuyến đi {trip.destination}.
-                </p>
-              </div>
-            )}
-
-            {chatMessages.map((msg, idx) => (
-              <div
-                key={msg.id || idx}
-                className={`p-3.5 rounded-2xl text-[13px] leading-relaxed shadow-2xs ${
-                  msg.sender === 'user'
-                    ? 'bg-neutral-900 text-white ml-auto max-w-[85%]'
-                    : 'bg-white text-gray-800 w-full border border-gray-200/80 space-y-2.5'
-                }`}
-              >
-                {msg.sender === 'user' ? (
-                  <div className="whitespace-pre-line">{msg.text}</div>
-                ) : (
-                  <FormattedCopilotMessage text={msg.text} />
-                )}
-
-                {/* Cảnh báo an toàn / Lưu ý tránh mưa */}
-                {msg.avoidNotice && (
-                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
-                    <span className="shrink-0 mt-0.5">⚠️</span>
-                    <span className="leading-relaxed">{msg.avoidNotice}</span>
-                  </div>
-                )}
-
-                {/* Tác động xanh & Ngân sách */}
-                {(msg.greenImpact || msg.budgetImpact) && (
-                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {msg.greenImpact && (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs">
-                        <Leaf size={12} className="text-emerald-600 shrink-0" />
-                        <span>{msg.greenImpact}</span>
-                      </div>
-                    )}
-                    {msg.budgetImpact && (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200/80 text-blue-800 text-xs">
-                        <span className="text-blue-600 font-bold shrink-0">₫</span>
-                        <span>{msg.budgetImpact}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Thẻ gợi ý địa điểm từ Copilot */}
-                {msg.suggestedPois && msg.suggestedPois.length > 0 && (
-                  <div className="space-y-2 pt-1 w-full">
-                    {msg.suggestedPois.map((p) => {
-                      const isSaved = isPoiSavedInIdeas(p);
-                      const img = p.image_url || getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
-                      return (
-                        <div
-                          key={p.id}
-                          onMouseEnter={() => handleDebouncedHover(p.id)}
-                          onMouseLeave={() => handleDebouncedHover(null)}
-                          className="p-2.5 rounded-xl border border-gray-200/90 hover:border-black/30 bg-gray-50/70 hover:bg-white transition-all flex flex-col sm:flex-row gap-2.5 items-start sm:items-center justify-between shadow-2xs group w-full"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <img
-                              src={img}
-                              alt={p.name}
-                              className="w-12 h-12 rounded-lg object-cover shrink-0 border border-gray-200/60"
-                              onError={(e) => {
-                                e.currentTarget.src = getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
-                              }}
-                            />
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <h5 className="font-bold text-[13px] text-gray-900 truncate">
-                                  {p.name}
-                                </h5>
-                                <span className="text-[12px] px-1.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 font-semibold shrink-0">
-                                  🌱 {p.green_score || 90}/100
-                                </span>
-                                {p.rating && (
-                                  <span className="text-[12px] font-semibold text-amber-600 flex items-center gap-0.5 shrink-0">
-                                    <Star size={11} className="fill-amber-500 text-amber-500" />
-                                    {p.rating}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[12px] text-gray-600 line-clamp-1 mt-0.5">
-                                {p.swap_reason || p.address}
-                              </p>
-                              {(p.price_range_display || p.budget_delta) && (
-                                <p className="text-[12px] text-gray-500 mt-0.5">
-                                  {p.price_range_display || p.budget_delta}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-                            <button
-                              type="button"
-                              onClick={() => handleSaveCopilotPoiToIdeas(p)}
-                              disabled={isSaved}
-                              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
-                                isSaved
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80 cursor-default'
-                                  : 'bg-black hover:bg-neutral-800 text-white shadow-2xs active:scale-95'
-                              }`}
-                            >
-                              {isSaved ? (
-                                <>
-                                  <Check size={12} className="text-emerald-700" />
-                                  <span>Đã thêm</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Plus size={12} />
-                                  <span>Thêm vào ý tưởng</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {isAiThinking && (
-              <div className="p-3 rounded-2xl bg-white border border-gray-200/80 text-gray-600 text-[13px] mr-auto max-w-[90%] shadow-2xs flex items-center gap-2">
-                <Sparkles size={15} className="text-emerald-600 animate-spin shrink-0" />
-                <span>Trợ lý GreenTrip AI đang tìm kiếm & tối ưu lịch trình xanh...</span>
-              </div>
-            )}
-
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Prompt chips */}
-          <div className="flex flex-wrap gap-1.5 px-4 pt-2 pb-1 shrink-0 bg-gray-50/50 border-t border-gray-100">
-            {quickPrompts.slice(0, 3).map((q, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleSendChatMessage(q)}
-                className="text-[12px] bg-white hover:bg-gray-100 border border-gray-200/70 rounded-full px-3 py-1 text-gray-700 transition cursor-pointer active:scale-95 truncate max-w-full font-medium shadow-2xs"
-                title={q}
-              >
-                {q.replace(/^(💡|🌱|📍)\s*/, '')}
-              </button>
-            ))}
-          </div>
-
-          {/* Input Box */}
-          <div className="p-3.5 shrink-0 bg-white border-t border-gray-100">
-            <div className="w-full rounded-[20px] border border-gray-200 p-2.5 shadow-2xs bg-white hover:border-gray-300 focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all flex flex-col justify-between">
-              <input
-                ref={chatInputRef}
-                type="text"
-                placeholder="Bắt đầu một cuộc trò chuyện mới cho chuyến đi này..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSendChatMessage();
-                }}
-                className="w-full text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none bg-transparent pt-0.5"
-              />
-
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddIdeasModal(true)}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                  title="Thêm địa điểm vào ý tưởng chuyến đi"
-                >
-                  <Plus size={16} />
-                </button>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleSendChatMessage('Tư vấn phương tiện di chuyển xanh tiết kiệm CO2 cho chuyến đi');
-                    }}
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
-                    title="Phương tiện di chuyển xanh"
-                  >
-                    <Car size={15} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleSendChatMessage('Gợi ý trải nghiệm văn hóa và đặc sản bản địa hôm nay');
-                    }}
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                    title="Gợi ý văn hóa"
-                  >
-                    <Mic size={15} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSendChatMessage()}
-                    disabled={isAiThinking}
-                    className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
-                    title="Gửi"
-                  >
-                    <Send size={13} className="ml-0.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {showCopilotDrawer && <aside className="fixed inset-y-0 right-0 z-50 flex w-full flex-col overflow-hidden border-l border-neutral-200 bg-white shadow-xl sm:w-[540px]" aria-label="Trợ lý chuyến đi">
+        <button type="button" aria-label="Đóng trợ lý AI" className="min-h-11 shrink-0 self-end px-4 text-sm underline" onClick={()=>setShowCopilotDrawer(false)}>Đóng</button>
+        <TravelAssistant mode="planner" trip={trip} ideaIds={tripIdeas} initialPrompt={assistantInitialPrompt}
+          onCreatePrivateTrip={onCreatePrivateTrip ? ()=>onCreatePrivateTrip(tripIdeas) : undefined}
+          onIdeasChange={(ids,revision)=>{setTripIdeas(ids);onUpdateTrip?.({...trip,ideas:ids,workspaceRevision:revision ?? trip.workspaceRevision});}}
+          onBudgetChange={budget=>onUpdateTrip?.({...trip,totalBudget:budget})}
+          onViewPoi={id=>setSelectedMapPoiId(id)} onApplied={()=>{void getTripItinerary(trip.id).then(setItineraryPlan);}} />
+      </aside>}
 
       {/* Explanation Modal (KG + AI) */}
       {explanationPoi && (

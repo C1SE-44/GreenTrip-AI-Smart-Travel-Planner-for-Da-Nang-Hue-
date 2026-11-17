@@ -1,0 +1,5465 @@
+{
+  "source": "synthetic templates; no private chats or POI facts",
+  "cases": [
+    {
+      "id": "train-search-000",
+      "split": "train",
+      "message": "Tìm 1 quán cà phê ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-001",
+      "split": "train",
+      "message": "Gợi ý 1 quán cafe tại Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-002",
+      "split": "train",
+      "message": "Mình muốn 1 địa điểm cà phê Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-003",
+      "split": "train",
+      "message": "Cho mình 1 tiệm coffee ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-004",
+      "split": "train",
+      "message": "Chọn giúp 1 quán cà phê trong Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-005",
+      "split": "train",
+      "message": "Mình cần 1 quán cafe, khu vực Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-006",
+      "split": "train",
+      "message": "Tìm 2 quán cà phê ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-007",
+      "split": "train",
+      "message": "Gợi ý 2 quán cafe tại Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-008",
+      "split": "train",
+      "message": "Mình muốn 2 địa điểm cà phê Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-009",
+      "split": "train",
+      "message": "Cho mình 2 tiệm coffee ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-010",
+      "split": "train",
+      "message": "Chọn giúp 2 quán cà phê trong Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-011",
+      "split": "train",
+      "message": "Mình cần 2 quán cafe, khu vực Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-012",
+      "split": "train",
+      "message": "Tìm 3 quán cà phê ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-013",
+      "split": "train",
+      "message": "Gợi ý 3 quán cafe tại Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-014",
+      "split": "train",
+      "message": "Mình muốn 3 địa điểm cà phê Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-015",
+      "split": "train",
+      "message": "Cho mình 3 tiệm coffee ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-016",
+      "split": "train",
+      "message": "Chọn giúp 3 quán cà phê trong Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-017",
+      "split": "train",
+      "message": "Mình cần 3 quán cafe, khu vực Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-018",
+      "split": "train",
+      "message": "Tìm 4 quán cà phê ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-019",
+      "split": "train",
+      "message": "Gợi ý 4 quán cafe tại Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-020",
+      "split": "train",
+      "message": "Mình muốn 4 địa điểm cà phê Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-021",
+      "split": "train",
+      "message": "Cho mình 4 tiệm coffee ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-022",
+      "split": "train",
+      "message": "Chọn giúp 4 quán cà phê trong Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-023",
+      "split": "train",
+      "message": "Mình cần 4 quán cafe, khu vực Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-024",
+      "split": "train",
+      "message": "Tìm 1 quán cafe và 2 chùa ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 1,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-025",
+      "split": "train",
+      "message": "Chọn 1 địa điểm cà phê, thêm 2 ngôi chùa tại Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 1,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-026",
+      "split": "train",
+      "message": "Ở Huế, gợi ý 1 quán cà phê cùng 2 chùa",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 1,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-027",
+      "split": "train",
+      "message": "Mình cần 2 chùa với 1 quán coffee trong Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 1,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-028",
+      "split": "train",
+      "message": "Lấy 1 quán cà phê và 2 địa điểm chùa Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 1,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-029",
+      "split": "train",
+      "message": "Tìm 2 quán cafe và 1 chùa ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 2,
+              "temple": 1
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-030",
+      "split": "train",
+      "message": "Chọn 2 địa điểm cà phê, thêm 1 ngôi chùa tại Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 2,
+              "temple": 1
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-031",
+      "split": "train",
+      "message": "Ở Huế, gợi ý 2 quán cà phê cùng 1 chùa",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 2,
+              "temple": 1
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-032",
+      "split": "train",
+      "message": "Mình cần 1 chùa với 2 quán coffee trong Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 2,
+              "temple": 1
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-033",
+      "split": "train",
+      "message": "Lấy 2 quán cà phê và 1 địa điểm chùa Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 2,
+              "temple": 1
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-034",
+      "split": "train",
+      "message": "Tìm 3 quán cafe và 2 chùa ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 3,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-035",
+      "split": "train",
+      "message": "Chọn 3 địa điểm cà phê, thêm 2 ngôi chùa tại Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 3,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-036",
+      "split": "train",
+      "message": "Ở Huế, gợi ý 3 quán cà phê cùng 2 chùa",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 3,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-037",
+      "split": "train",
+      "message": "Mình cần 2 chùa với 3 quán coffee trong Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 3,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-038",
+      "split": "train",
+      "message": "Lấy 3 quán cà phê và 2 địa điểm chùa Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 3,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-039",
+      "split": "train",
+      "message": "Tìm 1 quán cà phê ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-040",
+      "split": "train",
+      "message": "Gợi ý 1 quán cafe tại Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-041",
+      "split": "train",
+      "message": "Mình muốn 1 địa điểm cà phê Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-042",
+      "split": "train",
+      "message": "Cho mình 1 tiệm coffee ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-043",
+      "split": "train",
+      "message": "Chọn giúp 1 quán cà phê trong Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-044",
+      "split": "train",
+      "message": "Mình cần 1 quán cafe, khu vực Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 1
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-045",
+      "split": "train",
+      "message": "Tìm 2 quán cà phê ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-046",
+      "split": "train",
+      "message": "Gợi ý 2 quán cafe tại Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-047",
+      "split": "train",
+      "message": "Mình muốn 2 địa điểm cà phê Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-048",
+      "split": "train",
+      "message": "Cho mình 2 tiệm coffee ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-049",
+      "split": "train",
+      "message": "Chọn giúp 2 quán cà phê trong Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-050",
+      "split": "train",
+      "message": "Mình cần 2 quán cafe, khu vực Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 2
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-051",
+      "split": "train",
+      "message": "Tìm 3 quán cà phê ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-052",
+      "split": "train",
+      "message": "Gợi ý 3 quán cafe tại Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-053",
+      "split": "train",
+      "message": "Mình muốn 3 địa điểm cà phê Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-054",
+      "split": "train",
+      "message": "Cho mình 3 tiệm coffee ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-055",
+      "split": "train",
+      "message": "Chọn giúp 3 quán cà phê trong Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-056",
+      "split": "train",
+      "message": "Mình cần 3 quán cafe, khu vực Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-057",
+      "split": "train",
+      "message": "Tìm 4 quán cà phê ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-058",
+      "split": "train",
+      "message": "Gợi ý 4 quán cafe tại Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-059",
+      "split": "train",
+      "message": "Mình muốn 4 địa điểm cà phê Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-060",
+      "split": "train",
+      "message": "Cho mình 4 tiệm coffee ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-061",
+      "split": "train",
+      "message": "Chọn giúp 4 quán cà phê trong Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-search-062",
+      "split": "train",
+      "message": "Mình cần 4 quán cafe, khu vực Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "cafe"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-063",
+      "split": "train",
+      "message": "Tìm 1 quán cafe và 2 chùa ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 1,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-064",
+      "split": "train",
+      "message": "Chọn 1 địa điểm cà phê, thêm 2 ngôi chùa tại Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 1,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-065",
+      "split": "train",
+      "message": "Ở Đà Nẵng, gợi ý 1 quán cà phê cùng 2 chùa",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 1,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-066",
+      "split": "train",
+      "message": "Mình cần 2 chùa với 1 quán coffee trong Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 1,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-067",
+      "split": "train",
+      "message": "Lấy 1 quán cà phê và 2 địa điểm chùa Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 1,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-068",
+      "split": "train",
+      "message": "Tìm 2 quán cafe và 1 chùa ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 2,
+              "temple": 1
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-069",
+      "split": "train",
+      "message": "Chọn 2 địa điểm cà phê, thêm 1 ngôi chùa tại Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 2,
+              "temple": 1
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-070",
+      "split": "train",
+      "message": "Ở Đà Nẵng, gợi ý 2 quán cà phê cùng 1 chùa",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 2,
+              "temple": 1
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-071",
+      "split": "train",
+      "message": "Mình cần 1 chùa với 2 quán coffee trong Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 2,
+              "temple": 1
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-072",
+      "split": "train",
+      "message": "Lấy 2 quán cà phê và 1 địa điểm chùa Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 3
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 2,
+              "temple": 1
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-073",
+      "split": "train",
+      "message": "Tìm 3 quán cafe và 2 chùa ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 3,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-074",
+      "split": "train",
+      "message": "Chọn 3 địa điểm cà phê, thêm 2 ngôi chùa tại Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 3,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-075",
+      "split": "train",
+      "message": "Ở Đà Nẵng, gợi ý 3 quán cà phê cùng 2 chùa",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 3,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-076",
+      "split": "train",
+      "message": "Mình cần 2 chùa với 3 quán coffee trong Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 3,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-mix-077",
+      "split": "train",
+      "message": "Lấy 3 quán cà phê và 2 địa điểm chùa Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 3,
+              "temple": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-list-078",
+      "split": "train",
+      "message": "Xem các Ý tưởng của mình",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-list-079",
+      "split": "train",
+      "message": "Liệt kê địa điểm đã lưu cho chuyến này",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-list-080",
+      "split": "train",
+      "message": "Mình đã chọn những điểm nào rồi?",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-list-081",
+      "split": "train",
+      "message": "Trong Ý tưởng đang có gì?",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-list-082",
+      "split": "train",
+      "message": "Cho xem danh sách địa điểm đã chọn",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-list-083",
+      "split": "train",
+      "message": "Nhắc lại những nơi đã thêm vào chuyến đi",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-list-084",
+      "split": "train",
+      "message": "Các Ý tưởng hiện tại gồm những gì?",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-list-085",
+      "split": "train",
+      "message": "Tôi đang có bao nhiêu điểm trong Ý tưởng?",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-list-086",
+      "split": "train",
+      "message": "Đọc giúp danh sách Ý tưởng đã lưu",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-list-087",
+      "split": "train",
+      "message": "Những chỗ mình đã lưu đâu rồi?",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-near-088",
+      "split": "train",
+      "message": "Không cần gần chùa nữa",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa mẫu",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa mẫu"
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear",
+            "value": null
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-near-089",
+      "split": "train",
+      "message": "Bỏ yêu cầu quanh chùa đi",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa mẫu",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa mẫu"
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear",
+            "value": null
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-near-090",
+      "split": "train",
+      "message": "Khoảng cách tới chùa không cần giới hạn nữa",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa mẫu",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa mẫu"
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear",
+            "value": null
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-near-091",
+      "split": "train",
+      "message": "Đừng lọc gần mốc cũ nữa",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa mẫu",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa mẫu"
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear",
+            "value": null
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-near-092",
+      "split": "train",
+      "message": "Gỡ bán kính tìm kiếm, các điều kiện khác giữ nguyên",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa mẫu",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa mẫu"
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear",
+            "value": null
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-near-093",
+      "split": "train",
+      "message": "Bỏ mốc gần chùa nhưng vẫn Huế dưới 80k",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa mẫu",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa mẫu"
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear",
+            "value": null
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-near-094",
+      "split": "train",
+      "message": "Không cần trong 1km nữa",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa mẫu",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa mẫu"
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear",
+            "value": null
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-near-095",
+      "split": "train",
+      "message": "Thôi không cần nằm cạnh chùa nữa",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa mẫu",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa mẫu"
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear",
+            "value": null
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-096",
+      "split": "train",
+      "message": "Đừng gợi ý lại quán thứ nhất",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              1
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-097",
+      "split": "train",
+      "message": "Loại quán số 1 khỏi lượt tìm tiếp",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              1
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-098",
+      "split": "train",
+      "message": "Bỏ điểm thứ nhất ra khỏi kết quả nhé",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              1
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-099",
+      "split": "train",
+      "message": "Tìm tiếp, trừ quán thứ nhất",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              1
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-100",
+      "split": "train",
+      "message": "Không đưa lại chỗ số 1 nữa",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              1
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-101",
+      "split": "train",
+      "message": "Lượt sau đừng chọn vị trí 1",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              1
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-save-102",
+      "split": "train",
+      "message": "Lưu quán thứ nhất vào Ý tưởng",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 1
+      }
+    },
+    {
+      "id": "train-save-103",
+      "split": "train",
+      "message": "Thêm điểm số 1 vào Ý tưởng chuyến này",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 1
+      }
+    },
+    {
+      "id": "train-save-104",
+      "split": "train",
+      "message": "Lưu chỗ số 1 giúp tôi",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 1
+      }
+    },
+    {
+      "id": "train-save-105",
+      "split": "train",
+      "message": "Chọn quán thứ nhất để lưu vào chuyến đi",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 1
+      }
+    },
+    {
+      "id": "train-save-106",
+      "split": "train",
+      "message": "Cất quán thứ nhất vào Ý tưởng nhé",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 1
+      }
+    },
+    {
+      "id": "train-save-107",
+      "split": "train",
+      "message": "Lưu lại địa điểm ở vị trí 1",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 1
+      }
+    },
+    {
+      "id": "train-exclude-108",
+      "split": "train",
+      "message": "Đừng gợi ý lại quán thứ hai",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              2
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-109",
+      "split": "train",
+      "message": "Loại quán số 2 khỏi lượt tìm tiếp",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              2
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-110",
+      "split": "train",
+      "message": "Bỏ điểm thứ hai ra khỏi kết quả nhé",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              2
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-111",
+      "split": "train",
+      "message": "Tìm tiếp, trừ quán thứ hai",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              2
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-112",
+      "split": "train",
+      "message": "Không đưa lại chỗ số 2 nữa",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              2
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-113",
+      "split": "train",
+      "message": "Lượt sau đừng chọn vị trí 2",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              2
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-save-114",
+      "split": "train",
+      "message": "Lưu quán thứ hai vào Ý tưởng",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 2
+      }
+    },
+    {
+      "id": "train-save-115",
+      "split": "train",
+      "message": "Thêm điểm số 2 vào Ý tưởng chuyến này",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 2
+      }
+    },
+    {
+      "id": "train-save-116",
+      "split": "train",
+      "message": "Lưu chỗ số 2 giúp tôi",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 2
+      }
+    },
+    {
+      "id": "train-save-117",
+      "split": "train",
+      "message": "Chọn quán thứ hai để lưu vào chuyến đi",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 2
+      }
+    },
+    {
+      "id": "train-save-118",
+      "split": "train",
+      "message": "Cất quán thứ hai vào Ý tưởng nhé",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 2
+      }
+    },
+    {
+      "id": "train-save-119",
+      "split": "train",
+      "message": "Lưu lại địa điểm ở vị trí 2",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 2
+      }
+    },
+    {
+      "id": "train-exclude-120",
+      "split": "train",
+      "message": "Đừng gợi ý lại quán thứ ba",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              3
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-121",
+      "split": "train",
+      "message": "Loại quán số 3 khỏi lượt tìm tiếp",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              3
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-122",
+      "split": "train",
+      "message": "Bỏ điểm thứ ba ra khỏi kết quả nhé",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              3
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-123",
+      "split": "train",
+      "message": "Tìm tiếp, trừ quán thứ ba",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              3
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-124",
+      "split": "train",
+      "message": "Không đưa lại chỗ số 3 nữa",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              3
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-exclude-125",
+      "split": "train",
+      "message": "Lượt sau đừng chọn vị trí 3",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              3
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "train-save-126",
+      "split": "train",
+      "message": "Lưu quán thứ ba vào Ý tưởng",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 3
+      }
+    },
+    {
+      "id": "train-save-127",
+      "split": "train",
+      "message": "Thêm điểm số 3 vào Ý tưởng chuyến này",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 3
+      }
+    },
+    {
+      "id": "train-save-128",
+      "split": "train",
+      "message": "Lưu chỗ số 3 giúp tôi",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 3
+      }
+    },
+    {
+      "id": "train-save-129",
+      "split": "train",
+      "message": "Chọn quán thứ ba để lưu vào chuyến đi",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 3
+      }
+    },
+    {
+      "id": "train-save-130",
+      "split": "train",
+      "message": "Cất quán thứ ba vào Ý tưởng nhé",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 3
+      }
+    },
+    {
+      "id": "train-save-131",
+      "split": "train",
+      "message": "Lưu lại địa điểm ở vị trí 3",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 3
+      }
+    },
+    {
+      "id": "train-edit-132",
+      "split": "train",
+      "message": "Ngày 2 bắt đầu lúc 10:00, giữ ăn trưa, đổi điểm cuối",
+      "context": {
+        "focused_day": 2,
+        "draft_active": true,
+        "day_stops": [
+          {
+            "position": 1,
+            "title": "Điểm mẫu A",
+            "stop_type": "poi",
+            "start_time": "08:00"
+          },
+          {
+            "position": 2,
+            "title": "Bữa trưa",
+            "stop_type": "rest",
+            "start_time": "12:00"
+          },
+          {
+            "position": 3,
+            "title": "Điểm mẫu B",
+            "stop_type": "poi",
+            "start_time": "15:00"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:00"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-edit-133",
+      "split": "train",
+      "message": "Chỉnh ngày hai: đi sau 10:00, không đổi bữa trưa, thay điểm cuối thôi",
+      "context": {
+        "focused_day": 2,
+        "draft_active": true,
+        "day_stops": [
+          {
+            "position": 1,
+            "title": "Điểm mẫu A",
+            "stop_type": "poi",
+            "start_time": "08:00"
+          },
+          {
+            "position": 2,
+            "title": "Bữa trưa",
+            "stop_type": "rest",
+            "start_time": "12:00"
+          },
+          {
+            "position": 3,
+            "title": "Điểm mẫu B",
+            "stop_type": "poi",
+            "start_time": "15:00"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:00"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-edit-134",
+      "split": "train",
+      "message": "Sáng ngày 2 đi từ 10:00, giữ chỗ ăn trưa và đổi chỗ cuối",
+      "context": {
+        "focused_day": 2,
+        "draft_active": true,
+        "day_stops": [
+          {
+            "position": 1,
+            "title": "Điểm mẫu A",
+            "stop_type": "poi",
+            "start_time": "08:00"
+          },
+          {
+            "position": 2,
+            "title": "Bữa trưa",
+            "stop_type": "rest",
+            "start_time": "12:00"
+          },
+          {
+            "position": 3,
+            "title": "Điểm mẫu B",
+            "stop_type": "poi",
+            "start_time": "15:00"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:00"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-edit-135",
+      "split": "train",
+      "message": "Ngày 2 xuất phát 10:00, ăn trưa như cũ, chỉ thay nơi cuối cùng",
+      "context": {
+        "focused_day": 2,
+        "draft_active": true,
+        "day_stops": [
+          {
+            "position": 1,
+            "title": "Điểm mẫu A",
+            "stop_type": "poi",
+            "start_time": "08:00"
+          },
+          {
+            "position": 2,
+            "title": "Bữa trưa",
+            "stop_type": "rest",
+            "start_time": "12:00"
+          },
+          {
+            "position": 3,
+            "title": "Điểm mẫu B",
+            "stop_type": "poi",
+            "start_time": "15:00"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:00"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-edit-136",
+      "split": "train",
+      "message": "Ngày 2 bắt đầu lúc 10:30, giữ ăn trưa, đổi điểm cuối",
+      "context": {
+        "focused_day": 2,
+        "draft_active": true,
+        "day_stops": [
+          {
+            "position": 1,
+            "title": "Điểm mẫu A",
+            "stop_type": "poi",
+            "start_time": "08:00"
+          },
+          {
+            "position": 2,
+            "title": "Bữa trưa",
+            "stop_type": "rest",
+            "start_time": "12:00"
+          },
+          {
+            "position": 3,
+            "title": "Điểm mẫu B",
+            "stop_type": "poi",
+            "start_time": "15:00"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:30"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-edit-137",
+      "split": "train",
+      "message": "Chỉnh ngày hai: đi sau 10:30, không đổi bữa trưa, thay điểm cuối thôi",
+      "context": {
+        "focused_day": 2,
+        "draft_active": true,
+        "day_stops": [
+          {
+            "position": 1,
+            "title": "Điểm mẫu A",
+            "stop_type": "poi",
+            "start_time": "08:00"
+          },
+          {
+            "position": 2,
+            "title": "Bữa trưa",
+            "stop_type": "rest",
+            "start_time": "12:00"
+          },
+          {
+            "position": 3,
+            "title": "Điểm mẫu B",
+            "stop_type": "poi",
+            "start_time": "15:00"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:30"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-edit-138",
+      "split": "train",
+      "message": "Sáng ngày 2 đi từ 10:30, giữ chỗ ăn trưa và đổi chỗ cuối",
+      "context": {
+        "focused_day": 2,
+        "draft_active": true,
+        "day_stops": [
+          {
+            "position": 1,
+            "title": "Điểm mẫu A",
+            "stop_type": "poi",
+            "start_time": "08:00"
+          },
+          {
+            "position": 2,
+            "title": "Bữa trưa",
+            "stop_type": "rest",
+            "start_time": "12:00"
+          },
+          {
+            "position": 3,
+            "title": "Điểm mẫu B",
+            "stop_type": "poi",
+            "start_time": "15:00"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:30"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-edit-139",
+      "split": "train",
+      "message": "Ngày 2 xuất phát 10:30, ăn trưa như cũ, chỉ thay nơi cuối cùng",
+      "context": {
+        "focused_day": 2,
+        "draft_active": true,
+        "day_stops": [
+          {
+            "position": 1,
+            "title": "Điểm mẫu A",
+            "stop_type": "poi",
+            "start_time": "08:00"
+          },
+          {
+            "position": 2,
+            "title": "Bữa trưa",
+            "stop_type": "rest",
+            "start_time": "12:00"
+          },
+          {
+            "position": 3,
+            "title": "Điểm mẫu B",
+            "stop_type": "poi",
+            "start_time": "15:00"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:30"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-compare-140",
+      "split": "train",
+      "message": "Quán nào yên hơn trong hai quán đó?",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "compare",
+        "changes": [
+          {
+            "field": "quiet",
+            "op": "prefer",
+            "value": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-compare-141",
+      "split": "train",
+      "message": "So sánh độ yên tĩnh của các quán vừa gợi ý",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "compare",
+        "changes": [
+          {
+            "field": "quiet",
+            "op": "prefer",
+            "value": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-compare-142",
+      "split": "train",
+      "message": "Trong các quán này, chỗ nào yên tĩnh hơn?",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "compare",
+        "changes": [
+          {
+            "field": "quiet",
+            "op": "prefer",
+            "value": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-compare-143",
+      "split": "train",
+      "message": "So giúp các quán về không gian yên tĩnh",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "compare",
+        "changes": [
+          {
+            "field": "quiet",
+            "op": "prefer",
+            "value": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-compare-144",
+      "split": "train",
+      "message": "Chỗ nào ít ồn hơn trong danh sách?",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "compare",
+        "changes": [
+          {
+            "field": "quiet",
+            "op": "prefer",
+            "value": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-compare-145",
+      "split": "train",
+      "message": "Hai quán trên thì quán nào hợp ngồi yên hơn?",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "compare",
+        "changes": [
+          {
+            "field": "quiet",
+            "op": "prefer",
+            "value": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "train-plan-146",
+      "split": "train",
+      "message": "Xếp lịch từ Ý tưởng",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-plan-147",
+      "split": "train",
+      "message": "Lên lịch cho các điểm đã lưu",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-plan-148",
+      "split": "train",
+      "message": "Tạo bản xem trước lịch trình chuyến này",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-plan-149",
+      "split": "train",
+      "message": "Lập lịch cho những nơi đang có trong Ý tưởng",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-plan-150",
+      "split": "train",
+      "message": "Xếp ba điểm đã chọn thành lịch trình",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-plan-151",
+      "split": "train",
+      "message": "Tạo nháp hành trình từ danh sách đã lưu",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-dish-152",
+      "split": "train",
+      "message": "Tôi muốn ăn mì Quảng ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "food"
+          },
+          {
+            "field": "dish",
+            "op": "set",
+            "value": "mì Quảng"
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-dish-153",
+      "split": "train",
+      "message": "Tìm quán có mì Quảng tại Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "food"
+          },
+          {
+            "field": "dish",
+            "op": "set",
+            "value": "mì Quảng"
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-dish-154",
+      "split": "train",
+      "message": "Mình muốn đổi sang món mì Quảng, Huế nhé",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "food"
+          },
+          {
+            "field": "dish",
+            "op": "set",
+            "value": "mì Quảng"
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-dish-155",
+      "split": "train",
+      "message": "Gợi ý chỗ ăn mì Quảng trong Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "food"
+          },
+          {
+            "field": "dish",
+            "op": "set",
+            "value": "mì Quảng"
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-dish-156",
+      "split": "train",
+      "message": "Giờ tìm món mì Quảng ở Huế",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "food"
+          },
+          {
+            "field": "dish",
+            "op": "set",
+            "value": "mì Quảng"
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-dish-157",
+      "split": "train",
+      "message": "Tôi muốn ăn mì Quảng ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "food"
+          },
+          {
+            "field": "dish",
+            "op": "set",
+            "value": "mì Quảng"
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-dish-158",
+      "split": "train",
+      "message": "Tìm quán có mì Quảng tại Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "food"
+          },
+          {
+            "field": "dish",
+            "op": "set",
+            "value": "mì Quảng"
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-dish-159",
+      "split": "train",
+      "message": "Mình muốn đổi sang món mì Quảng, Đà Nẵng nhé",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "food"
+          },
+          {
+            "field": "dish",
+            "op": "set",
+            "value": "mì Quảng"
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-dish-160",
+      "split": "train",
+      "message": "Gợi ý chỗ ăn mì Quảng trong Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "food"
+          },
+          {
+            "field": "dish",
+            "op": "set",
+            "value": "mì Quảng"
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-dish-161",
+      "split": "train",
+      "message": "Giờ tìm món mì Quảng ở Đà Nẵng",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "category",
+            "op": "set",
+            "value": "food"
+          },
+          {
+            "field": "dish",
+            "op": "set",
+            "value": "mì Quảng"
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "train-hello-162",
+      "split": "train",
+      "message": "Xin chào",
+      "context": {},
+      "target": {
+        "intent": "greeting",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-hello-163",
+      "split": "train",
+      "message": "Chào bạn",
+      "context": {},
+      "target": {
+        "intent": "greeting",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-hello-164",
+      "split": "train",
+      "message": "Hello",
+      "context": {},
+      "target": {
+        "intent": "greeting",
+        "changes": []
+      }
+    },
+    {
+      "id": "train-hello-165",
+      "split": "train",
+      "message": "Alo bạn ơi",
+      "context": {},
+      "target": {
+        "intent": "greeting",
+        "changes": []
+      }
+    },
+    {
+      "id": "dev-mix-166",
+      "split": "dev",
+      "message": "Huế nhé, chọn hai ngôi chùa kèm bốn tiệm cà phê",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 6
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "temple": 2,
+              "cafe": 4
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "dev-list-167",
+      "split": "dev",
+      "message": "Tổng kết giúp các nơi tôi đã bỏ vào Ý tưởng chuyến này",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "dev-near-168",
+      "split": "dev",
+      "message": "Gỡ điều kiện sát ngôi chùa đó, đừng đổi thành phố hay mức tiền",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe",
+          "max_price": 80000,
+          "nearby": {
+            "name": "Chùa mẫu",
+            "radius_km": 1
+          }
+        },
+        "anchor": "Chùa mẫu"
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear",
+            "value": null
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "id": "dev-edit-169",
+      "split": "dev",
+      "message": "Ngày hai khởi hành 10:45, chỗ ăn trưa không động tới, thay mỗi điểm chốt ngày",
+      "context": {
+        "focused_day": 2,
+        "draft_active": true,
+        "day_stops": [
+          {
+            "position": 1,
+            "title": "Điểm mẫu A",
+            "stop_type": "poi",
+            "start_time": "08:00"
+          },
+          {
+            "position": 2,
+            "title": "Bữa trưa",
+            "stop_type": "rest",
+            "start_time": "12:00"
+          },
+          {
+            "position": 3,
+            "title": "Điểm mẫu B",
+            "stop_type": "poi",
+            "start_time": "15:00"
+          }
+        ]
+      },
+      "target": {
+        "intent": "plan",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:45"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ]
+      }
+    },
+    {
+      "id": "test-mix-170",
+      "split": "test",
+      "message": "Đà Nẵng: ba quán coffee và ba ngôi chùa, tổng sáu chỗ",
+      "context": {},
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 6
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "cafe": 3,
+              "temple": 3
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "id": "test-list-171",
+      "split": "test",
+      "message": "Mình đã gom những địa điểm nào cho hành trình này rồi nhỉ?",
+      "context": {
+        "saved_ideas_count": 3,
+        "idea_refs": [
+          {
+            "index": 1,
+            "name": "Điểm mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Điểm mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Điểm mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "list_ideas",
+        "changes": []
+      }
+    },
+    {
+      "id": "test-save-172",
+      "split": "test",
+      "message": "Ghim quán ở vị trí thứ hai vào Ý tưởng của chuyến giúp mình",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "save_idea",
+        "changes": [],
+        "reference_index": 2
+      }
+    },
+    {
+      "id": "test-exclude-173",
+      "split": "test",
+      "message": "Lượt tìm mới nhớ né địa điểm nằm thứ ba ở trên",
+      "context": {
+        "filters": {
+          "city": "Huế",
+          "category": "cafe"
+        },
+        "result_refs": [
+          {
+            "index": 1,
+            "name": "Quán mẫu 1",
+            "city": "Huế"
+          },
+          {
+            "index": 2,
+            "name": "Quán mẫu 2",
+            "city": "Huế"
+          },
+          {
+            "index": 3,
+            "name": "Quán mẫu 3",
+            "city": "Huế"
+          }
+        ]
+      },
+      "target": {
+        "intent": "search",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              3
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    }
+  ]
+}

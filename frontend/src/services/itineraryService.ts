@@ -232,7 +232,7 @@ const routeMemoryCache = new Map<string, ComputedRouteResult>();
  * tuyệt đối không vẽ đường thẳng bay ngang biển Vịnh Đà Nẵng hay Đầm Cầu Hai.
  */
 export function buildFallbackRoadCorridor(
-  stops: { latitude?: number | null; longitude?: number | null; [key: string]: any }[]
+  stops: { latitude?: number | null; longitude?: number | null; [key: string]: unknown }[]
 ): ComputedRouteResult {
   const validStops = stops
     .filter((s) => s.latitude != null && s.longitude != null && Number.isFinite(s.latitude) && Number.isFinite(s.longitude))

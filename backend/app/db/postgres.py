@@ -43,6 +43,9 @@ class SQLiteCursorWrapper:
         clean_query = re.sub(r"\bpublic\.", "", query, flags=re.IGNORECASE)
         # 1b. Bỏ typecast postgres như ::text, ::jsonb, ::geometry
         clean_query = re.sub(r"::\w+", "", clean_query)
+        # 1b2. Chuyển đổi PostGIS ST_Y(geom) / ST_X(geom) sang latitude / longitude cho SQLite
+        clean_query = re.sub(r"\bST_Y\(\s*(\w+\.)?geom\s*\)", r"\1latitude", clean_query, flags=re.IGNORECASE)
+        clean_query = re.sub(r"\bST_X\(\s*(\w+\.)?geom\s*\)", r"\1longitude", clean_query, flags=re.IGNORECASE)
         # 1c. Chuyển đổi ILIKE của PostgreSQL sang LIKE của SQLite
         clean_query = re.sub(r"\bILIKE\b", "LIKE", clean_query, flags=re.IGNORECASE)
         # 1d. Chuyển đổi (SELECT ... LIMIT N) UNION ALL sang SELECT * FROM (SELECT ... LIMIT N) cho SQLite

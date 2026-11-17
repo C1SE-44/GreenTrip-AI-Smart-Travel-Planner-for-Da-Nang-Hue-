@@ -203,7 +203,7 @@ def handle_smart_concierge(
                 sub_cat = r[3] or "điểm đến"
                 image_url = r[4] or "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80"
                 green_score = format_green_score(r[5])
-                rating = float(r[6]) if r[6] is not None else 4.8
+                rating = round(float(r[6]), 1) if r[6] is not None else 0.0
                 address = r[7] or "Đang cập nhật địa chỉ"
                 cost = float(r[8]) if r[8] is not None else None
                 meta = r[9] if isinstance(r[9], dict) else {}

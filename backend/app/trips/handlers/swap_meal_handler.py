@@ -55,7 +55,9 @@ def handle_swap_meal(
             p.address,
             p.estimated_cost,
             p.ai_metadata,
-            ci.name AS city_name
+            ci.name AS city_name,
+            ST_Y(p.geom::geometry) AS latitude,
+            ST_X(p.geom::geometry) AS longitude
         FROM public.pois p
         JOIN public.poi_categories c ON p.category_id = c.category_id
         JOIN public.cities ci ON p.city_id = ci.city_id
@@ -86,15 +88,17 @@ def handle_swap_meal(
                 sub_category = r[3] or "vegetarian"
                 image_url = r[4] or "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=80"
                 green_score = format_green_score(r[5])
-                rating = float(r[6]) if r[6] is not None else 4.8
-                address = r[7] or "Đang cập nhật địa chỉ"
+                rating = round(float(r[6]), 1) if r[6] is not None else 0.0
+                address = r[7] or "Chưa có địa chỉ chi tiết"
                 cost = float(r[8]) if r[8] is not None else None
                 meta = r[9] if isinstance(r[9], dict) else {}
                 city_name = r[10]
+                lat = float(r[11]) if r[11] is not None else None
+                lng = float(r[12]) if r[12] is not None else None
 
                 price_display = meta.get("price_range_display") if isinstance(meta, dict) else None
-                if not price_display and cost:
-                    price_display = f"Khoảng {int(cost):,} ₫/người"
+                if not price_display and cost is not None:
+                    price_display = "Miễn phí vé" if cost == 0 else f"~{int(cost):,} ₫/người".replace(",", ".")
 
                 # Generate contextual swap reason
                 is_saved = False
@@ -117,16 +121,19 @@ def handle_swap_meal(
                     name=name,
                     category="Ẩm thực chay",
                     sub_category=sub_category,
+                    city="Huế" if "hue" in str(city_name or "").lower() else "Đà Nẵng",
+                    lat=lat,
+                    lng=lng,
                     image_url=image_url,
                     green_score=green_score,
                     rating=rating,
                     address=address,
                     swap_reason=swap_reason,
-                    distance_info="Cách vị trí trước ~600m • 8 phút đi bộ",
+                    distance_info=None,
                     estimated_cost=cost,
-                    price_range_display=price_display or "35.000 – 120.000 ₫/người",
-                    budget_delta="Tiết kiệm ~35.000 ₫/người",
-                    carbon_saved="Giảm 1.8 kg CO2 (Ăn chay)",
+                    price_range_display=price_display or "Chưa có thông tin giá",
+                    budget_delta=None,
+                    carbon_saved="Giảm phát thải carbon (Ăn chay)",
                 )
                 if is_saved:
                     suggested_pois.insert(0, item)

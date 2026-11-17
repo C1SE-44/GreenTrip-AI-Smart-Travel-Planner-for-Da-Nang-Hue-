@@ -268,11 +268,26 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                         """,
                         (day_row[0],),
                     )
-                    stops = [ItineraryStop(
-                        stop_id=row[0], poi_id=row[1], title=row[2], city=row[3], address=row[4], category=row[5],
-                        stop_type=row[6], source=row[7], sequence=row[8], duration_minutes=row[9],
-                        start_time=row[10], end_time=row[11], comment=row[12], latitude=row[13], longitude=row[14],
-                    ) for row in cursor.fetchall()]
+                    stops = [
+                        ItineraryStop(
+                            stop_id=row[0],
+                            poi_id=row[1],
+                            title=row[2],
+                            city=row[3],
+                            address=row[4],
+                            category=row[5],
+                            stop_type=row[6],
+                            source=row[7],
+                            sequence=idx,
+                            duration_minutes=row[9],
+                            start_time=row[10],
+                            end_time=row[11],
+                            comment=row[12],
+                            latitude=row[13],
+                            longitude=row[14],
+                        )
+                        for idx, row in enumerate(cursor.fetchall())
+                    ]
                     day_date = day_row[2].isoformat() if hasattr(day_row[2], "isoformat") else day_row[2]
                     days.append(ItineraryDay(day_id=day_row[0], day_number=day_row[1], date=day_date, title=day_row[3], note=day_row[4] or "", stops=stops))
                 return TripItineraryResponse(

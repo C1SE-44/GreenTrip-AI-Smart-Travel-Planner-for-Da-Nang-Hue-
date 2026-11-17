@@ -51,7 +51,7 @@ export default function ProfileSettingsPage({
 
   if (loading) {
     return (
-      <main className="h-full min-w-0 flex-1 overflow-y-auto bg-white px-5 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-9">
+      <main className="h-full min-w-0 flex-1 overflow-y-auto auto-hide-scrollbar bg-white px-5 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-9">
         <div className="w-full animate-pulse" role="status" aria-label="Đang tải hồ sơ">
           <div className="h-8 w-56 rounded-lg bg-neutral-200" />
           <div className="mt-3 h-4 w-96 max-w-full rounded bg-neutral-100" />
@@ -83,15 +83,15 @@ export default function ProfileSettingsPage({
 
   if (!user) {
     return (
-      <main className="h-full min-w-0 flex-1 overflow-y-auto bg-white px-5 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-9">
+      <main className="h-full min-w-0 flex-1 overflow-y-auto auto-hide-scrollbar bg-white px-5 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-9">
         <header className="border-b border-neutral-200 pb-6">
-          <h1 id="profile-settings-title" className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">Hồ sơ &amp; Cài đặt</h1>
+          <h1 id="profile-settings-title" className="text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl">Hồ sơ &amp; Cài đặt</h1>
           <p className="mt-2 text-sm text-neutral-700">Quản lý thông tin cá nhân và bảo mật tài khoản.</p>
         </header>
         <section className="py-8" aria-labelledby="profile-sign-in-heading">
           <h2 id="profile-sign-in-heading" className="text-lg font-semibold text-neutral-900">Đăng nhập để xem hồ sơ</h2>
           <p className="mt-2 text-sm text-neutral-700">Bạn cần đăng nhập để xem và cập nhật thông tin cá nhân.</p>
-          <Button type="button" className="mt-5 min-h-11" onClick={onLogin}>Đăng nhập</Button>
+          <Button type="button" className="mt-5 min-h-11 rounded-full px-5" variant="dark" onClick={onLogin}>Đăng nhập</Button>
         </section>
       </main>
     );
@@ -171,7 +171,7 @@ export default function ProfileSettingsPage({
   const initials = user.full_name.trim().charAt(0).toUpperCase() || 'G';
 
   return (
-    <main className="h-full min-w-0 flex-1 overflow-y-auto bg-white" data-purpose="profile-page">
+    <main className="h-full min-w-0 flex-1 overflow-y-auto auto-hide-scrollbar bg-white" data-purpose="profile-page">
       <div className="w-full px-5 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-9">
         <header className="flex items-start justify-between gap-4 border-b border-neutral-200 pb-6">
           <div className="flex min-w-0 items-start gap-3">
@@ -184,7 +184,7 @@ export default function ProfileSettingsPage({
               <ArrowLeft size={20} aria-hidden="true" />
             </button>
             <div className="min-w-0">
-              <h1 id="profile-settings-title" className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">Hồ sơ &amp; Cài đặt</h1>
+              <h1 id="profile-settings-title" className="text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl">Hồ sơ &amp; Cài đặt</h1>
               <p id="profile-settings-description" className="mt-2 text-sm text-neutral-700">Quản lý thông tin cá nhân và bảo mật tài khoản.</p>
             </div>
           </div>
@@ -212,11 +212,11 @@ export default function ProfileSettingsPage({
               onChange={(event) => onSelectAvatar(event.target.files?.[0])}
             />
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button type="button" variant="ghostDark" className="min-h-11" onClick={() => fileInputRef.current?.click()}>
+              <Button type="button" variant="ghostDark" className="min-h-11 rounded-full px-5" onClick={() => fileInputRef.current?.click()}>
                 <Camera size={17} aria-hidden="true" />
                 Chọn ảnh
               </Button>
-              {selectedFile && <Button type="button" variant="dark" loading={avatarBusy} className="min-h-11" onClick={saveAvatar}>{avatarBusy ? 'Đang tải ảnh...' : 'Tải ảnh lên'}</Button>}
+              {selectedFile && <Button type="button" variant="dark" loading={avatarBusy} className="min-h-11 rounded-full px-5" onClick={saveAvatar}>{avatarBusy ? 'Đang tải ảnh...' : 'Tải ảnh lên'}</Button>}
             </div>
             <p className="mt-3 text-sm text-neutral-700">Ảnh JPG, PNG hoặc WebP. Dung lượng tối đa 5 MB.</p>
             {avatarError && <p role="alert" className="mt-2 text-sm text-red-700">{avatarError}</p>}
@@ -230,6 +230,7 @@ export default function ProfileSettingsPage({
                 <Input
                   id="profile-full-name"
                   label="Họ và tên"
+                  className="bg-white border-neutral-300 focus:ring-emerald-800 focus:border-emerald-800"
                   autoComplete="name"
                   value={fullName}
                   onChange={(event) => setFullName(event.target.value)}
@@ -242,6 +243,7 @@ export default function ProfileSettingsPage({
                     id="profile-phone"
                     label="Số điện thoại"
                     type="tel"
+                    className="bg-white border-neutral-300 focus:ring-emerald-800 focus:border-emerald-800"
                     autoComplete="tel"
                     inputMode="tel"
                     value={phone}
@@ -252,7 +254,7 @@ export default function ProfileSettingsPage({
                 </div>
                 {error && <p role="alert" className="text-sm text-red-700 xl:col-span-2">{error}</p>}
                 <div className="flex flex-wrap items-center gap-3 xl:col-span-2">
-                  <Button type="submit" variant="dark" loading={profileBusy} className="min-h-11">{profileBusy ? 'Đang lưu...' : 'Lưu thay đổi'}</Button>
+                  <Button type="submit" variant="dark" loading={profileBusy} className="min-h-11 rounded-full px-5">{profileBusy ? 'Đang lưu...' : 'Lưu thay đổi'}</Button>
                   {profileSuccess && <p role="status" className="text-sm font-medium text-emerald-800">{profileSuccess}</p>}
                 </div>
               </form>
@@ -274,7 +276,7 @@ export default function ProfileSettingsPage({
                 <p className="max-w-2xl text-sm leading-6 text-neutral-700">
                   Đăng xuất khỏi thiết bị này. Các phiên trên thiết bị khác vẫn hoạt động cho đến khi mã truy cập hết hạn.
                 </p>
-                <Button type="button" variant="ghost" className="min-h-11 border-red-200 text-red-700 hover:bg-red-50" onClick={onLogout}>
+                <Button type="button" variant="ghostDark" className="min-h-11 rounded-full border-red-200 text-red-700 hover:bg-red-50" onClick={onLogout}>
                   <LogOut size={17} aria-hidden="true" />
                   Đăng xuất
                 </Button>

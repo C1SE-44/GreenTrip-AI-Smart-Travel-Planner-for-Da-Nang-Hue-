@@ -1735,7 +1735,9 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           }}
           onLogin={() => navigate('/login')}
           onLogout={handleLogout}
-          onProfileUpdated={setCurrentUser}
+          onProfileUpdated={profile => {
+            setCurrentUser(current => current?.user_id === profile.user_id ? profile : current);
+          }}
         />
       ) : viewMode === 'saved' ? (
         <SavedPlacesView addedTrips={addedTrips} onToggleAddTrip={toggleAddTrip} onAddAlbumToTrip={addAlbumToTrip} />

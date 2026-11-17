@@ -42,7 +42,7 @@ export default function Button({
   return (
     <button
       className={`
-        inline-flex items-center justify-center rounded-xl font-medium
+        inline-flex items-center justify-center ${variant === 'dark' || variant === 'ghostDark' ? 'rounded-full' : 'rounded-xl'} font-medium
         transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-cream
         disabled:opacity-50 disabled:cursor-not-allowed
         ${variantClasses[variant]} ${sizeClasses[size]} ${className}

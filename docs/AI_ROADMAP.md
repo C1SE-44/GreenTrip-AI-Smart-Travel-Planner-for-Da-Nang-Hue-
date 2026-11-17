@@ -1,4 +1,28 @@
+## Ba hội thoại riêng và cache tài khoản — 17/11/2026
+
+Đã bổ sung conversation_id 1–3 cho history/chat/apply; giữ lịch sử cũ ở slot 1 và ngữ cảnh/bản nháp riêng theo account/trip/mode/slot. UI có bộ chọn ba hội thoại, 403 có đường tạo chuyến riêng. Cache chuyến FE theo verified account, chỉ nhập cache legacy có owner được server xác minh; không xóa hoặc tự chuyển quyền chuyến legacy còn lại. **171 test backend + 6 test frontend liên quan PASS**, typecheck/build/lint trợ lý mới PASS. IAB đã quan sát chuyển 1/2/3, lưu Ý tưởng → preview → Apply trên SQLite riêng, đổi chuyến/tài khoản và khôi phục chat. Chưa QA UI toàn ExplorePage với tài khoản thật, chưa kiểm Gemini thật trong lượt này. Chi tiết giới hạn chuyển cache cũ và kết quả từng ca: [QA_ASSISTANT_CONVERSATIONS_2026-11-17.md](QA_ASSISTANT_CONVERSATIONS_2026-11-17.md).
+
+## Lịch mẫu chặn trợ lý — 17/11/2026
+
+Đã sửa UX tại local: `sample-*` là lịch dùng chung nên backend trả 403 có chủ đích; tải lại không giải quyết được. TravelAssistant hiện hướng dẫn và nút **Tạo chuyến riêng**, dùng CreateTripMindtripModal hiện có, chuyển ID Ý tưởng đang chọn qua luồng tạo chuyến của ExplorePage; không gửi history/chat của lịch mẫu. Giữ nguyên guard backend, không ghi Supabase online. Đã quan sát bằng IAB trên harness SQLite `:5177/__assistant-ui?sample=1`: hướng dẫn + số Ý tưởng hiển thị, bấm nút mở đúng form tạo chuyến. Chưa submit tạo chuyến trên tài khoản thật, chưa kiểm Gemini thật trong lượt này. Backend liên quan **165 PASS** (thêm ca sample history/chat/apply bị chặn trước DB và private trip mới chat được mà chưa lưu lịch); frontend typecheck/build và lint TravelAssistant/harness PASS. Không suy ra toàn bộ UI đã PASS; các luồng UI nhiều lượt/Apply của mốc trước vẫn cần nghiệm thu riêng.
+
+## Hội thoại trợ lý — cập nhật 16/11/2026
+
+Lượt nghiệm thu UI sau mốc 162: đã mở frontend `:5177/__assistant-ui` + backend `:8017` trên SQLite riêng và xác minh URL từ log/HTTP. Chrome/Edge headless crash trước DOM (Crashpad/AppContainer), UI vẫn BLOCKED; Gemini thật đang trả 503 ở ca tự do. Qua API demo phát hiện và sửa rules hiểu nhầm loại mốc gần là category mục tiêu; regression **163 PASS**. Hai luồng lưu/Apply và đổi chuyến+AI off qua HTTP, không coi là UI PASS. Checklist tay, lỗi/câu nhập và cách mở demo: [QA_ASSISTANT_UI_2026-11-16.md](QA_ASSISTANT_UI_2026-11-16.md). Không ghi Supabase online, không sửa lỗi nền OS/frontend.
+
+Nghiệm thu bổ sung: **162 test backend liên quan PASS**, frontend typecheck/build PASS; có kiểm bốn JWT đồng thời trên SQLite test và bốn câu mới bằng Gemini thật. Thêm search_scope new/refine, local hard/soft, kiểm city rõ ràng, lọc lại compare, nearer, preview summary và active_draft_id. UI thật/bốn browser session vẫn BLOCKED; lint/unit nền không xanh. Không deploy hoặc ghi Supabase online. Chi tiết/lệnh tái hiện: [QA_ASSISTANT_ACCEPTANCE_2026-11-16.md](QA_ASSISTANT_ACCEPTANCE_2026-11-16.md).
+
+Đã sửa local luồng Gemini → delta đã kiểm → search/preview; bỏ việc rules đọc lại và ghi đè model thành công. Giữ state gọn theo tài khoản/chuyến/mode, count/mix/loại trừ/clear nearby, so sánh theo chứng cứ có dữ liệu, và edit nhiều phần trên cùng draft mà giữ lunch/ngày khác. Provider có JSON grammar, lỗi có rules fallback; UI/PB09/Preview–Apply và guard Supabase giữ nguyên. Source AI mặc định tắt, local Gemini Free Tier giữ override được chủ dự án cho phép; không bật billing/grounding, không deploy/ghi DB online. Xem [QA_DIALOGUE_V2_2026-11-16.md](QA_DIALOGUE_V2_2026-11-16.md) cho từng ca mock/live và giới hạn. Giữ nguyên các thay đổi chưa commit từ các lượt trước.
+
 # GreenTrip — roadmap bàn giao
+
+## Chatbot theo thảo luận — 16/11/2026 (demo local, chưa deploy)
+
+- Đã đọc link chat được giao; thay chat giả/auto-apply bằng assistant chung Khám phá + Lên lịch, API bắt buộc đăng nhập, history account/trip/mode, thẻ POI thật, Ý tưởng, preview/Apply và CAS; giữ nguyên landing/theme/F02/F03. Tái dùng PB09 ranking, Saved Places và itinerary editor/repository.
+- Nối Gemini ngày 16/11 sau khi người dùng cung cấp key và ảnh Free Tier: `gemini-3.5-flash-lite` đã trả HTTP 200 và hiểu đúng ba câu thật. Model đọc tối đa 6 tin gần nhất + context tối thiểu, phân loại ý định/hỏi lại; hành động vẫn qua backend, không auto-apply. Local `.env` bật AI và giới hạn 40 lượt/ngày; môi trường chưa cấu hình vẫn dùng quy tắc. Không thêm runtime dependency, không bật billing. Xem phần cập nhật trong tài liệu demo; không commit key.
+- Local browser QA có đăng nhập/tìm/lưu thứ hai/preview/Apply/đổi chuyến và 320px. Chi tiết, lệnh chạy, giới hạn và kiểm thử: [TRAVEL_ASSISTANT_DEMO.md](TRAVEL_ASSISTANT_DEMO.md).
+- Còn trước khi public: duyệt quyền DB online (RLS/grants của 3 bảng lịch chưa bảo vệ, guard chặn Apply PostgreSQL; SQL review chưa áp dụng), đĩa bền vững cho chat store, API metadata đa thiết bị và cache UserTrip theo tài khoản. Không commit/push/deploy.
+- Baseline `a449fa0`: 3 unit/tĩnh frontend lỗi và 10 lỗi lint đã tái hiện riêng; browser harness cũ còn timeout. Không báo toàn suite xanh.
 
 ## Explore loading — 14/11/2026
 
@@ -175,3 +199,9 @@ Chỉ sửa dòng trạng thái liên quan: ngày, owner, phạm vi, file, kiể
   - 24/24 frontend unit tests pass 100%.
   - 33/33 backend pytest unit tests pass 100% (`test_copilot_chat.py`, `test_trip_parameters.py`, `test_saved_places_api.py`).
   - Vite build hoàn tất thành công trong 7.32s.
+
+
+## PB18 local integration — 17/11/2026
+
+- Đã fetch nhánh profile của Thiện (88e0411), ghép có chọn lọc vào feature/pb18-profile-ui-integration, đồng bộ UI và kiểm /profile thật ở 1280/320px.
+- Chi tiết QA và giới hạn: docs/PB18_PROFILE_INTEGRATION.md. Chưa push/commit, chưa áp migration/avatar Storage online; giữ nguyên phần AI.

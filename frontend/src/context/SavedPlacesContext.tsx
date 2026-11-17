@@ -138,7 +138,15 @@ export function SavedPlacesProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     void refresh();
-    const onAuthChange = () => void refresh();
+    const onAuthChange = () => {
+      requestIdRef.current += 1;
+      setPlaces([]);
+      setCollections([]);
+      setCollectionPoi(null);
+      setPendingIds(new Set());
+      setError(null);
+      void refresh();
+    };
     window.addEventListener('auth-change', onAuthChange);
     window.addEventListener('storage', onAuthChange);
     return () => {

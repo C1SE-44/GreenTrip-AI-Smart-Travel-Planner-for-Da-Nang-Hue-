@@ -21,11 +21,13 @@ import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import SavedPlacesView from '@/components/saved/SavedPlacesView';
 import AddToTripModal from '@/components/planner/AddToTripModal';
 import HomeDashboardView from '@/components/home/HomeDashboardView';
+import AccountMenu from '@/components/account/AccountMenu';
+import ProfileSettingsPage from '@/components/account/ProfileSettingsPage';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
-import { getMe, type UserProfile } from '@/services/auth';
+import { clearAuthSession, getMe, type UserProfile } from '@/services/auth';
 import { getPois, getAllPois, getPoisByIds } from '@/services/poi';
 import ExploreFilterModal, {
   type ExploreFilterValues,
@@ -262,10 +264,10 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
   },
 ];
 
-export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'home' | 'explore' | 'trips' | 'saved' }) {
+export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'home' | 'explore' | 'trips' | 'saved' | 'profile' }) {
   const navigate = useNavigate();
   const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
-  const [viewMode, setViewMode] = useState<'home' | 'explore' | 'trips' | 'saved'>(initialView);
+  const [viewMode, setViewMode] = useState<'home' | 'explore' | 'trips' | 'saved' | 'profile'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
   const [isCreateTripModalOpen, setCreateModalOpen] = useState(false);
   const [addToTripSelection, setAddToTripSelection] = useState<AddToTripSelection | null>(null);
@@ -346,7 +348,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
-    if (initialView !== 'saved') return;
+    if (initialView !== 'saved' && initialView !== 'profile') return;
     const media = window.matchMedia('(max-width: 767px)');
     const updateSidebar = () => setIsSidebarCollapsed(media.matches);
     updateSidebar();
@@ -420,7 +422,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     setCreateModalOpen(open);
   }
   const [isMapExpanded, setIsMapExpanded] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [filterValues, setFilterValues] = useState<ExploreFilterValues>(DEFAULT_FILTER_VALUES);
 
@@ -578,11 +579,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [tripReload]);
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    sessionStorage.removeItem('access_token');
-    window.dispatchEvent(new Event('auth-change'));
+    clearAuthSession();
     setCurrentUser(null);
-    setShowProfileMenu(false);
+    navigate('/login', { replace: true });
   };
 
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -1456,70 +1455,15 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
 
         {/* Sidebar Bottom / User & Footer - Cố định tọa độ */}
         <div className="flex flex-col gap-4 relative">
-          {/* Profile Dropdown Menu */}
-          {showProfileMenu && (
-            <div className={`absolute bottom-20 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 animate-fadeIn ${
-              isSidebarCollapsed ? "left-2 w-48" : "left-0 right-0"
-            }`}>
-              {currentUser ? (
-                <div className="flex flex-col">
-                  <div className="px-2.5 py-2 border-b border-gray-100">
-                    <p className="text-xs font-bold text-gray-900 truncate">{currentUser.full_name}</p>
-                    <p className="text-[11px] text-gray-400 truncate">{currentUser.email}</p>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition mt-1 cursor-pointer"
-                  >
-                    Đăng xuất
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  to="/login"
-                  className="block text-center px-3 py-2 text-xs font-bold text-white bg-black hover:bg-gray-800 rounded-xl transition"
-                >
-                  Đăng nhập
-                </Link>
-              )}
-            </div>
-          )}
-
-          {/* Profile Button - Cố định tọa độ Avatar */}
-          <div
-            onClick={() => setShowProfileMenu((prev) => !prev)}
-            className="flex items-center cursor-pointer hover:opacity-80 transition-all duration-300 py-0.5 justify-start px-0"
-            title={currentUser?.full_name || 'Du khách'}
-          >
-            <div className="w-9 h-9 flex items-center justify-center shrink-0">
-              <div className="w-[34px] h-[34px] rounded-full overflow-hidden bg-zinc-900 text-white flex items-center justify-center font-bold text-[12px] shrink-0 shadow-xs">
-                {currentUser?.full_name ? currentUser.full_name.charAt(0).toUpperCase() : 'G'}
-              </div>
-            </div>
-            <div
-              className={`flex flex-col justify-center h-[34px] text-left min-w-0 transition-all duration-300 overflow-hidden ${
-                isSidebarCollapsed ? "max-w-0 opacity-0 ml-0" : "max-w-[120px] opacity-100 ml-2.5"
-              }`}
-            >
-              <span className="text-[14px] font-normal text-black leading-[17px] truncate whitespace-nowrap">
-                {currentUser?.full_name || 'Du khách'}
-              </span>
-              <span className="text-[12px] text-gray-500 font-normal leading-[15px] truncate whitespace-nowrap">
-                {currentUser?.email ? `@${currentUser.email.split('@')[0]}` : '@greentrip-user'}
-              </span>
-            </div>
-
-            <div
-              className={`flex items-center gap-[2.5px] shrink-0 ml-auto p-1 transition-all duration-300 overflow-hidden ${
-                isSidebarCollapsed ? "max-w-0 opacity-0" : "max-w-[24px] opacity-100"
-              }`}
-              title="Tuỳ chọn"
-            >
-              <span className="w-[3px] h-[3px] rounded-full bg-black inline-block"></span>
-              <span className="w-[3px] h-[3px] rounded-full bg-black inline-block"></span>
-              <span className="w-[3px] h-[3px] rounded-full bg-black inline-block"></span>
-            </div>
-          </div>
+          <AccountMenu
+            user={currentUser}
+            collapsed={isSidebarCollapsed}
+            onOpenProfile={() => {
+              setViewMode('profile');
+              navigate('/profile');
+            }}
+            onLogout={handleLogout}
+          />
 
           {/* Legal footer */}
           <div className="overflow-hidden transition-all duration-300">
@@ -1920,6 +1864,20 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           </div>
         </main>
         )
+      ) : viewMode === 'profile' ? (
+        <ProfileSettingsPage
+          user={currentUser}
+          loading={!authReady}
+          onBack={() => {
+            setViewMode('explore');
+            navigate('/explore');
+          }}
+          onLogin={() => navigate('/login')}
+          onLogout={handleLogout}
+          onProfileUpdated={profile => {
+            if (accountRef.current === profile.user_id) setCurrentUser(profile);
+          }}
+        />
       ) : viewMode === 'saved' ? (
         <SavedPlacesView addedTrips={addedTrips} onToggleAddTrip={toggleAddTrip} onAddAlbumToTrip={addAlbumToTrip} />
       ) : (

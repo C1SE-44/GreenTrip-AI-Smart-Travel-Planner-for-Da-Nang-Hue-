@@ -2,7 +2,7 @@ from datetime import datetime
 import re
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
@@ -53,6 +53,64 @@ class UserResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    avatar_url: str | None = None
+    has_password: bool | None = None
+
+
+class ProfileUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: str | None = Field(default=None, max_length=100)
+    phone: str | None = Field(default=None, max_length=20)
+
+    @field_validator("full_name", mode="before")
+    @classmethod
+    def validate_profile_full_name(cls, value: str | None) -> str | None:
+        if value is None:
+            raise ValueError("Full name cannot be empty.")
+        if not isinstance(value, str):
+            return value
+        value = value.strip()
+        if not value:
+            raise ValueError("Full name cannot be empty.")
+        return value
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_profile_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            return value
+        value = value.strip()
+        if not value:
+            return None
+        if len(value) > 20 or not PHONE_REGEX.fullmatch(value):
+            raise ValueError("Invalid phone number format.")
+        return value
+
+
+class ChangePasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+    confirm_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("new_password", "confirm_password")
+    @classmethod
+    def validate_password_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Password cannot be empty.")
+        return value
+
+    @field_validator("confirm_password")
+    @classmethod
+    def validate_password_confirmation(cls, value: str, info: ValidationInfo) -> str:
+        new_password = info.data.get("new_password")
+        if new_password is not None and value != new_password:
+            raise ValueError("New password and confirmation do not match.")
+        return value
 
 
 class CheckEmailRequest(BaseModel):

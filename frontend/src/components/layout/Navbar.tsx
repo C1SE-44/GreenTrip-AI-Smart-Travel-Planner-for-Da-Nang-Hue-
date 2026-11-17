@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Compass, CalendarCheck, MapPinned, LogIn, UserPlus, LogOut } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
+import { clearAuthSession } from '@/services/auth';
 const LoginModal = lazy(() => import('@/components/auth/LoginModal'));
 const OnboardingModal = lazy(() => import('@/components/auth/OnboardingModal'));
 
@@ -85,9 +86,7 @@ export default function Navbar() {
   }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    sessionStorage.removeItem('access_token');
-    window.dispatchEvent(new Event('auth-change'));
+    clearAuthSession();
     setIsAuthenticated(false);
     navigate('/');
   };

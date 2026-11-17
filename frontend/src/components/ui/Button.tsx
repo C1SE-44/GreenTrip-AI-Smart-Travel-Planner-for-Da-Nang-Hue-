@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 
-type Variant = 'primary' | 'secondary' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'dark' | 'ghostDark';
 type Size = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -18,6 +18,10 @@ const variantClasses: Record<Variant, string> = {
     'bg-wood-500 text-cream hover:bg-wood-600 focus-visible:ring-wood-300 shadow-soft',
   ghost:
     'bg-transparent text-forest-700 hover:bg-forest-50 focus-visible:ring-forest-300 border border-beige',
+  dark:
+    'bg-neutral-950 text-white hover:bg-neutral-800 focus-visible:ring-neutral-900 shadow-soft',
+  ghostDark:
+    'bg-transparent text-neutral-900 hover:bg-neutral-100 focus-visible:ring-neutral-900 border border-beige',
 };
 
 const sizeClasses: Record<Size, string> = {
@@ -38,7 +42,7 @@ export default function Button({
   return (
     <button
       className={`
-        inline-flex items-center justify-center rounded-xl font-medium
+        inline-flex items-center justify-center ${variant === 'dark' || variant === 'ghostDark' ? 'rounded-full' : 'rounded-xl'} font-medium
         transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-cream
         disabled:opacity-50 disabled:cursor-not-allowed
         ${variantClasses[variant]} ${sizeClasses[size]} ${className}

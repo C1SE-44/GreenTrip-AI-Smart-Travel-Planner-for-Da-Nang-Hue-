@@ -279,6 +279,7 @@ class ItineraryDay(BaseModel):
     day_number: int = Field(ge=1, le=31)
     date: str | None = None
     title: str = Field(default="", max_length=200)
+    note: str = Field(default="", max_length=2000)
     stops: list[ItineraryStop] = Field(default_factory=list)
 
     @field_validator("date")

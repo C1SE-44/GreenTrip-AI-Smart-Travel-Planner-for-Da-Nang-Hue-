@@ -98,8 +98,29 @@ test('TripItineraryView: Tích hợp đồng bộ ngày & ý tưởng', () => {
   assert.ok(viewContent.includes('onUpdateTrip'), 'TripItineraryView must notify parent on trip update');
   assert.ok(viewContent.includes('handleAddDay'), 'TripItineraryView must handle add day');
   assert.ok(viewContent.includes('handleDeleteDay'), 'TripItineraryView must handle delete day');
+  assert.ok(viewContent.includes('Thêm ngày trước') && viewContent.includes('Thêm ngày sau'), 'Each day must support inserting adjacent days');
+  assert.ok(viewContent.includes('Xóa hoạt động trong ngày') && viewContent.includes('Xóa ngày'), 'Day menu must distinguish clearing stops from removing the day');
+  assert.ok(viewContent.includes('Thêm/sửa tiêu đề') && viewContent.includes('Thêm/sửa ghi chú'), 'Day menu must expose title and note editors');
+  assert.ok(viewContent.includes('const clearDay ='), 'Day menu must clear scheduled stops without deleting the day');
   assert.ok(viewContent.includes('alignItineraryToTrip(latestPlan.current, trip)'), 'Must align days when trip.daysCount changes');
   assert.ok(viewContent.includes("modalTab === 'saved'"), 'Must handle saved/favorite tab');
+});
+
+test('PB11: Trợ lý xếp lịch dùng nhịp độ, ý tưởng, gợi ý và lưu lịch trên giao diện mới', () => {
+  const viewContent = fs.readFileSync(tripItineraryViewPath, 'utf8');
+  const serviceContent = fs.readFileSync(itineraryServicePath, 'utf8');
+  const overviewContent = fs.readFileSync(tripOverviewViewPath, 'utf8');
+
+  assert.ok(viewContent.includes('recommendations?: Poi[]'), 'Itinerary view accepts PB09/Thiện recommendations');
+  assert.ok(viewContent.includes('fetchJson<{ data?: BackendRecommendation[] }>()') || viewContent.includes("'/api/v1/recommendations/poi'"), 'Standalone itinerary view can request live POI suggestions');
+  assert.ok(viewContent.includes('selectAutomaticPois(') && viewContent.includes('optimizeDays('), 'Smart action selects and schedules POIs');
+  assert.ok(viewContent.includes('onClick={() => runSmartSchedule(level)}'), 'Each pacing preset applies a real re-schedule');
+  assert.ok(viewContent.includes('aria-pressed={pacingLevel === level}'), 'Selected pacing is exposed accessibly');
+  assert.ok(viewContent.includes('Vì sao GreenTrip xếp như vậy?'), 'Schedule result explains assistant choices');
+  assert.ok(serviceContent.includes("pacing === 'Relaxed' ? 2 : pacing === 'Fast' ? 5 : 3"), 'Relaxed, Balanced and Fast have different place targets');
+  assert.ok(serviceContent.includes('function preferredVisitPeriods'), 'Scheduler uses place time-of-day preferences');
+  assert.ok(serviceContent.includes('stops.filter((stop) => experienceGroup'), 'Scheduler limits repeated cafes per day');
+  assert.ok(overviewContent.includes('recommendations={recommendedPois}'), 'Overview feeds its current recommendations into the new itinerary UI');
 });
 
 test('TripOverviewView: Đồng bộ ý tưởng và tab Đã thích', () => {

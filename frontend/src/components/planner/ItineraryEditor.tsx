@@ -3,7 +3,7 @@ import { CalendarDays, ChevronDown, ChevronUp, Clock3, Coffee, GripVertical, Lig
 import type { Poi } from '@/data/pois';
 import type { UserTrip } from '@/pages/ExplorePage';
 import type { DailyItineraryOutline, RestPeriod } from '@/services/tripService';
-import { createEmptyItinerary, getTripItinerary, saveTripItinerary, stopFromPoi, type ItineraryDay, type ItineraryStop, type TripItinerary } from '@/services/itineraryService';
+import { clearOverlappingVisitTimes, createEmptyItinerary, getTripItinerary, saveTripItinerary, stopFromPoi, type ItineraryDay, type ItineraryStop, type TripItinerary } from '@/services/itineraryService';
 
 interface ItineraryEditorProps {
   trip: UserTrip;
@@ -213,35 +213,6 @@ function normalizeSequence(days: ItineraryDay[]): ItineraryDay[] {
   return days.map((day) => ({ ...day, stops: day.stops.map((stop, index) => ({ ...stop, sequence: index })) }));
 }
 
-function clearOverlappingVisitTimes(plan: TripItinerary): { plan: TripItinerary; repairedCount: number } {
-  let repairedCount = 0;
-  const days = plan.days.map((day) => {
-    const stops = day.stops.map((stop) => ({ ...stop }));
-    // Keep explicit user appointments when possible. Clear only the conflicting
-    // visit's time fields so its place and other edits stay intact.
-    for (let pass = 0; pass < stops.length; pass += 1) {
-      const timed = stops
-        .map((stop, index) => ({ stop, index }))
-        .filter(({ stop }) => stop.start_time && stop.end_time)
-        .sort((a, b) => a.stop.start_time!.localeCompare(b.stop.start_time!));
-      const conflict = timed.findIndex(({ stop }, index) => index > 0
-        && stop.start_time! < timed[index - 1].stop.end_time!);
-      if (conflict < 0) break;
-      const previous = timed[conflict - 1];
-      const current = timed[conflict];
-      const victim = previous.stop.source === 'manual' && current.stop.source !== 'manual'
-        ? current
-        : current.stop.source === 'manual' && previous.stop.source !== 'manual'
-          ? previous
-          : current;
-      stops[victim.index] = { ...victim.stop, start_time: null, end_time: null };
-      repairedCount += 1;
-    }
-    return { ...day, stops };
-  });
-  return { plan: { ...plan, days }, repairedCount };
-}
-
 function selectAutomaticPois(
   days: ItineraryDay[],
   ideas: Poi[],
@@ -364,6 +335,7 @@ function alignItineraryToTrip(itinerary: TripItinerary, trip: UserTrip): { itine
         day_number: dayNumber,
         date,
         title: '',
+        note: '',
         stops: [],
       });
     }

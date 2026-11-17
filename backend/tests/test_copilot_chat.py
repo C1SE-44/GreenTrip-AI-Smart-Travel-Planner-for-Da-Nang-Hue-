@@ -10,12 +10,15 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.auth.service import create_access_token
 from app.main import app
 
 
 @pytest.fixture
 def client() -> TestClient:
+    token = create_access_token("test-copilot-user")
     with TestClient(app) as test_client:
+        test_client.headers.update({"Authorization": f"Bearer {token}"})
         yield test_client
 
 

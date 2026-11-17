@@ -8,6 +8,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.auth.service import create_access_token
 from app.main import app
 from app.trips.itinerary_constraints import (
     check_opening_hours,
@@ -83,7 +84,9 @@ def test_enforce_budget_constraint_auto_substitutes_to_fit_b_max() -> None:
 
 
 def test_copilot_chat_endpoint_returns_part2_quantitative_fields() -> None:
+    token = create_access_token("test-copilot-part2-user")
     with TestClient(app) as client:
+        client.headers.update({"Authorization": f"Bearer {token}"})
         resp = client.post(
             "/trips/copilot/chat",
             json={
@@ -242,7 +245,9 @@ def test_enforce_fatigue_rest_blocks_inserts_rest_and_is_idempotent() -> None:
 
 
 def test_copilot_chat_endpoint_populates_fatigue_metrics() -> None:
+    token = create_access_token("test-copilot-part2-user")
     with TestClient(app) as client:
+        client.headers.update({"Authorization": f"Bearer {token}"})
         mutate_resp = client.post(
             "/trips/copilot/chat",
             json={
@@ -317,7 +322,9 @@ def test_sync_stop_times_after_reorder_dense_day_no_collisions() -> None:
 
 
 def test_copilot_eco_uncrowded_query_avoids_generic_greeting() -> None:
+    token = create_access_token("test-copilot-part2-user")
     with TestClient(app) as client:
+        client.headers.update({"Authorization": f"Bearer {token}"})
         resp = client.post(
             "/trips/copilot/chat",
             json={
@@ -344,7 +351,9 @@ def test_bana_wax_museum_coords_and_rainy_day_urban_guard() -> None:
     assert wax is not None
     assert wax["lat"] < 16.01 and wax["lng"] < 108.02
 
+    token = create_access_token("test-copilot-part2-user")
     with TestClient(app) as client:
+        client.headers.update({"Authorization": f"Bearer {token}"})
         resp = client.post(
             "/trips/copilot/chat",
             json={

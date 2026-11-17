@@ -1,16 +1,21 @@
 from datetime import datetime, timezone
+from uuid import uuid4
 
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from psycopg.errors import UniqueViolation
 
 from app.auth.email import send_otp_email, send_verification_email
-from app.auth.password import hash_password
+from app.auth.avatar_storage import AvatarStorageError, delete_avatar, get_signed_avatar_url, upload_avatar
+from app.auth.dependencies import get_current_user_id
+from app.auth.password import hash_password, verify_password
 from app.auth.schemas import (
     CheckEmailRequest,
     CheckEmailResponse,
+    ChangePasswordRequest,
     GoogleLoginRequest,
     GoogleLoginResponse,
     LoginRequest,
+    ProfileUpdateRequest,
     ResendOtpRequest,
     ResendOtpResponse,
     ResendVerificationRequest,
@@ -44,6 +49,32 @@ router = APIRouter(
 )
 
 
+def _profile_response(
+    user: tuple,
+    avatar_path: str | None = None,
+    avatar_url: str | None = None,
+) -> UserResponse:
+    if avatar_path and avatar_url is None:
+        try:
+            avatar_url = get_signed_avatar_url(avatar_path)
+        except (AvatarStorageError, ValueError):
+            # Profile data remains available if Storage has not been configured.
+            avatar_url = None
+    password_hash = user[8] if len(user) > 8 else None
+    return UserResponse(
+        user_id=str(user[0]),
+        full_name=user[1],
+        email=user[2],
+        phone=user[3],
+        role=user[4],
+        status=user[5],
+        created_at=user[6],
+        updated_at=user[7],
+        avatar_url=avatar_url,
+        has_password=bool(password_hash),
+    )
+
+
 @router.get("/me", response_model=UserResponse)
 def get_current_user_profile(authorization: str | None = Header(default=None)) -> UserResponse:
     if not authorization or not authorization.startswith("Bearer "):
@@ -64,7 +95,8 @@ def get_current_user_profile(authorization: str | None = Header(default=None)) -
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT user_id, full_name, email, phone, role, status, created_at, updated_at
+                    SELECT user_id, full_name, email, phone, role, status, created_at, updated_at,
+                           password_hash
                     FROM public.users
                     WHERE user_id = %s
                     """,
@@ -77,16 +109,18 @@ def get_current_user_profile(authorization: str | None = Header(default=None)) -
                         detail="Không tìm thấy thông tin người dùng.",
                     )
 
-                return UserResponse(
-                    user_id=str(user[0]),
-                    full_name=user[1],
-                    email=user[2],
-                    phone=user[3],
-                    role=user[4],
-                    status=user[5],
-                    created_at=user[6],
-                    updated_at=user[7],
-                )
+                avatar_path = None
+                try:
+                    cursor.execute(
+                        "SELECT avatar_path FROM public.users WHERE user_id = %s",
+                        (user_id,),
+                    )
+                    avatar_row = cursor.fetchone()
+                    avatar_path = avatar_row[0] if avatar_row and len(avatar_row) == 1 else None
+                except Exception:
+                    # Migration 014 may be pending; preserve the existing /me contract.
+                    connection.rollback()
+                return _profile_response(user, avatar_path)
     except HTTPException:
         raise
     except Exception as error:
@@ -94,6 +128,209 @@ def get_current_user_profile(authorization: str | None = Header(default=None)) -
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Không thể tải thông tin tài khoản lúc này.",
         ) from error
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_current_user_profile(
+    request: ProfileUpdateRequest,
+    user_id: str = Depends(get_current_user_id),
+) -> UserResponse:
+    updates = request.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="Provide at least one profile field to update.")
+
+    set_clause = ", ".join(f"{field} = %s" for field in updates)
+    values = list(updates.values()) + [user_id]
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"""
+                    UPDATE public.users
+                    SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = %s
+                    RETURNING user_id, full_name, email, phone, role, status,
+                              created_at, updated_at, password_hash
+                    """,
+                    tuple(values),
+                )
+                user = cursor.fetchone()
+                if not user:
+                    raise HTTPException(status_code=404, detail="User profile not found.")
+                connection.commit()
+                avatar_path = None
+                try:
+                    cursor.execute(
+                        "SELECT avatar_path FROM public.users WHERE user_id = %s",
+                        (user_id,),
+                    )
+                    avatar_row = cursor.fetchone()
+                    avatar_path = avatar_row[0] if avatar_row and len(avatar_row) == 1 else None
+                except Exception:
+                    connection.rollback()
+                return _profile_response(user, avatar_path)
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail="Unable to update profile right now.") from error
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_current_user_password(
+    request: ChangePasswordRequest,
+    user_id: str = Depends(get_current_user_id),
+) -> None:
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT password_hash FROM public.users WHERE user_id = %s",
+                    (user_id,),
+                )
+                user = cursor.fetchone()
+                if not user:
+                    raise HTTPException(status_code=404, detail="User account not found.")
+                current_hash = user[0]
+                if not current_hash:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="This account uses Google sign-in and has no local password.",
+                    )
+                try:
+                    password_matches = verify_password(request.current_password, current_hash)
+                except Exception:
+                    password_matches = False
+                if not password_matches:
+                    raise HTTPException(status_code=400, detail="Current password is incorrect.")
+
+                cursor.execute(
+                    """
+                    UPDATE public.users
+                    SET password_hash = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = %s
+                    """,
+                    (hash_password(request.new_password), user_id),
+                )
+                connection.commit()
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail="Unable to change password right now.") from error
+
+
+AVATAR_MAX_BYTES = 5 * 1024 * 1024
+AVATAR_TYPES = {
+    "image/jpeg": ("jpg", lambda content: content.startswith(b"\xff\xd8\xff")),
+    "image/png": ("png", lambda content: content.startswith(b"\x89PNG\r\n\x1a\n")),
+    "image/webp": (
+        "webp",
+        lambda content: len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP",
+    ),
+}
+
+
+@router.put("/me/avatar", response_model=UserResponse)
+async def update_current_user_avatar(
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> UserResponse:
+    content_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    image_type = AVATAR_TYPES.get(content_type)
+    if image_type is None:
+        raise HTTPException(status_code=415, detail="Upload a JPG, PNG, or WebP image.")
+
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > AVATAR_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Avatar image must be 5 MB or smaller.")
+
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > AVATAR_MAX_BYTES:
+            raise HTTPException(status_code=413, detail="Avatar image must be 5 MB or smaller.")
+        chunks.append(chunk)
+    content = b"".join(chunks)
+    if not content or not image_type[1](content):
+        raise HTTPException(status_code=400, detail="The uploaded file is not a valid image of the selected type.")
+
+    object_path = f"{user_id}/{uuid4().hex}.{image_type[0]}"
+    try:
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                try:
+                    cursor.execute(
+                        "SELECT avatar_path FROM public.users WHERE user_id = %s",
+                        (user_id,),
+                    )
+                    existing = cursor.fetchone()
+                except Exception as error:
+                    connection.rollback()
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Avatar support is not ready. Apply migration 014 first.",
+                    ) from error
+                if not existing:
+                    raise HTTPException(status_code=404, detail="User account not found.")
+                old_path = existing[0]
+
+                try:
+                    upload_avatar(object_path, content, content_type)
+                except AvatarStorageError as error:
+                    raise HTTPException(
+                        status_code=error.status_code,
+                        detail=error.public_detail,
+                    ) from error
+                try:
+                    avatar_url = get_signed_avatar_url(object_path)
+                except (AvatarStorageError, ValueError) as error:
+                    try:
+                        delete_avatar(object_path)
+                    except (AvatarStorageError, ValueError):
+                        pass
+                    if isinstance(error, AvatarStorageError):
+                        raise HTTPException(
+                            status_code=error.status_code,
+                            detail=error.public_detail,
+                        ) from error
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Avatar storage cannot create a private display URL.",
+                    ) from error
+
+                try:
+                    cursor.execute(
+                        """
+                        UPDATE public.users
+                        SET avatar_path = %s, updated_at = CURRENT_TIMESTAMP
+                        WHERE user_id = %s
+                        RETURNING user_id, full_name, email, phone, role, status,
+                                  created_at, updated_at, password_hash
+                        """,
+                        (object_path, user_id),
+                    )
+                    user = cursor.fetchone()
+                    if not user:
+                        raise HTTPException(status_code=404, detail="User account not found.")
+                    connection.commit()
+                except Exception:
+                    connection.rollback()
+                    try:
+                        delete_avatar(object_path)
+                    except (AvatarStorageError, ValueError):
+                        pass
+                    raise
+
+        if old_path:
+            try:
+                delete_avatar(old_path)
+            except (AvatarStorageError, ValueError):
+                pass
+        return _profile_response(user, object_path, avatar_url)
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail="Unable to update avatar right now.") from error
 
 
 @router.post("/check-email", response_model=CheckEmailResponse)

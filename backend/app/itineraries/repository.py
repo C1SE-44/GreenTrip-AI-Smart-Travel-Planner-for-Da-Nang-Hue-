@@ -300,6 +300,22 @@ def seed_sample_itineraries():
                     _insert_itinerary_day(cursor, conn, f"{itin_7d}-d{d_num}", itin_7d, d_num, f"Hành trình Ngày {d_num}", "Đà Nẵng" if d_num <= 3 else "Huế")
                     _insert_itinerary_stop(cursor, conn, f"{itin_7d}-d{d_num}-s1", f"{itin_7d}-d{d_num}", "poi_cau_rong" if d_num % 2 == 1 else "poi_dai_noi", 1, "09:00", f"Điểm 1 Ngày {d_num}")
                     _insert_itinerary_stop(cursor, conn, f"{itin_7d}-d{d_num}-s2", f"{itin_7d}-d{d_num}", "poi_my_khe" if d_num % 2 == 1 else "poi_thien_mu", 2, "14:00", f"Điểm 2 Ngày {d_num}")
+            else:
+                # Đảm bảo đủ 7 ngày kể cả khi CSDL từ xa (Supabase) đã được seed từ phiên bản cũ ít ngày hơn
+                if _is_postgres_conn(conn):
+                    cursor.execute("UPDATE itineraries SET total_days = 7 WHERE (itinerary_id = %s OR trip_id = %s) AND total_days < 7", (itin_7d, itin_7d))
+                else:
+                    cursor.execute("UPDATE itineraries SET total_days = 7 WHERE itinerary_id = ? AND total_days < 7", (itin_7d,))
+                for d_num in range(1, 8):
+                    day_id = f"{itin_7d}-d{d_num}"
+                    if _is_postgres_conn(conn):
+                        cursor.execute("SELECT itinerary_day_id FROM itinerary_days WHERE (itinerary_id = %s OR trip_id = %s) AND day_number = %s", (itin_7d, itin_7d, d_num))
+                    else:
+                        cursor.execute("SELECT itinerary_day_id FROM itinerary_days WHERE itinerary_id = ? AND day_number = ?", (itin_7d, d_num))
+                    if not cursor.fetchone():
+                        _insert_itinerary_day(cursor, conn, day_id, itin_7d, d_num, f"Hành trình Ngày {d_num}", "Đà Nẵng" if d_num <= 3 else "Huế")
+                        _insert_itinerary_stop(cursor, conn, f"{day_id}-s1", day_id, "poi_cau_rong" if d_num % 2 == 1 else "poi_dai_noi", 1, "09:00", f"Điểm 1 Ngày {d_num}")
+                        _insert_itinerary_stop(cursor, conn, f"{day_id}-s2", day_id, "poi_my_khe" if d_num % 2 == 1 else "poi_thien_mu", 2, "14:00", f"Điểm 2 Ngày {d_num}")
 
             conn.commit()
     except Exception as exc:

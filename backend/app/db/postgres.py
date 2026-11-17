@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import sqlite3
+import time
 from pathlib import Path
 from typing import Any
 
@@ -48,8 +49,18 @@ class SQLiteCursorWrapper:
         clean_query = re.sub(r"\(\s*(SELECT[\s\S]*?LIMIT\s+\d+)\s*\)", r"SELECT * FROM (\1)", clean_query, flags=re.IGNORECASE)
         # 1e. Chuyển đổi jsonb extraction ->> sang json_extract cho SQLite
         clean_query = re.sub(r"(\w+)\.ai_metadata->>'(\w+)'", r"json_extract(\1.ai_metadata, '$.\2')", clean_query)
-        # 1f. Chuẩn hóa giá trị boolean nếu có
-        clean_query = clean_query.replace("TRUE", "1").replace("FALSE", "0")
+        # 1f. Chuẩn hóa giá trị boolean nếu có (chỉ thay keyword đứng độc lập ngoài chuỗi SQL)
+        # ponytail: preserve SQL single-quoted literals and column names containing TRUE/FALSE
+        clean_query = re.sub(
+            r"('(?:''|[^'])*')|\b(TRUE|FALSE)\b",
+            lambda match: (
+                match.group(1)
+                if match.group(1) is not None
+                else ("1" if match.group(2).upper() == "TRUE" else "0")
+            ),
+            clean_query,
+            flags=re.IGNORECASE,
+        )
         # 1g. SQLite không hỗ trợ IF NOT EXISTS trong ALTER TABLE ADD COLUMN
         clean_query = re.sub(r"\bADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\b", "ADD COLUMN", clean_query, flags=re.IGNORECASE)
 
@@ -221,9 +232,37 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
         cuisine TEXT,
         indoor_outdoor TEXT,
         latitude REAL,
-        longitude REAL
+        longitude REAL,
+        opening_hours TEXT
     );
     """)
+    try:
+        conn.execute("ALTER TABLE pois ADD COLUMN opening_hours TEXT;")
+    except sqlite3.OperationalError:
+        pass
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS saved_place_collections (
+        collection_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS saved_place_collection_items (
+        user_id TEXT NOT NULL,
+        collection_id TEXT NOT NULL,
+        poi_id TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (collection_id, poi_id)
+    );
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_pois_city_active ON pois(city_id, is_active);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_otps_lookup ON email_otps(email, created_at);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_place_collections_user ON saved_place_collections(user_id, is_default, created_at);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_place_collection_items_user_poi ON saved_place_collection_items(user_id, poi_id);")
 
     cur = conn.cursor()
     cur.execute("SELECT count(*) FROM cities")
@@ -249,6 +288,15 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
         if csv_path.exists():
             import csv
             import json
+            contacts_path = _PROJECT_ROOT / "data" / "processed" / "poi_contacts_cache.json"
+            opening_hours_by_id: dict[str, str] = {}
+            if contacts_path.exists():
+                try:
+                    for item in json.loads(contacts_path.read_text(encoding="utf-8")):
+                        if isinstance(item, dict) and item.get("poi_id") and item.get("opening_hours"):
+                            opening_hours_by_id[str(item["poi_id"])] = json.dumps(item["opening_hours"], ensure_ascii=False)
+                except Exception:
+                    pass
             try:
                 with open(csv_path, mode="r", encoding="utf-8") as f:
                     reader = csv.DictReader(f)
@@ -308,21 +356,38 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
                                 poi_id, name, category_id, city_id, sub_category,
                                 image_url, green_score, satisfaction_score, popularity_score,
                                 address, description, estimated_cost, ai_metadata,
-                                is_active, cuisine, indoor_outdoor, latitude, longitude
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                is_active, cuisine, indoor_outdoor, latitude, longitude, opening_hours
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
                             pid, name, cat_id, city_id, sub_cat,
                             r.get("image_url", ""), gs, sat, 95.0,
                             r.get("address", ""), r.get("description", ""), cost, ai_meta,
-                            1, cuisine, indoor, float(r.get("latitude") or 0), float(r.get("longitude") or 0)
+                            1, cuisine, indoor, float(r.get("latitude") or 0), float(r.get("longitude") or 0),
+                            opening_hours_by_id.get(str(pid), "{}"),
                         ))
             except Exception as e:
                 logger.warning("Không thể nạp POIs vào CSDL SQLite: %s", e)
 
+    # Correct corrupted downtown geocoding for Ba Na Wax Museum if an existing DB row carries old coords
+    try:
+        cur.execute(
+            """
+            UPDATE pois
+            SET latitude = 15.9977, longitude = 107.9885
+            WHERE poi_id = '5c0d99bb-4e57-4869-8fdc-38470cf34a0d'
+              AND latitude BETWEEN 16.07 AND 16.08
+            """
+        )
+    except Exception:
+        pass
+
     conn.commit()
 
 
-_POSTGRES_AVAILABLE: bool = True
+# ponytail: 30s monotonic cooldown on Postgres connection failure instead of sticky disable; replace with pool/probe if needed
+_POSTGRES_RETRY_COOLDOWN_SECONDS = 30.0
+_POSTGRES_RETRY_AFTER: float = 0.0
+_PG_COORDS_PATCHED = False
 
 
 def get_connection() -> Any:
@@ -331,16 +396,34 @@ def get_connection() -> Any:
     Nếu không có PostgreSQL (hoặc người dùng không bật Docker),
     hệ thống tự động sử dụng CSDL SQLite cục bộ giúp tính năng Đăng nhập/Đăng ký hoạt động mượt mà.
     """
-    global _POSTGRES_AVAILABLE
+    global _POSTGRES_RETRY_AFTER, _PG_COORDS_PATCHED
     settings = get_settings()
 
-    if settings.DATABASE_URL and _POSTGRES_AVAILABLE:
+    if settings.DATABASE_URL and time.monotonic() >= _POSTGRES_RETRY_AFTER:
         try:
-            return connect(
+            pg_conn = connect(
                 settings.DATABASE_URL,
                 connect_timeout=3,
             )
+            if not _PG_COORDS_PATCHED and hasattr(pg_conn, "cursor"):
+                try:
+                    with pg_conn.cursor() as pg_cur:
+                        pg_cur.execute(
+                            """
+                            UPDATE public.pois
+                            SET latitude = 15.9977, longitude = 107.9885
+                            WHERE poi_id = '5c0d99bb-4e57-4869-8fdc-38470cf34a0d'
+                              AND latitude BETWEEN 16.07 AND 16.08
+                            """
+                        )
+                    pg_conn.commit()
+                    _PG_COORDS_PATCHED = True
+                except Exception:
+                    if hasattr(pg_conn, "rollback"):
+                        pg_conn.rollback()
+            return pg_conn
         except Exception:
+            _POSTGRES_RETRY_AFTER = time.monotonic() + _POSTGRES_RETRY_COOLDOWN_SECONDS
             _POSTGRES_AVAILABLE = False
             logger.warning(
                 "Không thể kết nối đến PostgreSQL bằng cấu hình hiện tại. Tự động chuyển sang CSDL SQLite cục bộ."

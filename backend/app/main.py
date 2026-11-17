@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import get_settings
 from app.db import neo4j
 from app.auth.router import router as auth_router
 from app.pois.router import router as pois_router
@@ -30,10 +31,25 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="GreenTrip AI API", lifespan=lifespan)
 
-# Cấu hình cho phép tất cả nguồn (CORS)
+_settings = get_settings()
+_allowed_origins = list(
+    dict.fromkeys(
+        origin.strip().rstrip("/")
+        for origin in [
+            _settings.FRONTEND_URL,
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ]
+        if origin and origin.strip()
+    )
+)
+
+# ponytail: restrict CORS origins to configured frontend and local dev origins when credentials are enabled
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

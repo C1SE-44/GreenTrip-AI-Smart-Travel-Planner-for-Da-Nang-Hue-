@@ -451,6 +451,39 @@ export function normalizeCity(value?: string | null): PoiCity {
   return 'Đà Nẵng';
 }
 
+function sanitizePoiAiMetadata(
+  rawMeta: Poi['ai_metadata'] | undefined,
+  name: string,
+  category: PoiCategory,
+  subCategory?: string | null
+): Poi['ai_metadata'] {
+  if (!rawMeta || typeof rawMeta !== 'object') return null;
+  const priceDisplay = typeof rawMeta.price_range_display === 'string' ? rawMeta.price_range_display.trim() : '';
+  if (!priceDisplay || !/\/\s*ly\b/i.test(priceDisplay)) {
+    return rawMeta;
+  }
+  const lower = ` ${name.toLowerCase()} `;
+  const subLower = (subCategory ?? '').toLowerCase();
+  const isDrinkOrDessert =
+    /(\scafe\s|\scà phê\s|\scoffee\s|\strà sữa\s|\strà chanh\s|\strà đạo\s|\squán trà\s|\strà cung đình\s|\stea\s|teahouse|roastery|\ssinh tố\s|\snước ép\s|\schè\s|\spub\s|\sbar\s)/i.test(lower)
+    || /(cafe|coffee|teahouse|roastery|craft_beer|nightlife|dessert|bakery)/i.test(subLower);
+  if (isDrinkOrDessert) {
+    return rawMeta;
+  }
+  let unit = 'vé';
+  if (/(\sbún\s|mì quảng|\sphở\s|cao lầu|bánh canh|hủ tiếu)/i.test(lower)) {
+    unit = 'tô';
+  } else if (/(hải sản|bé mặn|năm đảnh|nhà hàng|bếp cuốn|restaurant|\slẩu\s|\snướng\s|bò thui|bê thui|sushi|steak)/i.test(lower)) {
+    unit = 'người';
+  } else if (category === 'quan-an') {
+    unit = 'phần';
+  }
+  return {
+    ...rawMeta,
+    price_range_display: priceDisplay.replace(/\/\s*ly\b/gi, `/ ${unit}`),
+  };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoordinates = false): Poi | null {
   if (!item) return null;
@@ -465,6 +498,14 @@ export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoord
         'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80',
         'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=900&q=80',
       ];
+    }
+    if (item.ai_metadata) {
+      item.ai_metadata = sanitizePoiAiMetadata(
+        item.ai_metadata,
+        String(item.name),
+        item.category as PoiCategory,
+        item.sub_category
+      );
     }
     return item as Poi;
   }
@@ -563,7 +604,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoord
     vibes: Array.isArray(item.vibes) ? item.vibes : [],
     best_time: Array.isArray(item.best_time) ? item.best_time : [],
     eco_features: Array.isArray(item.eco_features) ? item.eco_features : [],
-    ai_metadata: item.ai_metadata ?? null,
+    ai_metadata: sanitizePoiAiMetadata(item.ai_metadata, rawName, category, item.sub_category),
     phone_number: item.phone_number?.trim() || null,
     website_url: item.website_url?.trim() || null,
     social_links: item.social_links && typeof item.social_links === 'object' ? item.social_links : null,

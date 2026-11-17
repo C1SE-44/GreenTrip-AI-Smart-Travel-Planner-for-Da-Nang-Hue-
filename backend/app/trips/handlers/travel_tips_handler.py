@@ -8,6 +8,7 @@ import logging
 from psycopg import Connection
 from app.trips.schemas import CopilotSuggestedPoiItem, TripContextPayload
 from app.trips.handlers.swap_meal_handler import normalize_city_query, format_green_score
+from app.trips.text_utils import contains_any_phrase, normalize_vietnamese_query, strip_vietnamese_accents
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +23,35 @@ def handle_travel_tips(
     Returns:
         (reply_text, suggested_pois, action_type, next_prompts, avoid_notice, green_impact, budget_impact)
     """
-    msg = message.strip().lower()
+    msg = normalize_vietnamese_query(message)
+    folded_msg = strip_vietnamese_accents(msg)
     city_pattern, is_both = normalize_city_query(trip_context.destination)
     is_hue = "hue" in trip_context.destination.lower() or "huế" in trip_context.destination.lower()
 
-    is_souvenir = any(k in msg for k in ["mua quà", "làm quà", "quà lưu niệm", "mua gì", "chợ hàn", "chợ cồn", "chợ đông ba", "chả bò", "mè xửng"])
-    is_budget = any(k in msg for k in ["chi phí", "ngân sách", "tiết kiệm", "hết bao nhiêu", "giá cả", "budget"])
-    is_transport = any(k in msg for k in ["phương tiện", "di chuyển", "xe buýt", "taxi", "thuê xe", "xe máy", "đi lại"])
-    is_family = any(k in msg for k in ["gia đình", "trẻ em", "em bé", "người lớn tuổi", "người già", "bố mẹ"])
+    is_souvenir = contains_any_phrase(
+        msg,
+        folded_msg,
+        ["mua quà", "làm quà", "quà lưu niệm", "mua gì", "chợ hàn", "chợ cồn", "chợ đông ba", "chả bò", "mè xửng"],
+        ["mua qua", "lam qua", "qua luu niem", "mua gi", "cho han", "cho con", "cho dong ba", "cha bo", "me xung"],
+    )
+    is_budget = contains_any_phrase(
+        msg,
+        folded_msg,
+        ["chi phí", "ngân sách", "tiết kiệm", "hết bao nhiêu", "giá cả", "budget"],
+        ["chi phi", "ngan sach", "tiet kiem", "het bao nhieu", "gia ca", "budget"],
+    )
+    is_transport = contains_any_phrase(
+        msg,
+        folded_msg,
+        ["phương tiện", "di chuyển", "xe buýt", "taxi", "thuê xe", "xe máy", "đi lại"],
+        ["phuong tien", "di chuyen", "xe buyt", "taxi", "thue xe", "xe may", "di lai"],
+    )
+    is_family = contains_any_phrase(
+        msg,
+        folded_msg,
+        ["gia đình", "trẻ em", "em bé", "người lớn tuổi", "người già", "bố mẹ"],
+        ["gia dinh", "tre em", "em be", "nguoi lon tuoi", "nguoi gia", "bo me"],
+    )
 
     suggested_pois: list[CopilotSuggestedPoiItem] = []
 

@@ -17,6 +17,7 @@ class AccountNotActive(Exception):
 
 
 def authenticate_user(email: str, password: str) -> str | None:
+    normalized_email = email.strip().lower()
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
@@ -24,9 +25,9 @@ def authenticate_user(email: str, password: str) -> str | None:
                     """
                     SELECT user_id, password_hash, status
                     FROM public.users
-                    WHERE email = %s
+                    WHERE LOWER(email) = %s
                     """,
-                    (email,),
+                    (normalized_email,),
                 )
                 user = cursor.fetchone()
     except Exception as exc:
@@ -61,7 +62,7 @@ def create_access_token(subject: str) -> str:
     )
     try:
         return jwt.encode(
-            {"sub": subject, "exp": expires_at},
+            {"sub": subject, "exp": expires_at, "type": "access"},
             settings.JWT_SECRET_KEY,
             algorithm=settings.JWT_ALGORITHM,
         )
@@ -79,6 +80,9 @@ def decode_access_token(token: str) -> str | None:
             settings.JWT_SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],
         )
+        # ponytail: allow legacy tokens without "type" until expiry; reject OTP/email verification tokens
+        if payload.get("scope") or payload.get("type") not in (None, "access"):
+            return None
         return str(payload.get("sub")) if payload.get("sub") else None
     except (jwt.PyJWTError, ValueError, TypeError):
         return None
@@ -130,13 +134,14 @@ def verify_google_token(id_token_str: str) -> dict | None:
     from google.oauth2 import id_token as google_id_token
 
     settings = get_settings()
+    if not settings.GOOGLE_CLIENT_ID:
+        return None
     try:
         request = google_requests.Request()
-        audience = settings.GOOGLE_CLIENT_ID if settings.GOOGLE_CLIENT_ID else None
         idinfo = google_id_token.verify_oauth2_token(
             id_token_str,
             request,
-            audience=audience,
+            audience=settings.GOOGLE_CLIENT_ID,
         )
         if idinfo.get("iss") not in ["accounts.google.com", "https://accounts.google.com"]:
             return None

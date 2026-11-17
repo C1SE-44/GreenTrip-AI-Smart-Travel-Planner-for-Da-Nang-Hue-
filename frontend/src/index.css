@@ -167,3 +167,42 @@
 .gt-marker-selected {
   z-index: 1000 !important;
 }
+
+@page {
+  size: A4 portrait;
+  margin: 14mm;
+}
+
+@media print {
+  html,
+  body,
+  #root,
+  .print-scroll-unlock {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    background: #ffffff !important;
+    color: #171717 !important;
+  }
+
+  aside[data-purpose="sidebar"],
+  [data-purpose="right-panel-container"],
+  .no-print {
+    display: none !important;
+  }
+
+  .print-full-width {
+    width: 100% !important;
+    max-width: 100% !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+

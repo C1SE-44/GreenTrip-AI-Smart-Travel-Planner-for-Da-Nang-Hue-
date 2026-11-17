@@ -1,4 +1,6 @@
 from collections.abc import Generator
+import logging
+
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from psycopg import Connection
 
@@ -18,6 +20,7 @@ from app.trips.service import (
     validate_and_process_trip_parameters,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/trips", tags=["Trip Planner"])
 
 
@@ -93,7 +96,8 @@ def copilot_chat(
     try:
         return process_copilot_chat(payload, connection)
     except Exception as exc:
+        logger.exception("Failed to process Copilot chat request")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Lỗi xử lý yêu cầu Copilot: {str(exc)}",
+            detail="Không thể xử lý yêu cầu Copilot lúc này.",
         ) from exc

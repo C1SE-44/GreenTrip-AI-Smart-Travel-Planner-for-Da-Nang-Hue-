@@ -73,6 +73,8 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
     for col, col_type in [
         ("stop_id", "TEXT"),
         ("day_id", "TEXT"),
+        ("itinerary_stop_id", "TEXT"),
+        ("itinerary_day_id", "TEXT"),
         ("title", "TEXT DEFAULT ''"),
         ("city", "TEXT"),
         ("address", "TEXT"),
@@ -80,6 +82,9 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         ("stop_type", "TEXT DEFAULT 'poi'"),
         ("source", "TEXT DEFAULT 'idea'"),
         ("sequence", "INTEGER DEFAULT 0"),
+        ("sequence_no", "INTEGER DEFAULT 0"),
+        ("time_slot", "TEXT"),
+        ("notes", "TEXT"),
         ("duration_minutes", "INTEGER"),
         ("start_time", "TEXT"),
         ("end_time", "TEXT"),
@@ -100,38 +105,39 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
 
     cursor.execute("PRAGMA table_info(itineraries)")
     itin_columns = {row[1] for row in cursor.fetchall()}
-    if "trip_id" not in itin_columns:
-        cursor.execute("ALTER TABLE itineraries ADD COLUMN trip_id TEXT")
-    if "itinerary_id" not in itin_columns:
-        cursor.execute("ALTER TABLE itineraries ADD COLUMN itinerary_id TEXT")
-    if "total_days" not in itin_columns:
-        cursor.execute("ALTER TABLE itineraries ADD COLUMN total_days INTEGER")
-    if "start_date" not in itin_columns:
-        cursor.execute("ALTER TABLE itineraries ADD COLUMN start_date DATE")
-    if "days_count" not in itin_columns:
-        cursor.execute("ALTER TABLE itineraries ADD COLUMN days_count INTEGER")
+    for col, col_type in [
+        ("trip_id", "TEXT"),
+        ("itinerary_id", "TEXT"),
+        ("start_date", "DATE"),
+        ("days_count", "INTEGER"),
+        ("total_days", "INTEGER"),
+        ("status", "TEXT DEFAULT 'DRAFT'"),
+        ("created_at", "TIMESTAMP"),
+    ]:
+        if col not in itin_columns:
+            cursor.execute(f"ALTER TABLE itineraries ADD COLUMN {col} {col_type}")
     if "itinerary_id" in itin_columns:
         cursor.execute("UPDATE itineraries SET trip_id = itinerary_id WHERE trip_id IS NULL")
         if "total_days" in itin_columns:
             cursor.execute("UPDATE itineraries SET days_count = total_days WHERE days_count IS NULL")
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itineraries_trip_id ON itineraries(trip_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_itineraries_user_id ON itineraries(user_id)")
 
     cursor.execute("PRAGMA table_info(itinerary_days)")
     day_columns = {row[1] for row in cursor.fetchall()}
-    if "day_id" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN day_id TEXT")
-    if "itinerary_day_id" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN itinerary_day_id TEXT")
-    if "trip_id" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN trip_id TEXT")
-    if "itinerary_id" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN itinerary_id TEXT")
-    if "date" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN date DATE")
-    if "title" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN title TEXT DEFAULT ''")
-    if "note" not in day_columns:
-        cursor.execute("ALTER TABLE itinerary_days ADD COLUMN note TEXT NOT NULL DEFAULT ''")
+    for col, col_type in [
+        ("day_id", "TEXT"),
+        ("trip_id", "TEXT"),
+        ("itinerary_day_id", "TEXT"),
+        ("itinerary_id", "TEXT"),
+        ("date", "DATE"),
+        ("title", "TEXT DEFAULT ''"),
+        ("note", "TEXT NOT NULL DEFAULT ''"),
+        ("theme", "TEXT"),
+        ("focus_city", "TEXT"),
+    ]:
+        if col not in day_columns:
+            cursor.execute(f"ALTER TABLE itinerary_days ADD COLUMN {col} {col_type}")
     if "itinerary_day_id" in day_columns:
         cursor.execute("UPDATE itinerary_days SET day_id = itinerary_day_id WHERE day_id IS NULL")
     if "itinerary_id" in day_columns:
@@ -166,6 +172,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
 
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_stops_stop_id ON itinerary_stops(stop_id)")
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_stops_day_seq ON itinerary_stops(day_id, sequence)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_itinerary_stops_poi_id ON itinerary_stops(poi_id)")
 
 
 def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> TripItineraryResponse:
@@ -176,7 +183,8 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                 cursor.execute("SELECT user_id FROM public.itineraries WHERE trip_id = %s", (payload.trip_id,))
                 existing = cursor.fetchone()
                 owner_id = existing[0] if existing else None
-                if owner_id and owner_id != user_id:
+                is_shared_sample = payload.trip_id.startswith("sample-") and owner_id == "demo-user"
+                if owner_id and owner_id != user_id and not is_shared_sample:
                     raise HTTPException(status_code=404, detail="Không tìm thấy lịch trình.")
 
                 cursor.execute(
@@ -184,7 +192,8 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                     INSERT INTO public.itineraries (trip_id, user_id, title, destination, start_date, days_count, updated_at, itinerary_id, total_days)
                     VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s)
                     ON CONFLICT (trip_id) DO UPDATE SET
-                        user_id = COALESCE(EXCLUDED.user_id, itineraries.user_id),
+                        -- ponytail: keep original ownership so anonymous trips cannot be claimed by another user
+                        user_id = itineraries.user_id,
                         title = EXCLUDED.title,
                         destination = EXCLUDED.destination,
                         start_date = EXCLUDED.start_date,
@@ -241,7 +250,8 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                     (trip_id,),
                 )
                 trip = cursor.fetchone()
-                if not trip or (trip[1] and trip[1] != user_id):
+                is_shared_sample = bool(trip and trip_id.startswith("sample-") and trip[1] == "demo-user")
+                if not trip or (trip[1] and trip[1] != user_id and not is_shared_sample):
                     return None
                 cursor.execute(
                     "SELECT day_id, day_number, date, title, note FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
@@ -258,11 +268,26 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                         """,
                         (day_row[0],),
                     )
-                    stops = [ItineraryStop(
-                        stop_id=row[0], poi_id=row[1], title=row[2], city=row[3], address=row[4], category=row[5],
-                        stop_type=row[6], source=row[7], sequence=row[8], duration_minutes=row[9],
-                        start_time=row[10], end_time=row[11], comment=row[12], latitude=row[13], longitude=row[14],
-                    ) for row in cursor.fetchall()]
+                    stops = [
+                        ItineraryStop(
+                            stop_id=row[0],
+                            poi_id=row[1],
+                            title=row[2],
+                            city=row[3],
+                            address=row[4],
+                            category=row[5],
+                            stop_type=row[6],
+                            source=row[7],
+                            sequence=idx,
+                            duration_minutes=row[9],
+                            start_time=row[10],
+                            end_time=row[11],
+                            comment=row[12],
+                            latitude=row[13],
+                            longitude=row[14],
+                        )
+                        for idx, row in enumerate(cursor.fetchall())
+                    ]
                     day_date = day_row[2].isoformat() if hasattr(day_row[2], "isoformat") else day_row[2]
                     days.append(ItineraryDay(day_id=day_row[0], day_number=day_row[1], date=day_date, title=day_row[3], note=day_row[4] or "", stops=stops))
                 return TripItineraryResponse(
@@ -340,7 +365,7 @@ def get_itinerary_with_ownership(trip_id: str, user_id: str) -> TripItineraryRes
                     raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập chuyến đi này.")
 
                 cursor.execute(
-                    "SELECT day_id, day_number, date, title FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
+                    "SELECT day_id, day_number, date, title, note FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
                     (trip_id,),
                 )
                 day_rows = cursor.fetchall()
@@ -350,22 +375,49 @@ def get_itinerary_with_ownership(trip_id: str, user_id: str) -> TripItineraryRes
                         """
                         SELECT stop_id, poi_id, title, city, address, category, stop_type, source, sequence,
                                duration_minutes, start_time, end_time, comment, latitude, longitude
-                        FROM public.itinerary_stops WHERE day_id = %s ORDER BY sequence
+                        FROM public.itinerary_stops WHERE day_id = %s ORDER BY COALESCE(sequence, 0), stop_id
                         """,
                         (day_row[0],),
                     )
-                    stops = [ItineraryStop(
-                        stop_id=row[0], poi_id=row[1], title=row[2], city=row[3], address=row[4], category=row[5],
-                        stop_type=row[6], source=row[7], sequence=row[8], duration_minutes=row[9],
-                        start_time=row[10], end_time=row[11], comment=row[12], latitude=row[13], longitude=row[14],
-                    ) for row in cursor.fetchall()]
+                    stops = [
+                        ItineraryStop(
+                            stop_id=row[0],
+                            poi_id=row[1],
+                            title=row[2] or row[1] or "Điểm dừng",
+                            city=row[3],
+                            address=row[4],
+                            category=row[5],
+                            stop_type=row[6] or "poi",
+                            source=row[7] or "idea",
+                            sequence=idx,
+                            duration_minutes=row[9],
+                            start_time=row[10],
+                            end_time=row[11],
+                            comment=row[12],
+                            latitude=row[13],
+                            longitude=row[14],
+                        )
+                        for idx, row in enumerate(cursor.fetchall())
+                    ]
                     day_date = day_row[2].isoformat() if hasattr(day_row[2], "isoformat") else day_row[2]
-                    days.append(ItineraryDay(day_id=day_row[0], day_number=day_row[1], date=day_date, title=day_row[3], stops=stops))
-
+                    days.append(
+                        ItineraryDay(
+                            day_id=day_row[0],
+                            day_number=day_row[1],
+                            date=day_date,
+                            title=day_row[3] or "",
+                            note=day_row[4] or "" if len(day_row) > 4 else "",
+                            stops=stops,
+                        )
+                    )
                 return TripItineraryResponse(
-                    trip_id=trip[0], title=trip[2], destination=trip[3],
+                    trip_id=trip[0],
+                    title=trip[2] or "",
+                    destination=trip[3] or "Đà Nẵng & Huế",
                     start_date=trip[4].isoformat() if hasattr(trip[4], "isoformat") else trip[4],
-                    days_count=trip[5], days=days, updated_at=trip[6],
+                    days_count=len(days) if days else trip[5],
+                    days=days,
+                    updated_at=trip[6],
                 )
     except HTTPException:
         raise

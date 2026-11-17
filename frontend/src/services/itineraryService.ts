@@ -30,7 +30,7 @@ export interface DayRouteResponse {
 
 /**
  * Fetch ordered route geometry and stops for a specific day of an itinerary.
- * Backend endpoint: GET /api/itineraries/{itinerary_id}/days/{day_number}/route
+ * Backend endpoint: GET /itineraries/{itinerary_id}/days/{day_number}/route
  */
 export async function fetchDayRoute(
   itineraryId: string,
@@ -39,7 +39,7 @@ export async function fetchDayRoute(
 ): Promise<DayRouteResponse> {
   const cleanItinId = encodeURIComponent(itineraryId.trim());
   return fetchJson<DayRouteResponse>(
-    `/api/itineraries/${cleanItinId}/days/${dayNumber}/route`,
+    `/itineraries/${cleanItinId}/days/${dayNumber}/route`,
     { signal }
   );
 }
@@ -413,7 +413,7 @@ export interface ItineraryDay {
   day_number: number;
   date: string | null;
   title: string;
-  note: string;
+  note?: string;
   stops: ItineraryStop[];
 }
 
@@ -449,6 +449,166 @@ export function createEmptyItinerary(trip: UserTrip): TripItinerary {
       };
     }),
   };
+}
+
+export function matchPoiForStop(
+  rawId?: string | null,
+  rawName?: string | null,
+  allPois: Poi[] = []
+): Poi | undefined {
+  if (allPois.length === 0) return undefined;
+  if (rawId) {
+    const byId = allPois.find((p) => p.id === rawId);
+    if (byId) return byId;
+  }
+  const key = (rawName || '').trim().toLowerCase();
+  if (!key) return undefined;
+  const exact = allPois.find((p) => p.name.trim().toLowerCase() === key);
+  if (exact) return exact;
+
+  const cleanTokens = [
+    key,
+    ...key
+      .replace(/\([^)]*\)/g, '')
+      .split(/[&–-]/)
+      .map((t) => t.trim())
+      .filter((t) => t.length >= 5),
+  ];
+
+  return allPois.find((p) => {
+    const pName = p.name.trim().toLowerCase();
+    return cleanTokens.some((tok) => (tok.length >= 5 && pName.includes(tok)) || (pName.length >= 5 && tok.includes(pName)));
+  });
+}
+
+export function hydrateItineraryWithPois(
+  itinerary: TripItinerary,
+  allPois: Poi[]
+): { itinerary: TripItinerary; changed: boolean } {
+  if (allPois.length === 0) return { itinerary, changed: false };
+  let changed = false;
+  const days = itinerary.days.map((day) => {
+    const stops = day.stops.map((stop) => {
+      if (stop.stop_type === 'rest') return stop;
+      const hasValidId = Boolean(stop.poi_id && allPois.some((p) => p.id === stop.poi_id));
+      const hasCoords = typeof stop.latitude === 'number' && typeof stop.longitude === 'number';
+      if (hasValidId && hasCoords) return stop;
+
+      const matched = matchPoiForStop(stop.poi_id, stop.title, allPois);
+      if (!matched) return stop;
+      changed = true;
+      return {
+        ...stop,
+        poi_id: matched.id,
+        address: stop.address || matched.address || null,
+        city: matched.city || stop.city,
+        latitude: stop.latitude ?? matched.lat,
+        longitude: stop.longitude ?? matched.lng,
+      };
+    });
+    return { ...day, stops };
+  });
+  return changed ? { itinerary: { ...itinerary, days }, changed: true } : { itinerary, changed: false };
+}
+
+export function buildItineraryFromOutline(trip: UserTrip, allPois: Poi[] = []): TripItinerary {
+  const base = createEmptyItinerary(trip);
+  const outline = trip.itineraryOutline;
+  if (!Array.isArray(outline) || outline.length === 0) return base;
+
+  const seenStopIds = new Set<string>();
+
+  const padTime = (raw?: string | null): string | null => {
+    if (!raw) return null;
+    const m = raw.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return null;
+    const hh = Number(m[1]);
+    const mm = Number(m[2]);
+    if (hh > 23 || mm > 59) return null;
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  };
+
+  const findPoi = (rawId?: string | null, rawName?: string | null): Poi | undefined =>
+    matchPoiForStop(rawId, rawName, allPois);
+
+  const days = base.days.map((day, idx) => {
+    const oDay = outline.find((d) => Number(d?.day) === day.day_number) || outline[idx];
+    if (!oDay || !Array.isArray(oDay.stops)) return day;
+
+    const acceptedWindows: Array<{ start: number; end: number }> = [];
+
+    const stops: ItineraryStop[] = oDay.stops.map((rawStop: Record<string, unknown>, sIdx: number) => {
+      const rawTitle = String(rawStop.name || rawStop.title || `Điểm dừng ${sIdx + 1}`);
+      const rawPoiId = (rawStop.poiId || rawStop.poi_id) ? String(rawStop.poiId || rawStop.poi_id) : null;
+      const isRest = rawStop.stop_type === 'rest';
+      const matched = isRest ? undefined : findPoi(rawPoiId, rawTitle);
+
+      const baseStopId = String(rawStop.stop_id || rawStop.id || `${day.day_id}-stop-${sIdx + 1}`);
+      let stopId = baseStopId;
+      let dupCounter = 1;
+      while (seenStopIds.has(stopId)) {
+        stopId =
+          dupCounter === 1
+            ? `${baseStopId}-d${day.day_number}-${sIdx + 1}`
+            : `${baseStopId}-d${day.day_number}-${sIdx + 1}-${dupCounter}`;
+        dupCounter += 1;
+      }
+      seenStopIds.add(stopId);
+
+      const ts = typeof rawStop.timeSlot === 'string' ? rawStop.timeSlot : '';
+      const tsMatch = ts.match(/(\d{1,2}:\d{2})\s*[–—-]\s*(\d{1,2}:\d{2})/);
+      let startTime = padTime(typeof rawStop.start_time === 'string' ? rawStop.start_time : tsMatch?.[1]);
+      let endTime = padTime(typeof rawStop.end_time === 'string' ? rawStop.end_time : tsMatch?.[2]);
+
+      if (startTime && endTime) {
+        const sMin = minutesFromTime(startTime);
+        const eMin = minutesFromTime(endTime);
+        const overlaps = acceptedWindows.some((w) => sMin < w.end && w.start < eMin);
+        if (eMin > sMin && !overlaps) {
+          acceptedWindows.push({ start: sMin, end: eMin });
+        } else {
+          startTime = null;
+          endTime = null;
+        }
+      } else {
+        startTime = null;
+        endTime = null;
+      }
+
+      const computedDur = startTime && endTime ? durationBetween(startTime, endTime) : null;
+      const duration =
+        (typeof rawStop.duration_minutes === 'number' && rawStop.duration_minutes > 0 ? rawStop.duration_minutes : null) ??
+        computedDur ??
+        matched?.average_visit_minutes ??
+        90;
+
+      return {
+        stop_id: stopId,
+        poi_id: isRest ? null : (matched?.id ?? rawPoiId),
+        title: matched?.name ?? rawTitle,
+        city: matched?.city ?? (typeof rawStop.city === 'string' ? rawStop.city : (oDay.focus_city || trip.destination || null)),
+        address: matched?.address ?? (typeof rawStop.address === 'string' ? rawStop.address : null),
+        category: matched?.category ?? (typeof rawStop.category === 'string' ? rawStop.category : null),
+        stop_type: isRest ? 'rest' : 'poi',
+        source: 'assistant',
+        sequence: sIdx,
+        duration_minutes: duration,
+        start_time: startTime,
+        end_time: endTime,
+        comment: null,
+        latitude: isRest ? null : (matched?.lat ?? (typeof rawStop.latitude === 'number' ? rawStop.latitude : null)),
+        longitude: isRest ? null : (matched?.lng ?? (typeof rawStop.longitude === 'number' ? rawStop.longitude : null)),
+      };
+    });
+
+    return {
+      ...day,
+      title: typeof oDay.theme === 'string' ? oDay.theme : day.title,
+      stops,
+    };
+  });
+
+  return { ...base, days };
 }
 
 export function stopFromPoi(poi: Poi, source: 'idea' | 'manual' | 'assistant' = 'idea'): ItineraryStop {
@@ -732,6 +892,10 @@ export function insertRestInOrder(stops: ItineraryStop[], rest: ItineraryStop): 
     stops.splice(laterTimedStop, 0, rest);
     return;
   }
+  if (rest.start_time && stops.some((stop) => Boolean(stop.start_time))) {
+    stops.push(rest);
+    return;
+  }
   const targetVisitMinutes = startMinute < 11 * 60 ? 90 : 180;
   let accumulated = 0;
   let insertAt = 0;
@@ -839,45 +1003,481 @@ export function normalizeLegacyLunchBreaks(itinerary: TripItinerary): { itinerar
   return { itinerary: { ...itinerary, days: normalizeSequence(days) }, changed };
 }
 
-export function reorderNearStops(stops: ItineraryStop[]): ItineraryStop[] {
-  const places = stops.filter((stop) => stop.stop_type !== 'rest');
-  const orderByProximity = (segment: ItineraryStop[]) => {
-    if (segment.length < 3 || segment.some((stop) => stop.latitude == null || stop.longitude == null)) return segment;
-    const remaining = segment.slice(1);
-    const ordered = [segment[0]];
-    while (remaining.length) {
-      const current = ordered[ordered.length - 1];
-      let closestIndex = 0;
-      let closestDistance = Number.POSITIVE_INFINITY;
-      remaining.forEach((candidate, index) => {
-        const distance = distanceKm(current, candidate) ?? Number.POSITIVE_INFINITY;
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestIndex = index;
-        }
-      });
-      ordered.push(remaining.splice(closestIndex, 1)[0]);
-    }
-    return ordered;
-  };
+function resolveStopCoordinates(
+  stop: Pick<ItineraryStop, 'poi_id' | 'latitude' | 'longitude'>,
+  poiById?: Map<string, Poi>
+): { latitude: number; longitude: number } | null {
+  if (
+    stop.latitude != null &&
+    stop.longitude != null &&
+    Number.isFinite(stop.latitude) &&
+    Number.isFinite(stop.longitude)
+  ) {
+    return { latitude: stop.latitude, longitude: stop.longitude };
+  }
+  const matched = stop.poi_id ? poiById?.get(stop.poi_id) : undefined;
+  if (matched && Number.isFinite(matched.lat) && Number.isFinite(matched.lng)) {
+    return { latitude: matched.lat, longitude: matched.lng };
+  }
+  return null;
+}
 
-  if (!places.some((stop) => stop.start_time || stop.end_time)) return orderByProximity(places);
-  const ordered: ItineraryStop[] = [];
-  let segment: ItineraryStop[] = [];
-  const flushSegment = () => {
-    if (segment.length) ordered.push(...orderByProximity(segment));
-    segment = [];
-  };
-  places.forEach((stop) => {
-    if (stop.start_time || stop.end_time) {
-      flushSegment();
-      ordered.push(stop);
-    } else {
-      segment.push(stop);
+// # ponytail: Heuristically scale Haversine legs by 1.18 to match buildRoadFallback urban detour ratio.
+const ROAD_DETOUR_FACTOR = 1.18;
+
+export function calculateStopsPathKm(
+  stops: ItineraryStop[],
+  poiById?: Map<string, Poi>,
+  withRoadFactor = false
+): number {
+  const factor = withRoadFactor ? ROAD_DETOUR_FACTOR : 1;
+  let totalKm = 0;
+  let prevCoord: { latitude: number; longitude: number } | null = null;
+  for (const stop of stops) {
+    if (stop.stop_type === 'rest') continue;
+    const coord = resolveStopCoordinates(stop, poiById);
+    if (!coord) continue;
+    if (prevCoord) {
+      totalKm += (distanceKm(prevCoord, coord) ?? 0) * factor;
     }
+    prevCoord = coord;
+  }
+  return Math.round(totalKm * 100) / 100;
+}
+
+export function orderSegmentNearestAnd2Opt(
+  places: ItineraryStop[],
+  poiById?: Map<string, Poi>
+): ItineraryStop[] {
+  if (places.length < 3) return [...places];
+  const coords = places.map((stop) => resolveStopCoordinates(stop, poiById));
+  if (coords.some((c) => c === null)) return [...places];
+
+  const remaining = places.map((stop, idx) => ({ stop, coord: coords[idx]! }));
+  const ordered = [remaining.shift()!];
+  while (remaining.length) {
+    const current = ordered[ordered.length - 1];
+    let closestIndex = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+    remaining.forEach((candidate, index) => {
+      const distance = distanceKm(current.coord, candidate.coord) ?? Number.POSITIVE_INFINITY;
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+    ordered.push(remaining.splice(closestIndex, 1)[0]);
+  }
+
+  const legDist = (a: number, b: number) => distanceKm(ordered[a].coord, ordered[b].coord) ?? 0;
+  // # ponytail: Cap 2-opt iterations to 16 passes on typical daily cluster sizes (< 15 stops).
+  for (let pass = 0; pass < 16; pass += 1) {
+    let improved = false;
+    for (let i = 1; i < ordered.length - 1; i += 1) {
+      for (let j = i + 1; j < ordered.length; j += 1) {
+        const before =
+          legDist(i - 1, i) + (j + 1 < ordered.length ? legDist(j, j + 1) : 0);
+        const after =
+          legDist(i - 1, j) + (j + 1 < ordered.length ? legDist(i, j + 1) : 0);
+        if (before - after > 1e-6) {
+          let left = i;
+          let right = j;
+          while (left < right) {
+            const tmp = ordered[left];
+            ordered[left] = ordered[right];
+            ordered[right] = tmp;
+            left += 1;
+            right -= 1;
+          }
+          improved = true;
+        }
+      }
+    }
+    if (!improved) break;
+  }
+
+  return ordered.map((item) => item.stop);
+}
+
+export function reorderNearStops(stops: ItineraryStop[], poiById?: Map<string, Poi>): ItineraryStop[] {
+  const places = stops.filter((stop) => stop.stop_type !== 'rest');
+  return orderSegmentNearestAnd2Opt(places, poiById);
+}
+
+export interface DayRouteOptimizationResult {
+  day: ItineraryDay;
+  beforeKm: number;
+  afterKm: number;
+  savedKm: number;
+  reordered: boolean;
+}
+
+export function optimizeDayRouteOrder(
+  day: ItineraryDay,
+  poiById?: Map<string, Poi>
+): DayRouteOptimizationResult {
+  const places = day.stops.filter((stop) => stop.stop_type !== 'rest');
+  const rests = day.stops.filter((stop) => stop.stop_type === 'rest');
+  const beforeKm = calculateStopsPathKm(places, poiById, true);
+
+  if (places.length < 3) {
+    return { day, beforeKm, afterKm: beforeKm, savedKm: 0, reordered: false };
+  }
+
+  const optimizedPlaces = orderSegmentNearestAnd2Opt(places, poiById);
+  const afterKm = calculateStopsPathKm(optimizedPlaces, poiById, true);
+  const savedKm = Math.max(0, Math.round((beforeKm - afterKm) * 100) / 100);
+
+  if (savedKm < 0.05) {
+    return { day, beforeKm, afterKm: beforeKm, savedKm: 0, reordered: false };
+  }
+
+  const timedMinutes = places
+    .map((s) => (s.start_time ? minutesFromTime(s.start_time) : null))
+    .filter((v): v is number => v !== null && Number.isFinite(v));
+
+  let timedPlaces = optimizedPlaces;
+  if (timedMinutes.length > 0) {
+    let cursor = Math.min(...timedMinutes);
+    const restWindows = rests
+      .filter((r) => r.start_time && r.end_time)
+      .map((r) => ({ start: minutesFromTime(r.start_time!), end: minutesFromTime(r.end_time!) }))
+      .sort((a, b) => a.start - b.start);
+
+    timedPlaces = optimizedPlaces.map((stop) => {
+      if (!stop.start_time && !stop.end_time) return stop;
+      const dur =
+        stop.duration_minutes ||
+        (stop.start_time && stop.end_time ? durationBetween(stop.start_time, stop.end_time) : null) ||
+        90;
+      for (const rw of restWindows) {
+        if (cursor < rw.end && cursor + dur > rw.start) {
+          cursor = rw.end + 10;
+        }
+      }
+      const clampedStart = Math.min(cursor, 21 * 60 + 30);
+      const clampedEnd = Math.min(clampedStart + dur, 23 * 60);
+      cursor = clampedEnd + 15;
+      return {
+        ...stop,
+        start_time: timeFromMinutes(clampedStart),
+        end_time: timeFromMinutes(Math.max(clampedStart + 15, clampedEnd)),
+      };
+    });
+  }
+
+  const merged = [...timedPlaces];
+  rests.forEach((rest) => insertRestInOrder(merged, rest));
+  const sequenced = merged.map((stop, idx) => ({ ...stop, sequence: idx }));
+
+  return {
+    day: { ...day, stops: sequenced },
+    beforeKm,
+    afterKm,
+    savedKm,
+    reordered: true,
+  };
+}
+
+export interface ItineraryRouteOptimizationResult {
+  days: ItineraryDay[];
+  totalBeforeKm: number;
+  totalAfterKm: number;
+  totalSavedKm: number;
+  reorderedDaysCount: number;
+}
+
+export function optimizeItineraryRouteOrder(
+  days: ItineraryDay[],
+  poiById?: Map<string, Poi>
+): ItineraryRouteOptimizationResult {
+  let totalBeforeKm = 0;
+  let totalAfterKm = 0;
+  let totalSavedKm = 0;
+  let reorderedDaysCount = 0;
+
+  const optimizedDays = days.map((day) => {
+    const res = optimizeDayRouteOrder(day, poiById);
+    totalBeforeKm += res.beforeKm;
+    totalAfterKm += res.afterKm;
+    totalSavedKm += res.savedKm;
+    if (res.reordered) reorderedDaysCount += 1;
+    return res.day;
   });
-  flushSegment();
-  return ordered;
+
+  return {
+    days: optimizedDays,
+    totalBeforeKm: Math.round(totalBeforeKm * 100) / 100,
+    totalAfterKm: Math.round(totalAfterKm * 100) / 100,
+    totalSavedKm: Math.round(totalSavedKm * 100) / 100,
+    reorderedDaysCount,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// TÍNH TOÁN PHÁT THẢI CARBON (CO₂) THEO PHƯƠNG TIỆN DI CHUYỂN
+// ─────────────────────────────────────────────────────────────
+
+export type RouteTransportMode = 'driving' | 'motorcycle' | 'transit' | 'walking';
+
+// # ponytail: Urban Vietnam passenger-km emissions baseline (g CO2e/km) aligned with DEFRA/IEA averages.
+export const TRANSPORT_EMISSION_FACTORS_G_PER_KM: Record<RouteTransportMode, number> = {
+  driving: 171,
+  motorcycle: 72,
+  transit: 40,
+  walking: 0,
+};
+
+export const TRANSPORT_MODES_META: ReadonlyArray<{
+  id: RouteTransportMode;
+  label: string;
+  gramsPerKm: number;
+}> = [
+  { id: 'driving', label: 'Ô tô', gramsPerKm: 171 },
+  { id: 'motorcycle', label: 'Xe máy', gramsPerKm: 72 },
+  { id: 'transit', label: 'Buýt xanh', gramsPerKm: 40 },
+  { id: 'walking', label: 'Đi bộ', gramsPerKm: 0 },
+];
+
+export interface RouteCarbonEstimate {
+  distanceKm: number;
+  co2Grams: number;
+  baselineCarGrams: number;
+  savedGrams: number;
+  savedPercent: number;
+}
+
+export function estimateCarbonFootprint(
+  distanceMeters: number,
+  mode: RouteTransportMode
+): RouteCarbonEstimate {
+  const safeKm = Math.max(0, Number.isFinite(distanceMeters) ? distanceMeters : 0) / 1000;
+  const factor = TRANSPORT_EMISSION_FACTORS_G_PER_KM[mode] ?? TRANSPORT_EMISSION_FACTORS_G_PER_KM.driving;
+  const co2Grams = Math.round(safeKm * factor);
+  const baselineCarGrams = Math.round(safeKm * TRANSPORT_EMISSION_FACTORS_G_PER_KM.driving);
+  const savedGrams = Math.max(0, baselineCarGrams - co2Grams);
+  const savedPercent = baselineCarGrams > 0 ? Math.round((savedGrams / baselineCarGrams) * 100) : 0;
+
+  return {
+    distanceKm: Math.round(safeKm * 100) / 100,
+    co2Grams,
+    baselineCarGrams,
+    savedGrams,
+    savedPercent,
+  };
+}
+
+export function formatCarbonAmount(grams: number): string {
+  const safe = Math.max(0, Math.round(Number.isFinite(grams) ? grams : 0));
+  if (safe < 1000) return `${safe} g CO₂`;
+  return `${(safe / 1000).toFixed(2)} kg CO₂`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// KIỂM TRA RÀNG BUỘC GIỜ MỞ CỬA (OPENING HOURS VALIDATOR)
+// ─────────────────────────────────────────────────────────────
+
+export interface OpeningHoursCheckResult {
+  status: 'ok' | 'closed' | 'outside_hours' | 'unknown';
+  warningMessage: string | null;
+  openRangeLabel: string | null;
+}
+
+const WEEKDAY_PREFIXES: { jsDay: number; prefixPatterns: RegExp[]; inlinePattern: RegExp; label: string }[] = [
+  {
+    jsDay: 0,
+    prefixPatterns: [/^chủ\s*nhật(?=$|[\s:,.-])/i, /^cn(?=$|[\s:,.-])/i, /^sunday\b/i],
+    inlinePattern: /(?:chủ\s*nhật|\bcn)(?=$|[\s:,.-])/i,
+    label: 'Chủ Nhật',
+  },
+  {
+    jsDay: 1,
+    prefixPatterns: [/^thứ\s*(?:hai|2)(?=$|[\s:,.-])/i, /^t2(?=$|[\s:,.-])/i, /^monday\b/i],
+    inlinePattern: /thứ\s*(?:hai|2)(?=$|[\s:,.-])/i,
+    label: 'Thứ Hai',
+  },
+  {
+    jsDay: 2,
+    prefixPatterns: [/^thứ\s*(?:ba|3)(?=$|[\s:,.-])/i, /^t3(?=$|[\s:,.-])/i, /^tuesday\b/i],
+    inlinePattern: /thứ\s*(?:ba|3)(?=$|[\s:,.-])/i,
+    label: 'Thứ Ba',
+  },
+  {
+    jsDay: 3,
+    prefixPatterns: [/^thứ\s*(?:tư|tu|4)(?=$|[\s:,.-])/i, /^t4(?=$|[\s:,.-])/i, /^wednesday\b/i],
+    inlinePattern: /thứ\s*(?:tư|tu|4)(?=$|[\s:,.-])/i,
+    label: 'Thứ Tư',
+  },
+  {
+    jsDay: 4,
+    prefixPatterns: [/^thứ\s*(?:năm|nam|5)(?=$|[\s:,.-])/i, /^t5(?=$|[\s:,.-])/i, /^thursday\b/i],
+    inlinePattern: /thứ\s*(?:năm|nam|5)(?=$|[\s:,.-])/i,
+    label: 'Thứ Năm',
+  },
+  {
+    jsDay: 5,
+    prefixPatterns: [/^thứ\s*(?:sáu|sau|6)(?=$|[\s:,.-])/i, /^t6(?=$|[\s:,.-])/i, /^friday\b/i],
+    inlinePattern: /thứ\s*(?:sáu|sau|6)(?=$|[\s:,.-])/i,
+    label: 'Thứ Sáu',
+  },
+  {
+    jsDay: 6,
+    prefixPatterns: [/^thứ\s*(?:bảy|bay|7)(?=$|[\s:,.-])/i, /^t7(?=$|[\s:,.-])/i, /^saturday\b/i],
+    inlinePattern: /thứ\s*(?:bảy|bay|7)(?=$|[\s:,.-])/i,
+    label: 'Thứ Bảy',
+  },
+];
+
+function extractJsDayFromDate(dayDate?: string | null): number | null {
+  if (!dayDate || !/^\d{4}-\d{2}-\d{2}$/.test(dayDate)) return null;
+  const d = new Date(`${dayDate}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d.getDay();
+}
+
+function parseTimeWindowsFromText(text: string): Array<{ start: number; end: number }> {
+  const ranges: Array<{ start: number; end: number }> = [];
+  const regex = /(\d{1,2})[:h](\d{2})\s*[–—-]\s*(\d{1,2})[:h](\d{2})/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    const startH = Number(match[1]);
+    const startM = Number(match[2]);
+    const endH = Number(match[3]);
+    const endM = Number(match[4]);
+    if (startH > 24 || startM >= 60 || endH > 24 || endM >= 60) continue;
+    const start = startH * 60 + startM;
+    let end = endH * 60 + endM;
+    if (end <= start) end += 24 * 60;
+    ranges.push({ start, end });
+  }
+  return ranges;
+}
+
+function extractAllowedWeekdaysFromStatus(text: string): number[] | null {
+  if (!/(?:thứ|chủ\s*nhật)/i.test(text)) return null;
+  const days = new Set<number>();
+  WEEKDAY_PREFIXES.forEach((w) => {
+    if (w.inlinePattern.test(text)) days.add(w.jsDay);
+  });
+
+  // Handle compact lists like "Thứ 4, 6, Chủ Nhật"
+  const listMatch = text.match(/thứ\s*([2-7](?:\s*,\s*[2-7])+)/i);
+  if (listMatch) {
+    listMatch[1].split(',').forEach((tok) => {
+      const n = Number(tok.trim());
+      if (n >= 2 && n <= 7) days.add(n === 2 ? 1 : n === 3 ? 2 : n === 4 ? 3 : n === 5 ? 4 : n === 6 ? 5 : 6);
+    });
+  }
+  return days.size > 0 ? [...days] : null;
+}
+
+export function checkStopOpeningHours(
+  stop: Pick<ItineraryStop, 'stop_type' | 'start_time' | 'end_time' | 'duration_minutes'>,
+  poi: Poi | undefined,
+  dayDate?: string | null
+): OpeningHoursCheckResult {
+  if (stop.stop_type === 'rest') {
+    return { status: 'ok', warningMessage: null, openRangeLabel: null };
+  }
+  const oh = poi?.opening_hours;
+  if (oh?.is_temporarily_closed) {
+    return {
+      status: 'closed',
+      warningMessage: 'Địa điểm hiện đang tạm đóng cửa theo dữ liệu cập nhật.',
+      openRangeLabel: 'Tạm đóng cửa',
+    };
+  }
+
+  const jsDay = extractJsDayFromDate(dayDate);
+  const weekdayLines = Array.isArray(oh?.weekday_text) ? oh.weekday_text.map((l) => String(l).trim()) : [];
+  let targetRuleText = '';
+  let targetDayLabel = '';
+
+  if (weekdayLines.length > 0 && jsDay !== null) {
+    const dayMeta = WEEKDAY_PREFIXES.find((w) => w.jsDay === jsDay);
+    const matchedLine = weekdayLines.find((line) => dayMeta?.prefixPatterns.some((p) => p.test(line)));
+    if (matchedLine) {
+      targetRuleText = matchedLine.replace(/^[^:]+:\s*/, '').trim();
+      targetDayLabel = dayMeta?.label || '';
+    }
+  }
+
+  const statusText = typeof oh?.status_text === 'string' ? oh.status_text.trim() : '';
+  const hasScheduleInStatus =
+    /\d{1,2}[:h]\d{2}/.test(statusText) || /đóng cửa|cả ngày|24\/24|24\/7/i.test(statusText);
+
+  if (!targetRuleText) {
+    if (hasScheduleInStatus) {
+      targetRuleText = statusText;
+    } else if (weekdayLines.length > 0) {
+      targetRuleText = weekdayLines[0].replace(/^[^:]+:\s*/, '').trim();
+    } else if (poi?.openHours) {
+      targetRuleText = poi.openHours.trim();
+    }
+  }
+
+  if (!targetRuleText) {
+    return { status: 'unknown', warningMessage: null, openRangeLabel: null };
+  }
+
+  if (/cả ngày|24\/24|24\/7|24\s*giờ|lễ tân 24/i.test(targetRuleText) && !/đóng cửa/i.test(targetRuleText)) {
+    return { status: 'ok', warningMessage: null, openRangeLabel: 'Mở cửa cả ngày' };
+  }
+
+  if (/đóng\s*cửa/i.test(targetRuleText) && parseTimeWindowsFromText(targetRuleText).length === 0) {
+    const dayInfo = targetDayLabel ? ` vào ${targetDayLabel}` : '';
+    return {
+      status: 'closed',
+      warningMessage: `Địa điểm đóng cửa${dayInfo}. Hãy cân nhắc đổi sang ngày hoặc điểm khác.`,
+      openRangeLabel: `Đóng cửa${dayInfo}`,
+    };
+  }
+
+  const allowedWeekdays = extractAllowedWeekdaysFromStatus(targetRuleText);
+  if (allowedWeekdays && jsDay !== null && !allowedWeekdays.includes(jsDay)) {
+    const dayMeta = WEEKDAY_PREFIXES.find((w) => w.jsDay === jsDay);
+    return {
+      status: 'closed',
+      warningMessage: `Hoạt động này không mở vào ${dayMeta?.label || 'ngày đã chọn'} (${targetRuleText}).`,
+      openRangeLabel: targetRuleText,
+    };
+  }
+
+  const windows = parseTimeWindowsFromText(targetRuleText);
+  if (windows.length === 0) {
+    return { status: 'unknown', warningMessage: null, openRangeLabel: targetRuleText };
+  }
+
+  const openRangeLabel = windows
+    .map((w) => `${timeFromMinutes(w.start % 1440)}–${timeFromMinutes(w.end === 1440 ? 0 : w.end % 1440)}`)
+    .join(', ');
+
+  if (!stop.start_time) {
+    return { status: 'ok', warningMessage: null, openRangeLabel };
+  }
+
+  const visitStart = minutesFromTime(stop.start_time);
+  let visitEnd = stop.end_time ? minutesFromTime(stop.end_time) : visitStart + (stop.duration_minutes || 60);
+  if (!Number.isFinite(visitStart) || !Number.isFinite(visitEnd)) {
+    return { status: 'ok', warningMessage: null, openRangeLabel };
+  }
+  if (visitEnd <= visitStart) visitEnd += 24 * 60;
+
+  const fitsWindow = windows.some(
+    (w) =>
+      (visitStart >= w.start && visitEnd <= w.end) ||
+      (w.end > 1440 && visitStart + 1440 >= w.start && visitEnd + 1440 <= w.end)
+  );
+
+  if (!fitsWindow) {
+    const endLabel = stop.end_time || timeFromMinutes(visitEnd % 1440);
+    return {
+      status: 'outside_hours',
+      warningMessage: `Khung ${stop.start_time}–${endLabel} ngoài giờ mở cửa (${openRangeLabel}).`,
+      openRangeLabel,
+    };
+  }
+
+  return { status: 'ok', warningMessage: null, openRangeLabel };
 }
 
 type VisitPeriod = 'morning' | 'afternoon' | 'evening';
@@ -1188,4 +1788,356 @@ export function updateDateRangeWithDays(currentDateStr?: string | null, newDaysC
 
   const res = `${safeDays} ngày • ${raw}`;
   return hadParenthesisDays ? `${res} (${safeDays} ngày)` : res;
+}
+
+// ─────────────────────────────────────────────────────────────
+// PHÂN LOẠI TRONG NHÀ / NGOÀI TRỜI, ĐỔI ĐIỂM GẦN, NGÂN SÁCH & ĐỘ MỆT MỎI
+// ─────────────────────────────────────────────────────────────
+
+const OUTDOOR_SUB_CATEGORIES = new Set([
+  'beach',
+  'beach_coastline',
+  'mountain_pass_peninsula',
+  'mountain',
+  'waterfall',
+  'waterfalls_hotsprings',
+  'stream',
+  'camping',
+  'adventure',
+  'snorkeling',
+  'bay',
+  'peninsula',
+]);
+
+const INDOOR_SUB_CATEGORIES = new Set([
+  'museums_galleries',
+  'museum',
+  'art_space',
+  'performance',
+  'performing_arts_heritage',
+  'workspace_study_cafe',
+  'tea_herbal',
+  'royal_herbal_tea',
+  'cathedrals_heritage_churches',
+  'historic_zen_temples',
+  'pagoda',
+  'market',
+  'wellness',
+  'royal_mausoleums',
+]);
+
+const OUTDOOR_KEYWORDS = [
+  'bãi biển',
+  'bán đảo',
+  'ngũ hành sơn',
+  'công viên',
+  'cầu rồng',
+  'cầu vàng',
+  'bà nà',
+  'đồi ',
+  'thác ',
+  'suối ',
+  'vịnh ',
+  'đèo ',
+  'biển ',
+];
+
+function normalizeCityLabel(city?: string | null): 'Đà Nẵng' | 'Huế' {
+  return /hu[eế]/i.test(city || '') ? 'Huế' : 'Đà Nẵng';
+}
+
+export function isPoiOutdoor(
+  poi?: Poi | null,
+  stop?: Pick<ItineraryStop, 'category' | 'title' | 'stop_type'> | null
+): boolean {
+  if (stop?.stop_type === 'rest') return false;
+  if (!poi && !stop) return false;
+
+  if (poi?.ai_metadata && typeof poi.ai_metadata.rainy_day_friendly === 'boolean') {
+    return !poi.ai_metadata.rainy_day_friendly;
+  }
+
+  const sub = (poi?.sub_category || '').trim().toLowerCase();
+  if (OUTDOOR_SUB_CATEGORIES.has(sub)) return true;
+  if (INDOOR_SUB_CATEGORIES.has(sub)) return false;
+
+  const cat = (poi?.category || stop?.category || '').trim().toLowerCase();
+  if (cat === 'canh-quan' || cat.includes('thiên nhiên') || cat.includes('cảnh quan') || cat.includes('nature')) {
+    return true;
+  }
+
+  const name = (poi?.name || stop?.title || '').trim().toLowerCase();
+  return OUTDOOR_KEYWORDS.some((kw) => name.includes(kw));
+}
+
+export interface IndoorSwapSuggestion {
+  originalStop: ItineraryStop;
+  replacement: Poi;
+  distanceKm: number;
+  walkMinutes: number;
+  reason: string;
+}
+
+export function suggestIndoorAlternativesForDay(
+  day: ItineraryDay,
+  allPois: Poi[],
+  usedPoiIds: Set<string>,
+  fallbackCity = 'Đà Nẵng'
+): IndoorSwapSuggestion[] {
+  const poiById = new Map(allPois.map((p) => [p.id, p]));
+  const scheduledInDay = new Set(
+    day.stops.map((s) => s.poi_id).filter((id): id is string => Boolean(id))
+  );
+  const chosenIds = new Set<string>();
+  const swaps: IndoorSwapSuggestion[] = [];
+
+  for (const stop of day.stops) {
+    if (stop.stop_type === 'rest') continue;
+    const matched = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
+    if (!isPoiOutdoor(matched, stop)) continue;
+
+    const targetCity = normalizeCityLabel(stop.city || matched?.city || fallbackCity);
+    const origin = resolveStopCoordinates(stop, poiById);
+
+    const candidates = allPois.filter((cand) => {
+      if (normalizeCityLabel(cand.city) !== targetCity) return false;
+      if (cand.id === stop.poi_id || scheduledInDay.has(cand.id) || usedPoiIds.has(cand.id) || chosenIds.has(cand.id)) {
+        return false;
+      }
+      return !isPoiOutdoor(cand);
+    });
+
+    if (candidates.length === 0) continue;
+
+    const ranked = candidates
+      .map((cand) => {
+        const rawDist =
+          origin && Number.isFinite(cand.lat) && Number.isFinite(cand.lng)
+            ? distanceKm(origin, { latitude: cand.lat, longitude: cand.lng }) ?? 0
+            : 0;
+        return {
+          cand,
+          dist: Math.round(rawDist * 100) / 100,
+        };
+      })
+      .sort((a, b) => {
+        if (origin && Math.abs(a.dist - b.dist) > 1e-6) return a.dist - b.dist;
+        const ecoDiff = (b.cand.ecoScore || 0) - (a.cand.ecoScore || 0);
+        if (ecoDiff !== 0) return ecoDiff;
+        return (b.cand.rating || 0) - (a.cand.rating || 0);
+      });
+
+    const best = ranked[0];
+    chosenIds.add(best.cand.id);
+    const walkMinutes = best.dist > 0 ? Math.max(1, Math.round((best.dist / 4.5) * 60)) : 0;
+    const reason =
+      best.dist > 0
+        ? `Không gian trong nhà tại ${targetCity}, cách điểm cũ ${best.dist.toFixed(1)} km`
+        : `Không gian trong nhà tại ${targetCity}, an toàn khi trời mưa`;
+
+    swaps.push({
+      originalStop: stop,
+      replacement: best.cand,
+      distanceKm: best.dist,
+      walkMinutes,
+      reason,
+    });
+  }
+
+  return swaps;
+}
+
+export interface NearbyAlternativeSuggestion {
+  poi: Poi;
+  distanceKm: number;
+  walkMinutes: number;
+  reason: string;
+}
+
+export function suggestNearbyAlternativesForStop(
+  targetStop: ItineraryStop,
+  day: ItineraryDay,
+  allPois: Poi[],
+  usedPoiIds: Set<string>,
+  limit = 3
+): NearbyAlternativeSuggestion[] {
+  if (limit <= 0) return [];
+  const poiById = new Map(allPois.map((p) => [p.id, p]));
+  const matched = targetStop.poi_id ? poiById.get(targetStop.poi_id) : undefined;
+  const targetCity = normalizeCityLabel(targetStop.city || matched?.city || 'Đà Nẵng');
+  const scheduledInDay = new Set(
+    day.stops.map((s) => s.poi_id).filter((id): id is string => Boolean(id))
+  );
+  const origin = resolveStopCoordinates(targetStop, poiById);
+
+  const candidates = allPois.filter((cand) => {
+    if (normalizeCityLabel(cand.city) !== targetCity) return false;
+    if (cand.id === targetStop.poi_id || scheduledInDay.has(cand.id) || usedPoiIds.has(cand.id)) {
+      return false;
+    }
+    return true;
+  });
+
+  return candidates
+    .map((poi) => {
+      const rawDist =
+        origin && Number.isFinite(poi.lat) && Number.isFinite(poi.lng)
+          ? distanceKm(origin, { latitude: poi.lat, longitude: poi.lng }) ?? 0
+          : 0;
+      const dist = Math.round(rawDist * 100) / 100;
+      const walkMinutes = dist > 0 ? Math.max(1, Math.round((dist / 4.5) * 60)) : 0;
+      const ecoVal = poi.ecoScore || 85;
+      const reason =
+        dist > 0
+          ? `Cách ${dist.toFixed(1)} km (~${walkMinutes} phút đi bộ) · Eco ${ecoVal}`
+          : `Cùng khu vực ${targetCity} · Eco ${ecoVal}`;
+      return { poi, distanceKm: dist, walkMinutes, reason };
+    })
+    .sort((a, b) => {
+      if (origin && Math.abs(a.distanceKm - b.distanceKm) > 1e-6) return a.distanceKm - b.distanceKm;
+      const ecoDiff = (b.poi.ecoScore || 0) - (a.poi.ecoScore || 0);
+      if (ecoDiff !== 0) return ecoDiff;
+      return (b.poi.rating || 0) - (a.poi.rating || 0);
+    })
+    .slice(0, limit);
+}
+
+export function getStopShortReason(
+  stop: ItineraryStop,
+  matchedPoi?: Poi | null,
+  prevStop?: ItineraryStop | null
+): string {
+  if (stop.stop_type === 'rest') {
+    return 'Khoảng nghỉ phục hồi giúp giữ nhịp đi thong thả, tránh quá tải.';
+  }
+
+  const prevLat = prevStop?.latitude ?? null;
+  const prevLng = prevStop?.longitude ?? null;
+  const curLat = stop.latitude ?? matchedPoi?.lat ?? null;
+  const curLng = stop.longitude ?? matchedPoi?.lng ?? null;
+  const straightKm =
+    prevLat != null && prevLng != null && curLat != null && curLng != null
+      ? distanceKm({ latitude: prevLat, longitude: prevLng }, { latitude: curLat, longitude: curLng })
+      : null;
+  const legKm =
+    straightKm != null && Number.isFinite(straightKm)
+      ? Math.round(straightKm * ROAD_DETOUR_FACTOR * 10) / 10
+      : null;
+
+  if (matchedPoi) {
+    const tag = isPoiOutdoor(matchedPoi, stop)
+      ? 'Không gian ngoài trời'
+      : matchedPoi.ecoScore >= 85
+        ? `Trong nhà · Eco ${matchedPoi.ecoScore}`
+        : 'Không gian trong nhà';
+    return legKm != null
+      ? `${tag} · cách điểm trước ${legKm.toFixed(1)} km`
+      : `${tag} · hợp nhịp tham quan tại ${matchedPoi.city}`;
+  }
+
+  const cityLabel = stop.city || 'địa phương';
+  return legKm != null
+    ? `Cách điểm trước ${legKm.toFixed(1)} km · điểm dừng tại ${cityLabel}`
+    : `Điểm dừng phù hợp tại ${cityLabel}`;
+}
+
+export interface TripBudgetSummary {
+  totalCost: number;
+  maxBudget: number | null;
+  remaining: number | null;
+  isOverBudget: boolean;
+  percentUsed: number;
+}
+
+export function computeTripBudgetSummary(
+  days: ItineraryDay[],
+  poiById: Map<string, Poi>,
+  peopleCount: number,
+  maxBudget?: number | null
+): TripBudgetSummary {
+  const safePeople = Math.max(1, Number.isFinite(peopleCount) ? peopleCount : 1);
+  let totalCost = 0;
+
+  for (const day of days) {
+    for (const stop of day.stops) {
+      if (stop.stop_type === 'rest') continue;
+      const poi = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
+      const unitCost =
+        poi?.estimatedCost != null && Number.isFinite(poi.estimatedCost)
+          ? Math.max(0, poi.estimatedCost)
+          : 0;
+      totalCost += unitCost * safePeople;
+    }
+  }
+
+  totalCost = Math.round(totalCost);
+  if (maxBudget != null && Number.isFinite(maxBudget) && maxBudget > 0) {
+    const cleanMax = Math.round(maxBudget);
+    return {
+      totalCost,
+      maxBudget: cleanMax,
+      remaining: cleanMax - totalCost,
+      isOverBudget: totalCost > cleanMax,
+      percentUsed: Math.round((totalCost / cleanMax) * 100),
+    };
+  }
+
+  return {
+    totalCost,
+    maxBudget: null,
+    remaining: null,
+    isOverBudget: false,
+    percentUsed: 0,
+  };
+}
+
+export interface DayFatigueSummary {
+  activeCount: number;
+  outdoorCount: number;
+  durationHours: number;
+  fatigueHours: number;
+  hasRestBlock: boolean;
+  needsRest: boolean;
+  level: 'light' | 'moderate' | 'heavy';
+}
+
+export function computeDayFatigue(day: ItineraryDay, poiById?: Map<string, Poi>): DayFatigueSummary {
+  const hasRestBlock = day.stops.some((s) => s.stop_type === 'rest');
+  const activeStops = day.stops.filter((s) => s.stop_type !== 'rest');
+  const activeCount = activeStops.length;
+
+  let totalMinutes = 0;
+  let outdoorCount = 0;
+
+  for (const stop of activeStops) {
+    const matched = stop.poi_id ? poiById?.get(stop.poi_id) : undefined;
+    const dur =
+      (stop.duration_minutes && stop.duration_minutes > 0 ? stop.duration_minutes : null) ??
+      (stop.start_time && stop.end_time ? durationBetween(stop.start_time, stop.end_time) : null) ??
+      (matched?.average_visit_minutes && matched.average_visit_minutes > 0 ? matched.average_visit_minutes : null) ??
+      90;
+    totalMinutes += dur;
+    if (isPoiOutdoor(matched, stop)) {
+      outdoorCount += 1;
+    }
+  }
+
+  const durationHours = Math.round((totalMinutes / 60) * 100) / 100;
+  const fatigueHours = Math.round((durationHours + 0.5 * outdoorCount) * 100) / 100;
+  const needsRest = activeCount >= 4 || fatigueHours >= 6.0;
+  const level: 'light' | 'moderate' | 'heavy' = needsRest
+    ? 'heavy'
+    : activeCount >= 3 || fatigueHours >= 4.0
+      ? 'moderate'
+      : 'light';
+
+  return {
+    activeCount,
+    outdoorCount,
+    durationHours,
+    fatigueHours,
+    hasRestBlock,
+    needsRest,
+    level,
+  };
 }

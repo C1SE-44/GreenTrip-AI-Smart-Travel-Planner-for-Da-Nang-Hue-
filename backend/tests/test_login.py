@@ -56,8 +56,9 @@ def test_login_returns_jwt_with_required_claims(
         "unit-test-secret-not-for-production",
         algorithms=["HS256"],
     )
-    assert set(claims) == {"sub", "exp"}
+    assert set(claims) == {"sub", "exp", "type"}
     assert claims["sub"] == "user-123"
+    assert claims["type"] == "access"
     assert isinstance(claims["exp"], int)
     assert "password" not in data
     assert "password_hash" not in data

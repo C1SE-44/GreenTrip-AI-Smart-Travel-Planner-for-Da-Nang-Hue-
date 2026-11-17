@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Minus, Plus, Calendar, Loader2, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import { validateTripParameters } from '@/services/tripService';
@@ -6,14 +6,18 @@ import { validateTripParameters } from '@/services/tripService';
 export interface CreateTripCopilotModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateTrip?: (trip: UserTrip) => void;
-  onCreated?: (trip: UserTrip) => void;
+  onCreateTrip?: (trip: UserTrip, options?: { openInItinerary?: boolean }) => void;
+  onCreated?: (trip: UserTrip, options?: { openInItinerary?: boolean }) => void;
+  initialPrompt?: string;
+  initialChatHistory?: CopilotTripMessage[];
+  defaultOpenItinerary?: boolean;
 }
 
 import {
   buildDefaultMindtripItinerary,
   buildDefaultMindtripConversation,
   type CopilotDayOutline,
+  type CopilotTripMessage,
 } from './copilotTripData';
 import { extractTripIntentFromPrompt, type ExtractedTripIntent } from '@/utils/vietnamesePromptExtractor';
 
@@ -31,10 +35,14 @@ export default function CreateTripCopilotModal({
   onClose,
   onCreateTrip,
   onCreated,
+  initialPrompt,
+  initialChatHistory,
+  defaultOpenItinerary = false,
 }: CreateTripCopilotModalProps) {
   const [tripPrompt, setTripPrompt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [openDirectlyToItinerary, setOpenDirectlyToItinerary] = useState(defaultOpenItinerary);
 
   // 1. WHERE STATE (Ở đâu: Huế, Đà Nẵng, Cả 2)
   const [whereTarget, setWhereTarget] = useState<string>('Đà Nẵng & Huế');
@@ -42,7 +50,7 @@ export default function CreateTripCopilotModal({
   const [showWhereModal, setShowWhereModal] = useState(false);
 
   // 2. WHEN STATE (Khi: Ngày tháng vs Linh hoạt)
-  const [whenTab, setWhenTab] = useState<'dates' | 'flex'>('dates');
+  const [whenTab, setWhenTab] = useState<'dates' | 'flex'>('flex');
   
   // Khởi tạo lịch ở tuần tới để ngày mặc định không bị backend từ chối theo thời gian thực.
   const [calendarBaseMonth, setCalendarBaseMonth] = useState<Date>(() => {
@@ -61,9 +69,9 @@ export default function CreateTripCopilotModal({
     return tripEnd;
   });
 
-  // Tab Linh hoạt: Số ngày và chọn 3 tháng
+  // Tab Linh hoạt: Số ngày và chọn tháng (trống nếu chỉ nhập số ngày chuẩn Mindtrip)
   const [flexibleDays, setFlexibleDays] = useState(4);
-  const [selectedMonth, setSelectedMonth] = useState('Tháng 11');
+  const [selectedMonth, setSelectedMonth] = useState('');
   const [showWhenModal, setShowWhenModal] = useState(false);
 
   // 3. WHO STATE (Ai: Số lượng du khách)
@@ -74,50 +82,69 @@ export default function CreateTripCopilotModal({
   const [showWhoModal, setShowWhoModal] = useState(false);
   const [extractedIntent, setExtractedIntent] = useState<ExtractedTripIntent | null>(null);
 
-  // 4. BUDGET TIER STATE (Phân loại ngân sách chuẩn Mentor: Tiết kiệm, Tiêu chuẩn, Cao cấp)
+  // 4. BUDGET TIER STATE (Phân loại ngân sách chuẩn Mentor: Tiết kiệm, Tiêu chuẩn, Cao cấp + số tiền cụ thể)
   const [budgetTier, setBudgetTier] = useState<'budget' | 'standard' | 'luxury'>('standard');
+  const [customBudgetVnd, setCustomBudgetVnd] = useState<number | null>(null);
   const [diningTier, setDiningTier] = useState<string>('any');
   const [lodgingTier, setLodgingTier] = useState<string>('any');
   const [activitiesTier, setActivitiesTier] = useState<string>('any');
   const [showBudgetModal, setShowBudgetModal] = useState(false);
 
-  // Bộ bóc tách thông số tự nhiên tức thì từ prompt chuẩn Mindtrip
+  // Bộ bóc tách thông số tự nhiên tức thì từ prompt chuẩn Mindtrip AI
   const handlePromptChange = (val: string) => {
     const text = val.slice(0, 2000);
     setTripPrompt(text);
 
     if (!text.trim()) {
       setExtractedIntent(null);
+      setCustomBudgetVnd(null);
       return;
     }
 
     const intent = extractTripIntentFromPrompt(text);
     setExtractedIntent(intent);
 
-    // 1. Nhận diện điểm đến (Where)
-    setWhereTarget(intent.destination);
+    // 1. Nhận diện điểm đến & thứ tự hành trình (Where: "Đà Nẵng → Huế", "Huế → Đà Nẵng → Hội An", ...)
+    setWhereTarget(intent.routeDisplay);
 
-    // 2. Nhận diện số ngày (When)
+    // 2. Nhận diện thời gian & số ngày (When: Dates / Month+Duration / Duration)
     setFlexibleDays(intent.days);
-    if (rangeStart) {
-      const newEnd = new Date(rangeStart.getTime() + (intent.days - 1) * 86400000);
-      setRangeEnd(newEnd);
+    if (intent.whenMode === 'dates' && intent.startDate && intent.endDate) {
+      setWhenTab('dates');
+      setRangeStart(intent.startDate);
+      setRangeEnd(intent.endDate);
+      setCalendarBaseMonth(new Date(intent.startDate.getFullYear(), intent.startDate.getMonth(), 1));
+    } else if (intent.whenMode === 'month_duration' || intent.whenMode === 'month_only') {
+      setWhenTab('flex');
+      setSelectedMonth(intent.monthLabel || '');
+    } else {
+      setWhenTab('flex');
+      setSelectedMonth('');
     }
 
-    // 3. Nhận diện số người / du khách (Who)
+    // 3. Nhận diện số người / du khách (Who: Người lớn, Trẻ em, Em bé, Thú cưng)
     setAdults(intent.guests.adults);
     setChildren(intent.guests.children);
     setInfants(intent.guests.infants);
     setPets(intent.guests.pets);
+
+    // 4. Nhận diện Ngân sách cụ thể & hạng chi tiêu (Budget)
+    setBudgetTier(intent.budgetTier);
+    setCustomBudgetVnd(intent.budgetAmountVnd);
   };
 
+  useEffect(() => {
+    if (isOpen && initialPrompt && initialPrompt.trim()) {
+      handlePromptChange(initialPrompt);
+    }
+  }, [isOpen, initialPrompt]);
 
   if (!isOpen) return null;
 
   const totalGuests = adults + children + infants + pets;
   const destinationDisplay = whereTarget.trim() || 'Đà Nẵng & Huế';
   
-  // Format chuỗi hiển thị cho mục "Khi"
+  // Format chuỗi hiển thị cho mục "Khi" chuẩn Mindtrip
   const getWhenDisplay = () => {
     if (whenTab === 'dates' && rangeStart && rangeEnd) {
       const sDay = rangeStart.getDate();
@@ -125,32 +152,56 @@ export default function CreateTripCopilotModal({
       const eDay = rangeEnd.getDate();
       const eMon = rangeEnd.getMonth() + 1;
       if (sMon === eMon) {
-        return `${sDay} - ${eDay} thg ${sMon} (${flexibleDays} ngày)`;
+        return `${sDay} – ${eDay} thg ${sMon} (${flexibleDays} ngày)`;
       }
-      return `${sDay}/${sMon} - ${eDay}/${eMon} (${flexibleDays} ngày)`;
+      return `${sDay}/${sMon} – ${eDay}/${eMon} (${flexibleDays} ngày)`;
     }
-    return `${flexibleDays} ngày • ${selectedMonth}`;
+    if (selectedMonth) {
+      return `${flexibleDays} ngày trong ${selectedMonth}`;
+    }
+    if (extractedIntent && extractedIntent.cityLegs.length >= 2 && extractedIntent.days === flexibleDays) {
+      return extractedIntent.whenDisplay;
+    }
+    return `${flexibleDays} ngày`;
   };
 
   const whenDisplay = getWhenDisplay();
+
   const getWhoDisplay = () => {
-
-    if (extractedIntent && extractedIntent.companionshipLabel) {
-
-      return `${totalGuests} du khách (${extractedIntent.companionshipLabel})`;
-
+    if (
+      extractedIntent &&
+      extractedIntent.guests.adults === adults &&
+      extractedIntent.guests.children === children &&
+      extractedIntent.guests.infants === infants &&
+      extractedIntent.guests.pets === pets
+    ) {
+      return extractedIntent.whoDisplay;
     }
-
-    return `${totalGuests} du khách`;
-
+    const parts: string[] = [`${adults} người lớn`];
+    if (children > 0) parts.push(`${children} trẻ em`);
+    if (infants > 0) parts.push(`${infants} em bé`);
+    if (pets > 0) parts.push(`${pets} thú cưng`);
+    return parts.join(', ');
   };
 
   const whoDisplay = getWhoDisplay();
 
   const getBudgetDisplay = () => {
-    if (budgetTier === 'budget') return '$ Tiết kiệm';
-    if (budgetTier === 'luxury') return '$$$ Cao cấp';
-    return '$$ Tiêu chuẩn';
+    const tierText =
+      budgetTier === 'budget'
+        ? '$ Tiết kiệm'
+        : budgetTier === 'luxury'
+        ? '$$$ Cao cấp'
+        : '$$ Tiêu chuẩn';
+    if (customBudgetVnd && customBudgetVnd > 0) {
+      const millions = customBudgetVnd / 1_000_000;
+      const amountLabel =
+        customBudgetVnd >= 1_000_000
+          ? `${Number.isInteger(millions) ? millions : millions.toFixed(1).replace(/\.0$/, '').replace('.', ',')} triệu ₫`
+          : `${Math.round(customBudgetVnd / 1_000)}k ₫`;
+      return `${amountLabel} (${tierText})`;
+    }
+    return tierText;
   };
   const budgetDisplay = getBudgetDisplay();
 
@@ -252,7 +303,11 @@ export default function CreateTripCopilotModal({
     const normDest = getNormalizedDestination();
     const validDays = normDest === 'Đà Nẵng & Huế' ? Math.max(2, flexibleDays) : Math.max(1, flexibleDays);
     const validPeople = Math.max(1, adults + children);
-    const estimatedBudget = 1500000 * validDays * validPeople;
+    const dailyRatePerPerson =
+      budgetTier === 'budget' ? 650000 : budgetTier === 'luxury' ? 2800000 : 1300000;
+    const estimatedBudget = customBudgetVnd && customBudgetVnd > 0
+      ? customBudgetVnd
+      : dailyRatePerPerson * validDays * validPeople;
 
     const startDateStr = whenTab === 'dates' && rangeStart
       ? `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, '0')}-${String(rangeStart.getDate()).padStart(2, '0')}`
@@ -301,13 +356,16 @@ export default function CreateTripCopilotModal({
               stops: d.stops || buildDefaultMindtripItinerary(normDest, validDays)[idx]?.stops || [],
             }))
           : buildDefaultMindtripItinerary(normDest, validDays),
-        copilotChatHistory: buildDefaultMindtripConversation(
-          normDest,
-          validDays,
-          Math.max(1, totalGuests),
-          tripPrompt.trim(),
-          extractedIntent
-        ),
+        copilotChatHistory: [
+          ...(initialChatHistory ?? []),
+          ...buildDefaultMindtripConversation(
+            normDest,
+            validDays,
+            Math.max(1, totalGuests),
+            tripPrompt.trim(),
+            extractedIntent
+          ),
+        ],
         matchedPois: validatedData.matched_pois || [],
         costBreakdown: validatedData.cost_breakdown,
         pacingLevel: validatedData.pacing_level,
@@ -316,7 +374,7 @@ export default function CreateTripCopilotModal({
 
       const cb = onCreateTrip || onCreated;
       if (cb) {
-        cb(newTrip);
+        cb(newTrip, { openInItinerary: openDirectlyToItinerary });
       }
       onClose();
     } catch (err: unknown) {
@@ -346,18 +404,21 @@ export default function CreateTripCopilotModal({
         pacingLevel: pacing.level,
         pacingLabel: pacing.label,
         itineraryOutline: buildDefaultMindtripItinerary(normDest, validDays),
-        copilotChatHistory: buildDefaultMindtripConversation(
-          normDest,
-          validDays,
-          Math.max(1, totalGuests),
-          tripPrompt.trim(),
-          extractedIntent
-        ),
+        copilotChatHistory: [
+          ...(initialChatHistory ?? []),
+          ...buildDefaultMindtripConversation(
+            normDest,
+            validDays,
+            Math.max(1, totalGuests),
+            tripPrompt.trim(),
+            extractedIntent
+          ),
+        ],
       };
 
       const cb = onCreateTrip || onCreated;
       if (cb) {
-        cb(newTrip);
+        cb(newTrip, { openInItinerary: openDirectlyToItinerary });
       }
       onClose();
     } finally {
@@ -494,16 +555,24 @@ export default function CreateTripCopilotModal({
           </p>
         )}
 
-        {/* Nút Tạo nên: căn phải (flex justify-end), rộng 300px (w-[166px], +11%), cao 72px (h-[40px], -10%), cách hàng Ai 72px (mt-[40px], +44%), cách đáy 43px (pb-[24px]), đen khi có thông tin, xám khi chưa nhập */}
-        <div className="mt-[40px] flex justify-end">
+        <div className="mt-[32px] flex flex-wrap items-center justify-between gap-3">
+          <label className="inline-flex min-h-[40px] items-center gap-2 text-xs font-medium text-neutral-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={openDirectlyToItinerary}
+              onChange={(e) => setOpenDirectlyToItinerary(e.target.checked)}
+              className="h-4 w-4 rounded border-neutral-300 text-emerald-800 focus:ring-emerald-700"
+            />
+            <span>Mở ngay Lịch trình &amp; Bản đồ</span>
+          </label>
           <button
             type="button"
             onClick={handleCreate}
-            disabled={!tripPrompt.trim() || isSubmitting}
-            className={`w-[166px] h-[40px] rounded-full text-[14px] font-bold transition-all shadow-xs flex items-center justify-center gap-2 ${
-              tripPrompt.trim() && !isSubmitting
+            disabled={(!tripPrompt.trim() && !whereTarget.trim()) || isSubmitting}
+            className={`min-w-[166px] h-[40px] px-5 rounded-full text-[14px] font-bold transition-all shadow-xs flex items-center justify-center gap-2 ${
+              (tripPrompt.trim() || whereTarget.trim()) && !isSubmitting
                 ? 'bg-black text-white hover:bg-neutral-800 active:scale-95 cursor-pointer'
-                : 'bg-[#E5E7EB] text-gray-400 cursor-not-allowed'
+                : 'bg-[#E5E7EB] text-neutral-600 cursor-not-allowed'
             }`}
           >
             {isSubmitting ? (
@@ -1003,6 +1072,90 @@ export default function CreateTripCopilotModal({
               <button 
                 type="button"
                 onClick={() => setShowWhoModal(false)} 
+                className="w-full sm:w-32 bg-black text-white font-bold text-[14px] py-3 rounded-full hover:bg-neutral-800 transition-colors cursor-pointer"
+              >
+                Cập nhật
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── POPUP CON 4: NGÂN SÁCH (HẠNG CHI TIÊU & SỐ TIỀN CỤ THỂ) ─── */}
+      {showBudgetModal && (
+        <div 
+          className="absolute inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-xs animate-fadeIn"
+          onClick={(e) => { e.stopPropagation(); setShowBudgetModal(false); }}
+        >
+          <div 
+            className="w-full max-w-[440px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl mx-4 border border-gray-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <button 
+                onClick={() => setShowBudgetModal(false)} 
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+              <div className="text-center">
+                <div className="font-bold text-black text-[16px]">Ngân sách</div>
+                <div className="text-gray-400 text-[12px] font-light">{budgetDisplay}</div>
+              </div>
+              <div className="w-8 h-8"></div>
+            </div>
+
+            <div className="space-y-3 mb-5">
+              {([
+                { id: 'budget', label: '$ Tiết kiệm', desc: 'Quán bản địa bình dân, homestay xanh (~650k/người/ngày)' },
+                { id: 'standard', label: '$$ Tiêu chuẩn', desc: 'Khách sạn 3–4 sao, ẩm thực đặc sản (~1,3tr/người/ngày)' },
+                { id: 'luxury', label: '$$$ Cao cấp', desc: 'Resort sinh thái 5 sao, fine dining (~2,8tr+/người/ngày)' },
+              ] as const).map((tier) => (
+                <button
+                  key={tier.id}
+                  type="button"
+                  onClick={() => setBudgetTier(tier.id)}
+                  className={`w-full text-left px-4 py-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                    budgetTier === tier.id
+                      ? 'border-black bg-gray-50 ring-1 ring-black'
+                      : 'border-gray-200 hover:border-gray-400 bg-white'
+                  }`}
+                >
+                  <div>
+                    <div className="text-[14px] font-bold text-black">{tier.label}</div>
+                    <div className="text-[12px] text-gray-500 mt-0.5">{tier.desc}</div>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                    budgetTier === tier.id ? 'border-black bg-black' : 'border-gray-300'
+                  }`}>
+                    {budgetTier === tier.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-[12.5px] font-bold text-gray-800 mb-1.5">
+                Tổng ngân sách dự kiến (VNĐ - tùy chọn)
+              </label>
+              <input
+                type="number"
+                min={500000}
+                step={500000}
+                placeholder="Ví dụ: 10000000 (10 triệu ₫)"
+                value={customBudgetVnd || ''}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  setCustomBudgetVnd(Number.isFinite(val) && val > 0 ? val : null);
+                }}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-[13.5px] text-gray-900 focus:border-black focus:outline-none"
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <button 
+                type="button"
+                onClick={() => setShowBudgetModal(false)} 
                 className="w-full sm:w-32 bg-black text-white font-bold text-[14px] py-3 rounded-full hover:bg-neutral-800 transition-colors cursor-pointer"
               >
                 Cập nhật

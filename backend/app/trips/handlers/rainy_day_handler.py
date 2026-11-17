@@ -54,8 +54,16 @@ def handle_rainy_day(
     city_pattern, is_both = normalize_city_query(trip_context.destination)
     current_stop_name = trip_context.current_stop_name or "các điểm ngoài trời"
     day_label = f"Ngày {trip_context.current_day}" if trip_context.current_day else "chuyến đi"
+    is_remote_banahills = any(
+        k in current_stop_name.lower() for k in ("bà nà", "ba na", "hòa vang", "hòa ninh")
+    )
+    remote_exclusion = (
+        ""
+        if is_remote_banahills
+        else "AND p.address NOT ILIKE '%%Bà Nà%%' AND p.address NOT ILIKE '%%Hòa Ninh%%' AND p.address NOT ILIKE '%%Hòa Vang%%'"
+    )
 
-    query = """
+    query = f"""
         SELECT 
             p.poi_id::text,
             p.name,
@@ -73,6 +81,7 @@ def handle_rainy_day(
         JOIN public.cities ci ON p.city_id = ci.city_id
         WHERE p.is_active IS NOT FALSE
           AND (ci.name ILIKE %s OR %s = TRUE)
+          {remote_exclusion}
           AND (
             (p.ai_metadata->>'rainy_day_friendly') = 'true'
             OR p.sub_category = ANY(%s)

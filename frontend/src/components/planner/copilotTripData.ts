@@ -106,7 +106,7 @@ export const buildDefaultCopilotItinerary = (
       {
         id: 'stop-1-1',
         timeSlot: '09:00 - 11:00',
-        name: isHueOnly ? 'Đại Nội Huế (Hoàng Thành)' : 'Bảo tàng Điêu khắc Chăm',
+        name: isHueOnly ? 'Đại Nội Huế (Hoàng Thành & Tử Cấm Thành)' : 'Bảo Tàng Điêu Khắc Chăm Đà Nẵng',
         category: 'di-tich',
         distanceKm: isHueOnly ? 2.5 : 3.0,
         note: isHueOnly ? 'Hoàng thành triều Nguyễn với bề dày lịch sử' : 'Mở đầu văn hóa Chăm pa, tham quan trong nhà mát mẻ',
@@ -119,21 +119,21 @@ export const buildDefaultCopilotItinerary = (
       {
         id: 'stop-1-2',
         timeSlot: '11:30 - 12:30',
-        name: isHueOnly ? 'Bún Bò Mụ Kéo' : 'Cơm Gà Lan',
+        name: isHueOnly ? 'Bún Bò Mệ Kéo' : 'Mì Quảng Bà Mua',
         category: 'quan-an',
         distanceKm: 1.2,
-        note: isHueOnly ? 'Tô bún bò chả cua chuẩn vị Cố Đô' : 'Cơm gà xé vàng ươm đậm đà chuẩn vị bản xứ',
-        estimatedCost: isHueOnly ? '45.000 đ' : '65.000 đ',
+        note: isHueOnly ? 'Tô bún bò chả cua chuẩn vị Cố Đô' : 'Đặc sản mì Quảng chuẩn vị bản địa Đà Nẵng',
+        estimatedCost: isHueOnly ? '45.000 đ' : '50.000 đ',
         image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80',
         greenScore: 92,
       },
       {
         id: 'stop-1-3',
         timeSlot: '15:30 - 17:00',
-        name: isHueOnly ? 'Đi bộ đường hoa Lê Lợi & Ngắm Sông Hương' : 'Đi bộ bờ sông Hàn & Cầu Rồng',
+        name: isHueOnly ? 'Cầu Nguyễn Hoàng (Biểu Tượng Kiến Trúc Đương Đại "Hạc Chầu Thiên Mụ")' : 'Cầu Rồng',
         category: 'canh-quan',
         distanceKm: 0.8,
-        note: isHueOnly ? 'Dạo mát bờ nam sông Hương thư thái' : 'Tản bộ ngắm sông Hàn, tận hưởng không khí trong lành',
+        note: isHueOnly ? 'Dạo mát ngắm sông Hương thư thái' : 'Tản bộ ngắm sông Hàn, tận hưởng không khí trong lành',
         estimatedCost: 'Miễn phí',
         image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
         greenScore: 98,
@@ -141,7 +141,7 @@ export const buildDefaultCopilotItinerary = (
       {
         id: 'stop-1-4',
         timeSlot: '18:30 - 19:45',
-        name: isHueOnly ? 'Bánh Bèo Nậm Lọc Bà Đỏ' : 'Bánh Xèo Tôm Nhảy Cô Ba',
+        name: isHueOnly ? 'Bánh Bèo Nậm Lọc Bà Đỏ' : 'Bánh Xèo Tôm Nhảy Năm Hiền',
         category: 'quan-an',
         distanceKm: 1.5,
         note: isHueOnly ? 'Khay bánh cung đình trứ danh xứ Huế' : 'Vỏ bánh giòn rụm, tôm đất nhảy và rau mầm tươi xanh',
@@ -167,7 +167,7 @@ export const buildDefaultCopilotItinerary = (
         {
           id: 'stop-2-1',
           timeSlot: '08:30 - 11:00',
-          name: isHueOnly ? 'Lăng Khải Định' : 'Danh thắng Ngũ Hành Sơn',
+          name: isHueOnly ? 'Lăng Khải Định' : 'Chùa Linh Ứng Non Nước (Linh Ứng Ngũ Hành Sơn)',
           category: 'di-tich',
           distanceKm: isHueOnly ? 9.0 : 8.0,
           note: isHueOnly ? 'Tuyệt tác khảm sành sứ độc đáo' : 'Hệ thống hang động thạch anh và chùa Tam Thai cổ kính',
@@ -180,7 +180,7 @@ export const buildDefaultCopilotItinerary = (
         {
           id: 'stop-2-2',
           timeSlot: '11:30 - 13:00',
-          name: isHueOnly ? 'Nhà hàng chay Sân Mây' : 'Bếp Vừng (Cơm nhà miền Trung)',
+          name: isHueOnly ? 'Nhà hàng chay Sân Mây' : 'Nhà Hàng Bếp Cuốn Đà Nẵng (Đạt giải MICHELIN Bib Gourmand)',
           category: 'quan-an',
           distanceKm: 3.5,
           note: isHueOnly ? 'Ẩm thực thực dưỡng trong khuôn viên nhà rường' : 'Mô hình nhà hàng sinh thái giảm thiểu rác thải nhựa',
@@ -191,7 +191,7 @@ export const buildDefaultCopilotItinerary = (
         {
           id: 'stop-2-3',
           timeSlot: '14:30 - 17:30',
-          name: isHueOnly ? 'Đồi Vọng Cảnh & Sông Hương' : 'Bán đảo Sơn Trà & Chùa Linh Ứng',
+          name: isHueOnly ? 'Đồi Vọng Cảnh & Sông Hương' : 'Chùa Linh Ứng Bãi Bụt',
           category: 'canh-quan',
           distanceKm: isHueOnly ? 6.1 : 12.0,
           note: isHueOnly ? 'Ngắm khúc uốn sông Hương trong hoàng hôn' : 'Quan sát Voọc chà vá chân nâu từ xa, không để lại rác thải',
@@ -208,7 +208,7 @@ export const buildDefaultCopilotItinerary = (
     defaultDays.push({
       day: 3,
       theme: isBoth ? 'Chuyến tàu Di sản qua Đèo Hải Vân đến Cố đô' : (isHueOnly ? 'Làng nghề & Chùa thanh tịnh' : 'Biển xanh Mỹ Khê & Làng đá Non Nước'),
-      focus_city: isBoth ? 'Đà Nẵng → Huế' : (isHueOnly ? 'Huế' : 'Đà Nẵng'),
+      focus_city: isBoth ? 'Huế' : (isHueOnly ? 'Huế' : 'Đà Nẵng'),
       hotel: {
         name: isBoth ? 'Khách sạn Cố Đô Huế' : (isHueOnly ? 'Khách sạn Cố Đô Xanh' : 'Red Palace Hotel'),
         checkInNote: isBoth ? 'Nhận phòng sau 14:00 tại Cố Đô Huế' : 'Nghỉ đêm thư giãn',
@@ -218,7 +218,7 @@ export const buildDefaultCopilotItinerary = (
         {
           id: 'stop-3-1',
           timeSlot: '07:50 - 11:05',
-          name: isBoth ? 'Tàu di sản Đà Nẵng – Huế' : (isHueOnly ? 'Chùa Thiên Mụ' : 'Bãi biển Mỹ Khê'),
+          name: isBoth ? 'Tàu di sản Đà Nẵng – Huế' : (isHueOnly ? 'Chùa Thiên Mụ (Linh Mụ Tự)' : 'Bãi biển Mỹ Khê'),
           category: 'canh-quan',
           distanceKm: isBoth ? 102.0 : 3.5,
           note: isBoth ? 'Tuyến tàu hỏa ven biển vịnh Lăng Cô tuyệt đẹp, giảm phát thải carbon' : 'Không gian xanh mát, đón gió biển',
@@ -231,7 +231,7 @@ export const buildDefaultCopilotItinerary = (
         {
           id: 'stop-3-2',
           timeSlot: '12:30 - 13:30',
-          name: isBoth ? 'Bún Bò Huế Bà Cam' : 'Roots Plant-based Cafe',
+          name: isBoth ? 'Bún Bò Huế Bà Tuyết' : 'Roots Plant-based Cafe',
           category: 'quan-an',
           distanceKm: 2.5,
           note: 'Ẩm thực chuẩn vị với nguồn nguyên liệu tươi xanh sạch',
@@ -253,7 +253,7 @@ export const buildDefaultCopilotItinerary = (
         {
           id: 'stop-3-4',
           timeSlot: '17:30 - 19:00',
-          name: isBoth ? 'Bánh khoái & Nem lụi Hồng Mai' : 'Hải sản Mộc Quán',
+          name: isBoth ? 'Bánh Khoái Hồng Mai' : 'Hải sản Mộc Quán',
           category: 'quan-an',
           distanceKm: 1.5,
           note: 'Nước tương béo bùi, nem nướng than hoa thơm nồng vị xứ Huế',
@@ -311,6 +311,102 @@ export const buildDefaultCopilotItinerary = (
           greenScore: 97,
         },
       ],
+    });
+  }
+
+  // Day 5+: Mở rộng linh hoạt cho hành trình 5–14 ngày (VD: 2 ngày Đà Nẵng + 3 ngày Huế = 5 ngày)
+  const extraDayTemplates: Array<{
+    theme: string;
+    focus_city: string;
+    hotelName: string;
+    stops: CopilotStop[];
+  }> = [
+    {
+      theme: isBoth ? 'Đầm Lập An, Vịnh Lăng Cô & Làng hương Thủy Xuân (Huế)' : 'Khám phá Phố cổ Hội An & Rừng dừa Bảy Mẫu',
+      focus_city: isBoth ? 'Huế' : normDest,
+      hotelName: isBoth ? 'Nghỉ tại Khách sạn Cố Đô Huế' : 'Nghỉ tại Red Palace Hotel',
+      stops: [
+        {
+          id: 'stop-5-1',
+          timeSlot: '08:30 - 10:30',
+          name: isBoth ? 'Làng hương Thủy Xuân & Đồi Vọng Cảnh' : 'Rừng dừa Bảy Mẫu (Thuyền thúng sinh thái)',
+          category: 'canh-quan',
+          distanceKm: 5.5,
+          note: isBoth ? 'Làng nghề làm hương truyền thống 700 năm bên bờ sông Hương' : 'Trải nghiệm thuyền thúng mộc giữa rừng dừa nước xanh mát',
+          estimatedCost: isBoth ? 'Miễn phí' : '150.000 đ / thuyền',
+          image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
+          greenScore: 95,
+        },
+        {
+          id: 'stop-5-2',
+          timeSlot: '11:30 - 13:00',
+          name: isBoth ? 'Cơm Hến Hoa Đông (Cồn Hến)' : 'Cao Lầu Không Gian Xanh',
+          category: 'quan-an',
+          distanceKm: 3.8,
+          note: isBoth ? 'Đặc sản cơm hến, bún hến truyền thống xứ Huế' : 'Cao lầu sợi tươi truyền thống trong không gian sân vườn cổ',
+          estimatedCost: '45.000 đ / tô',
+          image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80',
+          greenScore: 92,
+        },
+        {
+          id: 'stop-5-3',
+          timeSlot: '15:00 - 17:30',
+          name: isBoth ? 'Phá Tam Giang & Rừng ngập mặn Rú Chá' : 'Phố cổ Hội An (Khu phố không động cơ)',
+          category: 'canh-quan',
+          distanceKm: 12.0,
+          note: isBoth ? 'Ngắm hoàng hôn tím trên hệ đầm phá lớn nhất Đông Nam Á' : 'Dạo bộ phố đèn lồng di sản UNESCO hoàn toàn không khói xe',
+          estimatedCost: '120.000 đ / vé',
+          image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+          greenScore: 98,
+        },
+      ],
+    },
+    {
+      theme: 'Trải nghiệm Làng nghề Sinh thái & Thư giãn Khoáng nóng',
+      focus_city: isBoth ? 'Huế' : normDest,
+      hotelName: isBoth ? 'Nghỉ tại Alba Wellness / Cố Đô Huế' : 'Nghỉ tại Red Palace Hotel',
+      stops: [
+        {
+          id: 'stop-6-1',
+          timeSlot: '09:00 - 11:30',
+          name: 'Nhà vườn An Hiên & Cầu ngói Thanh Toàn',
+          category: 'di-tich',
+          distanceKm: 6.2,
+          note: 'Kiến trúc nhà rường cổ kính giữa vườn cây trái bản địa',
+          estimatedCost: '50.000 đ / vé',
+          image: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800&auto=format&fit=crop&q=80',
+          greenScore: 96,
+        },
+        {
+          id: 'stop-6-2',
+          timeSlot: '12:00 - 13:30',
+          name: 'Nhà hàng Chay Liên Hoa',
+          category: 'quan-an',
+          distanceKm: 2.8,
+          note: 'Thực đơn chay phong phú hơn 50 món từ rau củ hữu cơ địa phương',
+          estimatedCost: '75.000 đ / phần',
+          image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&auto=format&fit=crop&q=80',
+          greenScore: 97,
+        },
+      ],
+    },
+  ];
+
+  for (let d = 5; d <= days; d++) {
+    const tpl = extraDayTemplates[(d - 5) % extraDayTemplates.length];
+    defaultDays.push({
+      day: d,
+      theme: tpl.theme,
+      focus_city: tpl.focus_city,
+      hotel: {
+        name: tpl.hotelName,
+        checkInNote: d === days ? 'Trả phòng & kết thúc hành trình xanh' : 'Lưu trú tiêu chuẩn xanh',
+        isEcoCertified: true,
+      },
+      stops: tpl.stops.map((s, idx) => ({
+        ...s,
+        id: `stop-${d}-${idx + 1}`,
+      })),
     });
   }
 

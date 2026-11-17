@@ -9,7 +9,9 @@ import logging
 from typing import Any
 from psycopg import Connection
 from app.trips.schemas import CopilotSuggestedPoiItem, TripContextPayload
-from app.trips.handlers.swap_meal_handler import normalize_city_query, format_green_score
+from app.trips.handlers.swap_meal_handler import format_green_score
+from app.trips.copilot_consultant import resolve_effective_city, normalize_vietnamese_query
+from app.trips.text_utils import contains_any_phrase, strip_vietnamese_accents
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +26,30 @@ def handle_culinary_guide(
     Returns:
         (reply_text, suggested_pois, action_type, next_prompts, avoid_notice, green_impact, budget_impact)
     """
-    msg = message.strip().lower()
-    city_pattern, is_both = normalize_city_query(trip_context.destination)
-    is_hue = "hue" in trip_context.destination.lower() or "huế" in trip_context.destination.lower()
+    msg = normalize_vietnamese_query(message)
+    folded_msg = strip_vietnamese_accents(msg)
+    city_pattern, is_both, city_display = resolve_effective_city(message, trip_context.destination)
+    is_hue = city_display == "Huế"
 
     # Detect culinary sub-intents
-    is_seafood = any(k in msg for k in ["hải sản", "seafood", "tôm", "cua", "ghẹ", "mực", "ốc"])
-    is_noodle = any(k in msg for k in ["mì quảng", "bún chả cá", "bún bò", "bánh canh", "noodle"])
-    is_snack = any(k in msg for k in ["ăn vặt", "bánh tráng", "bánh xèo", "nem lụi", "chè"])
+    is_seafood = contains_any_phrase(
+        msg,
+        folded_msg,
+        ["hải sản", "seafood", "tôm", "cua", "ghẹ", "mực", "ốc"],
+        ["hai san", "seafood", "cua ghe", "quan oc", "an oc", "oc hut"],
+    )
+    is_noodle = contains_any_phrase(
+        msg,
+        folded_msg,
+        ["mì quảng", "bún chả cá", "bún bò", "bánh canh", "noodle"],
+        ["mi quang", "bun cha ca", "bun bo", "banh canh", "noodle"],
+    )
+    is_snack = contains_any_phrase(
+        msg,
+        folded_msg,
+        ["ăn vặt", "bánh tráng", "bánh xèo", "nem lụi", "chè"],
+        ["an vat", "banh trang", "banh xeo", "nem lui", "che sau", "che hue"],
+    )
 
     suggested_pois: list[CopilotSuggestedPoiItem] = []
 
@@ -85,6 +103,7 @@ def handle_culinary_guide(
                 address = r[7] or "Đang cập nhật địa chỉ"
                 cost = float(r[8]) if r[8] is not None else None
                 meta = r[9] if isinstance(r[9], dict) else {}
+                row_city = "Đà Nẵng" if "da nang" in str(r[10] or "").lower() else "Huế"
                 gallery = r[11] if r[11] else None
 
                 price_display = meta.get("price_range_display") if isinstance(meta, dict) else None
@@ -97,6 +116,7 @@ def handle_culinary_guide(
                         name=name,
                         category=category,
                         sub_category=sub_cat,
+                        city=row_city,
                         image_url=image_url,
                         green_score=green_score,
                         rating=rating,

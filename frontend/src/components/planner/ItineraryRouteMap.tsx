@@ -20,10 +20,13 @@ import {
   ListFilter,
   CheckCircle2
 } from 'lucide-react';
-import { 
-  fetchDayRoute, 
-  type DayRouteResponse, 
-  type RouteStop 
+import {
+  fetchDayRoute,
+  estimateCarbonFootprint,
+  formatCarbonAmount,
+  type DayRouteResponse,
+  type RouteStop,
+  type RouteTransportMode,
 } from '@/services/itineraryService';
 
 export interface ItineraryRouteMapProps {
@@ -36,7 +39,7 @@ export interface ItineraryRouteMapProps {
   showStopsList?: boolean;
 }
 
-export type TransportMode = 'driving' | 'motorcycle' | 'transit' | 'walking';
+export type TransportMode = RouteTransportMode;
 
 function getClientFallbackDayRoute(itineraryId: string, dayNum: number): DayRouteResponse {
   const dayTemplates: {
@@ -492,6 +495,11 @@ export default function ItineraryRouteMap({
     return calculateModeDuration(base, dist, transportMode);
   }, [routeData?.duration_seconds, routeData?.distance_meters, transportMode]);
 
+  // Ước tính phát thải CO2 theo quãng đường thực tế & phương tiện đang chọn
+  const carbonEstimate = useMemo(() => {
+    return estimateCarbonFootprint(routeData?.distance_meters || 0, transportMode);
+  }, [routeData?.distance_meters, transportMode]);
+
   // Tạo liên kết mở trực tiếp bằng Google Maps
   const googleMapsDirectionsUrl = useMemo(() => {
     const stops = routeData?.stops || [];
@@ -739,14 +747,29 @@ export default function ItineraryRouteMap({
                     ({formatDistance(routeData.distance_meters)})
                   </span>
                 </div>
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
-                  <span>🍃 Tiết kiệm 8% xăng</span>
+                <div
+                  className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                    carbonEstimate.savedPercent > 0
+                      ? 'text-emerald-800 bg-emerald-50 border-emerald-200/80'
+                      : 'text-stone-700 bg-stone-100 border-stone-200'
+                  }`}
+                  title={
+                    carbonEstimate.savedPercent > 0
+                      ? `Giảm ${formatCarbonAmount(carbonEstimate.savedGrams)} so với đi ô tô cùng quãng đường`
+                      : 'Ước tính phát thải CO₂ khi di chuyển bằng ô tô'
+                  }
+                >
+                  <span>
+                    {carbonEstimate.savedPercent > 0
+                      ? `🌱 ${formatCarbonAmount(carbonEstimate.co2Grams)} (-${carbonEstimate.savedPercent}% CO₂)`
+                      : `~${formatCarbonAmount(carbonEstimate.co2Grams)}`}
+                  </span>
                 </div>
               </div>
 
               {/* Status Note */}
-              <p className="text-[11px] text-stone-500 mb-3 flex items-center gap-1">
-                <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+              <p className="text-xs text-stone-600 mb-3 flex items-center gap-1">
+                <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
                 <span>Tuyến đường tối ưu nhất dựa trên thuật toán GreenTrip AI</span>
               </p>
 

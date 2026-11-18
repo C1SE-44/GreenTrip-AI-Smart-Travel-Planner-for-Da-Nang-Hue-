@@ -483,11 +483,20 @@ export default function TripOverviewView({
     };
   }, [trip.id]);
 
+  const parseStopStartMinutes = (stop: ItineraryStop): number => {
+    const raw = stop.start_time || '';
+    const match = raw.match(/(\d{1,2}):(\d{2})/);
+    if (!match) return Number.MAX_SAFE_INTEGER;
+    return Number(match[1]) * 60 + Number(match[2]);
+  };
+
   const handleAddPoiToItinerary = (poi: Poi, dayNum: number = 1) => {
     const newStop = stopFromPoi(poi);
     const updatedDays = itineraryPlan.days.map((d) => {
       if (d.day_number === dayNum) {
-        const stops = [...d.stops, newStop].map((s, idx) => ({ ...s, sequence: idx }));
+        const stops = [...d.stops, newStop]
+          .sort((a, b) => parseStopStartMinutes(a) - parseStopStartMinutes(b))
+          .map((s, idx) => ({ ...s, sequence: idx }));
         return {
           ...d,
           stops,
@@ -1391,6 +1400,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     if (!promptToSend || isAiThinking) return;
     if (!hasAuthToken()) {
       setCopilotAuthRequired(true);
+      setToastMessage('Vui lòng đăng nhập để trò chuyện với Trợ lý AI.');
       return;
     }
 
@@ -1962,7 +1972,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                           <span>
                             {msg.hasMutatedItinerary
                               ? '🔄 Đã đồng bộ cập nhật lịch trình'
-                              : '🧠 Đã phân tích · Đồng bộ Đồ thị Tri thức'}
+                              : '✨ Gợi ý từ GreenTrip AI'}
                           </span>
                           <ChevronDown
                             size={14}
@@ -2237,7 +2247,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <span>Trợ lý GreenTrip AI đang suy nghĩ &amp; cập nhật lịch trình...</span>
                 </div>
                 <p className="text-xs text-neutral-600 pl-6">
-                  Đang truy vấn Neo4j Knowledge Graph · Kiểm chứng địa lý &amp; phương tiện xanh
+                  Đang tìm điểm dừng phù hợp &amp; kiểm tra lộ trình xanh...
                 </p>
               </div>
             )}

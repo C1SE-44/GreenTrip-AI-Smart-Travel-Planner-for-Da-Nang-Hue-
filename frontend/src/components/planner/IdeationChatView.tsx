@@ -654,7 +654,7 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
           {isSending && (
             <div className="flex items-center gap-2.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-2xl px-4 py-3 w-fit shadow-2xs">
               <Loader2 size={15} className="animate-spin text-emerald-700" />
-              <span>Đang tra cứu Đồ thị Tri thức Miền Trung...</span>
+              <span>Đang tìm địa điểm phù hợp cho bạn...</span>
             </div>
           )}
 

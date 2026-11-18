@@ -67,8 +67,7 @@ export async function fetchPoiRecommendations(
   request: RecommendationRequest,
 ): Promise<RecommendationResponse> {
   const baseHasApiSuffix = /\/api$/i.test(API_BASE_URL);
-  const usesRelativeViteProxy = API_BASE_URL.startsWith('/');
-  const endpoint = baseHasApiSuffix && !usesRelativeViteProxy
+  const endpoint = baseHasApiSuffix
     ? '/v1/recommendations/poi'
     : '/api/v1/recommendations/poi';
 

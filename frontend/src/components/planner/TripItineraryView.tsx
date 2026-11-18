@@ -60,6 +60,7 @@ import {
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import PoiMap from '@/components/poi/PoiMap';
 import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
+import { recordFirstItineraryReady, saveCsatFeedback } from '@/utils/usabilityMetrics';
 import {
   createEmptyItinerary,
   buildItineraryFromOutline,
@@ -343,11 +344,52 @@ export default function TripItineraryView({
   const [optimizeFeedback, setOptimizeFeedback] = useState<string | null>(null);
   const [showGuestSyncPrompt, setShowGuestSyncPrompt] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [csatScore, setCsatScore] = useState<number | null>(null);
+  const [csatDismissed, setCsatDismissed] = useState(false);
+
+  useEffect(() => {
+    if (plan.days.length > 0) {
+      recordFirstItineraryReady(trip.id);
+    }
+  }, [trip.id, plan.days.length]);
   const [rainSwapBackup, setRainSwapBackup] = useState<{
     dayNumber: number;
     previousStops: ItineraryStop[];
     message: string;
   } | null>(null);
+  const [delayBackup, setDelayBackup] = useState<{
+    dayNumber: number;
+    previousStops: ItineraryStop[];
+    message: string;
+  } | null>(null);
+  const [stopProgress, setStopProgress] = useState<Record<string, 'done' | 'skipped'>>(() => {
+    if (typeof localStorage === 'undefined') return {};
+    try {
+      const raw = localStorage.getItem(`greentrip_stop_progress_${trip.id}`);
+      return raw ? (JSON.parse(raw) as Record<string, 'done' | 'skipped'>) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleStopProgress = (stopId: string, status: 'done' | 'skipped') => {
+    setStopProgress((prev) => {
+      const next = { ...prev };
+      if (next[stopId] === status) {
+        delete next[stopId];
+      } else {
+        next[stopId] = status;
+      }
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem(`greentrip_stop_progress_${trip.id}`, JSON.stringify(next));
+        } catch {
+          // Ignore storage quota errors
+        }
+      }
+      return next;
+    });
+  };
   const [nearbyPickerTarget, setNearbyPickerTarget] = useState<{
     dayNumber: number;
     stopId: string;
@@ -1004,10 +1046,15 @@ export default function TripItineraryView({
       await saveTripItinerary(plan);
       setHasUnsavedChanges(false);
       if (typeof navigator !== 'undefined' && navigator.clipboard && typeof window !== 'undefined') {
-        await navigator.clipboard.writeText(window.location.href).catch(() => {});
+        const shareUrl = `${window.location.origin}/planner?tripId=${encodeURIComponent(trip.id)}`;
+        await navigator.clipboard.writeText(shareUrl).catch(() => {});
       }
-      setSyncFeedback('Đã đồng bộ lịch trình & sao chép liên kết chia sẻ.');
+      setSyncFeedback('Đã lưu & sao chép liên kết chia sẻ chuyến đi.');
       window.setTimeout(() => setSyncFeedback(null), 3500);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Chưa thể đồng bộ lịch trình lên máy chủ.';
+      setSyncFeedback(msg);
+      window.setTimeout(() => setSyncFeedback(null), 4000);
     } finally {
       setIsSaving(false);
     }
@@ -1074,6 +1121,54 @@ export default function TripItineraryView({
     );
     persistPlan({ ...plan, days: nextDays });
     setRainSwapBackup(null);
+  };
+
+  const shiftTimeString = (hhmm: string | null | undefined, deltaMins: number, fallback: string): string => {
+    const mins = minutesFromTime(hhmm || fallback);
+    if (mins == null) return hhmm || fallback;
+    const shifted = Math.min(23 * 60 + 55, Math.max(0, mins + deltaMins));
+    const h = String(Math.floor(shifted / 60)).padStart(2, '0');
+    const m = String(shifted % 60).padStart(2, '0');
+    return `${h}:${m}`;
+  };
+
+  const handleDelayAfterStop = (dayNumber: number, stopIndex: number, delayMinutes = 30) => {
+    const targetDay = plan.days.find((d) => d.day_number === dayNumber);
+    if (!targetDay) return;
+    if (stopIndex >= targetDay.stops.length - 1) {
+      setOptimizeFeedback(`Đây đã là điểm cuối của Ngày ${dayNumber}.`);
+      return;
+    }
+    const previousStops = targetDay.stops.map((s) => ({ ...s }));
+    const nextDays = plan.days.map((d) => {
+      if (d.day_number !== dayNumber) return d;
+      const stops = d.stops.map((st, idx) => {
+        if (idx <= stopIndex) return st;
+        return {
+          ...st,
+          start_time: shiftTimeString(st.start_time, delayMinutes, '08:00'),
+          end_time: shiftTimeString(st.end_time, delayMinutes, '09:30'),
+        };
+      });
+      return { ...d, stops };
+    });
+    persistPlan({ ...plan, days: nextDays });
+    setDelayBackup({
+      dayNumber,
+      previousStops,
+      message: `Đã đẩy lùi +${delayMinutes} phút cho ${targetDay.stops.length - 1 - stopIndex} điểm tiếp theo ở Ngày ${dayNumber}.`,
+    });
+  };
+
+  const handleUndoDelay = () => {
+    if (!delayBackup) return;
+    const nextDays = plan.days.map((d) =>
+      d.day_number === delayBackup.dayNumber
+        ? { ...d, stops: delayBackup.previousStops }
+        : d
+    );
+    persistPlan({ ...plan, days: nextDays });
+    setDelayBackup(null);
   };
 
   // Đổi 1 điểm dừng sang điểm gợi ý gần đó
@@ -1292,10 +1387,12 @@ export default function TripItineraryView({
         ? ` Có dữ liệu giá cho ${knownCostPois.length} địa điểm, khoảng ${selection.selectedCost.toLocaleString('vi-VN')} VNĐ cho ${groupSize} người; ${unknownCostCount} địa điểm chưa có dữ liệu giá nên chi phí thực tế có thể cao hơn.`
         : ` Chưa có dữ liệu giá cho ${unknownCostCount} địa điểm nên GreenTrip chưa thể ước tính tổng chi phí.`
       : ` Ước tính ${selection.selectedCost.toLocaleString('vi-VN')} VNĐ cho ${groupSize} người theo dữ liệu giá hiện có.`;
+    const pacingViLabel =
+      requestedPacing === 'Relaxed' ? 'Thong thả' : requestedPacing === 'Fast' ? 'Dày đặc' : 'Cân bằng';
     const limitingReasons = [
-      selection.limits.target > 0 ? `Đã đạt mục tiêu khoảng ${selection.targetStops} địa điểm cho ${plan.days.length} ngày ở nhịp ${requestedPacing}.` : '',
+      selection.limits.target > 0 ? `Đã đạt mục tiêu khoảng ${selection.targetStops} địa điểm cho ${plan.days.length} ngày ở nhịp ${pacingViLabel}.` : '',
       selection.limits.budget > 0 ? `${selection.limits.budget} gợi ý vượt ngân sách hoạt động còn lại.` : '',
-      selection.limits.time > 0 ? `${selection.limits.time} gợi ý vượt thời lượng tham quan còn lại theo nhịp ${requestedPacing}.` : '',
+      selection.limits.time > 0 ? `${selection.limits.time} gợi ý vượt thời lượng tham quan còn lại theo nhịp ${pacingViLabel}.` : '',
       selection.limits.destination > 0 ? `${selection.limits.destination} gợi ý nằm ngoài điểm đến của chuyến đi.` : '',
       selection.limits.category > 0 ? `${selection.limits.category} gợi ý bị lược bớt để giữ lịch đa dạng.` : '',
     ].filter(Boolean).join(' ');
@@ -1304,7 +1401,7 @@ export default function TripItineraryView({
       : selection.selected.length
         ? ` Trợ lý ưu tiên ${selection.selected.length} địa điểm trong Ý tưởng của bạn.${costMessage}`
         : ' Không có địa điểm mới để thêm; GreenTrip giữ các hoạt động hiện tại.';
-    const paceMessage = `Nhịp ${requestedPacing} đặt mục tiêu khoảng ${requestedPacing === 'Relaxed' ? 2 : requestedPacing === 'Fast' ? 5 : 3} điểm/ngày và tối đa ${(capacity / 60).toLocaleString('vi-VN')} giờ tham quan; lịch vẫn giới hạn 2 quán cà phê/ngày.`;
+    const paceMessage = `Nhịp ${pacingViLabel} đặt mục tiêu khoảng ${requestedPacing === 'Relaxed' ? 2 : requestedPacing === 'Fast' ? 5 : 3} điểm/ngày và tối đa ${(capacity / 60).toLocaleString('vi-VN')} giờ tham quan; lịch vẫn giới hạn 2 quán cà phê/ngày.`;
     setAssistantInsight(
       `Đã xếp ${placedCount} địa điểm${restCount ? ` và giữ ${restCount} khoảng nghỉ` : ''}.${pickedMessage} GreenTrip ưu tiên khung giờ phù hợp, gom các điểm gần nhau và giữ giờ bạn đã tự đặt. ${paceMessage}${result.unassignedCount ? ` Còn ${result.unassignedCount} địa điểm chưa xếp do giới hạn giờ tham quan hoặc số quán cà phê.` : ''}${limitingReasons ? ` ${limitingReasons}` : ''} Khoảng cách gần nhau là đường chim bay; thời gian di chuyển thực tế có thể lâu hơn.`,
     );
@@ -2360,6 +2457,13 @@ export default function TripItineraryView({
                 })}
               </div>
 
+              {/đà nẵng|da nang/i.test(trip.destination || '') && /hu[eế]/i.test(trip.destination || '') && (
+                <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-900 bg-emerald-100/70 border border-emerald-200 rounded-xl px-3 py-1.5">
+                  <Leaf size={13} className="shrink-0 text-emerald-700" aria-hidden="true" />
+                  <span>Gợi ý xanh liên tỉnh: Đi <strong>Tàu hỏa Di sản qua Đèo Hải Vân</strong> giúp giảm ~70% CO₂ so với ô tô riêng.</span>
+                </div>
+              )}
+
               {/* Real-time Budget Cap Summary (C_total vs B_max) */}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-emerald-200/70">
                 <div
@@ -2581,6 +2685,23 @@ export default function TripItineraryView({
                             </button>
                           </div>
                         )}
+                        {delayBackup?.dayNumber === day.day_number && (
+                          <div
+                            role="status"
+                            aria-live="polite"
+                            className="no-print flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950 font-medium"
+                          >
+                            <span>{delayBackup.message}</span>
+                            <button
+                              type="button"
+                              onClick={handleUndoDelay}
+                              className="min-h-[40px] inline-flex items-center gap-1 rounded-full bg-neutral-900 hover:bg-neutral-800 px-3.5 text-xs font-bold text-white transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                            >
+                              <RotateCcw size={12} aria-hidden="true" />
+                              <span>Hoàn tác</span>
+                            </button>
+                          </div>
+                        )}
                         {!hasStops ? (
                           /* Trạng thái chưa có điểm: Đúng 1 nút + Thêm (Chuẩn Ảnh 1, 4) */
                           <div className="no-print py-1 pl-4">
@@ -2718,6 +2839,18 @@ export default function TripItineraryView({
                                           {stop.address || stop.city || trip.destination}
                                         </p>
 
+                                        {stopProgress[stop.stop_id] && (
+                                          <span
+                                            className={`mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                              stopProgress[stop.stop_id] === 'done'
+                                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                                : 'bg-neutral-100 text-neutral-600 border border-neutral-200 line-through'
+                                            }`}
+                                          >
+                                            {stopProgress[stop.stop_id] === 'done' ? 'Đã hoàn thành' : 'Đã bỏ qua'}
+                                          </span>
+                                        )}
+
                                         {!stop.comment && !isRest && (
                                           <p className="text-xs text-neutral-600 mt-0.5 truncate">
                                             {getStopShortReason(
@@ -2837,6 +2970,36 @@ export default function TripItineraryView({
                                               <MapPin size={13} aria-hidden="true" /> Đổi điểm khác gần đây
                                             </button>
                                           )}
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              handleDelayAfterStop(day.day_number, sIdx, 30);
+                                              setActiveMenuStopId(null);
+                                            }}
+                                            className="w-full min-h-[40px] text-left px-3 py-1.5 rounded-xl hover:bg-amber-50 font-semibold text-amber-900 flex items-center gap-2 cursor-pointer"
+                                          >
+                                            <Clock size={13} aria-hidden="true" /> Trễ +30p (đẩy lịch sau)
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              toggleStopProgress(stop.stop_id, 'done');
+                                              setActiveMenuStopId(null);
+                                            }}
+                                            className="w-full min-h-[40px] text-left px-3 py-1.5 rounded-xl hover:bg-emerald-50 font-medium text-gray-800 flex items-center gap-2 cursor-pointer"
+                                          >
+                                            <Check size={13} aria-hidden="true" /> {stopProgress[stop.stop_id] === 'done' ? 'Bỏ đánh dấu xong' : 'Đánh dấu đã xong'}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              toggleStopProgress(stop.stop_id, 'skipped');
+                                              setActiveMenuStopId(null);
+                                            }}
+                                            className="w-full min-h-[40px] text-left px-3 py-1.5 rounded-xl hover:bg-gray-100 font-medium text-gray-700 flex items-center gap-2 cursor-pointer"
+                                          >
+                                            <X size={13} aria-hidden="true" /> {stopProgress[stop.stop_id] === 'skipped' ? 'Khôi phục điểm này' : 'Bỏ qua điểm này'}
+                                          </button>
                                           <button
                                             type="button"
                                             onClick={() => {
@@ -3076,6 +3239,45 @@ export default function TripItineraryView({
                   <span>+ Thêm Ngày {plan.days.length + 1}</span>
                 </button>
               </div>
+
+              {/* Bước 5 Lean Product: Đo hài lòng nhanh 1 chạm (CSAT) */}
+              {!csatDismissed && (
+                <div className="no-print mt-4 rounded-2xl border border-gray-200/80 bg-gray-50/70 px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-700">
+                  {csatScore ? (
+                    <span className="font-semibold text-emerald-700">
+                      Cảm ơn bạn đã đánh giá {csatScore}/5 sao cho lịch trình này!
+                    </span>
+                  ) : (
+                    <>
+                      <span className="font-medium">Lịch trình này có hữu ích với bạn không?</span>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((score) => (
+                          <button
+                            key={score}
+                            type="button"
+                            onClick={() => {
+                              setCsatScore(score);
+                              saveCsatFeedback(trip.id, score);
+                            }}
+                            className="h-8 w-8 rounded-full border border-gray-200 bg-white hover:border-emerald-600 hover:text-emerald-700 font-bold transition cursor-pointer"
+                            aria-label={`Đánh giá ${score} sao`}
+                          >
+                            {score}★
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setCsatDismissed(true)}
+                          className="ml-1 px-2 h-8 text-gray-500 hover:text-gray-800 cursor-pointer"
+                          aria-label="Đóng đánh giá"
+                        >
+                          Ẩn
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </section>
         </div>

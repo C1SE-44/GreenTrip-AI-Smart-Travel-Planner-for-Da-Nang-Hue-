@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { extractTripIntentFromPrompt } from "@/utils/vietnamesePromptExtractor";
 import { buildDefaultCopilotItinerary } from "@/components/planner/copilotTripData";
+import { markOnboardingStart } from "@/utils/usabilityMetrics";
 import type { UserTrip } from "@/pages/ExplorePage";
 
 const QUICK_DESTINATIONS: Array<"Đà Nẵng" | "Huế" | "Đà Nẵng & Huế"> = [
@@ -123,10 +124,13 @@ export default function LandingPage() {
         destination === "Huế"
           ? "https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800&auto=format&fit=crop&q=80"
           : "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
-      itineraryOutline: buildDefaultCopilotItinerary(destination, days),
+      itineraryOutline: buildDefaultCopilotItinerary(destination, days, trimmed),
     };
 
-    navigate("/planner", { state: { quickLaunchTrip } });
+    markOnboardingStart();
+    navigate(`/planner?tripId=${encodeURIComponent(quickLaunchTrip.id)}`, {
+      state: { quickLaunchTrip },
+    });
   };
 
   const scrollTo = (id: string) => {

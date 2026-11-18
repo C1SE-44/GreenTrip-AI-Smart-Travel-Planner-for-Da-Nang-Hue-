@@ -23,6 +23,7 @@ import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
 import { clearAuthSession, getMe, type UserProfile } from '@/services/auth';
 import { getPois, getAllPois } from '@/services/poi';
+import { getTripItinerary, classifyEcoCluster } from '@/services/itineraryService';
 import ExploreFilterModal, {
   type ExploreFilterValues,
   type PoiCategoryFilter,
@@ -341,8 +342,52 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     setSelectedTripForDetails(quickTrip);
     setActiveTripSubTab('itinerary');
     setViewMode('trips');
-    navigate('/planner', { replace: true, state: null });
+    navigate(`/planner?tripId=${encodeURIComponent(quickTrip.id)}`, { replace: true, state: null });
   }, [location.state, navigate]);
+
+  // Open specific trip when visiting /planner?tripId=... (share link or refresh)
+  useEffect(() => {
+    const tripIdParam = new URLSearchParams(location.search).get('tripId');
+    if (!tripIdParam) return;
+    const matched = userTrips.find((t) => t.id === tripIdParam);
+    if (matched) {
+      setActiveOverviewTrip((prev) => (prev?.id === matched.id ? prev : matched));
+      setSelectedTripForDetails((prev) => (prev?.id === matched.id ? prev : matched));
+      setViewMode('trips');
+      return;
+    }
+
+    let cancelled = false;
+    getTripItinerary(tripIdParam)
+      .then((remote) => {
+        if (cancelled || !remote?.trip_id) return;
+        const loadedTrip: UserTrip = {
+          id: remote.trip_id,
+          title: remote.title,
+          destination: remote.destination,
+          startDate: remote.start_date || `${remote.days_count} ngày`,
+          daysCount: remote.days_count,
+          peopleCount: 2,
+          totalBudget: 0,
+          budgetTier: 'standard',
+          pacingLevel: 'Balanced',
+          pacingLabel: '⚖️ Cân bằng',
+          createdAt: remote.updated_at || new Date().toISOString(),
+          status: 'upcoming',
+          tags: [remote.destination, `${remote.days_count} ngày`],
+          image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+        };
+        setUserTrips((prev) => (prev.some((t) => t.id === loadedTrip.id) ? prev : [loadedTrip, ...prev]));
+        setActiveOverviewTrip(loadedTrip);
+        setSelectedTripForDetails(loadedTrip);
+        setActiveTripSubTab('itinerary');
+        setViewMode('trips');
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [location.search, userTrips]);
 
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
@@ -2200,6 +2245,10 @@ function PoiCard({
           src={gallery[imgIdx] || poi.image}
           alt={poi.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
+          }}
         />
 
         {/* Nút tròn chuyển ảnh ‹ (chỉ hiện khi hover và từ ảnh thứ 2 trở đi) */}
@@ -2329,9 +2378,14 @@ function PoiCard({
             : (CATEGORY_META[poi.category]?.icon || 'ph-map-pin');
 
           return (
-            <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-normal">
-              <i className={`ph ${resolvedCategoryIcon} text-gray-400 text-[14px] shrink-0`}></i>
-              <span className="truncate">{resolvedCategoryLabel}</span>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 text-[13px] text-gray-600 font-normal">
+                <i className={`ph ${resolvedCategoryIcon} text-gray-400 text-[14px] shrink-0`}></i>
+                <span className="truncate">{resolvedCategoryLabel}</span>
+              </div>
+              <span className="inline-block text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded-full truncate max-w-full">
+                {classifyEcoCluster(poi)}
+              </span>
             </div>
           );
         })()}

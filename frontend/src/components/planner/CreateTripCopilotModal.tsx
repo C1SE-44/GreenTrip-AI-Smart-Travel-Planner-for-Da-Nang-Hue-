@@ -452,7 +452,7 @@ export default function CreateTripCopilotModal({
 
         {/* Modal Heading: tiêu đề chuẩn chính tả (đã sửa khoảng trắng thừa), cỡ chữ 33px (text-[19px] sm:text-[20.5px], -3%), giãn dòng 50px (leading-[1.3], -7%), cách ô nhập 45px (mb-[22px]) */}
         <h2 className="text-[19px] sm:text-[20.5px] font-bold text-gray-950 text-center tracking-tight mb-[22px] px-3 leading-[1.3]">
-          Anh ơi, em cần lưu ý điều gì cho chuyến đi này?
+          Bạn muốn lưu ý điều gì cho chuyến đi này?
         </h2>
 
         {/* Prompt Textarea: cao 188px (h-[106px], -18%), viền xám trung bình #c8c8c8, padding trái 23px (px-[13px] py-[12px], -23%), placeholder 1 dòng ngắn gọn */}

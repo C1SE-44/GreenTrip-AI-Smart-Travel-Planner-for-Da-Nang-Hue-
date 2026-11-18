@@ -32,7 +32,6 @@ export interface HomeDashboardViewProps {
 
 const TOP_CATEGORIES = [
   { id: 'stays', label: 'Lưu trú', icon: 'ph-bed', bg: 'bg-purple-100', text: 'text-purple-700' },
-  { id: 'flights', label: 'Vé máy bay', icon: 'ph-airplane-tilt', bg: 'bg-sky-100', text: 'text-sky-700' },
   { id: 'eats', label: 'Ẩm thực', icon: 'ph-fork-knife', bg: 'bg-amber-100', text: 'text-amber-700' },
   { id: 'experiences', label: 'Trải nghiệm', icon: 'ph-sparkle', bg: 'bg-emerald-100', text: 'text-emerald-700' },
   { id: 'events', label: 'Sự kiện', icon: 'ph-ticket', bg: 'bg-indigo-100', text: 'text-indigo-700' },
@@ -144,10 +143,10 @@ export default function HomeDashboardView({
                 type="button"
                 onClick={() => {
                   setActiveTabFilter(isActive ? 'all' : cat.id);
-                  if (cat.id === 'experiences' || cat.id === 'eats') {
-                    onNavigateToExplore();
-                  } else if (cat.id === 'trips') {
+                  if (cat.id === 'trips') {
                     onNavigateToTrips();
+                  } else {
+                    onNavigateToExplore();
                   }
                 }}
                 className={`h-9 px-3.5 rounded-full border transition-all cursor-pointer flex items-center gap-2 text-xs font-semibold shrink-0 shadow-2xs active:scale-95 ${

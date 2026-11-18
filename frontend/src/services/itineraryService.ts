@@ -1853,21 +1853,24 @@ export function isPoiOutdoor(
   if (stop?.stop_type === 'rest') return false;
   if (!poi && !stop) return false;
 
-  if (poi?.ai_metadata && typeof poi.ai_metadata.rainy_day_friendly === 'boolean') {
-    return !poi.ai_metadata.rainy_day_friendly;
-  }
-
   const sub = (poi?.sub_category || '').trim().toLowerCase();
   if (OUTDOOR_SUB_CATEGORIES.has(sub)) return true;
   if (INDOOR_SUB_CATEGORIES.has(sub)) return false;
 
   const cat = (poi?.category || stop?.category || '').trim().toLowerCase();
+  const name = (poi?.name || stop?.title || '').trim().toLowerCase();
   if (cat === 'canh-quan' || cat.includes('thiên nhiên') || cat.includes('cảnh quan') || cat.includes('nature')) {
     return true;
   }
+  if (OUTDOOR_KEYWORDS.some((kw) => name.includes(kw))) {
+    return true;
+  }
 
-  const name = (poi?.name || stop?.title || '').trim().toLowerCase();
-  return OUTDOOR_KEYWORDS.some((kw) => name.includes(kw));
+  if (poi?.ai_metadata && typeof poi.ai_metadata.rainy_day_friendly === 'boolean') {
+    return !poi.ai_metadata.rainy_day_friendly;
+  }
+
+  return false;
 }
 
 export interface IndoorSwapSuggestion {
@@ -2140,4 +2143,22 @@ export function computeDayFatigue(day: ItineraryDay, poiById?: Map<string, Poi>)
     needsRest,
     level,
   };
+}
+
+/** Phân cụm sinh thái Đà Nẵng (Hòa Vang - Sơn Trà) & Huế (KH 188/KH-UBND). */
+export function classifyEcoCluster(poi: Pick<Poi, 'city' | 'name' | 'address' | 'category'>): string {
+  const text = `${poi.name} ${poi.address || ''}`.toLowerCase();
+  if (/hòa vang|hòa bắc|hòa ninh|bà nà|sơn trà|cù đê/.test(text)) {
+    return 'Cụm sinh thái Hòa Vang – Sơn Trà';
+  }
+  if (/tam giang|lập an|lăng cô|rú chá|đầm/.test(text)) {
+    return 'Cụm Đầm phá Tam Giang – Lập An';
+  }
+  if (/bạch mã|hồ truồi|a lưới|nam đông|suối|thác/.test(text)) {
+    return 'Cụm Suối thác Bạch Mã – A Lưới';
+  }
+  if (/thủy biều|kim long|thanh toàn|bao la|sình|thanh tiên/.test(text)) {
+    return 'Cụm Di sản – Nhà vườn & OCOP';
+  }
+  return poi.city === 'Huế' ? 'Cụm Di sản Cố đô Huế' : 'Cụm Đô thị Xanh Đà Nẵng';
 }

@@ -91,12 +91,14 @@ export interface CopilotDayOutline {
  */
 export const buildDefaultCopilotItinerary = (
   destination: string = 'Đà Nẵng & Huế',
-  daysCount: number = 4
+  daysCount: number = 4,
+  prompt?: string
 ): CopilotDayOutline[] => {
   const normDest = destination.trim() || 'Đà Nẵng & Huế';
   const isHueOnly = normDest.toLowerCase().includes('huế') && !normDest.toLowerCase().includes('đà nẵng');
   const isBoth = (normDest.toLowerCase().includes('đà nẵng') || normDest.toLowerCase().includes('da nang')) &&
     (normDest.toLowerCase().includes('huế') || normDest.toLowerCase().includes('hue'));
+  const wantsCafe = /cafe|cà phê|coffee/i.test(prompt || '');
   const days = Math.max(1, Math.min(14, daysCount || 4));
 
   const defaultDays: CopilotDayOutline[] = [];
@@ -128,25 +130,39 @@ export const buildDefaultCopilotItinerary = (
       {
         id: 'stop-1-2',
         timeSlot: '11:30 - 12:30',
-        name: isHueOnly ? 'Bún Bò Mệ Kéo' : 'Mì Quảng Bà Mua',
+        name: isHueOnly ? 'Cơm Hến Bà Cam' : 'Mì Quảng Bà Mua',
         category: 'quan-an',
         distanceKm: 1.2,
-        note: isHueOnly ? 'Tô bún bò chả cua chuẩn vị Cố Đô' : 'Đặc sản mì Quảng chuẩn vị bản địa Đà Nẵng',
-        estimatedCost: isHueOnly ? '45.000 đ' : '50.000 đ',
+        note: isHueOnly ? 'Đặc sản cơm hến dân dã chuẩn vị Cố Đô' : 'Đặc sản mì Quảng chuẩn vị bản địa Đà Nẵng',
+        estimatedCost: isHueOnly ? '35.000 đ' : '50.000 đ',
         image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80',
         greenScore: 92,
       },
-      {
-        id: 'stop-1-3',
-        timeSlot: '15:30 - 17:00',
-        name: isHueOnly ? 'Cầu Nguyễn Hoàng (Biểu Tượng Kiến Trúc Đương Đại "Hạc Chầu Thiên Mụ")' : 'Cầu Rồng',
-        category: 'canh-quan',
-        distanceKm: 0.8,
-        note: isHueOnly ? 'Dạo mát ngắm sông Hương thư thái' : 'Tản bộ ngắm sông Hàn, tận hưởng không khí trong lành',
-        estimatedCost: 'Miễn phí',
-        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
-        greenScore: 98,
-      },
+      wantsCafe
+        ? {
+            id: 'stop-1-3',
+            timeSlot: '14:30 - 16:00',
+            name: isHueOnly ? 'VOU Roastery' : 'Brewman Coffee Concept',
+            category: 'quan-ca-phe',
+            distanceKm: 1.1,
+            note: isHueOnly
+              ? 'Quán cà phê rang xay yên tĩnh tại trung tâm Huế'
+              : 'Quán cà phê specialty yên tĩnh, không gian xanh',
+            estimatedCost: isHueOnly ? '65.000 đ' : '60.000 đ',
+            image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800&auto=format&fit=crop&q=80',
+            greenScore: 98,
+          }
+        : {
+            id: 'stop-1-3',
+            timeSlot: '15:30 - 17:00',
+            name: isHueOnly ? 'Cầu Nguyễn Hoàng (Biểu Tượng Kiến Trúc Đương Đại "Hạc Chầu Thiên Mụ")' : 'Cầu Rồng',
+            category: 'canh-quan',
+            distanceKm: 0.8,
+            note: isHueOnly ? 'Dạo mát ngắm sông Hương thư thái' : 'Tản bộ ngắm sông Hàn, tận hưởng không khí trong lành',
+            estimatedCost: 'Miễn phí',
+            image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+            greenScore: 98,
+          },
       {
         id: 'stop-1-4',
         timeSlot: '18:30 - 19:45',

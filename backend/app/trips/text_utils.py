@@ -107,3 +107,42 @@ def contains_any_phrase(
         if re.search(rf"(?<!\w){re.escape(candidate)}(?!\w)", folded_msg):
             return True
     return False
+
+
+def resolve_effective_city(message: str, fallback_dest: str | None = None) -> tuple[str, bool, str]:
+    """
+    Determine target city from the user's message FIRST, falling back to trip_context.destination
+    only when the message does not specify a single city.
+    Returns: (sql_city_pattern, is_both, display_city_name)
+    """
+    norm_msg = normalize_vietnamese_query(message)
+    folded_msg = strip_vietnamese_accents(norm_msg)
+
+    da_nang_markers = [
+        "đà nẵng", "da nang", "danang", "sơn trà", "mỹ khê", "hải châu",
+        "cầu rồng", "ngũ hành sơn", "bà nà", "cầu vàng", "sông hàn", "chợ cồn", "chợ hàn",
+    ]
+    hue_markers = [
+        "huế", "cố đô", "đại nội", "sông hương", "thiên mụ",
+        "khải định", "tự đức", "minh mạng", "chợ đông ba", "lăng cô",
+    ]
+
+    msg_has_dn = contains_any_phrase(norm_msg, folded_msg, da_nang_markers)
+    msg_has_hue = contains_any_phrase(norm_msg, folded_msg, hue_markers, ["hue", "co do"])
+
+    if msg_has_dn and not msg_has_hue:
+        return "%Da Nang%", False, "Đà Nẵng"
+    if msg_has_hue and not msg_has_dn:
+        return "%Hue%", False, "Huế"
+
+    dest_lower = (fallback_dest or "Đà Nẵng").strip().lower()
+    dest_folded = strip_vietnamese_accents(dest_lower)
+    dest_has_dn = any(k in dest_lower or k in dest_folded for k in ["đà nẵng", "da nang", "danang", "dn"])
+    dest_has_hue = any(k in dest_lower or k in dest_folded for k in ["huế", "hue"])
+
+    if dest_has_dn and dest_has_hue:
+        return "%", True, "Đà Nẵng & Huế"
+    if dest_has_hue:
+        return "%Hue%", False, "Huế"
+    return "%Da Nang%", False, "Đà Nẵng"
+

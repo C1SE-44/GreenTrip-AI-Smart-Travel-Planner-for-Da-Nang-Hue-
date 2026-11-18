@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
+import logging
 from typing import Any
 
 from fastapi import HTTPException
@@ -13,6 +14,33 @@ from app.trips.schemas import (
     TripItineraryResponse,
     TripItinerarySyncRequest,
 )
+
+
+logger = logging.getLogger(__name__)
+
+
+def _coerce_iso_date(value: str | None) -> str | None:
+    if not value or not isinstance(value, str):
+        return None
+    candidate = value.strip()[:10]
+    try:
+        date.fromisoformat(candidate)
+        return candidate
+    except ValueError:
+        return None
+
+
+def _days_note_column(connection: Any, cursor: Any) -> str:
+    if isinstance(connection, SQLiteConnectionWrapper):
+        return "note"
+    cursor.execute(
+        """
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'itinerary_days' AND column_name = 'note'
+        LIMIT 1
+        """
+    )
+    return "note" if cursor.fetchone() else "theme"
 
 
 def _ensure_local_tables(connection: Any, cursor: Any) -> None:
@@ -202,19 +230,23 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                         total_days = EXCLUDED.days_count,
                         updated_at = CURRENT_TIMESTAMP
                     """,
-                    (payload.trip_id, user_id, payload.title, payload.destination, payload.start_date, payload.days_count, payload.trip_id, payload.days_count),
+                    (payload.trip_id, user_id, payload.title, payload.destination, _coerce_iso_date(payload.start_date), payload.days_count, payload.trip_id, payload.days_count),
                 )
                 cursor.execute(
                     "DELETE FROM public.itinerary_stops WHERE day_id IN (SELECT day_id FROM public.itinerary_days WHERE trip_id = %s)",
                     (payload.trip_id,),
                 )
                 cursor.execute("DELETE FROM public.itinerary_days WHERE trip_id = %s", (payload.trip_id,))
+                day_note_col = _days_note_column(connection, cursor)
+                prefix = f"{payload.trip_id}::"
                 for day in payload.days:
+                    db_day_id = day.day_id if day.day_id.startswith(prefix) else f"{prefix}{day.day_id}"
                     cursor.execute(
-                        "INSERT INTO public.itinerary_days (day_id, trip_id, day_number, date, title, note, itinerary_id, itinerary_day_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                        (day.day_id, payload.trip_id, day.day_number, day.date, day.title, day.note, payload.trip_id, day.day_id),
+                        f"INSERT INTO public.itinerary_days (day_id, trip_id, day_number, date, title, {day_note_col}, itinerary_id, itinerary_day_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                        (db_day_id, payload.trip_id, day.day_number, _coerce_iso_date(day.date), day.title, day.note, payload.trip_id, db_day_id),
                     )
                     for stop in day.stops:
+                        db_stop_id = stop.stop_id if stop.stop_id.startswith(prefix) else f"{prefix}{stop.stop_id}"
                         cursor.execute(
                             """
                             INSERT INTO public.itinerary_stops (
@@ -224,10 +256,10 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             """,
                             (
-                                stop.stop_id, day.day_id, stop.poi_id, stop.title, stop.city, stop.address, stop.category,
+                                db_stop_id, db_day_id, stop.poi_id, stop.title, stop.city, stop.address, stop.category,
                                 stop.stop_type, stop.source, stop.sequence, stop.duration_minutes,
                                 stop.start_time, stop.end_time, stop.comment, stop.latitude, stop.longitude,
-                                stop.stop_id, day.day_id, stop.sequence,
+                                db_stop_id, db_day_id, stop.sequence,
                             ),
                         )
                 connection.commit()
@@ -237,6 +269,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
     except HTTPException:
         raise
     except Exception as error:
+        logger.exception("save_itinerary failed for trip_id=%s", payload.trip_id)
         raise HTTPException(status_code=503, detail="Chưa thể lưu lịch trình vào cơ sở dữ liệu.") from error
 
 
@@ -253,12 +286,14 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                 is_shared_sample = bool(trip and trip_id.startswith("sample-") and trip[1] == "demo-user")
                 if not trip or (trip[1] and trip[1] != user_id and not is_shared_sample):
                     return None
+                day_note_col = _days_note_column(connection, cursor)
                 cursor.execute(
-                    "SELECT day_id, day_number, date, title, note FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
+                    f"SELECT day_id, day_number, date, title, {day_note_col} FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
                     (trip_id,),
                 )
                 day_rows = cursor.fetchall()
                 days: list[ItineraryDay] = []
+                prefix = f"{trip_id}::"
                 for day_row in day_rows:
                     cursor.execute(
                         """
@@ -270,7 +305,7 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                     )
                     stops = [
                         ItineraryStop(
-                            stop_id=row[0],
+                            stop_id=row[0].removeprefix(prefix),
                             poi_id=row[1],
                             title=row[2],
                             city=row[3],
@@ -289,7 +324,7 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                         for idx, row in enumerate(cursor.fetchall())
                     ]
                     day_date = day_row[2].isoformat() if hasattr(day_row[2], "isoformat") else day_row[2]
-                    days.append(ItineraryDay(day_id=day_row[0], day_number=day_row[1], date=day_date, title=day_row[3], note=day_row[4] or "", stops=stops))
+                    days.append(ItineraryDay(day_id=day_row[0].removeprefix(prefix), day_number=day_row[1], date=day_date, title=day_row[3], note=day_row[4] or "", stops=stops))
                 return TripItineraryResponse(
                     trip_id=trip[0], title=trip[2], destination=trip[3],
                     start_date=trip[4].isoformat() if hasattr(trip[4], "isoformat") else trip[4],
@@ -364,8 +399,9 @@ def get_itinerary_with_ownership(trip_id: str, user_id: str) -> TripItineraryRes
                 if owner_id and owner_id != user_id:
                     raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập chuyến đi này.")
 
+                day_note_col = _days_note_column(connection, cursor)
                 cursor.execute(
-                    "SELECT day_id, day_number, date, title, note FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
+                    f"SELECT day_id, day_number, date, title, {day_note_col} FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",
                     (trip_id,),
                 )
                 day_rows = cursor.fetchall()

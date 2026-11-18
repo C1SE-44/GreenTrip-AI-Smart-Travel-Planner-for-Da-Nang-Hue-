@@ -10,8 +10,7 @@ from typing import Any
 from psycopg import Connection
 from app.trips.schemas import CopilotSuggestedPoiItem, TripContextPayload
 from app.trips.handlers.swap_meal_handler import format_green_score
-from app.trips.copilot_consultant import resolve_effective_city, normalize_vietnamese_query
-from app.trips.text_utils import contains_any_phrase, strip_vietnamese_accents
+from app.trips.text_utils import contains_any_phrase, strip_vietnamese_accents, resolve_effective_city, normalize_vietnamese_query
 
 logger = logging.getLogger(__name__)
 

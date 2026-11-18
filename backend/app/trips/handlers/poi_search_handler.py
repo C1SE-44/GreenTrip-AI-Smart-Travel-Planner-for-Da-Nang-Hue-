@@ -391,12 +391,22 @@ def handle_poi_search(
         filter_desc.append(f"bán kính **≤ {max_distance_km:g} km** quanh **{anchor[2]}**")
 
     if results:
-        lines = [f"Mình đã tìm được **{len(results)} địa điểm thực tế** theo tiêu chí {', '.join(filter_desc)}:\n"]
+        lines = [f"Với tiêu chí {', '.join(filter_desc)}, mình gợi ý những điểm hợp gu nhất cho bạn:\n"]
         for idx, poi in enumerate(results, 1):
             dist_txt = f" • 📍 {poi.distance_info}" if poi.distance_info else ""
+            addr_txt = f" ({poi.address})" if poi.address and poi.address != city_display else ""
+            reason_txt = poi.swap_reason or poi.category
             lines.append(
-                f"{idx}. **{poi.name}** ({poi.category}) — {poi.price_range_display}{dist_txt} • 🌱 Green Score {poi.green_score}/100."
+                f"{idx}. **{poi.name}**{addr_txt} — {reason_txt} · {poi.price_range_display}{dist_txt} · 🌱 {poi.green_score}/100."
             )
+        top_pick = results[0].name
+        second_pick = f" hoặc **{results[1].name}**" if len(results) > 1 else ""
+        lines.append(
+            f"\n**Gợi ý chọn nhanh 🎯**\nNếu ưu tiên điểm xanh và đánh giá cao nhất, bạn có thể chọn **{top_pick}**{second_pick}."
+        )
+        lines.append(
+            f"\nBạn đang ở khu vực nào tại {city_display} (hoặc muốn thêm điểm nào vào lịch trình) để mình sắp xếp thuận đường nhất cho bạn?"
+        )
         reply_text = "\n".join(lines)
         action_type = "add_stop"
     else:

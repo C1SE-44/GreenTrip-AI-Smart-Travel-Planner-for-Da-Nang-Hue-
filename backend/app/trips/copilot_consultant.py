@@ -34,6 +34,7 @@ from app.trips.text_utils import (
     SLANG_REPLACEMENTS,
     contains_any_phrase,
     normalize_vietnamese_query,
+    resolve_effective_city,
     strip_vietnamese_accents,
 )
 from app.trips.schemas import (
@@ -60,55 +61,12 @@ Phong cách giao tiếp của bạn: Thân thiện như một người bạn b�
 3. Ghi nhớ Ràng buộc Ngầm Xuyên suốt (Persistent Constraints): Đi cùng người lớn tuổi/trẻ nhỏ (ưu tiên đường phẳng như Lăng Tự Đức, xe điện Đại Nội, ngồi xe ngắm cảnh Sơn Trà), mùa mưa tháng 10-12 (kèm phương án Indoor), hiểu tiếng lóng tiếng Việt (đn -> Đà Nẵng, rcm -> gợi ý, cf -> cà phê, chill/ko ồn ào -> yên tĩnh).
 4. Tư duy Đồ thị Tri thức & Lồng ghép Tiêu chí Xanh (KG Reasoning + Eco-Integration): Áp dụng công thức 3 lớp cho mỗi POI: **[Tên địa điểm]** — *(Lý do khớp trực tiếp từ kg_explanation)* + 🌱 *(Green Score & Điểm cộng bền vững / Mẹo di chuyển xanh)*.
 5. Bảo vệ Phạm vi Hệ thống (Strict Out-of-Scope Handling): Từ chối ngắn gọn, vui vẻ các câu hỏi ngoài phạm vi du lịch miền Trung và không trả về thẻ POI.
-6. Chiến thuật "Câu hỏi chốt hạ A/B" (Conversational Follow-up Hook): 100% câu trả lời kết thúc bằng 1 câu hỏi gợi mở đưa ra 2 lựa chọn cụ thể (A hoặc B) bám sát bước tiếp theo.
+6. Phong cách trò chuyện tự nhiên (Mindtrip Style): Trả lời ngắn gọn, thân thiện như người bạn địa phương; mỗi địa điểm nêu 1 nhận xét riêng thực tế thay vì lặp lại mẫu câu; cuối câu trả lời có mục **Gợi ý chọn nhanh 🎯** và chỉ hỏi lại 1 câu ngắn gọn khi thật sự cần làm rõ nhu cầu (tránh nhắc từ ngữ kỹ thuật như Đồ thị Tri thức hay Knowledge Graph).
 """
 
 
 # ============================================================================
-# 1. VIETNAMESE SLANG NORMALIZATION & EXPLICIT CITY DETECTION
-# ============================================================================
-
-
-def resolve_effective_city(message: str, fallback_dest: str | None = None) -> tuple[str, bool, str]:
-    """
-    Determine target city from the user's message FIRST, falling back to trip_context.destination
-    only when the message does not specify a single city.
-    Returns: (sql_city_pattern, is_both, display_city_name)
-    """
-    norm_msg = normalize_vietnamese_query(message)
-    folded_msg = strip_vietnamese_accents(norm_msg)
-
-    da_nang_markers = [
-        "đà nẵng", "da nang", "danang", "sơn trà", "mỹ khê", "hải châu",
-        "cầu rồng", "ngũ hành sơn", "bà nà", "cầu vàng", "sông hàn", "chợ cồn", "chợ hàn",
-    ]
-    hue_markers = [
-        "huế", "cố đô", "đại nội", "sông hương", "thiên mụ",
-        "khải định", "tự đức", "minh mạng", "chợ đông ba", "lăng cô",
-    ]
-
-    msg_has_dn = contains_any_phrase(norm_msg, folded_msg, da_nang_markers)
-    msg_has_hue = contains_any_phrase(norm_msg, folded_msg, hue_markers, ["hue", "co do"])
-
-    if msg_has_dn and not msg_has_hue:
-        return "%Da Nang%", False, "Đà Nẵng"
-    if msg_has_hue and not msg_has_dn:
-        return "%Hue%", False, "Huế"
-
-    dest_lower = (fallback_dest or "Đà Nẵng").strip().lower()
-    dest_folded = strip_vietnamese_accents(dest_lower)
-    dest_has_dn = any(k in dest_lower or k in dest_folded for k in ["đà nẵng", "da nang", "danang", "dn"])
-    dest_has_hue = any(k in dest_lower or k in dest_folded for k in ["huế", "hue"])
-
-    if dest_has_dn and dest_has_hue:
-        return "%", True, "Đà Nẵng & Huế"
-    if dest_has_hue:
-        return "%Hue%", False, "Huế"
-    return "%Da Nang%", False, "Đà Nẵng"
-
-
-# ============================================================================
-# 2. PERSISTENT CONSTRAINTS EXTRACTION
+# 1. PERSISTENT CONSTRAINTS EXTRACTION
 # ============================================================================
 
 CONSTRAINT_PATTERNS: dict[str, list[str]] = {
@@ -532,7 +490,12 @@ def classify_copilot_request(
         ["cap nhat", "thay vi", "chang di chuyen", "trai nghiem", "lich", "them vao"],
     )
 
-    if night_split_match or has_day_mutation_verb or has_green_train_or_eco_hue:
+    add_stop_to_day_match = re.search(
+        r"(?:thêm|chèn|đưa)\s+.+?\s+(?:vào|lên)\s+(?:lịch\s*trình\s+)?ngày\s*\d+",
+        norm_msg,
+    )
+
+    if night_split_match or has_day_mutation_verb or has_green_train_or_eco_hue or add_stop_to_day_match:
         return "ITINERARY_MUTATION", "itinerary_mutation", None
 
     # 4b. Explicit filtered POI search (by city, category, distance, price, preferences)
@@ -883,11 +846,12 @@ def build_kg_explanation_for_poi(
     elif "cafe" in cat_lower or "cà phê" in cat_lower or "cafe" in sub_lower:
         if "quiet_vibe" in constraints or "quiet" in query_vibe:
             reasons.append(
-                f"Góc thưởng thức cà phê thư thái, không gian thoáng đãng ít ồn ào tại {city}"
+                f"Không gian nhẹ nhàng, ít ồn ào tại {city}, hợp ngồi thư giãn hoặc làm việc"
             )
         else:
+            sub_hint = f" ({sub_category})" if sub_category else ""
             reasons.append(
-                f"Điểm dừng chân thưởng thức cà phê bản địa đặc sắc tại {city}"
+                f"Quán cà phê{sub_hint} tại {city}, dễ ngồi lâu và thuận tiện ghé nghỉ giữa lịch trình"
             )
         eco_practices.append("Không gian nhiều cây xanh, hạn chế ống hút nhựa dùng một lần")
     elif "chay" in name_lower or "an nhiên" in name_lower or "sân mây" in name_lower or "roots" in name_lower or "bồ đề" in name_lower:
@@ -2139,6 +2103,98 @@ def handle_itinerary_mutation_request(
             ],
         )
 
+    # --- MUTATION TYPE D: Add Stop to Day X ('Thêm VOU Roastery vào lịch trình Ngày 1') ---
+    add_match = re.search(
+        r"(?:thêm|chèn|đưa)\s+(.+?)\s+(?:vào|lên)\s+(?:lịch\s*trình\s+)?ngày\s*(\d+)",
+        norm_msg,
+    )
+    if add_match:
+        raw_place = re.sub(r"\s+(?:giúp\s+mình|nhé|nha|với|ạ)$", "", add_match.group(1).strip()).strip()
+        target_day = max(1, min(14, int(add_match.group(2))))
+        matched_row = None
+        try:
+            with connection.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT p.poi_id::text, p.name, c.name, p.sub_category, p.image_url,
+                           p.green_score, p.satisfaction_score, p.address, p.estimated_cost, ci.name
+                    FROM public.pois p
+                    JOIN public.poi_categories c ON p.category_id = c.category_id
+                    JOIN public.cities ci ON p.city_id = ci.city_id
+                    WHERE p.is_active IS NOT FALSE AND p.name ILIKE %s
+                    ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
+                    LIMIT 1;
+                    """,
+                    (f"%{raw_place}%",),
+                )
+                matched_row = cur.fetchone()
+        except Exception:
+            matched_row = None
+
+        if matched_row:
+            poi_id, poi_name, cat_name, sub_cat, img_url, g_raw, rating_raw, addr, est_cost, city_name = matched_row
+            city_disp = "Đà Nẵng" if "da nang" in str(city_name).lower() else "Huế"
+            g_score = format_green_score(g_raw)
+            cat_slug = "quan-ca-phe" if "cafe" in str(cat_name).lower() or "cà phê" in str(cat_name).lower() else (
+                "quan-an" if "ẩm thực" in str(cat_name).lower() or "quán" in str(cat_name).lower() else "di-tich"
+            )
+            time_slot = "08:00 - 09:30" if cat_slug == "quan-ca-phe" else ("11:30 - 13:00" if cat_slug == "quan-an" else "14:30 - 16:30")
+            while len(outline) < target_day:
+                next_d = len(outline) + 1
+                outline.append({
+                    "day": next_d,
+                    "theme": f"Ngày {next_d}: Khám phá {city_disp}",
+                    "focus_city": city_disp,
+                    "stops": [],
+                })
+            day_obj = outline[target_day - 1]
+            stops = day_obj.get("stops") or []
+            if not any(poi_name.lower() in str(s.get("name", "")).lower() for s in stops):
+                stops.append({
+                    "id": poi_id,
+                    "timeSlot": time_slot,
+                    "name": poi_name,
+                    "category": cat_slug,
+                    "distanceKm": 1.5,
+                    "note": f"Điểm dừng được đề xuất thêm vào Ngày {target_day}",
+                    "estimatedCost": str(est_cost or "Miễn phí"),
+                    "image": img_url or "",
+                    "greenScore": g_score,
+                })
+                day_obj["stops"] = stops
+
+            item = CopilotSuggestedPoiItem(
+                id=poi_id,
+                name=poi_name,
+                category=str(cat_name or "Địa điểm xanh"),
+                city=city_disp,
+                green_score=g_score,
+                rating=float(rating_raw) if rating_raw is not None else 4.7,
+                estimated_cost=str(est_cost or "Miễn phí"),
+                address=str(addr or city_disp),
+                image_url=img_url,
+                swap_reason=f"Khớp đúng yêu cầu thêm vào Ngày {target_day} ({time_slot}) • Green Score {g_score}/100.",
+            )
+            checklist = [
+                f"✅ **Ngày {target_day}**: Đề xuất thêm **{poi_name}** vào khung **{time_slot}** (chi phí dự kiến: {item.estimated_cost}).",
+            ]
+            return CopilotChatResponse(
+                reply_text=f"Mình đã chuẩn bị đề xuất thêm **{poi_name}** vào **Ngày {target_day} ({time_slot})**. Bạn hãy xem trước bên dưới và bấm **Áp dụng** để lưu vào lịch trình nhé!",
+                intent="itinerary_mutation",
+                intent_category="ITINERARY_MUTATION",
+                reasoning_trace=f"Khớp thực thể '{poi_name}' (id={poi_id}) từ DB và chuẩn bị xác nhận thêm vào Ngày {target_day}.",
+                recommended_poi_ids=[poi_id],
+                detected_constraints=constraints,
+                suggested_pois=[item],
+                action_type="add_stop",
+                updated_itinerary_state=outline,
+                mutation_summary=checklist,
+                next_suggested_prompts=[
+                    f"Tối ưu lại thứ tự đường đi Ngày {target_day}",
+                    f"Gợi ý thêm quán ăn gần {poi_name}",
+                ],
+            )
+
     # Fallback generic itinerary mutation
     opening = (
         f"**Đã ghi nhận yêu cầu điều chỉnh lịch trình cho hành trình {trip_context.destination} ({len(outline)} ngày) của bạn!**"
@@ -2445,7 +2501,7 @@ def upgrade_handler_response_to_mindtrip_standard(
         if raw_response.intent != "general_chat" and filtered_pois and "Green Score" not in reply_text:
             kg_section = "\n".join(format_three_layer_poi_bullet(p) for p in filtered_pois[:3])
             reply_text = (
-                f"{reply_text}\n\n**Gợi ý chọn lọc từ Đồ thị Tri thức GreenTrip (Knowledge Graph):**\n{kg_section}"
+                f"{reply_text}\n\n**Gợi ý nổi bật dành cho bạn:**\n{kg_section}"
             )
 
     # 3. Persistent Constraint Reminder (Rule 3) if elderly_friendly is active across turns
@@ -2454,9 +2510,10 @@ def upgrade_handler_response_to_mindtrip_standard(
             "\n\n*(💡 **Ghi nhớ ràng buộc gia đình**: Vì bạn đi cùng **bố mẹ lớn tuổi**, các địa điểm mình chọn ở trên đều ưu tiên lối đi bằng phẳng, không gian thoáng mát có ghế tựa nghỉ chân và thuận tiện đón taxi điện tận cửa)*."
         )
 
-    # 4. Ensure 100% responses end with a concrete A/B Conversational Hook (Rule 6)
+    # 4. Keep natural Mindtrip-style follow-up for poi_search; use A/B hook only for other flows missing a question
     ab_hook = _default_ab_hook_for_intent(raw_response.intent, city_display, current_day)
-    reply_text = ensure_closing_ab_hook(reply_text, ab_hook)
+    if raw_response.intent != "poi_search":
+        reply_text = ensure_closing_ab_hook(reply_text, ab_hook)
 
     rec_ids = [p.id for p in filtered_pois]
     reasoning_trace = (
@@ -2494,7 +2551,7 @@ def upgrade_handler_response_to_mindtrip_standard(
             settings=settings,
         )
         if gemini_reply:
-            reply_text = ensure_closing_ab_hook(gemini_reply, ab_hook)
+            reply_text = gemini_reply
 
     raw_response.reply_text = reply_text
     raw_response.intent_category = intent_category
@@ -2607,7 +2664,7 @@ def _try_gemini_synthesis(
                 "contents": [{"role": "user", "parts": [{"text": prompt_payload}]}],
                 "generationConfig": {"temperature": 0.35, "maxOutputTokens": 900},
             },
-            timeout=6.0,
+            timeout=18.0,
         )
         if resp.status_code == 200:
             data = resp.json()
@@ -2617,6 +2674,8 @@ def _try_gemini_synthesis(
                 text = "".join(p.get("text", "") for p in parts).strip()
                 if text:
                     return text
+        else:
+            logger.warning("Gemini synthesis HTTP %s: %s", resp.status_code, resp.text[:300])
     except Exception as exc:
         logger.warning("Gemini synthesis skipped, using deterministic consultant output: %s", exc)
     return None

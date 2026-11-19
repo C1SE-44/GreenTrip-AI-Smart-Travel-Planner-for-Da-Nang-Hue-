@@ -537,7 +537,8 @@ export function buildItineraryFromOutline(trip: UserTrip, allPois: Poi[] = []): 
 
     const acceptedWindows: Array<{ start: number; end: number }> = [];
 
-    const stops: ItineraryStop[] = oDay.stops.map((rawStop: Record<string, unknown>, sIdx: number) => {
+    const stops: ItineraryStop[] = oDay.stops.map((stopItem, sIdx: number) => {
+      const rawStop = stopItem as unknown as Record<string, unknown>;
       const rawTitle = String(rawStop.name || rawStop.title || `Điểm dừng ${sIdx + 1}`);
       const rawPoiId = (rawStop.poiId || rawStop.poi_id) ? String(rawStop.poiId || rawStop.poi_id) : null;
       const isRest = rawStop.stop_type === 'rest';

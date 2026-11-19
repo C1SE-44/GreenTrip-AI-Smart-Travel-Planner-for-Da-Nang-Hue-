@@ -115,4 +115,4 @@ npm run build
 - **Thứ tự SQL Migrations**: [backend/migrations/README.md](backend/migrations/README.md)
 - **Thiết kế UI/UX**: [docs/UI_UX_MASTER_SPEC.md](docs/UI_UX_MASTER_SPEC.md)
 - **Thiết lập Neo4j Aura**: [docs/NEO4J_AURA_SETUP.md](docs/NEO4J_AURA_SETUP.md)
-- **Security Review (Sprint 1)**: [SECURITY-REVIEW.md](SECURITY-REVIEW.md)
+- **Security Review (Sprint 1)**: [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md)

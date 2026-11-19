@@ -8,6 +8,7 @@ import { MorphFavoriteButton, MorphAddButton } from '@/components/ui/MorphButton
 import CreateTripCopilotModal from '@/components/planner/CreateTripCopilotModal';
 import IdeationChatView from '@/components/planner/IdeationChatView';
 import type { CopilotTripMessage } from '@/components/planner/copilotTripData';
+import type { CostBreakdown, DailyItineraryOutline, MatchedPOI } from '@/services/tripService';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse, isCuratedHighlight } from '@/data/pois';
 import PoiMap from '@/components/poi/PoiMap';
@@ -63,15 +64,15 @@ export interface UserTrip {
   status?: string;
   prompt?: string;
   totalBudget?: number;
-  itineraryOutline?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
-  matchedPois?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
-  costBreakdown?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  itineraryOutline?: DailyItineraryOutline[];
+  matchedPois?: MatchedPOI[];
+  costBreakdown?: Partial<CostBreakdown>;
   pacingLabel?: string;
   pacingLevel?: 'Relaxed' | 'Balanced' | 'Fast';
   ideas?: string[];
   customIdeas?: Array<{ id: string; name: string; city: PoiCity; address?: string }>;
   savedPlaces?: string[];
-  copilotChatHistory?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  copilotChatHistory?: CopilotTripMessage[];
 }
 
 interface AddToTripSelection {

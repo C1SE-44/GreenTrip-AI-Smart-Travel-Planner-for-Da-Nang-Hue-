@@ -484,13 +484,32 @@ function sanitizePoiAiMetadata(
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoordinates = false): Poi | null {
+export type NormalizablePoiInput = Partial<BackendPoiItem> & {
+  id?: string | number;
+  poi_id?: string | number;
+  lat?: number | null;
+  lng?: number | null;
+  ecoScore?: number;
+  image?: string;
+  gallery?: string[];
+  rating?: number;
+  visitDuration?: string;
+  openHours?: string | null;
+  estimatedCost?: number | null;
+  isLocalBusiness?: boolean;
+  savedCount?: number;
+  cleanName?: string;
+  cleanTitle?: string;
+  subTitle?: string;
+  isMichelin?: boolean;
+};
+
+export function normalizePoi(item: NormalizablePoiInput | null | undefined, allowMissingCoordinates = false): Poi | null {
   if (!item) return null;
   if (item.id && item.name && Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lng)) && item.category && item.city) {
     if (item.isGreen === undefined) {
       const gSet = new Set(['my-khe', 'ngu-hanh-son', 'linh-ung-son-tra', 'cau-rong', 'madame-lan', 'dai-noi', 'thien-mu', 'khai-dinh', 'tu-duc', 'cau-truong-tien']);
-      item.isGreen = gSet.has(String(item.id)) || (item.ecoScore && item.ecoScore >= 75 && !['ba-na-hills', 'cho-han', 'cho-dong-ba', 'mi-quang', 'bun-bo-hue'].includes(String(item.id)));
+      item.isGreen = gSet.has(String(item.id)) || Boolean(item.ecoScore && item.ecoScore >= 75 && !['ba-na-hills', 'cho-han', 'cho-dong-ba', 'mi-quang', 'bun-bo-hue'].includes(String(item.id)));
     }
     if (String(item.name).includes('Cầu Rồng') || String(item.id).includes('cau-rong')) {
       item.image = 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80';
@@ -534,7 +553,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoord
     subTitle = parenMatch[2].trim();
   }
 
-  let image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id, category, city);
+  let image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id ?? item.poi_id ?? cleanName, category, city);
   // Đảm bảo Cầu Rồng luôn hiển thị ảnh thực tế cầu rồng phun lửa Đà Nẵng, không dùng ảnh Cầu Vàng Bà Nà
   if (cleanName.includes('Cầu Rồng') || String(item.id).includes('cau-rong')) {
     image = 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80';
@@ -576,7 +595,7 @@ export function normalizePoi(item: BackendPoiItem | Poi | any, allowMissingCoord
   const statusOpenHours = typeof item.opening_hours?.status_text === 'string' ? item.opening_hours.status_text.trim() : '';
 
   return {
-    id: String(item.id ?? (item as unknown as { poi_id?: string | number }).poi_id ?? ''),
+    id: String(item.id ?? item.poi_id ?? ''),
     name: rawName,
     cleanName,
     cleanTitle,

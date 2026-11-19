@@ -712,8 +712,23 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           top_k: 10,
         };
 
-        const res = await // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        fetchJson<{ status: string; total: number; data: any[] }>(
+        interface RecommendedPoiApiItem {
+          poi_id?: string;
+          name: string;
+          category_name?: string | null;
+          city?: string | null;
+          lat?: number | null;
+          lng?: number | null;
+          image?: string | null;
+          explanation_snippet?: string | null;
+          satisfaction_score?: number | null;
+          is_green?: boolean | null;
+          green_score?: number | null;
+          estimated_cost?: number | null;
+          match_score?: number | null;
+        }
+
+        const res = await fetchJson<{ status: string; total: number; data: RecommendedPoiApiItem[] }>(
           '/api/v1/recommendations/poi',
           {
             method: 'POST',
@@ -746,7 +761,10 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               isGreen: typeof item.is_green === 'boolean'
                 ? item.is_green
                 : (foundLocal?.isGreen ?? (item.green_score ? (item.green_score > 1 ? item.green_score >= 75 : item.green_score >= 0.75) : false)),
-              ecoScore: Math.round((item.green_score || 0.85) <= 1 ? (item.green_score || 0.85) * 100 : item.green_score),
+              ecoScore: (() => {
+                const rawGreen = item.green_score ?? 0.85;
+                return Math.round(rawGreen <= 1 ? rawGreen * 100 : rawGreen);
+              })(),
               estimatedCost: item.estimated_cost || foundLocal?.estimatedCost || 50000,
               matchScore: typeof item.match_score === 'number' ? Math.round(item.match_score) : undefined,
             };

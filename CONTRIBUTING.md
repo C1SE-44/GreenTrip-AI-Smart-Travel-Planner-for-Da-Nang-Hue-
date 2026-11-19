@@ -45,10 +45,10 @@ Tài liệu này thống nhất **Nội quy làm việc nhóm** và **Chiến l�
   3. Xong sớm thì chủ động hỏi ai đang cần người hỗ trợ.
 
 ### 5. Cách nhận task cho rõ (4 bước)
-1. **Đọc hết yêu cầu** trước khi sửa code.
+1. **Đọc hết yêu cầu & đối chiếu `PRD.md`** trước khi sửa code (rõ đối tượng dùng, tính năng, luồng thao tác, phân quyền).
 2. **Nhắc lại việc bằng một câu** và xác nhận với người giao.
-3. **Làm một phần nhỏ chạy được**, rồi mới làm tiếp.
-4. **Nhờ người trong nhóm xem bài** trước khi báo xong.
+3. **Đảm bảo commit checkpoint sạch, rồi làm từng phần nhỏ chạy được** — xong phần nào kiểm tra phần đó trước khi làm tiếp.
+4. **Tự review `git diff` & nhờ người trong nhóm xem bài** trước khi báo xong.
 
 ### 6. Nhịp làm việc 1 tuần của nhóm
 | Thời điểm | Hoạt động trọng tâm |
@@ -58,11 +58,12 @@ Tài liệu này thống nhất **Nội quy làm việc nhóm** và **Chiến l�
 | **03. Giữa tuần** | Xem bài (review PR, chạy thử nhánh) của nhau trước khi nộp. |
 | **04. Cuối tuần** | Demo phần chạy được trên máy, nói rõ phần còn thiếu. *(Demo là phần chạy được trên máy, không phải slide trạng thái).* |
 
-### 7. Bốn việc tuyệt đối KHÔNG làm (Làm hỏng cả nhóm)
+### 7. Năm việc tuyệt đối KHÔNG làm (Làm hỏng cả nhóm)
 1. Ngồi im đến cuối ngày mới nói là chưa xong.
 2. Daily đáp "không có gì" trong khi đang cầm task.
 3. Tự đổi yêu cầu, không hỏi người giao việc.
-4. Đưa mã nguồn, mật khẩu hoặc dữ liệu của dự án ra ngoài nhóm.
+4. **Tự ý sửa code thuộc phần/file của thành viên khác** khi chưa trao đổi và được sự cho phép (đối chiếu `.github/CODEOWNERS`). Chỉ được sửa trực tiếp khi là lỗi **cực kỳ nghiêm trọng / khẩn cấp** (lỗi production hoặc chặn CI) và phải báo ngay cho chủ code.
+5. Đưa mã nguồn, mật khẩu hoặc dữ liệu của dự án ra ngoài nhóm.
 
 ---
 
@@ -99,10 +100,11 @@ Mỗi commit phải là một thay đổi nhỏ, rõ mục đích, theo định 
 - `chore: ...` (Cấu hình build, công cụ, thư viện)
 
 **Checklist trước mỗi lần Commit**:
-- [ ] Tự đọc lại `git diff` như một reviewer.
-- [ ] Dùng AI review lại toàn bộ code đã thay đổi.
+- [ ] Đã có commit sạch trước khi bắt đầu thay đổi lớn (checkpoint để dễ quay lại nếu sai).
+- [ ] Tự đọc lại `git diff` như một reviewer; giữ code đơn giản, dễ đọc, tên hàm/biến có ý nghĩa.
+- [ ] Dùng AI review lại toàn bộ code đã thay đổi và kiểm thử chức năng, API, phân quyền (`401`/`403`/`404`).
 - [ ] Xóa toàn bộ code thừa, dead code, comment lỗi thời, log debug.
-- [ ] Không commit kiểu `wip`, `update`, `fix bug` chung chung; không gom nhiều task vào 1 commit.
+- [ ] Không commit kiểu `wip`, `update`, `fix bug` chung chung; mỗi commit là một đơn vị công việc nhỏ hoàn chỉnh.
 
 ### 4. Quy trình chuẩn khi bắt đầu & kết thúc Task
 

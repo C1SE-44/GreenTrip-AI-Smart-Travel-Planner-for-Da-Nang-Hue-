@@ -75,7 +75,7 @@ pip install -r backend/requirements.txt
 uvicorn app.main:app --app-dir backend --reload --port 8000
 ```
 
-**Frontend (Node.js 20+):**
+**Frontend (Node.js 22+):**
 
 ```bash
 cd frontend

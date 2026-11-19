@@ -14,12 +14,7 @@ import {
   Check,
   X,
   Coffee,
-  Heart,
-  Search,
   RefreshCw,
-  Utensils,
-  Landmark,
-  Compass,
   Car,
   MoreHorizontal,
   MessageCircle,
@@ -28,13 +23,9 @@ import {
   Pencil,
   Lightbulb,
   ExternalLink,
-  SlidersHorizontal,
-  Star,
   LayoutGrid,
   MapPin,
-  Info,
   AlertTriangle,
-  Leaf,
   Route as RouteIcon,
   Bike,
   Bus,
@@ -42,7 +33,6 @@ import {
   CloudRain,
   RotateCcw,
   Share2,
-  Wallet,
   Sparkles,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
@@ -55,10 +45,8 @@ import {
   normalizeCategory,
   normalizeCity,
   normalizePoi,
-  categoryLabels,
 } from '@/data/pois';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
-import PoiMap from '@/components/poi/PoiMap';
 import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
 import {
   createEmptyItinerary,
@@ -88,7 +76,6 @@ import {
   getStopShortReason,
   computeTripBudgetSummary,
   computeDayFatigue,
-  TRANSPORT_MODES_META,
   clearOverlappingVisitTimes,
   dailyVisitCapacity,
   pacingForTrip,
@@ -100,6 +87,19 @@ import {
   type ItineraryDay,
   type ItineraryStop,
 } from '@/services/itineraryService';
+import {
+  type BackendRecommendation,
+  getPoiImage,
+  getPoiVisitDurationMinutes,
+  getGoogleMapsDirectionsUrl,
+  displayDateVi,
+  formatTripDateRange,
+} from './tripItineraryUtils';
+import ItineraryCarbonBudgetPanel from './ItineraryCarbonBudgetPanel';
+import ItineraryIdeasCarousel from './ItineraryIdeasCarousel';
+import ItineraryMapPanel from './ItineraryMapPanel';
+import ItineraryAddPlacesModal from './ItineraryAddPlacesModal';
+import TripDayEditorModal from './TripDayEditorModal';
 
 export interface TripItineraryViewProps {
   trip: UserTrip;
@@ -112,138 +112,6 @@ export interface TripItineraryViewProps {
   onClose?: () => void;
   initialFocus?: 'ideas' | 'itinerary';
   onNavigateToCalendar?: () => void;
-}
-
-interface BackendRecommendation {
-  poi_id?: string | number;
-  name?: string;
-  category_name?: string | null;
-  city?: string | null;
-  lat?: number | null;
-  lng?: number | null;
-  image?: string | null;
-  explanation_snippet?: string | null;
-  satisfaction_score?: number | null;
-  match_score?: number | null;
-  estimated_cost?: number | null;
-  green_score?: number | null;
-  is_green?: boolean | null;
-}
-
-// ─────────────────────────────────────────────────────────────
-// 4 Danh mục chuẩn GreenTrip (Quán ăn, Di tích, Cảnh quan, Chùa)
-// ─────────────────────────────────────────────────────────────
-const GREEN_CATEGORY_TABS: { id: string; label: string }[] = [
-  { id: 'all', label: 'Tất cả' },
-  { id: 'quan-an', label: 'Quán ăn' },
-  { id: 'di-tich', label: 'Di tích' },
-  { id: 'canh-quan', label: 'Cảnh quan' },
-  { id: 'chua', label: 'Chùa' },
-];
-
-const MODAL_CATEGORY_TABS: { id: string; label: string }[] = [
-  { id: 'for-you', label: 'Dành cho bạn' },
-  { id: 'all', label: 'Tất cả' },
-  { id: 'di-tich', label: 'Di tích' },
-  { id: 'canh-quan', label: 'Cảnh quan' },
-  { id: 'chua', label: 'Chùa' },
-  { id: 'quan-an', label: 'Quán ăn' },
-];
-
-function formatCategoryLabel(cat?: string | null): string {
-  if (!cat) return 'Điểm đến';
-  const c = cat.toLowerCase().replace(/[-_]/g, ' ');
-  if (c.includes('quan an') || c.includes('quán ăn') || c.includes('ẩm thực') || c.includes('food') || c.includes('restaurant')) return 'Quán ăn';
-  if (c.includes('di tich') || c.includes('di tích') || c.includes('lăng') || c.includes('đại nội')) return 'Di tích';
-  if (c.includes('chua') || c.includes('chùa')) return 'Chùa';
-  if (c.includes('bien') || c.includes('biển') || c.includes('canh quan') || c.includes('cảnh quan')) return 'Cảnh quan';
-  if (c.includes('ca phe') || c.includes('cà phê') || c.includes('coffee')) return 'Quán ăn';
-  return cat.charAt(0).toUpperCase() + cat.slice(1);
-}
-
-function getPoiImage(poi?: Poi | null): string {
-  if (!poi) return 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
-  if (poi.image && poi.image.startsWith('http')) return poi.image;
-  return getDeterministicImage(poi.name, poi.id, (poi.category as PoiCategory) || 'quan-an', poi.city);
-}
-
-function getCategoryIcon(cat?: string | null) {
-  const c = (cat || '').toLowerCase();
-  if (c.includes('ăn') || c.includes('ẩm thực') || c.includes('food') || c.includes('restaurant') || c.includes('culinary') || c.includes('quan-an')) {
-    return <Utensils size={12} className="text-amber-300 shrink-0" />;
-  }
-  if (c.includes('di tích') || c.includes('lăng') || c.includes('đại nội') || c.includes('di-tich')) {
-    return <Landmark size={12} className="text-emerald-300 shrink-0" />;
-  }
-  if (c.includes('chùa') || c.includes('chua')) {
-    return <Compass size={12} className="text-yellow-300 shrink-0" />;
-  }
-  if (c.includes('rest') || c.includes('nghỉ')) {
-    return <Coffee size={12} className="text-amber-300 shrink-0" />;
-  }
-  return <Compass size={12} className="text-emerald-300 shrink-0" />;
-}
-
-// Thời lượng gợi ý mặc định: Lấy từ dữ liệu địa điểm, thiếu thì 1 giờ (60 phút)
-function getPoiVisitDurationMinutes(poi?: Poi | null): number {
-  if (!poi) return 60;
-  if (poi.average_visit_minutes && poi.average_visit_minutes > 0) return poi.average_visit_minutes;
-  const durText = poi.visitDuration || '';
-  const match = durText.match(/(\d+(?:\.\d+)?)/);
-  if (match) {
-    const num = parseFloat(match[1]);
-    if (durText.includes('giờ') || durText.includes('hour') || durText.includes('h')) {
-      return Math.round(num * 60);
-    }
-    if (durText.includes('phút') || durText.includes('min')) {
-      return Math.round(num);
-    }
-  }
-  return 60;
-}
-
-// Link chỉ đường Google Maps thực tế
-function getGoogleMapsDirectionsUrl(
-  originLat?: number | null,
-  originLng?: number | null,
-  destLat?: number | null,
-  destLng?: number | null,
-  mode: RouteTransportMode = 'driving'
-): string {
-  if (originLat != null && originLng != null && destLat != null && destLng != null) {
-    const travelMode = mode === 'transit' ? 'transit' : mode === 'walking' ? 'walking' : 'driving';
-    return `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destLat},${destLng}&travelmode=${travelMode}`;
-  }
-  return 'https://www.google.com/maps';
-}
-
-function displayDateVi(dateStr?: string | null): string {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(`${dateStr}T12:00:00`);
-    if (Number.isNaN(d.getTime())) return dateStr;
-    return new Intl.DateTimeFormat('vi-VN', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'numeric',
-    }).format(d);
-  } catch {
-    return dateStr || '';
-  }
-}
-
-function formatTripDateRange(startDate: string, daysCount: number): string {
-  const start = new Date(`${startDate}T12:00:00`);
-  if (Number.isNaN(start.getTime())) return updateDateRangeWithDays(startDate, daysCount);
-  const end = new Date(start);
-  end.setDate(end.getDate() + Math.max(1, daysCount) - 1);
-  const day = (date: Date) => date.getDate();
-  const month = (date: Date) => date.getMonth() + 1;
-  const year = end.getFullYear();
-  if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-    return `Ngày ${day(start)} – ${day(end)} tháng ${month(end)}, ${year}`;
-  }
-  return `Ngày ${day(start)} tháng ${month(start)} – ${day(end)} tháng ${month(end)}, ${year}`;
 }
 
 export default function TripItineraryView({
@@ -358,10 +226,8 @@ export default function TripItineraryView({
 
   // Bộ lọc xem ngày nổi trên Bản đồ (đặt góc trên bên phải)
   const [mapDayFilter, setMapDayFilter] = useState<number | 'all'>(1);
-  const [showDayFilterDropdown, setShowDayFilterDropdown] = useState(false);
 
   // Thao tác nhanh cho từng thẻ Ideas & Ngày
-  const ideasCarouselRef = useRef<HTMLDivElement>(null);
   const ideasSectionRef = useRef<HTMLDivElement>(null);
   const itinerarySectionRef = useRef<HTMLDivElement>(null);
   const [activeIdeaMenuPoiId, setActiveIdeaMenuPoiId] = useState<string | null>(null);
@@ -385,7 +251,6 @@ export default function TripItineraryView({
   const [modalTab, setModalTab] = useState<'search' | 'ideas' | 'saved' | 'custom'>('search');
   const [modalSearch, setModalSearch] = useState('');
   const [modalCity, setModalCity] = useState<'all' | 'Đà Nẵng' | 'Huế'>('all');
-  const [showModalCityDropdown, setShowModalCityDropdown] = useState(false);
   const [modalCategory, setModalCategory] = useState<string>('for-you');
   const [customIdeaInput, setCustomIdeaInput] = useState('');
 
@@ -469,13 +334,6 @@ export default function TripItineraryView({
   const isScheduleRecommendationsLoading = recommendationsLoading
     || (recommendations === undefined && isFetchingRecommendations);
   const pacingLevel = pacingOverride || pacingForTrip(trip);
-
-  // Cuộn dải thẻ ý tưởng
-  const handleScrollIdeas = (dir: 'left' | 'right') => {
-    if (!ideasCarouselRef.current) return;
-    const delta = dir === 'left' ? -260 : 260;
-    ideasCarouselRef.current.scrollBy({ left: delta, behavior: 'smooth' });
-  };
 
   // Tra cứu xem POI đã được xếp vào ngày nào
   const getDayNumberForPoi = useCallback(
@@ -1966,181 +1824,19 @@ export default function TripItineraryView({
                     </button>
                   </div>
                 ) : (
-                  /* Dải thẻ ý tưởng cuộn ngang chuẩn Mindtrip (Ảnh 1, 2) */
-                  <div className="relative group/carousel">
-                    <div
-                      ref={ideasCarouselRef}
-                      className="flex gap-3.5 overflow-x-auto pb-2 pt-1 no-scrollbar -mx-1 px-1 scroll-smooth"
-                    >
-                      {filteredIdeaPois.map((poi) => {
-                        const isMenuOpen = activeIdeaMenuPoiId === poi.id;
-
-                        return (
-                          <div
-                            key={poi.id}
-                            className="w-[180px] h-[200px] shrink-0 rounded-2xl relative overflow-hidden group select-none shadow-sm hover:shadow-md transition-all border border-gray-100"
-                          >
-                            {/* Ảnh toàn thẻ */}
-                            <img
-                              src={getPoiImage(poi)}
-                              alt={poi.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
-                              loading="lazy"
-                            />
-
-                            {/* Nút yêu thích & Menu ... góc trên phải (Chuẩn Ảnh 1, 2) */}
-                            <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void toggleSaved(String(poi.id), poi);
-                                }}
-                                className={`w-7 h-7 rounded-full backdrop-blur-xs flex items-center justify-center transition shadow-xs cursor-pointer active:scale-90 ${
-                                  savedIds.has(String(poi.id)) || savedIds.has(poi.name)
-                                    ? 'bg-white/95 text-rose-500 hover:bg-white ring-1 ring-rose-200'
-                                    : 'bg-black/40 hover:bg-black/60 text-white'
-                                }`}
-                                title={
-                                  savedIds.has(String(poi.id)) || savedIds.has(poi.name)
-                                    ? 'Bỏ thích địa điểm'
-                                    : 'Thả tim yêu thích (Lưu vào Đã lưu)'
-                                }
-                              >
-                                <Heart
-                                  size={14}
-                                  className={
-                                    savedIds.has(String(poi.id)) || savedIds.has(poi.name)
-                                      ? 'fill-rose-500 text-rose-500'
-                                      : 'text-white hover:text-rose-400'
-                                  }
-                                />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveIdeaMenuPoiId(isMenuOpen ? null : poi.id);
-                                }}
-                                className="w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xs flex items-center justify-center text-white transition shadow-xs cursor-pointer"
-                                title="Tùy chọn địa điểm"
-                              >
-                                <MoreHorizontal size={14} />
-                              </button>
-                            </div>
-
-                            {/* Menu popover khi bấm ... (Chuẩn Ảnh 2) */}
-                            {isMenuOpen && (
-                              <div
-                                className="absolute right-2 top-10 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 p-1.5 z-50 text-xs animate-fadeIn text-gray-800"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedMapPoiId(poi.id);
-                                    setActiveIdeaMenuPoiId(null);
-                                  }}
-                                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-medium flex items-center gap-2 cursor-pointer"
-                                >
-                                  <ExternalLink size={13} />
-                                  <span className="truncate">Xem {poi.name}</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveIdeaAddDayPoiId(activeIdeaAddDayPoiId === poi.id ? null : poi.id);
-                                  }}
-                                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-medium flex items-center justify-between cursor-pointer"
-                                >
-                                  <span className="flex items-center gap-2">
-                                    <Clock size={13} /> Thêm vào lịch trình
-                                  </span>
-                                  <ChevronRight
-                                    size={13}
-                                    className={activeIdeaAddDayPoiId === poi.id ? 'rotate-90 transition-transform' : 'transition-transform'}
-                                  />
-                                </button>
-                                {activeIdeaAddDayPoiId === poi.id && (
-                                  <div className="pl-3 pr-1 py-1 space-y-1 bg-gray-50 rounded-xl my-1">
-                                    {plan.days.map((d) => (
-                                      <button
-                                        key={d.day_number}
-                                        type="button"
-                                        onClick={() => handleAddIdeaToDay(d.day_number, poi)}
-                                        className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-black hover:text-white text-xs font-semibold flex items-center justify-between cursor-pointer"
-                                      >
-                                        <span>Ngày {d.day_number}</span>
-                                        <span className="text-[10px] opacity-70">{d.stops.length} điểm</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                                <div className="border-t border-gray-100 my-1"></div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    void toggleSaved(String(poi.id), poi);
-                                    setActiveIdeaMenuPoiId(null);
-                                  }}
-                                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-medium flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Heart
-                                    size={13}
-                                    className={
-                                      savedIds.has(String(poi.id)) || savedIds.has(poi.name)
-                                        ? 'fill-rose-500 text-rose-500'
-                                        : 'text-gray-500'
-                                    }
-                                  />
-                                  <span>
-                                    {savedIds.has(String(poi.id)) || savedIds.has(poi.name)
-                                      ? 'Bỏ khỏi Đã lưu'
-                                      : 'Lưu vào Đã lưu'}
-                                  </span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleToggleIdeaInTrip(poi.id);
-                                    setActiveIdeaMenuPoiId(null);
-                                  }}
-                                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-50 text-rose-600 font-medium flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Trash2 size={13} /> Xóa khỏi Ý tưởng
-                                </button>
-                              </div>
-                            )}
-
-                            {/* Lớp gradient tối dần với Tên và Phân loại đè lên ảnh (Chuẩn Ảnh 1) */}
-                            <div className="absolute inset-x-0 bottom-0 pt-12 pb-2.5 px-3 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex flex-col justify-end pointer-events-none">
-                              <h3
-                                className="text-white font-bold text-[13.5px] leading-tight truncate drop-shadow-sm"
-                                title={poi.name}
-                              >
-                                {poi.name}
-                              </h3>
-                              <p className="text-white/80 text-[11px] font-medium flex items-center gap-1 mt-0.5 truncate drop-shadow-xs">
-                                {getCategoryIcon(poi.category)}
-                                <span>{formatCategoryLabel(poi.category)}</span>
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Nút mũi tên sang phải (Chuẩn Ảnh 2) */}
-                    <button
-                      type="button"
-                      onClick={() => handleScrollIdeas('right')}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-gray-700 hover:text-black transition z-10 cursor-pointer opacity-90 hover:opacity-100 hover:scale-105"
-                      title="Xem tiếp các ý tưởng"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
+                  <ItineraryIdeasCarousel
+                    pois={filteredIdeaPois}
+                    days={plan.days}
+                    savedIds={savedIds}
+                    activeIdeaMenuPoiId={activeIdeaMenuPoiId}
+                    activeIdeaAddDayPoiId={activeIdeaAddDayPoiId}
+                    onSetActiveIdeaMenuPoiId={setActiveIdeaMenuPoiId}
+                    onSetActiveIdeaAddDayPoiId={setActiveIdeaAddDayPoiId}
+                    onToggleSaved={(poiId, poi) => void toggleSaved(poiId, poi)}
+                    onSelectPoi={(poiId) => setSelectedMapPoiId(poiId)}
+                    onAddIdeaToDay={handleAddIdeaToDay}
+                    onRemoveIdeaFromTrip={handleToggleIdeaInTrip}
+                  />
                 )}
 
                 {/* Nút + Thêm ở chân dải Ý tưởng (Chuẩn Ảnh 1) */}
@@ -2294,118 +1990,19 @@ export default function TripItineraryView({
             </section>
 
             {/* Bảng Tối ưu Lộ trình & Ước tính Carbon (Phần 1) */}
-            <div className="no-print mb-3 rounded-2xl border border-emerald-200/80 bg-[#F7FBF8] p-3 space-y-2.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-800">
-                  <span className="inline-flex items-center gap-1.5 font-bold text-emerald-900">
-                    <Leaf size={14} className="text-emerald-700 shrink-0" />
-                    <span>{tripRouteSummary.totalRoadKm.toFixed(1)} km</span>
-                  </span>
-                  <span className="text-gray-400" aria-hidden="true">·</span>
-                  <span className="font-semibold text-gray-900">
-                    {formatCarbonAmount(tripRouteSummary.carbon.co2Grams)}
-                  </span>
-                  {tripRouteSummary.carbon.savedPercent > 0 && tripRouteSummary.totalRoadKm > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900">
-                      -{tripRouteSummary.carbon.savedPercent}% so với ô tô
-                    </span>
-                  )}
-                  {tripRouteSummary.openingConflictCount > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-950 border border-amber-300">
-                      <AlertTriangle size={12} className="shrink-0" />
-                      <span>{tripRouteSummary.openingConflictCount} điểm cần xem giờ mở cửa</span>
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleOptimizeAllDays}
-                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-gray-950 px-3.5 text-xs font-bold text-white hover:bg-gray-800 active:scale-95 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-                  title="Sắp xếp lại các điểm trong mỗi ngày theo cụm gần nhau để giảm đi vòng (zig-zag)"
-                >
-                  <RouteIcon size={14} aria-hidden="true" />
-                  <span>Tối ưu đường đi</span>
-                </button>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Chọn phương tiện ước tính phát thải CO2">
-                {TRANSPORT_MODES_META.map((mode) => {
-                  const active = transportMode === mode.id;
-                  const ModeIcon =
-                    mode.id === 'driving'
-                      ? Car
-                      : mode.id === 'motorcycle'
-                        ? Bike
-                        : mode.id === 'transit'
-                          ? Bus
-                          : Footprints;
-                  return (
-                    <button
-                      key={mode.id}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setTransportMode(mode.id)}
-                      className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
-                        active
-                          ? 'border-emerald-800 bg-emerald-800 text-white shadow-2xs'
-                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <ModeIcon size={13} aria-hidden="true" />
-                      <span>{mode.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Real-time Budget Cap Summary (C_total vs B_max) */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-emerald-200/70">
-                <div
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
-                    budgetSummary.isOverBudget
-                      ? 'border-amber-300 bg-amber-100 text-amber-950'
-                      : 'border-emerald-300 bg-emerald-100/80 text-emerald-950'
-                  }`}
-                >
-                  <Wallet size={13} className="shrink-0" aria-hidden="true" />
-                  {budgetSummary.maxBudget !== null ? (
-                    budgetSummary.isOverBudget ? (
-                      <span>
-                        Vượt ngân sách {formatVnd(Math.abs(budgetSummary.remaining || 0))}:{' '}
-                        {formatVnd(budgetSummary.totalCost)} / {formatVnd(budgetSummary.maxBudget)}
-                      </span>
-                    ) : (
-                      <span>
-                        Ngân sách: {formatVnd(budgetSummary.totalCost)} / {formatVnd(budgetSummary.maxBudget)} ({budgetSummary.percentUsed}%)
-                      </span>
-                    )
-                  ) : (
-                    <span>
-                      Chi phí dự kiến: {formatVnd(budgetSummary.totalCost)} ({trip.peopleCount || 1} khách)
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {optimizeFeedback && (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="flex items-start justify-between gap-2 rounded-xl bg-white border border-emerald-200 px-3 py-2 text-xs text-emerald-950 font-medium"
-                >
-                  <span>{optimizeFeedback}</span>
-                  <button
-                    type="button"
-                    onClick={() => setOptimizeFeedback(null)}
-                    aria-label="Đóng thông báo tối ưu"
-                    className="text-gray-500 hover:text-gray-900 cursor-pointer shrink-0 p-0.5"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
+            <ItineraryCarbonBudgetPanel
+              totalRoadKm={tripRouteSummary.totalRoadKm}
+              carbon={tripRouteSummary.carbon}
+              openingConflictCount={tripRouteSummary.openingConflictCount}
+              transportMode={transportMode}
+              onChangeTransportMode={setTransportMode}
+              onOptimizeAllDays={handleOptimizeAllDays}
+              budgetSummary={budgetSummary}
+              peopleCount={trip.peopleCount || 1}
+              formatVnd={formatVnd}
+              optimizeFeedback={optimizeFeedback}
+              onDismissOptimizeFeedback={() => setOptimizeFeedback(null)}
+            />
 
             {/* Danh sách các ngày theo chiều dọc (Chuẩn Ảnh 1, 4 - ĐÃ BỎ DẤU CỘNG Ở HEADER NGÀY) */}
             <div className="space-y-4 pb-10">
@@ -3083,577 +2680,84 @@ export default function TripItineraryView({
             CỘT PHẢI: BẢN ĐỒ LỘ TRÌNH ĐỒNG BỘ (CHỈ HIỆN KHI KHÔNG PHẢI DRAWER MODE)
         ════════════════════════════════════════════════════════ */}
         {!isDrawerMode && (
-          <section className={`${isMapExpanded ? 'block' : 'hidden md:block'} flex-1 h-full relative bg-white overflow-hidden`} data-purpose="right-panel-container">
-            <div className="w-full h-full p-2 md:pl-3 md:pr-6 lg:pr-[36px] md:py-4 md:pb-6">
-              <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
-                {/* Bộ chọn xem đường đi theo ngày dạng Dropdown dọc (Chuẩn yêu cầu: "thay cái dãy ngày, thành kiểu xem đường đi của ngày, khi mở thì sẽ hiện hàng dọc ngày nào ngày nào") */}
-                <div className="absolute top-3.5 right-3.5 z-[400] flex flex-col items-end">
-                  <button
-                    type="button"
-                    onClick={() => setShowDayFilterDropdown((prev) => !prev)}
-                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/95 hover:bg-white text-gray-900 font-bold text-xs shadow-md border border-gray-200/90 transition cursor-pointer active:scale-95 group"
-                    title="Bấm để chọn xem đường đi theo từng ngày"
-                  >
-                    <span className="text-emerald-600 text-xs">🗺️</span>
-                    <span>
-                      {mapDayFilter === 'all' ? 'Đường đi: Tất cả các ngày' : `Đường đi: Ngày ${mapDayFilter}`}
-                    </span>
-                    <ChevronDown size={13} className={`text-gray-400 group-hover:text-black transition-transform duration-200 ${showDayFilterDropdown ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {/* Dropdown danh sách hàng dọc các ngày */}
-                  {showDayFilterDropdown && (
-                    <div 
-                      className="mt-2 w-[220px] max-h-[340px] overflow-y-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/90 p-1.5 space-y-1 z-[500] auto-hide-scrollbar animate-fadeIn"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMapDayFilter('all');
-                          setShowDayFilterDropdown(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer text-left ${
-                          mapDayFilter === 'all'
-                            ? 'bg-black text-white shadow-xs'
-                            : 'text-gray-700 hover:text-black hover:bg-gray-100/80'
-                        }`}
-                      >
-                        <span>Tất cả các ngày</span>
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                          mapDayFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
-                        }`}>
-                          Toàn bộ
-                        </span>
-                      </button>
-
-                      <div className="h-px bg-gray-100 my-1"></div>
-
-                      {plan.days.map((day) => {
-                        const isSelected = mapDayFilter === day.day_number;
-                        return (
-                          <button
-                            key={day.day_number}
-                            type="button"
-                            onClick={() => {
-                              setMapDayFilter(day.day_number);
-                              setShowDayFilterDropdown(false);
-                            }}
-                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer text-left ${
-                              isSelected
-                                ? 'bg-black text-white shadow-xs'
-                                : 'text-gray-700 hover:text-black hover:bg-gray-100/80'
-                            }`}
-                          >
-                            <span className="truncate">
-                              Ngày {day.day_number}
-                              {day.stops.length > 0 && (
-                                <span className="font-normal opacity-70 ml-1 text-[11px]">
-                                  ({day.stops.length} điểm)
-                                </span>
-                              )}
-                            </span>
-                            {day.stops.length > 0 && (
-                              <span className={`text-[10px] px-1.5 py-0.2 rounded-full shrink-0 ml-1.5 ${
-                                isSelected ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
-                              }`}>
-                                {day.stops.length}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* Bản đồ Leaflet sạch sẽ */}
-                <div className="w-full h-full relative">
-                  <PoiMap
-                    pois={mapPois.length > 0 ? mapPois : allPois.slice(0, 10)}
-                    selectedPoiId={selectedMapPoiId}
-                    hoveredPoiId={hoveredStopId}
-                    onSelectPoi={(id) => setSelectedMapPoiId(id)}
-                    onHoverPoi={(id) => setHoveredStopId(id)}
-                    showMapLoader={false}
-                    isExpanded={isMapExpanded}
-                    onToggleExpand={() => {
-                      setIsMapExpanded((prev) => !prev);
-                      setTimeout(() => {
-                        window.dispatchEvent(new Event('resize'));
-                      }, 200);
-                    }}
-                    favorites={savedIds}
-                    pendingFavorites={pendingIds}
-                    onToggleFavorite={(_id, p) => { if (p) openCollectionPicker(p); }}
-                    addedTrips={new Set(tripIdeas)}
-                    onToggleAddTrip={(id) => handleToggleIdeaInTrip(id)}
-                    routeCoordinates={routeCoordinates}
-                    numberedOrderMap={numberedOrderMap}
-                    routeDurationText={routeDurationText}
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
+          <ItineraryMapPanel
+            isMapExpanded={isMapExpanded}
+            onToggleExpand={() => {
+              setIsMapExpanded((prev) => !prev);
+              setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+              }, 200);
+            }}
+            mapDayFilter={mapDayFilter}
+            onChangeMapDayFilter={setMapDayFilter}
+            days={plan.days}
+            pois={mapPois.length > 0 ? mapPois : allPois.slice(0, 10)}
+            selectedMapPoiId={selectedMapPoiId}
+            hoveredStopId={hoveredStopId}
+            onSelectPoi={(id) => setSelectedMapPoiId(id)}
+            onHoverPoi={(id) => setHoveredStopId(id)}
+            savedIds={savedIds}
+            pendingIds={pendingIds}
+            onToggleFavorite={(_id, p) => {
+              if (p) openCollectionPicker(p);
+            }}
+            tripIdeas={tripIdeas}
+            onToggleAddTrip={handleToggleIdeaInTrip}
+            routeCoordinates={routeCoordinates}
+            numberedOrderMap={numberedOrderMap}
+            routeDurationText={routeDurationText}
+          />
         )}
       </div>
 
       {/* ─── MODAL TÌM KIẾM & THÊM VÀO CHUYẾN ĐI (CHUẨN 1:1 TRIPOVERVIEWVIEW & MINDTRIP) ─── */}
       {showAddIdeasModal && (
-        <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-xs py-6 px-4 animate-fadeIn"
-          onClick={() => {
+        <ItineraryAddPlacesModal
+          activeDayAddModal={activeDayAddModal}
+          modalTab={modalTab}
+          onChangeModalTab={setModalTab}
+          ideaPoisCount={ideaPois.length}
+          savedCount={savedCount}
+          modalCity={modalCity}
+          onChangeModalCity={setModalCity}
+          modalSearch={modalSearch}
+          onChangeModalSearch={setModalSearch}
+          modalCategory={modalCategory}
+          onChangeModalCategory={setModalCategory}
+          filteredPois={modalFilteredPois}
+          days={plan.days}
+          tripIdeas={tripIdeas}
+          customIdeaInput={customIdeaInput}
+          onChangeCustomIdeaInput={setCustomIdeaInput}
+          onClose={() => {
             setShowAddIdeasModal(false);
             setActiveDayAddModal(null);
           }}
-        >
-          <div
-            className="relative bg-white w-[750px] max-w-[calc(100vw-32px)] h-[calc(100vh-80px)] max-h-[820px] rounded-[24px] shadow-2xl flex flex-col border border-gray-100 overflow-hidden z-[1010]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Phần cố định: Tiêu đề + tab (có đường kẻ ngang dưới #eee, cao ~72px) */}
-            <div className="relative h-[72px] shrink-0 border-b border-gray-200 bg-white rounded-t-[24px] flex flex-col justify-between">
-              {/* Nút đóng × */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddIdeasModal(false);
-                  setActiveDayAddModal(null);
-                }}
-                className="absolute top-3.5 left-4 w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer z-20"
-                title="Đóng"
-              >
-                <X size={17} />
-              </button>
-
-              {/* Tiêu đề căn giữa */}
-              <div className="pt-3 text-center">
-                <h3 className="font-bold text-[15px] text-gray-950">
-                  {activeDayAddModal ? `Thêm vào Ngày ${activeDayAddModal}` : 'Thêm vào chuyến đi'}
-                </h3>
-              </div>
-
-              {/* Tabs: Tìm kiếm, (Từ Ý tưởng nếu có), Đã thích, Tùy chỉnh */}
-              <div className="px-6 flex items-center gap-6 text-[13.5px]">
-                <button
-                  type="button"
-                  onClick={() => setModalTab('search')}
-                  className={`pb-2.5 border-b-2 transition font-semibold cursor-pointer -mb-[1px] ${
-                    modalTab === 'search'
-                      ? 'border-black text-black font-bold'
-                      : 'border-transparent text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  Tìm kiếm
-                </button>
-                {activeDayAddModal !== null && (
-                  <button
-                    type="button"
-                    onClick={() => setModalTab('ideas')}
-                    className={`pb-2.5 border-b-2 transition font-semibold cursor-pointer flex items-center gap-1.5 -mb-[1px] ${
-                      modalTab === 'ideas'
-                        ? 'border-black text-black font-bold'
-                        : 'border-transparent text-gray-500 hover:text-gray-900'
-                    }`}
-                  >
-                    <span>Từ Ý tưởng ({ideaPois.length})</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setModalTab('saved')}
-                  className={`pb-2.5 border-b-2 transition font-semibold cursor-pointer flex items-center gap-1.5 -mb-[1px] ${
-                    modalTab === 'saved'
-                      ? 'border-black text-black font-bold'
-                      : 'border-transparent text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  <Heart size={14} className={modalTab === 'saved' ? 'fill-red-500 text-red-500' : 'text-gray-400'} />
-                  <span>Đã thích</span>
-                  {savedCount > 0 ? (
-                    <span className="w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                      {savedCount}
-                    </span>
-                  ) : null}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalTab('custom')}
-                  className={`pb-2.5 border-b-2 transition font-semibold cursor-pointer -mb-[1px] ${
-                    modalTab === 'custom'
-                      ? 'border-black text-black font-bold'
-                      : 'border-transparent text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  Tùy chỉnh
-                </button>
-              </div>
-            </div>
-
-            {/* Vùng cuộn: Tên khu vực → Tìm kiếm → Lọc → Lưới thẻ */}
-            <div className="flex-1 overflow-y-auto px-6 pb-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-track]:bg-transparent">
-              {modalTab !== 'custom' ? (
-                <>
-                  {/* Tên khu vực */}
-                  <div className="pt-4 shrink-0">
-                    <div className="relative inline-block">
-                      <div
-                        onClick={() => setShowModalCityDropdown((prev) => !prev)}
-                        className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
-                      >
-                        <h2 className="text-[22px] font-bold text-gray-950 tracking-tight leading-tight group-hover:text-black">
-                          {modalCity === 'all' ? 'Đà Nẵng & Huế' : modalCity}
-                        </h2>
-                        <ChevronDown size={18} className="text-gray-950 group-hover:translate-y-0.5 transition-transform" />
-                      </div>
-
-                      {showModalCityDropdown && (
-                        <div className="absolute top-10 left-0 bg-white shadow-xl border border-gray-100 rounded-xl py-1.5 w-48 z-50 animate-fadeIn">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setModalCity('all');
-                              setShowModalCityDropdown(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-[13.5px] hover:bg-gray-50 flex items-center justify-between cursor-pointer ${
-                              modalCity === 'all' ? 'font-bold text-black' : 'text-gray-700'
-                            }`}
-                          >
-                            <span>Tất cả khu vực (Đà Nẵng & Huế)</span>
-                            {modalCity === 'all' && <Check size={14} className="font-bold" />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setModalCity('Đà Nẵng');
-                              setShowModalCityDropdown(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-[13.5px] hover:bg-gray-50 flex items-center justify-between cursor-pointer ${
-                              modalCity === 'Đà Nẵng' ? 'font-bold text-black' : 'text-gray-700'
-                            }`}
-                          >
-                            <span>Đà Nẵng</span>
-                            {modalCity === 'Đà Nẵng' && <Check size={14} className="font-bold" />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setModalCity('Huế');
-                              setShowModalCityDropdown(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-[13.5px] hover:bg-gray-50 flex items-center justify-between cursor-pointer ${
-                              modalCity === 'Huế' ? 'font-bold text-black' : 'text-gray-700'
-                            }`}
-                          >
-                            <span>Huế</span>
-                            {modalCity === 'Huế' && <Check size={14} className="font-bold" />}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Ô tìm kiếm & Nút bộ lọc */}
-                  <div className="mt-3 flex items-center gap-2.5 shrink-0">
-                    <div className="flex-1 relative flex items-center min-w-0">
-                      <Search size={16} className="text-gray-400 absolute left-4 pointer-events-none" />
-                      <input
-                        type="text"
-                        value={modalSearch}
-                        onChange={(e) => setModalSearch(e.target.value)}
-                        placeholder="Tìm kiếm địa điểm, di tích, ẩm thực..."
-                        className="w-full h-[42px] pl-10 pr-9 bg-white text-[13.5px] placeholder-gray-400 text-gray-900 rounded-full border border-gray-300 focus:border-black focus:outline-none shadow-2xs transition"
-                      />
-                      {modalSearch && (
-                        <button
-                          type="button"
-                          onClick={() => setModalSearch('')}
-                          className="absolute right-3.5 text-gray-400 hover:text-gray-600 cursor-pointer"
-                        >
-                          <X size={15} />
-                        </button>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setModalCategory('for-you');
-                        setModalSearch('');
-                        setModalCity('all');
-                      }}
-                      className="h-[42px] px-4 rounded-full border border-gray-300 hover:border-black hover:bg-gray-50 text-[13px] font-medium text-gray-800 transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-2xs"
-                    >
-                      <SlidersHorizontal size={15} />
-                      <span>Bộ lọc</span>
-                    </button>
-                  </div>
-
-                  {/* Hàng danh mục tabs (6 danh mục chuẩn) */}
-                  <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar shrink-0">
-                    {MODAL_CATEGORY_TABS.map((tab) => {
-                      const isActive = modalCategory === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setModalCategory(tab.id)}
-                          className={`whitespace-nowrap h-[32px] px-3.5 text-[12.5px] rounded-full transition-all cursor-pointer shrink-0 flex items-center justify-center ${
-                            isActive
-                              ? 'bg-black text-white font-medium shadow-xs'
-                              : 'text-gray-700 hover:text-black hover:bg-gray-100 font-medium'
-                          }`}
-                        >
-                          {tab.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Tiêu đề nhóm */}
-                  <div className="mt-4 shrink-0">
-                    <h4 className="font-bold text-[16px] text-gray-950 tracking-tight">
-                      {modalTab === 'ideas'
-                        ? `Ý tưởng trong chuyến đi (${ideaPois.length})`
-                        : modalTab === 'saved'
-                        ? 'Địa điểm đã thích ở trang Khám phá'
-                        : modalCategory === 'quan-an' || modalCategory === 'restaurants'
-                        ? 'Ẩm thực & Cafe'
-                        : modalCategory === 'di-tich' || modalCategory === 'experiences'
-                        ? 'Trải nghiệm'
-                        : modalCategory === 'canh-quan' || modalCategory === 'scenic'
-                        ? 'Địa điểm'
-                        : modalCategory === 'chua'
-                        ? 'Tâm linh'
-                        : modalCategory === 'all'
-                        ? 'Tất cả địa điểm'
-                        : 'Trải nghiệm đề xuất'}
-                    </h4>
-                  </div>
-
-                  {/* Lưới thẻ 3 cột chuẩn 1:1 TripOverviewView & Mindtrip */}
-                  <div className="mt-3 grid grid-cols-3 gap-x-3.5 gap-y-5">
-                    {modalFilteredPois.length === 0 ? (
-                      <div className="col-span-full py-16 text-center text-gray-500 text-sm">
-                        {modalTab === 'ideas'
-                          ? 'Kho Ý tưởng hiện chưa có địa điểm nào phù hợp với bộ lọc.'
-                          : modalTab === 'saved'
-                          ? savedCount === 0
-                            ? 'Bạn chưa thích địa điểm nào ở trang Khám phá. Hãy bấm thả tim ❤️ tại trang Explore để chọn nhanh vào Ý tưởng tại đây!'
-                            : 'Không tìm thấy địa điểm đã thích nào phù hợp với bộ lọc hiện tại.'
-                          : 'Không tìm thấy địa điểm phù hợp với bộ lọc hiện tại.'}
-                      </div>
-                    ) : (
-                      modalFilteredPois.map((poi) => {
-                        const isAddedToCurrentDay = activeDayAddModal !== null
-                          ? plan.days.find((d) => d.day_number === activeDayAddModal)?.stops.some((s) => s.poi_id === poi.id)
-                          : false;
-                        const isAddedToIdeas = tripIdeas.includes(poi.id);
-                        const isAdded = activeDayAddModal !== null ? isAddedToCurrentDay : isAddedToIdeas;
-                        const ratingVal = (typeof poi.rating === 'number' ? poi.rating : Number(poi.rating || 4.5)).toFixed(1);
-
-                        return (
-                          <div
-                            key={poi.id}
-                            onClick={() => {
-                              setSelectedMapPoiId(poi.id);
-                              setShowAddIdeasModal(false);
-                              setActiveDayAddModal(null);
-                            }}
-                            className="flex flex-col group cursor-pointer text-left select-none"
-                          >
-                            {/* Ảnh thẻ tỉ lệ 1.05 : 1, bo góc 16px */}
-                            <div className="relative aspect-[1.05/1] w-full rounded-[16px] overflow-hidden bg-gray-100 shadow-2xs">
-                              <img
-                                src={getPoiImage(poi)}
-                                alt={poi.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                onError={(e) => {
-                                  e.currentTarget.src = 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
-                                }}
-                              />
-
-                              {/* Nút “+ Thêm” trên thẻ */}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (activeDayAddModal !== null) {
-                                    handleAddIdeaToDay(activeDayAddModal, poi);
-                                  } else {
-                                    handleToggleIdeaInTrip(poi.id);
-                                  }
-                                }}
-                                className={`absolute top-2.5 right-2.5 h-[28px] px-2.5 rounded-full font-semibold text-[12px] transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1 z-10 ${
-                                  isAdded
-                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                    : 'bg-white text-gray-900 hover:bg-black hover:text-white'
-                                }`}
-                              >
-                                {isAdded ? (
-                                  <>
-                                    <Check size={13} strokeWidth={2.5} />
-                                    <span>Đã thêm</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Plus size={13} strokeWidth={2.5} />
-                                    <span>Thêm</span>
-                                  </>
-                                )}
-                              </button>
-
-                              {/* 5 chấm phân trang dưới đáy ảnh chuẩn Mindtrip */}
-                              <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1 pointer-events-none z-10">
-                                <span className="w-1.5 h-1.5 rounded-full bg-white shadow-xs" />
-                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                              </div>
-
-                              {/* Icon ⓘ ở góc dưới bên phải */}
-                              <div className="absolute bottom-2.5 right-2.5 pointer-events-none z-10 text-white/90 drop-shadow-xs">
-                                <Info size={13} />
-                              </div>
-                            </div>
-
-                            {/* Dưới ảnh thẻ */}
-                            <div className="mt-2 flex items-baseline justify-between gap-1.5 min-w-0">
-                              <h4 className="font-bold text-[13px] text-gray-950 truncate leading-snug group-hover:text-black" title={poi.name}>
-                                {poi.name}
-                              </h4>
-                              {Number(poi.rating) > 0 && (
-                                <span className="text-[12px] font-bold text-gray-950 shrink-0 flex items-center gap-0.5">
-                                  <Star size={11} className="fill-black text-black" />
-                                  <span>{ratingVal}</span>
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-gray-500 font-normal">
-                              <MapPin size={11} className="text-gray-400 shrink-0" />
-                              <span className="truncate">
-                                {(() => {
-                                  const isCafe = Boolean(
-                                    poi.sub_category?.includes('cafe') || 
-                                    poi.sub_category?.includes('coffee') || 
-                                    /coffee|cafe|cà phê|tiệm trà|workspace/i.test(poi.name)
-                                  );
-                                  if (isCafe) return '☕ Quán cà phê';
-                                  if (poi.category === 'quan-an') return '🍽️ Ẩm thực';
-                                  if (poi.category === 'di-tich') return '🏛️ Di tích lịch sử';
-                                  if (poi.category === 'canh-quan') return '🌿 Cảnh quan & Thắng cảnh';
-                                  return '⛩️ Chùa & Tâm linh';
-                                })()}
-                              </span>
-                            </div>
-
-                            <div className="mt-0.5 text-[11.5px] text-gray-400 font-normal truncate">
-                              {poi.address || `${poi.city}, Việt Nam`}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </>
-              ) : (
-                /* Tab Tùy chỉnh (Custom) */
-                <div className="pt-4 flex flex-col space-y-4 max-w-lg">
-                  <p className="text-[13.5px] text-gray-700 leading-relaxed">
-                    Bạn có một địa điểm riêng muốn lưu vào chuyến đi này? Nhập tên bên dưới để thêm ngay vào Ý tưởng:
-                  </p>
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={customIdeaInput}
-                      onChange={(e) => setCustomIdeaInput(e.target.value)}
-                      placeholder="Ví dụ: Quán cà phê Yên, Tiệm bánh mì..."
-                      className="w-full h-[42px] px-4 rounded-xl border border-gray-300 focus:border-black focus:outline-none text-[13.5px] shadow-2xs"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && customIdeaInput.trim()) {
-                          handleAddCustomIdea();
-                        }
-                      }}
-                    />
-                    <div className="flex justify-end gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCustomIdeaInput('');
-                          setShowAddIdeasModal(false);
-                          setActiveDayAddModal(null);
-                        }}
-                        className="h-[38px] px-5 rounded-full border border-gray-200 text-gray-600 text-[13px] font-medium hover:bg-gray-50 transition cursor-pointer"
-                      >
-                        Hủy
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleAddCustomIdea}
-                        className="h-[38px] px-6 rounded-full bg-black text-white font-bold text-[13px] hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-2xs"
-                      >
-                        {activeDayAddModal ? `+ Thêm vào Ngày ${activeDayAddModal}` : '+ Thêm vào ý tưởng'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+          onSelectPoi={(poiId) => {
+            setSelectedMapPoiId(poiId);
+            setShowAddIdeasModal(false);
+            setActiveDayAddModal(null);
+          }}
+          onAddToDay={handleAddIdeaToDay}
+          onToggleIdeaInTrip={handleToggleIdeaInTrip}
+          onSubmitCustomIdea={handleAddCustomIdea}
+          onResetFilters={() => {
+            setModalCategory('for-you');
+            setModalSearch('');
+            setModalCity('all');
+          }}
+        />
       )}
 
       {dayEditor && (
-        <div
-          className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 px-4 py-6"
-          onClick={() => setDayEditor(null)}
-          onKeyDown={(event) => { if (event.key === 'Escape') setDayEditor(null); }}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="day-editor-title"
-            className="relative w-full max-w-xl rounded-[28px] bg-white p-7 shadow-2xl sm:p-10"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button type="button" onClick={() => setDayEditor(null)} aria-label="Đóng" className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
-              <X size={21} />
-            </button>
-            <div className="text-center">
-              <h2 id="day-editor-title" className="text-2xl font-bold text-gray-950">
-                {dayEditor.field === 'title' ? 'Thêm tiêu đề' : 'Thêm ghi chú'}
-              </h2>
-              <p className="mt-2 text-base text-gray-700">Ngày {dayEditor.dayNumber}{plan.days.find((day) => day.day_number === dayEditor.dayNumber)?.date ? ` · ${displayDateVi(plan.days.find((day) => day.day_number === dayEditor.dayNumber)?.date)}` : ''}</p>
-            </div>
-            {dayEditor.field === 'title' ? (
-              <input
-                autoFocus
-                type="text"
-                maxLength={200}
-                value={dayEditorValue}
-                onChange={(event) => setDayEditorValue(event.target.value)}
-                onKeyDown={(event) => { if (event.key === 'Enter') saveDayEditor(); }}
-                placeholder="Nhập tiêu đề cho ngày này"
-                className="mt-9 h-16 w-full rounded-full border-2 border-gray-900 px-6 text-lg text-gray-950 placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-              />
-            ) : (
-              <textarea
-                autoFocus
-                maxLength={2000}
-                rows={4}
-                value={dayEditorValue}
-                onChange={(event) => setDayEditorValue(event.target.value)}
-                placeholder="Ghi chú cho ngày này"
-                className="mt-9 w-full resize-y rounded-2xl border border-gray-300 px-5 py-4 text-base text-gray-950 placeholder:text-gray-500 focus:border-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-              />
-            )}
-            <button type="button" onClick={saveDayEditor} className="mt-8 min-h-14 w-full rounded-full bg-gray-950 px-6 text-lg font-semibold text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2">
-              Lưu
-            </button>
-          </section>
-        </div>
+        <TripDayEditorModal
+          dayEditor={dayEditor}
+          dayDate={plan.days.find((day) => day.day_number === dayEditor.dayNumber)?.date}
+          value={dayEditorValue}
+          onChangeValue={setDayEditorValue}
+          onClose={() => setDayEditor(null)}
+          onSave={saveDayEditor}
+        />
       )}
     </div>
   );

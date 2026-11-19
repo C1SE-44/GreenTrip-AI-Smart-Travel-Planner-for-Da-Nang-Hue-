@@ -1,0 +1,19 @@
+---
+description: Quy tắc làm việc bắt buộc của dự án GreenTrip AI cho AI Agent và thành viên nhóm
+globs:
+alwaysApply: true
+---
+
+# GreenTrip AI — Mandatory Project Rules
+
+Trước khi sửa bất kỳ file nào trong repository, bắt buộc đọc và tuân thủ đầy đủ hai tài liệu gốc:
+1. `AGENTS.md` (Tech stack, cấu trúc thư mục, 7 nguyên tắc cốt lõi, Git Flow, UI/UX 10 bước).
+2. `PRD.md` (Đối tượng người dùng, danh sách tính năng, luồng thao tác, phân quyền API).
+
+## Checklist bắt buộc mỗi phiên làm việc
+- Đối chiếu `PRD.md` và xác nhận phạm vi task nhỏ trước khi viết code.
+- Giữ code đơn giản, rõ ràng, đặt tên hàm/biến có ý nghĩa, chỉ viết chú thích khi cần giải thích lý do.
+- Không tự ý sửa code thuộc phạm vi của thành viên khác (xem `.github/CODEOWNERS`) nếu chưa trao đổi/xin phép, trừ lỗi cực kỳ nghiêm trọng/khẩn cấp.
+- Đảm bảo có commit checkpoint trước khi sửa lớn; mỗi commit là một đơn vị công việc nhỏ hoàn chỉnh (Conventional Commits).
+- Tự kiểm tra `git diff`, chạy test chức năng / API / phân quyền trước khi báo xong.
+- Sau mỗi task, luôn báo cáo rõ 2 phần: **Đã sửa những gì** và **Cần kiểm tra những gì**.

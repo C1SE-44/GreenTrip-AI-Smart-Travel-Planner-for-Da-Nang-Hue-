@@ -1,5 +1,22 @@
-import pytest
+from pathlib import Path
+import sys
 from unittest.mock import MagicMock, patch
+
+import pytest
+
+BACKEND_DIR = str(Path(__file__).resolve().parents[1])
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
+from app.rate_limit import rate_limiter
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter_state():
+    """Keep sliding-window rate limits isolated across test cases."""
+    rate_limiter.reset()
+    yield
+    rate_limiter.reset()
 
 
 @pytest.fixture(autouse=True)

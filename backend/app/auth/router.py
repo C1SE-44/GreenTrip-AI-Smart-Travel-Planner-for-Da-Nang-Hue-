@@ -4,6 +4,8 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from psycopg.errors import UniqueViolation
 
+from app.rate_limit import rate_limit
+
 from app.auth.email import send_otp_email, send_verification_email
 from app.auth.avatar_storage import AvatarStorageError, delete_avatar, get_signed_avatar_url, upload_avatar
 from app.auth.dependencies import get_current_user_id
@@ -358,7 +360,11 @@ def check_email(request: CheckEmailRequest) -> CheckEmailResponse:
         ) from error
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("auth_login", max_requests=10, window_seconds=60))],
+)
 def login(request: LoginRequest) -> TokenResponse:
     try:
         user_id = authenticate_user(request.email, request.password)
@@ -396,6 +402,7 @@ def _as_utc_datetime(value: datetime | str) -> datetime:
     "/signup",
     status_code=status.HTTP_201_CREATED,
     response_model=SignupResponse,
+    dependencies=[Depends(rate_limit("auth_signup", max_requests=5, window_seconds=60))],
 )
 def signup(request: SignupRequest) -> dict:
     email = request.email.strip().lower()
@@ -562,7 +569,11 @@ def verify_email(request: VerifyEmailRequest) -> VerifyEmailResponse:
         ) from error
 
 
-@router.post("/resend-verification", response_model=VerifyEmailResponse)
+@router.post(
+    "/resend-verification",
+    response_model=VerifyEmailResponse,
+    dependencies=[Depends(rate_limit("auth_resend_verification", max_requests=5, window_seconds=60))],
+)
 def resend_verification(request: ResendVerificationRequest) -> VerifyEmailResponse:
     email = request.email.strip().lower()
     try:
@@ -607,7 +618,11 @@ def resend_verification(request: ResendVerificationRequest) -> VerifyEmailRespon
         ) from error
 
 
-@router.post("/google", response_model=GoogleLoginResponse)
+@router.post(
+    "/google",
+    response_model=GoogleLoginResponse,
+    dependencies=[Depends(rate_limit("auth_google", max_requests=10, window_seconds=60))],
+)
 def google_login(request: GoogleLoginRequest) -> GoogleLoginResponse:
     google_user = verify_google_token(request.credential)
     if not google_user:
@@ -705,7 +720,11 @@ def google_login(request: GoogleLoginRequest) -> GoogleLoginResponse:
         ) from error
 
 
-@router.post("/verify-otp", response_model=TokenResponse)
+@router.post(
+    "/verify-otp",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("auth_verify_otp", max_requests=10, window_seconds=60))],
+)
 def verify_otp(request: VerifyOtpRequest) -> TokenResponse:
     session = verify_otp_session_token(request.otp_session_token)
     if not session or session["email"].lower() != request.email.lower():
@@ -802,7 +821,11 @@ def verify_otp(request: VerifyOtpRequest) -> TokenResponse:
         ) from error
 
 
-@router.post("/resend-otp", response_model=ResendOtpResponse)
+@router.post(
+    "/resend-otp",
+    response_model=ResendOtpResponse,
+    dependencies=[Depends(rate_limit("auth_resend_otp", max_requests=5, window_seconds=60))],
+)
 def resend_otp(request: ResendOtpRequest) -> ResendOtpResponse:
     session = verify_otp_session_token(request.otp_session_token)
     if not session or session["email"].lower() != request.email.lower():

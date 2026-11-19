@@ -1,10 +1,13 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+_DEV_JWT_SECRET = "greentrip-dev-secret-jwt-key-2026-very-secure"
+_INSECURE_JWT_DEFAULTS = frozenset({_DEV_JWT_SECRET, "change-me", ""})
+_DEPLOYED_ENVS = frozenset({"production", "prod", "staging"})
 
 
 class Settings(BaseSettings):
@@ -14,6 +17,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    APP_ENV: str = "development"
+    RATE_LIMIT_ENABLED: bool = True
     DATABASE_URL: str = ""
     SUPABASE_URL: str = ""
     SUPABASE_PUBLISHABLE_KEY: str = ""
@@ -25,7 +30,7 @@ class Settings(BaseSettings):
     NEO4J_USERNAME: str = ""
     NEO4J_PASSWORD: str = ""
     NEO4J_DATABASE: str = "neo4j"
-    JWT_SECRET_KEY: str = "greentrip-dev-secret-jwt-key-2026-very-secure"
+    JWT_SECRET_KEY: str = _DEV_JWT_SECRET
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, gt=0)
     FRONTEND_URL: str = "http://localhost:5173"
@@ -38,6 +43,18 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"
+
+    @model_validator(mode="after")
+    def validate_security_settings(self) -> "Settings":
+        normalized_env = self.APP_ENV.strip().lower() or "development"
+        self.APP_ENV = normalized_env
+        if normalized_env in _DEPLOYED_ENVS:
+            secret = self.JWT_SECRET_KEY.strip()
+            if secret in _INSECURE_JWT_DEFAULTS or len(secret) < 32:
+                raise ValueError(
+                    "JWT_SECRET_KEY must be set to a strong secret (>= 32 chars) when APP_ENV is staging or production."
+                )
+        return self
 
     @property
     def gemini_configured(self) -> bool:

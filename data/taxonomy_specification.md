@@ -328,5 +328,5 @@ Other open documents:
 - d:\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\backend\scripts\import_pois_supabase.py (LANGUAGE_PYTHON)
 - d:\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\frontend\src\pages\LoginPage.tsx (LANGUAGE_TSX)
 - d:\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\backend\scripts\format_pois_csv.py (LANGUAGE_PYTHON)
-- d:\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\get_otp.py (LANGUAGE_PYTHON)
+- d:\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\backend\scripts\dev\get_otp.py (LANGUAGE_PYTHON)
 </ADDITIONAL_METADATA>

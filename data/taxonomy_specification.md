@@ -316,17 +316,3 @@ Sơ đồ nguồn không mô tả thuật toán embedding, cách tính điểm t
 3. **Không đồng nhất điểm số với số đo thực tế:** `carbon_footprint_score` và `heritage_impact_score` được khai báo là điểm 1–100; tài liệu nguồn chưa cung cấp công thức hoặc đơn vị đo.
 4. **Tách hồ sơ người dùng khỏi POI:** `User Persona Vector` là khái niệm về sở thích người dùng; schema `SmartPoi` hiện mô tả địa điểm.
 5. **Kiểm chứng dữ liệu địa điểm:** tên POI, địa chỉ, giá, giờ mở cửa, đặc tính xanh và các ví dụ minh họa cần được xác minh trước khi đưa vào dữ liệu sản phẩm hoặc dùng làm nhãn huấn luyện.
-</USER_REQUEST>
-<ADDITIONAL_METADATA>
-The current local time is: 2026-10-25T22:53:42+07:00.
-
-The user's current state is as follows:
-Active Document: d:\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\docs\postman\GreenTrip_Local.postman_environment.json (LANGUAGE_JSON)
-Cursor is on line: 1
-Other open documents:
-- d:\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\docs\postman\GreenTrip_Local.postman_environment.json (LANGUAGE_JSON)
-- d:\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\backend\scripts\import_pois_supabase.py (LANGUAGE_PYTHON)
-- d:\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\frontend\src\pages\LoginPage.tsx (LANGUAGE_TSX)
-- d:\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\backend\scripts\format_pois_csv.py (LANGUAGE_PYTHON)
-- d:\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\get_otp.py (LANGUAGE_PYTHON)
-</ADDITIONAL_METADATA>

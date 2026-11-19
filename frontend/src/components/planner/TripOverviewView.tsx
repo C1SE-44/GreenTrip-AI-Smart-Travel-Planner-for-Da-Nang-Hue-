@@ -543,7 +543,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   // State bản đồ & chọn POI chi tiết
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredMapPoiId, setHoveredMapPoiId] = useState<string | null>(null);
-  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleDebouncedHover = useCallback((id: string | null) => {
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);

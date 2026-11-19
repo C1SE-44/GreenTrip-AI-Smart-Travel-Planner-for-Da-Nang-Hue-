@@ -353,7 +353,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   // 2. POI hiển thị bảng chi tiết sâu toàn màn hình (PoiDetailSection)
   const [fullDetailPoiId, setFullDetailPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
-  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleDebouncedHover = useCallback((id: string | null) => {
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);
@@ -454,7 +454,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const dragStartYRef = useRef(0);
   const dragStartScrollTopRef = useRef(0);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateThumb = useCallback(() => {
     const el = mainScrollRef.current;

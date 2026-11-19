@@ -36,7 +36,6 @@ Nền tảng lập kế hoạch du lịch bền vững thông minh dành cho **�
 ├── docker-compose.yml      # Chạy đồng bộ Backend + Frontend (+ optional local PostGIS)
 ├── PRD.md                  # Đặc tả sản phẩm: đối tượng dùng, tính năng, user flows, phân quyền
 ├── AGENTS.md               # Quy tắc làm việc bắt buộc cho thành viên & AI Agent (Antigravity/Codex)
-├── CLAUDE.md               # Con trỏ tự động nạp AGENTS.md & PRD.md cho Claude Code
 ├── .github/copilot-instructions.md  # Con trỏ tự động nạp quy tắc cho GitHub Copilot
 ├── .cursor/rules/          # Con trỏ tự động nạp quy tắc cho Cursor
 ├── CONTRIBUTING.md         # Nội quy nhóm & Git Flow Rule

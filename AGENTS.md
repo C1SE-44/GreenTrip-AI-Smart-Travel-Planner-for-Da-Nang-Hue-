@@ -1,6 +1,6 @@
 # GreenTrip AI — Quy Tắc Làm Việc Bắt Buộc (Team & AI Agent Rules)
 
-> **BẮT BUỘC ĐỌC TRƯỚC KHI SỬA CODE**: Mọi AI Agent (Antigravity, Copilot, Cursor, Claude Code, Codex...) và mọi thành viên dự án **GreenTrip AI** phải đọc file này cùng [PRD.md](PRD.md) trước khi thực hiện bất kỳ thay đổi mã nguồn nào.
+> **BẮT BUỘC ĐỌC TRƯỚC KHI SỬA CODE**: Mọi AI Agent (Antigravity, Copilot, Cursor, Codex...) và mọi thành viên dự án **GreenTrip AI** phải đọc file này cùng [PRD.md](PRD.md) trước khi thực hiện bất kỳ thay đổi mã nguồn nào.
 
 ---
 

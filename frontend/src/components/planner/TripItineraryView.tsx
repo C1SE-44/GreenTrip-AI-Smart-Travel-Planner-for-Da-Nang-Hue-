@@ -614,7 +614,7 @@ export default function TripItineraryView({
       setIsFetchingRecommendations(true);
       try {
         const response = await fetchJson<{ data?: BackendRecommendation[] }>(
-          '/api/v1/recommendations/poi',
+          '/v1/recommendations/poi',
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

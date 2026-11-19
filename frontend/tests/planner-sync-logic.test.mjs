@@ -112,7 +112,7 @@ test('PB11: Trợ lý xếp lịch dùng nhịp độ, ý tưởng, gợi ý và
   const overviewContent = fs.readFileSync(tripOverviewViewPath, 'utf8');
 
   assert.ok(viewContent.includes('recommendations?: Poi[]'), 'Itinerary view accepts PB09/Thiện recommendations');
-  assert.ok(viewContent.includes('fetchJson<{ data?: BackendRecommendation[] }>()') || viewContent.includes("'/api/v1/recommendations/poi'"), 'Standalone itinerary view can request live POI suggestions');
+  assert.ok(viewContent.includes('fetchJson<{ data?: BackendRecommendation[] }>()') || viewContent.includes("'/v1/recommendations/poi'"), 'Standalone itinerary view can request live POI suggestions');
   assert.ok(viewContent.includes('selectAutomaticPois(') && viewContent.includes('optimizeDays('), 'Smart action selects and schedules POIs');
   assert.ok(viewContent.includes('onClick={() => runSmartSchedule(level)}'), 'Each pacing preset applies a real re-schedule');
   assert.ok(viewContent.includes('aria-pressed={pacingLevel === level}'), 'Selected pacing is exposed accessibly');

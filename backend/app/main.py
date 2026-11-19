@@ -59,28 +59,11 @@ app.include_router(auth_router)
 app.include_router(pois_router)
 app.include_router(trips_router)
 app.include_router(saved_places_router)
-app.include_router(my_trips_router, prefix="/api/my-trips")
 app.include_router(my_trips_router, prefix="/my-trips")
-app.include_router(my_trips_router, prefix="/trips/my-trips")
-app.include_router(
-    recommendations_router,
-    prefix="/api/v1/recommendations",
-    tags=["Recommendations"],
-)
 app.include_router(
     recommendations_router,
     prefix="/v1/recommendations",
     tags=["Recommendations"],
-)
-app.include_router(
-    recommendations_router,
-    prefix="/recommendations",
-    tags=["Recommendations"],
-)
-app.include_router(
-    itineraries_router,
-    prefix="/api/itineraries",
-    tags=["Itineraries"],
 )
 app.include_router(
     itineraries_router,

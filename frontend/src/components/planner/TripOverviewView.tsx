@@ -694,7 +694,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     return recPoi || ideaPoi || relevantPois.find((p) => p.id === selectedMapPoiId) || null;
   }, [allPois, relevantPois, recommendedPois, ideaPois, selectedMapPoiId]);
 
-  // Gọi trực tiếp Backend API (/api/v1/recommendations/poi) khi Điểm đến, Ngân sách hoặc Ý tưởng thay đổi
+  // Gọi trực tiếp Backend API (/v1/recommendations/poi) khi Điểm đến, Ngân sách hoặc Ý tưởng thay đổi
   useEffect(() => {
     let isCancelled = false;
 
@@ -729,7 +729,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         }
 
         const res = await fetchJson<{ status: string; total: number; data: RecommendedPoiApiItem[] }>(
-          '/api/v1/recommendations/poi',
+          '/v1/recommendations/poi',
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

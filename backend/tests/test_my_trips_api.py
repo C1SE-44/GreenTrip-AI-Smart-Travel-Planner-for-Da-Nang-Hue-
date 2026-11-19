@@ -354,15 +354,16 @@ def test_export_pdf_success_and_vietnamese_unicode(client: TestClient, sample_tr
 
 
 def test_alternate_routes_mounted_correctly(client: TestClient, sample_trip_payload):
-    """Test 11: Verify both /api/my-trips and /trips/my-trips aliases resolve seamlessly."""
+    """Test 11: Verify canonical /my-trips route works and duplicate aliases are removed."""
     user_id = f"user_alias_{uuid.uuid4().hex[:6]}"
     headers = auth_header(user_id)
 
-    # POST via /api/my-trips
-    res_api = client.post("/api/my-trips", json=sample_trip_payload, headers=headers)
-    assert res_api.status_code == 201
+    res_canonical = client.post("/my-trips", json=sample_trip_payload, headers=headers)
+    assert res_canonical.status_code == 201
 
-    # GET list via /trips/my-trips
-    res_trips = client.get("/trips/my-trips", headers=headers)
-    assert res_trips.status_code == 200
-    assert len(res_trips.json()) >= 1
+    res_list = client.get("/my-trips", headers=headers)
+    assert res_list.status_code == 200
+    assert len(res_list.json()) >= 1
+
+    assert client.get("/api/my-trips", headers=headers).status_code == 404
+    assert client.get("/trips/my-trips", headers=headers).status_code == 404

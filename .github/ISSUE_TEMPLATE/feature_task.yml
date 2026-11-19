@@ -1,0 +1,38 @@
+name: Feature / Backlog Task
+description: Đề xuất hoặc phân rã task theo mã Product Backlog (#PBxx)
+title: "[#PB__] "
+labels: ["enhancement"]
+body:
+  - type: input
+    id: pb_code
+    attributes:
+      label: Mã Backlog (#PBxx) & Tên nhánh dự kiến
+      placeholder: "Ví dụ: #PB18 -> feature/#pb18_user-profile-settings"
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Mục tiêu 1 câu & Giá trị cho người dùng
+      placeholder: Ai dùng? Giải quyết vấn đề gì?
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Phạm vi thay đổi dự kiến
+      options:
+        - label: Backend API / Service
+        - label: Database Migration (`backend/migrations/`)
+        - label: Frontend UI / State
+        - label: Tests & Documentation
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Tiêu chí hoàn thành (Definition of Done)
+      placeholder: |
+        - [ ] Case hợp lệ hoạt động đúng
+        - [ ] Case lỗi / dữ liệu rỗng xử lý an toàn
+        - [ ] Pass pytest / npm run lint:ci / typecheck / test:unit / build
+    validations:
+      required: true

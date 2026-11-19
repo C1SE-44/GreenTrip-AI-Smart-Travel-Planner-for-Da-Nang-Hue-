@@ -1,0 +1,44 @@
+name: Bug Report
+description: Báo lỗi phát sinh trong Backend, Frontend, Data hoặc CI/CD
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: input
+    id: backlog_id
+    attributes:
+      label: Mã Backlog / Module liên quan (nếu có)
+      placeholder: "Ví dụ: #PB12, #PB14, Auth, Explore"
+  - type: dropdown
+    id: area
+    attributes:
+      label: Khu vực ảnh hưởng
+      options:
+        - Frontend
+        - Backend
+        - Database / Data
+        - CI / DevOps
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Mô tả lỗi (Đang làm gì -> Bị gì)
+      placeholder: Mô tả ngắn gọn điều kiện xảy ra lỗi và tác động.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Các bước tái hiện & Đã thử gì
+      placeholder: |
+        1. Mở trang / gọi endpoint ...
+        2. Nhập / bấm ...
+        3. Đã kiểm tra log / console ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Kết quả mong đợi vs Thực tế
+    validations:
+      required: true

@@ -1,6 +1,6 @@
 // TripOverviewView - Updated with Ideas & 2-Stage PB09 Recommendations
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { 
+import {
   ChevronLeft, 
   ChevronRight,
   Clock,
@@ -14,7 +14,6 @@ import {
   Heart, 
   Leaf,
   Plus, 
-  Minus,
   Send, 
   Car, 
   Mic, 
@@ -58,190 +57,19 @@ import {
   type ItineraryDay,
   type ItineraryStop,
 } from '@/services/itineraryService';
+import { FormattedCopilotMessage, type CopilotChatMessageItem } from './copilotMessageMarkdown';
+import {
+  MODAL_CATEGORY_TABS,
+  parseCategoryBudgets,
+  type CategoryBudgets,
+} from './tripOverviewConstants';
+import { TripWhereModal, TripWhenModal, TripWhoModal } from './TripParameterModals';
+import TripBudgetModal from './TripBudgetModal';
+import PlannerAddIdeasModal from './PlannerAddIdeasModal';
+import TripLearnDrawer from './TripLearnDrawer';
 
-export interface CopilotChatMessageItem {
-  id: string;
-  sender: 'user' | 'ai';
-  text: string;
-  timestamp?: string;
-  suggestedPois?: CopilotSuggestedPoi[];
-  avoidNotice?: string | null;
-  greenImpact?: string | null;
-  budgetImpact?: string | null;
-  actionType?: string;
-  factCheckWarning?: string | null;
-  mutationSummary?: string[];
-  updatedDaysCount?: number | null;
-  updatedDestination?: string | null;
-  hasMutatedItinerary?: boolean;
-  reasoningTrace?: string;
-}
-
-function findMatchingPoiIdForLabel(
-  label: string,
-  entityLookup?: Array<{ id: string; name: string }>
-): string | null {
-  if (!entityLookup || entityLookup.length === 0) return null;
-  const cleaned = label.replace(/\(.*?\)/g, '').trim().toLowerCase();
-  if (cleaned.length < 3) return null;
-  for (const item of entityLookup) {
-    const itemName = item.name.toLowerCase();
-    const itemClean = itemName.replace(/\(.*?\)/g, '').trim();
-    if (
-      itemName === cleaned ||
-      itemClean === cleaned ||
-      (cleaned.length >= 5 && (itemName.includes(cleaned) || cleaned.includes(itemClean)))
-    ) {
-      return item.id;
-    }
-  }
-  return null;
-}
-
-function renderInlineMarkdown(
-  text: string,
-  entityLookup?: Array<{ id: string; name: string }>,
-  onHoverPoi?: (id: string | null) => void,
-  onSelectPoi?: (id: string) => void
-) {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      const inner = part.slice(2, -2);
-      const matchedPoiId = findMatchingPoiIdForLabel(inner, entityLookup);
-      if (matchedPoiId && (onHoverPoi || onSelectPoi)) {
-        return (
-          <button
-            key={i}
-            type="button"
-            onMouseEnter={() => onHoverPoi?.(matchedPoiId)}
-            onMouseLeave={() => onHoverPoi?.(null)}
-            onClick={() => onSelectPoi?.(matchedPoiId)}
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded-md bg-emerald-50/90 hover:bg-emerald-100 text-emerald-950 font-semibold border border-emerald-300/80 transition-colors cursor-pointer align-baseline shadow-2xs"
-            title="Di chuột để sáng ghim trên bản đồ • Bấm để xem chi tiết địa điểm"
-          >
-            <MapPin size={11} className="text-emerald-700 shrink-0" />
-            <span className="underline decoration-emerald-600/50 underline-offset-2">{inner}</span>
-          </button>
-        );
-      }
-      return (
-        <strong key={i} className="font-semibold text-neutral-950">
-          {inner}
-        </strong>
-      );
-    }
-    return part;
-  });
-}
-
-export function FormattedCopilotMessage({
-  text,
-  entityLookup,
-  onHoverPoi,
-  onSelectPoi,
-}: {
-  text: string;
-  entityLookup?: Array<{ id: string; name: string }>;
-  onHoverPoi?: (id: string | null) => void;
-  onSelectPoi?: (id: string) => void;
-}) {
-  const lines = text.split('\n');
-
-  return (
-    <div className="space-y-1.5 text-[13px] leading-relaxed text-neutral-800">
-      {lines.map((line, idx) => {
-        const trimmed = line.trim();
-        if (!trimmed) {
-          return <div key={idx} className="h-1" />;
-        }
-
-        // Special Badges: Di chuyển, Chi phí, Lý do
-        if (trimmed.includes('📍') || trimmed.includes('Di chuyển:')) {
-          return (
-            <div key={idx} className="flex items-start gap-1.5 pl-2 my-1 text-[12px] text-neutral-700 bg-neutral-100/70 p-2 rounded-xl border border-neutral-200/50">
-              <span className="shrink-0 text-xs">📍</span>
-              <div className="flex-1 leading-normal">
-                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''), entityLookup, onHoverPoi, onSelectPoi)}
-              </div>
-            </div>
-          );
-        }
-
-        if (trimmed.includes('💸') || trimmed.includes('Chi phí')) {
-          return (
-            <div key={idx} className="flex items-start gap-1.5 pl-2 my-1 text-[12px] text-amber-950 bg-amber-50/70 p-2 rounded-xl border border-amber-200/50 font-mono">
-              <span className="shrink-0 text-xs">💸</span>
-              <div className="flex-1 leading-normal">
-                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''), entityLookup, onHoverPoi, onSelectPoi)}
-              </div>
-            </div>
-          );
-        }
-
-        if (trimmed.includes('✅') || trimmed.includes('Lý do:')) {
-          return (
-            <div key={idx} className="flex items-start gap-1.5 pl-2 my-1 text-[12px] text-emerald-950 bg-emerald-50/70 p-2 rounded-xl border border-emerald-200/50">
-              <span className="shrink-0 text-xs">✅</span>
-              <div className="flex-1 leading-normal">
-                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''), entityLookup, onHoverPoi, onSelectPoi)}
-              </div>
-            </div>
-          );
-        }
-
-        // Numbered list item
-        const numMatch = trimmed.match(/^(\d+)\.\s*(.*)/);
-        if (numMatch) {
-          const num = numMatch[1];
-          const content = numMatch[2];
-          return (
-            <div key={idx} className="flex items-start gap-2.5 pl-1 my-1.5">
-              <span className="font-bold text-[13px] text-neutral-900 shrink-0">
-                {num}.
-              </span>
-              <div className="flex-1 leading-normal text-neutral-800">
-                {renderInlineMarkdown(content, entityLookup, onHoverPoi, onSelectPoi)}
-              </div>
-            </div>
-          );
-        }
-
-        // Bullet point lines starting with "- " or "* "
-        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-          const content = trimmed.substring(2);
-          return (
-            <div key={idx} className="flex items-start gap-2 pl-1 my-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-2 shrink-0" />
-              <div className="flex-1 leading-normal text-neutral-800">
-                {renderInlineMarkdown(content, entityLookup, onHoverPoi, onSelectPoi)}
-              </div>
-            </div>
-          );
-        }
-
-        // Section header (e.g. "**1. Tiêu đề**" or "**Gợi ý 3 trải nghiệm...**")
-        if (trimmed.startsWith('**') && trimmed.endsWith('**') && !trimmed.slice(2, -2).includes('**')) {
-          const headerText = trimmed.slice(2, -2);
-          return (
-            <h4
-              key={idx}
-              className="font-bold text-[14px] text-neutral-950 mt-3 mb-1.5 pt-2 border-t border-neutral-100 first:border-0 first:pt-0 first:mt-0 tracking-tight"
-            >
-              {headerText}
-            </h4>
-          );
-        }
-
-        return (
-          <p key={idx} className="leading-relaxed">
-            {renderInlineMarkdown(trimmed, entityLookup, onHoverPoi, onSelectPoi)}
-          </p>
-        );
-      })}
-    </div>
-  );
-}
+export { FormattedCopilotMessage, type CopilotChatMessageItem };
+export { parseCategoryBudgets, type CategoryBudgets };
 
 export interface TripOverviewViewProps {
   trip: UserTrip;
@@ -251,89 +79,7 @@ export interface TripOverviewViewProps {
   onUpdateTrip?: (updatedTrip: UserTrip) => void;
 }
 
-// 5 lựa chọn ngân sách chuẩn Mindtrip theo ảnh người dùng gửi
-const BUDGET_OPTIONS = [
-  { id: 'any', label: 'Bất kỳ ngân sách nào', pillLabel: 'Ngân sách' },
-  { id: 'budget', label: '$  Với ngân sách hạn chế', pillLabel: '$ Ngân sách hạn chế' },
-  { id: 'standard', label: '$$  Giá cả hợp lý', pillLabel: '$$ Giá cả hợp lý' },
-  { id: 'upgrade', label: '$$$  Nâng cấp', pillLabel: '$$$ Nâng cấp' },
-  { id: 'luxury', label: '$$$$  Sang trọng', pillLabel: '$$$$ Sang trọng' },
-];
-
-// Danh mục bộ lọc trong Modal Thêm vào chuyến đi chuẩn Mindtrip theo ảnh
-// Danh mục bộ lọc trong Modal chuẩn Explore & Mindtrip
-type ModalCategory = 'for-you' | 'all' | 'di-tich' | 'canh-quan' | 'chua' | 'quan-an' | 'experiences' | 'restaurants' | 'scenic';
-
-const MODAL_CATEGORY_TABS: { id: ModalCategory; label: string }[] = [
-  { id: 'for-you', label: 'Dành cho bạn' },
-  { id: 'all', label: 'Tất cả' },
-  { id: 'di-tich', label: 'Di tích' },
-  { id: 'canh-quan', label: 'Cảnh quan' },
-  { id: 'chua', label: 'Chùa' },
-  { id: 'quan-an', label: 'Quán ăn' },
-];
-
-const MINDTRIP_MODAL_TABS: { id: 'for-you' | 'experiences' | 'restaurants' | 'scenic' | 'all'; label: string }[] = [
-  { id: 'for-you', label: 'Dành cho bạn' },
-  { id: 'experiences', label: 'Trải nghiệm' },
-  { id: 'restaurants', label: 'Quán ăn' },
-  { id: 'scenic', label: 'Địa điểm' },
-  { id: 'all', label: 'Tất cả' },
-];
-
-export interface CategoryBudgets {
-  dining: string;
-  lodging: string;
-  activities: string;
-}
-
 type RecommendedPoi = Poi & { matchScore?: number };
-
-export function parseCategoryBudgets(raw?: string): CategoryBudgets {
-  const def: CategoryBudgets = { dining: 'any', lodging: 'any', activities: 'any' };
-  if (!raw) return def;
-  if (raw.includes('dining:') || raw.includes('lodging:') || raw.includes('activities:')) {
-    const parts = raw.split(';');
-    for (const p of parts) {
-      const [k, v] = p.split(':');
-      if (k === 'dining') def.dining = v || 'any';
-      if (k === 'lodging') def.lodging = v || 'any';
-      if (k === 'activities') def.activities = v || 'any';
-    }
-    return def;
-  }
-  if (raw === '$' || raw === 'budget') {
-    return { dining: '$', lodging: '$', activities: '$' };
-  }
-  if (raw === '$$$' || raw === 'luxury' || raw === 'upgrade') {
-    return { dining: '$$$', lodging: '$$$', activities: '$$$' };
-  }
-  if (raw === '$$' || raw === 'standard') {
-    return { dining: '$$', lodging: '$$', activities: '$$' };
-  }
-  return def;
-}
-
-const DINING_BUDGET_OPTIONS = [
-  { id: 'any', label: 'Tất cả', desc: 'Mọi mức giá' },
-  { id: '$', label: '$', desc: '< 100k', sub: 'Bình dân / chợ đêm' },
-  { id: '$$', label: '$$', desc: '150k – 300k', sub: 'Tiêu chuẩn / nhà hàng' },
-  { id: '$$$', label: '$$$', desc: '> 500k', sub: 'Cao cấp / Michelin' },
-];
-
-const LODGING_BUDGET_OPTIONS = [
-  { id: 'any', label: 'Tất cả', desc: 'Mọi loại phòng' },
-  { id: '$', label: '$', desc: '< 400k/đêm', sub: 'Homestay / Hostel' },
-  { id: '$$', label: '$$', desc: '500k – 1tr/đêm', sub: 'Khách sạn 3 sao' },
-  { id: '$$$', label: '$$$', desc: '> 1.5tr/đêm', sub: 'Resort / 4–5 sao' },
-];
-
-const ACTIVITIES_BUDGET_OPTIONS = [
-  { id: 'any', label: 'Tất cả', desc: 'Mọi hoạt động' },
-  { id: '$', label: '$', desc: '< 100k/vé', sub: 'Miễn phí / vé rẻ' },
-  { id: '$$', label: '$$', desc: '150k – 400k/vé', sub: 'Tour / Vé phổ thông' },
-  { id: '$$$', label: '$$$', desc: '> 500k/vé', sub: 'Trải nghiệm cao cấp' },
-];
 
 export default function TripOverviewView({
   trip,
@@ -380,7 +126,6 @@ export default function TripOverviewView({
   // 2. Popup Khi
   const [showWhenModal, setShowWhenModal] = useState(false);
   const [whenTab, setWhenTab] = useState<'dates' | 'flex'>('dates');
-  const [calendarBaseMonth, setCalendarBaseMonth] = useState<Date>(new Date(2026, 10, 1));
   const [rangeStart, setRangeStart] = useState<Date | null>(new Date(2026, 10, 2));
   const [rangeEnd, setRangeEnd] = useState<Date | null>(new Date(2026, 10, 5));
   const [flexibleDays, setFlexibleDays] = useState(trip.daysCount || 4);
@@ -534,7 +279,6 @@ const [recommendedPois, setRecommendedPois] = useState<Poi[]>([]);
   // State điều khiển Modal "Thêm vào chuyến đi" (Add to trip)
   const [showAddIdeasModal, setShowAddIdeasModal] = useState(false);
   const [modalTab, setModalTab] = useState<'search' | 'saved' | 'custom'>('search');
-  const [showModalCityDropdown, setShowModalCityDropdown] = useState(false);
   const [modalCity, setModalCity] = useState<'all' | 'Đà Nẵng' | 'Huế'>('all');
   const [modalSearch, setModalSearch] = useState('');
 const [modalCategory, setModalCategory] = useState<string>('for-you');
@@ -990,77 +734,6 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     onUpdateTrip?.(updated);
     setShowBudgetModal(false);
   };
-
-  // ─── HELPER CHO LỊCH 2 THÁNG LIỀN KỀ BÊN TAB "NGÀY THÁNG" ───
-  const month1Year = calendarBaseMonth.getFullYear();
-  const month1Index = calendarBaseMonth.getMonth();
-  const nextMonthDate = new Date(month1Year, month1Index + 1, 1);
-  const month2Year = nextMonthDate.getFullYear();
-  const month2Index = nextMonthDate.getMonth();
-
-  const getMonthMeta = (year: number, month: number) => {
-    const firstDay = new Date(year, month, 1).getDay();
-    const totalDays = new Date(year, month + 1, 0).getDate();
-    return { firstDay, totalDays };
-  };
-
-  const meta1 = getMonthMeta(month1Year, month1Index);
-  const meta2 = getMonthMeta(month2Year, month2Index);
-
-  const isSameDay = (d1: Date | null, d2: Date | null) => {
-    if (!d1 || !d2) return false;
-    return (
-      d1.getFullYear() === d2.getFullYear() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getDate() === d2.getDate()
-    );
-  };
-
-  const isDayInRange = (date: Date) => {
-    if (!rangeStart || !rangeEnd) return false;
-    const t = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-    const s = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate()).getTime();
-    const e = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate()).getTime();
-    return t > s && t < e;
-  };
-
-  const handleSelectDate = (year: number, month: number, day: number) => {
-    const clicked = new Date(year, month, day);
-    if (!rangeStart || (rangeStart && rangeEnd)) {
-      setRangeStart(clicked);
-      setRangeEnd(null);
-    } else if (rangeStart && !rangeEnd) {
-      if (clicked.getTime() < rangeStart.getTime()) {
-        setRangeStart(clicked);
-        setRangeEnd(null);
-      } else {
-        setRangeEnd(clicked);
-        const diffMs = clicked.getTime() - rangeStart.getTime();
-        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
-        setFlexibleDays(Math.min(14, Math.max(1, diffDays)));
-      }
-    }
-  };
-
-  const handlePrevMonth = () => {
-    setCalendarBaseMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCalendarBaseMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-  };
-
-  const handleClearDates = () => {
-    setRangeStart(null);
-    setRangeEnd(null);
-  };
-
-  // 3 tháng giới hạn chuẩn
-  const threeMonthsList = [
-    { id: 'm1', label: 'Tháng 11' },
-    { id: 'm2', label: 'Tháng 12' },
-    { id: 'm3', label: 'Tháng 1' },
-  ];
 
   // Kiểm tra địa điểm Copilot đề xuất đã được lưu trong Ý tưởng hay chưa
   const isPoiSavedInIdeas = useCallback(
@@ -2127,631 +1800,57 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         </section>
       </div>
 
-      {/* ─── MODAL 1: Ở ĐÂU (KHI BẤM VÀO PILL ĐIỂM ĐẾN) ─── */}
+      {/* ─── MODAL 1-4: THÔNG SỐ CHUYẾN ĐI (Ở ĐÂU / KHI / AI / NGÂN SÁCH) ─── */}
       {showWhereModal && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn select-none"
-          onClick={() => setShowWhereModal(false)}
-        >
-          <div 
-            className="w-full max-w-[480px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl mx-4 flex flex-col border border-gray-100 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-6">
-              <button 
-                onClick={() => setShowWhereModal(false)} 
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-              <div className="text-[16px] font-bold text-black">Ở đâu</div>
-              <div className="w-8"></div>
-            </div>
-
-            {/* Input + Ô tô toggle chuẩn OnboardingModal */}
-            <div className="relative mb-5">
-              <input
-                type="text"
-                placeholder="Vị trí"
-                value={whereTarget}
-                onChange={(e) => setWhereTarget(e.target.value)}
-                className="w-full rounded-full border border-gray-200 px-5 py-3 pr-36 text-[14px] font-light text-gray-900 focus:border-black focus:outline-none focus:ring-1 focus:ring-black transition-all"
-              />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <span className="text-[12px] font-bold text-black">Đi bằng ô tô?</span>
-                <button 
-                  type="button"
-                  onClick={() => setByCar(!byCar)} 
-                  className={`w-9 h-5 rounded-full flex items-center p-0.5 transition-colors cursor-pointer ${byCar ? 'bg-black' : 'bg-gray-200'}`}
-                >
-                  <div className={`w-4 h-4 rounded-full bg-white shadow-xs transition-transform ${byCar ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                </button>
-              </div>
-            </div>
-
-            {/* 3 Nút chọn vị trí: Huế, Đà Nẵng, Cả 2 */}
-            <div className="flex gap-2 mb-6 flex-wrap">
-              <button 
-                type="button"
-                onClick={() => setWhereTarget('Huế')} 
-                className={`px-4 py-2 rounded-full border text-[13px] font-semibold transition-all cursor-pointer ${
-                  whereTarget === 'Huế' ? 'bg-black text-white border-black shadow-xs' : 'border-gray-200 text-gray-800 hover:border-black'
-                }`}
-              >
-                Huế
-              </button>
-              <button 
-                type="button"
-                onClick={() => setWhereTarget('Đà Nẵng')} 
-                className={`px-4 py-2 rounded-full border text-[13px] font-semibold transition-all cursor-pointer ${
-                  whereTarget === 'Đà Nẵng' ? 'bg-black text-white border-black shadow-xs' : 'border-gray-200 text-gray-800 hover:border-black'
-                }`}
-              >
-                Đà Nẵng
-              </button>
-              <button 
-                type="button"
-                onClick={() => setWhereTarget('Đà Nẵng & Huế')} 
-                className={`px-4 py-2 rounded-full border text-[13px] font-semibold transition-all cursor-pointer ${
-                  whereTarget === 'Đà Nẵng & Huế' ? 'bg-black text-white border-black shadow-xs' : 'border-gray-200 text-gray-800 hover:border-black'
-                }`}
-              >
-                Cả 2
-              </button>
-            </div>
-
-            <div className="mt-auto flex justify-end">
-              <button 
-                type="button"
-                onClick={handleSaveWhere} 
-                className="w-full sm:w-32 font-bold text-[14px] py-3 rounded-full bg-black text-white hover:bg-neutral-800 transition-colors cursor-pointer"
-              >
-                Cập nhật
-              </button>
-            </div>
-          </div>
-        </div>
+        <TripWhereModal
+          whereTarget={whereTarget}
+          onChangeWhereTarget={setWhereTarget}
+          byCar={byCar}
+          onToggleByCar={() => setByCar(!byCar)}
+          onClose={() => setShowWhereModal(false)}
+          onSave={handleSaveWhere}
+        />
       )}
 
-      {/* ─── MODAL 2: KHI (KHI BẤM VÀO PILL NGÀY THÁNG - THEO ẢNH 2 USER GỬI) ─── */}
       {showWhenModal && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn select-none"
-          onClick={() => setShowWhenModal(false)}
-        >
-          <div 
-            className="w-full max-w-[620px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl mx-4 border border-gray-100 flex flex-col relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Nút X đóng */}
-            <button 
-              onClick={() => setShowWhenModal(false)} 
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer absolute top-6 left-6"
-            >
-              <X size={18} />
-            </button>
-
-            {/* Header: Title Khi + Pill switch Ngày tháng / Linh hoạt */}
-            <div className="flex flex-col items-center mb-6">
-              <div className="text-[17px] font-bold text-black mb-3">Khi</div>
-              <div className="bg-gray-100 p-1 rounded-full flex gap-1">
-                <button 
-                  type="button"
-                  onClick={() => setWhenTab('dates')} 
-                  className={`px-5 py-1.5 rounded-full text-[13px] font-bold transition-all cursor-pointer ${
-                    whenTab === 'dates' ? 'bg-white shadow-xs text-black' : 'text-gray-500 hover:text-black'
-                  }`}
-                >
-                  Ngày tháng
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setWhenTab('flex')} 
-                  className={`px-5 py-1.5 rounded-full text-[13px] font-bold transition-all cursor-pointer ${
-                    whenTab === 'flex' ? 'bg-white shadow-xs text-black' : 'text-gray-500 hover:text-black'
-                  }`}
-                >
-                  Linh hoạt
-                </button>
-              </div>
-            </div>
-
-            {/* TAB NGÀY THÁNG (LỊCH KÉP 2 THÁNG) */}
-            {whenTab === 'dates' && (
-              <div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-7 mb-7">
-                  {/* THÁNG 1: TRÁI */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3 px-1">
-                      <button 
-                        type="button" 
-                        onClick={handlePrevMonth}
-                        className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 cursor-pointer text-gray-600"
-                      >
-                        <ChevronLeft size={18} />
-                      </button>
-                      <span className="font-bold text-[14px] text-gray-900">
-                        {`Tháng ${month1Index + 1} năm ${month1Year}`}
-                      </span>
-                      <div className="w-7"></div>
-                    </div>
-
-                    <div className="grid grid-cols-7 text-center text-[12px] text-gray-400 font-medium mb-1.5">
-                      <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
-                    </div>
-
-                    <div className="grid grid-cols-7 text-center">
-                      {Array.from({ length: meta1.firstDay }).map((_, idx) => (
-                        <div key={`empty-1-${idx}`} className="h-9"></div>
-                      ))}
-
-                      {Array.from({ length: meta1.totalDays }).map((_, idx) => {
-                        const dayNum = idx + 1;
-                        const thisDate = new Date(month1Year, month1Index, dayNum);
-                        const isStart = isSameDay(thisDate, rangeStart);
-                        const isEnd = isSameDay(thisDate, rangeEnd);
-                        const inRange = isDayInRange(thisDate);
-
-                        return (
-                          <div key={`day-1-${dayNum}`} className="relative h-9 flex items-center justify-center">
-                            {inRange && <div className="absolute inset-0 bg-[#f0f0f0]" />}
-                            {isStart && rangeEnd && <div className="absolute top-0 bottom-0 right-0 left-1/2 bg-[#f0f0f0]" />}
-                            {isEnd && rangeStart && <div className="absolute top-0 bottom-0 left-0 right-1/2 bg-[#f0f0f0]" />}
-
-                            <button
-                              type="button"
-                              onClick={() => handleSelectDate(month1Year, month1Index, dayNum)}
-                              className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
-                                isStart || isEnd
-                                  ? 'bg-black text-white font-bold shadow-xs'
-                                  : 'text-gray-900 hover:bg-gray-200/80 font-normal'
-                              }`}
-                            >
-                              {dayNum}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* THÁNG 2: PHẢI */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3 px-1">
-                      <div className="w-7"></div>
-                      <span className="font-bold text-[14px] text-gray-900">
-                        {`Tháng ${month2Index + 1} năm ${month2Year}`}
-                      </span>
-                      <button 
-                        type="button" 
-                        onClick={handleNextMonth}
-                        className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 cursor-pointer text-gray-600"
-                      >
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-7 text-center text-[12px] text-gray-400 font-medium mb-1.5">
-                      <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
-                    </div>
-
-                    <div className="grid grid-cols-7 text-center">
-                      {Array.from({ length: meta2.firstDay }).map((_, idx) => (
-                        <div key={`empty-2-${idx}`} className="h-9"></div>
-                      ))}
-
-                      {Array.from({ length: meta2.totalDays }).map((_, idx) => {
-                        const dayNum = idx + 1;
-                        const thisDate = new Date(month2Year, month2Index, dayNum);
-                        const isStart = isSameDay(thisDate, rangeStart);
-                        const isEnd = isSameDay(thisDate, rangeEnd);
-                        const inRange = isDayInRange(thisDate);
-
-                        return (
-                          <div key={`day-2-${dayNum}`} className="relative h-9 flex items-center justify-center">
-                            {inRange && <div className="absolute inset-0 bg-[#f0f0f0]" />}
-                            {isStart && rangeEnd && <div className="absolute top-0 bottom-0 right-0 left-1/2 bg-[#f0f0f0]" />}
-                            {isEnd && rangeStart && <div className="absolute top-0 bottom-0 left-0 right-1/2 bg-[#f0f0f0]" />}
-
-                            <button
-                              type="button"
-                              onClick={() => handleSelectDate(month2Year, month2Index, dayNum)}
-                              className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
-                                isStart || isEnd
-                                  ? 'bg-black text-white font-bold shadow-xs'
-                                  : 'text-gray-900 hover:bg-gray-200/80 font-normal'
-                              }`}
-                            >
-                              {dayNum}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer Trang 1: Clear bên trái, Cập nhật bên phải */}
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={handleClearDates}
-                    className="text-[14px] font-semibold text-black hover:underline cursor-pointer"
-                  >
-                    Thông thoáng
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSaveWhen}
-                    className="px-8 py-3 bg-black text-white rounded-full font-bold text-[14px] hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs"
-                  >
-                    Cập nhật
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* TAB LINH HOẠT (3 THÁNG) */}
-            {whenTab === 'flex' && (
-              <div className="pt-2">
-                <div className="text-center mb-7">
-                  <div className="text-[15px] font-bold text-gray-950 mb-3.5">
-                    Bao nhiêu ngày?
-                  </div>
-                  <div className="flex items-center justify-center gap-4">
-                    <button 
-                      type="button"
-                      onClick={() => setFlexibleDays(Math.max(1, flexibleDays - 1))} 
-                      className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center hover:border-black transition cursor-pointer text-gray-700"
-                    >
-                      <Minus size={15}/>
-                    </button>
-                    <div className="w-20 py-2 border border-gray-300 rounded-full text-center font-bold text-[16px] text-black">
-                      {flexibleDays}
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={() => setFlexibleDays(Math.min(14, flexibleDays + 1))} 
-                      className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center hover:border-black transition cursor-pointer text-gray-700"
-                    >
-                      <Plus size={15}/>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="text-center mb-8">
-                  <div className="text-[15px] font-bold text-gray-950 mb-4">
-                    Du lịch bất cứ lúc nào
-                  </div>
-                  <div className="flex justify-center gap-3.5">
-                    {threeMonthsList.map((m) => {
-                      const isSelected = selectedMonth === m.label;
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => setSelectedMonth(m.label)}
-                          className={`w-[110px] h-[105px] border rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all ${
-                            isSelected
-                              ? 'border-black bg-gray-50 ring-1 ring-black shadow-xs'
-                              : 'border-gray-200 hover:border-gray-400 bg-white'
-                          }`}
-                        >
-                          <CalendarIcon size={22} className={`mb-2.5 ${isSelected ? 'text-black' : 'text-gray-400'}`} />
-                          <span className={`text-[13px] ${isSelected ? 'font-bold text-black' : 'font-medium text-gray-700'}`}>
-                            {m.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <button 
-                    type="button"
-                    onClick={handleSaveWhen} 
-                    className="px-8 py-3 bg-black text-white font-bold text-[14px] rounded-full hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs"
-                  >
-                    Cập nhật
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <TripWhenModal
+          whenTab={whenTab}
+          onChangeWhenTab={setWhenTab}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          onChangeRangeStart={setRangeStart}
+          onChangeRangeEnd={setRangeEnd}
+          flexibleDays={flexibleDays}
+          onChangeFlexibleDays={setFlexibleDays}
+          selectedMonth={selectedMonth}
+          onChangeSelectedMonth={setSelectedMonth}
+          onClose={() => setShowWhenModal(false)}
+          onSave={handleSaveWhen}
+        />
       )}
 
-      {/* ─── MODAL 3: AI (KHI BẤM VÀO PILL DU KHÁCH) ─── */}
       {showWhoModal && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn select-none"
-          onClick={() => setShowWhoModal(false)}
-        >
-          <div 
-            className="w-full max-w-[420px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl mx-4 border border-gray-100"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-start mb-6">
-              <button 
-                onClick={() => setShowWhoModal(false)} 
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-              <div className="text-center">
-                <div className="font-bold text-black text-[16px]">Ai</div>
-                <div className="text-gray-400 text-[12px] font-light">{adults + children + infants + pets} du khách</div>
-              </div>
-              <div className="w-8 h-8"></div>
-            </div>
-
-            <div className="space-y-4 mb-6">
-              {/* Người lớn */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[14px] font-bold text-black">Người lớn</div>
-                  <div className="text-[12px] text-gray-400 font-light">Từ 13 tuổi trở lên</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button 
-                    type="button"
-                    onClick={() => setAdults(Math.max(1, adults - 1))} 
-                    className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
-                  >
-                    <Minus size={14}/>
-                  </button>
-                  <span className="w-5 text-center text-[14px] font-bold">{adults}</span>
-                  <button 
-                    type="button"
-                    onClick={() => setAdults(adults + 1)} 
-                    className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
-                  >
-                    <Plus size={14}/>
-                  </button>
-                </div>
-              </div>
-
-              {/* Những đứa trẻ */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[14px] font-bold text-black">Những đứa trẻ</div>
-                  <div className="text-[12px] text-gray-400 font-light">Độ tuổi 2–12</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button 
-                    type="button"
-                    onClick={() => setChildren(Math.max(0, children - 1))} 
-                    className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
-                  >
-                    <Minus size={14}/>
-                  </button>
-                  <span className="w-5 text-center text-[14px] font-bold">{children}</span>
-                  <button 
-                    type="button"
-                    onClick={() => setChildren(children + 1)} 
-                    className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
-                  >
-                    <Plus size={14}/>
-                  </button>
-                </div>
-              </div>
-
-              {/* Trẻ sơ sinh */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[14px] font-bold text-black">Trẻ sơ sinh</div>
-                  <div className="text-[12px] text-gray-400 font-light">Dưới 2 tuổi</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button 
-                    type="button"
-                    onClick={() => setInfants(Math.max(0, infants - 1))} 
-                    className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
-                  >
-                    <Minus size={14}/>
-                  </button>
-                  <span className="w-5 text-center text-[14px] font-bold">{infants}</span>
-                  <button 
-                    type="button"
-                    onClick={() => setInfants(infants + 1)} 
-                    className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
-                  >
-                    <Plus size={14}/>
-                  </button>
-                </div>
-              </div>
-
-              {/* Thú cưng */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[14px] font-bold text-black">Thú cưng</div>
-                  <div className="text-[12px] text-gray-400 font-light underline">Bạn có mang theo thú cưng không?</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button 
-                    type="button"
-                    onClick={() => setPets(Math.max(0, pets - 1))} 
-                    className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
-                  >
-                    <Minus size={14}/>
-                  </button>
-                  <span className="w-5 text-center text-[14px] font-bold">{pets}</span>
-                  <button 
-                    type="button"
-                    onClick={() => setPets(pets + 1)} 
-                    className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gray-400 cursor-pointer"
-                  >
-                    <Plus size={14}/>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <button 
-                type="button"
-                onClick={handleSaveWho} 
-                className="w-full sm:w-32 bg-black text-white font-bold text-[14px] py-3 rounded-full hover:bg-neutral-800 transition-colors cursor-pointer"
-              >
-                Cập nhật
-              </button>
-            </div>
-          </div>
-        </div>
+        <TripWhoModal
+          adults={adults}
+          childrenCount={children}
+          infants={infants}
+          pets={pets}
+          onChangeAdults={setAdults}
+          onChangeChildren={setChildren}
+          onChangeInfants={setInfants}
+          onChangePets={setPets}
+          onClose={() => setShowWhoModal(false)}
+          onSave={handleSaveWho}
+        />
       )}
 
-      {/* ─── MODAL 4: NGÂN SÁCH 3 DÒNG ĐỘC LẬP (ĂN UỐNG, LƯU TRÚ, HOẠT ĐỘNG) ─── */}
       {showBudgetModal && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn select-none"
-          onClick={() => setShowBudgetModal(false)}
-        >
-          <div 
-            className="w-full max-w-[560px] bg-white rounded-[28px] p-6 sm:p-7 shadow-2xl relative border border-gray-100 flex flex-col max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Nút X đóng góc trên bên phải */}
-            <button
-              type="button"
-              onClick={() => setShowBudgetModal(false)}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition absolute top-5 right-5 cursor-pointer"
-              title="Đóng"
-            >
-              <X size={18} strokeWidth={2.5} />
-            </button>
-
-            {/* Tiêu đề & Phụ đề */}
-            <div className="mb-5 pr-8">
-              <h3 className="text-[19px] font-bold text-gray-950">Phân loại ngân sách chuyến đi</h3>
-              <p className="text-[12.5px] text-gray-500 mt-0.5">
-                Chọn mức chi tiêu riêng theo từng nhóm để nhận gợi ý địa điểm chính xác theo nhu cầu thực tế
-              </p>
-            </div>
-
-            {/* 3 dòng lựa chọn độc lập */}
-            <div className="space-y-4 mb-5">
-              {/* DÒNG 1: 🍽️ Ăn uống */}
-              <div className="p-3.5 bg-gray-50/80 rounded-2xl border border-gray-200/70">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-[13.5px] font-bold text-gray-900 flex items-center gap-1.5">
-                    <span>🍽️</span> Ăn uống & Ẩm thực
-                  </span>
-                  <span className="text-[11px] font-medium text-gray-500">
-                    {categoryBudgets.dining === 'any' ? 'Mọi mức giá' : DINING_BUDGET_OPTIONS.find(o => o.id === categoryBudgets.dining)?.sub}
-                  </span>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {DINING_BUDGET_OPTIONS.map((opt) => {
-                    const isSelected = categoryBudgets.dining === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setCategoryBudgets(prev => ({ ...prev, dining: opt.id }))}
-                        className={`py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                          isSelected
-                            ? 'bg-black text-white border-black shadow-xs font-bold'
-                            : 'bg-white hover:bg-gray-100 text-gray-800 border-gray-200/80 font-medium'
-                        }`}
-                      >
-                        <span className="text-[13px] leading-tight">{opt.label}</span>
-                        <span className={`text-[10px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                          {opt.desc}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* DÒNG 2: 🏨 Lưu trú */}
-              <div className="p-3.5 bg-gray-50/80 rounded-2xl border border-gray-200/70">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-[13.5px] font-bold text-gray-900 flex items-center gap-1.5">
-                    <span>🏨</span> Lưu trú & Khách sạn
-                  </span>
-                  <span className="text-[11px] font-medium text-gray-500">
-                    {categoryBudgets.lodging === 'any' ? 'Mọi loại phòng' : LODGING_BUDGET_OPTIONS.find(o => o.id === categoryBudgets.lodging)?.sub}
-                  </span>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {LODGING_BUDGET_OPTIONS.map((opt) => {
-                    const isSelected = categoryBudgets.lodging === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setCategoryBudgets(prev => ({ ...prev, lodging: opt.id }))}
-                        className={`py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                          isSelected
-                            ? 'bg-black text-white border-black shadow-xs font-bold'
-                            : 'bg-white hover:bg-gray-100 text-gray-800 border-gray-200/80 font-medium'
-                        }`}
-                      >
-                        <span className="text-[13px] leading-tight">{opt.label}</span>
-                        <span className={`text-[10px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                          {opt.desc}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* DÒNG 3: 🎡 Hoạt động / Tham quan */}
-              <div className="p-3.5 bg-gray-50/80 rounded-2xl border border-gray-200/70">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-[13.5px] font-bold text-gray-900 flex items-center gap-1.5">
-                    <span>🎡</span> Hoạt động & Tham quan
-                  </span>
-                  <span className="text-[11px] font-medium text-gray-500">
-                    {categoryBudgets.activities === 'any' ? 'Mọi hoạt động' : ACTIVITIES_BUDGET_OPTIONS.find(o => o.id === categoryBudgets.activities)?.sub}
-                  </span>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {ACTIVITIES_BUDGET_OPTIONS.map((opt) => {
-                    const isSelected = categoryBudgets.activities === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setCategoryBudgets(prev => ({ ...prev, activities: opt.id }))}
-                        className={`py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                          isSelected
-                            ? 'bg-black text-white border-black shadow-xs font-bold'
-                            : 'bg-white hover:bg-gray-100 text-gray-800 border-gray-200/80 font-medium'
-                        }`}
-                      >
-                        <span className="text-[13px] leading-tight">{opt.label}</span>
-                        <span className={`text-[10px] leading-tight truncate max-w-full ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                          {opt.desc}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Chú thích thông minh */}
-            <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-[11.5px] text-amber-900 leading-relaxed mb-5">
-              💡 <strong>Cơ chế gợi ý theo danh mục:</strong> Gợi ý Nhà hàng sẽ áp dụng ngân sách Ăn uống; Gợi ý Di tích & Cảnh quan sẽ áp dụng ngân sách Hoạt động để không bị áp một mức chung cho cả chuyến đi.
-            </div>
-
-            {/* Nút Cập nhật góc dưới bên phải */}
-            <div className="flex justify-end pt-1">
-              <button
-                type="button"
-                onClick={handleSaveBudget}
-                className="px-8 py-2.5 bg-black text-white font-bold text-[13.5px] rounded-full hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs"
-              >
-                Cập nhật ngân sách
-              </button>
-            </div>
-          </div>
-        </div>
+        <TripBudgetModal
+          categoryBudgets={categoryBudgets}
+          onChangeCategoryBudgets={setCategoryBudgets}
+          onClose={() => setShowBudgetModal(false)}
+          onSave={handleSaveBudget}
+        />
       )}
 
       {/* ─── MODAL PHỤ CHO Ý TƯỞNG & LỊCH ─── */}
@@ -2808,409 +1907,43 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
       {/* ─── MODAL "THÊM VÀO CHUYẾN ĐI" (ADD TO TRIP MODAL CHUẨN MINDTRIP COMPACT) ─── */}
       {showAddIdeasModal && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs py-6 px-4 animate-fadeIn select-none"
-          onClick={() => setShowAddIdeasModal(false)}
-        >
-          {/* Khung hộp gọn gàng chuẩn Mindtrip: Rộng ~750px, Bo góc 24px */}
-          <div
-            className="relative bg-white w-[750px] max-w-[calc(100vw-32px)] h-[calc(100vh-80px)] max-h-[820px] rounded-[24px] shadow-2xl flex flex-col border border-gray-100 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Phần cố định: Tiêu đề + tab (có đường kẻ ngang dưới #eee, cao ~72px) */}
-            <div className="relative h-[72px] shrink-0 border-b border-gray-200 bg-white rounded-t-[24px] flex flex-col justify-between">
-              {/* Nút đóng × */}
-              <button
-                type="button"
-                onClick={() => setShowAddIdeasModal(false)}
-                className="absolute top-3.5 left-4 w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer z-20"
-                title="Đóng"
-              >
-                <X size={17} />
-              </button>
-
-              {/* Tiêu đề căn giữa: Thêm vào chuyến đi */}
-              <div className="pt-3 text-center">
-                <h3 className="font-bold text-[15px] text-gray-950">
-                  Thêm vào chuyến đi
-                </h3>
-              </div>
-
-              {/* Tabs: Tìm kiếm, Đã lưu, Tùy chỉnh */}
-              <div className="px-6 flex items-center gap-6 text-[13.5px]">
-                <button
-                  type="button"
-                  onClick={() => setModalTab('search')}
-                  className={`pb-2.5 border-b-2 transition font-semibold cursor-pointer -mb-[1px] ${
-                    modalTab === 'search'
-                      ? 'border-black text-black font-bold'
-                      : 'border-transparent text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  Tìm kiếm
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalTab('saved')}
-                  className={`pb-2.5 border-b-2 transition font-semibold cursor-pointer flex items-center gap-1.5 -mb-[1px] ${
-                    modalTab === 'saved'
-                      ? 'border-black text-black font-bold'
-                      : 'border-transparent text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  <Heart size={14} className={modalTab === 'saved' ? 'fill-red-500 text-red-500' : 'text-gray-400'} />
-                  <span>Đã thích</span>
-                  {(() => {
-                    let count = savedIds.size;
-                    try {
-                      const rawFav = localStorage.getItem('greentrip_favorites');
-                      if (rawFav) count = Math.max(count, (JSON.parse(rawFav) as string[]).length);
-                    } catch {
-                      // ignore
-                    }
-                    return count > 0 ? (
-                      <span className="w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                        {count}
-                      </span>
-                    ) : null;
-                  })()}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalTab('custom')}
-                  className={`pb-2.5 border-b-2 transition font-semibold cursor-pointer -mb-[1px] ${
-                    modalTab === 'custom'
-                      ? 'border-black text-black font-bold'
-                      : 'border-transparent text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  Tùy chỉnh
-                </button>
-              </div>
-            </div>
-
-            {/* Vùng cuộn duy nhất: Tên khu vực → Tìm kiếm → Lọc → Lưới thẻ */}
-            <div className="flex-1 overflow-y-auto px-6 pb-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-track]:bg-transparent">
-              {modalTab !== 'custom' ? (
-                <>
-                  {/* Tên khu vực */}
-                  <div className="pt-4 shrink-0">
-                    <div className="relative inline-block">
-                      <div
-                        onClick={() => setShowModalCityDropdown((prev) => !prev)}
-                        className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
-                      >
-                        <h2 className="text-[22px] font-bold text-gray-950 tracking-tight leading-tight group-hover:text-black">
-                          {modalCity === 'all' ? 'Đà Nẵng & Huế' : modalCity}
-                        </h2>
-                        <i className="ph ph-caret-down text-[18px] font-bold text-gray-950 group-hover:translate-y-0.5 transition-transform"></i>
-                      </div>
-
-                      {showModalCityDropdown && (
-                        <div className="absolute top-10 left-0 bg-white shadow-xl border border-gray-100 rounded-xl py-1.5 w-48 z-50 animate-fadeIn">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setModalCity('all');
-                              setShowModalCityDropdown(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-[13.5px] hover:bg-gray-50 flex items-center justify-between cursor-pointer ${
-                              modalCity === 'all' ? 'font-bold text-black' : 'text-gray-700'
-                            }`}
-                          >
-                            <span>Tất cả khu vực (Đà Nẵng & Huế)</span>
-                            {modalCity === 'all' && <i className="ph ph-check font-bold"></i>}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setModalCity('Đà Nẵng');
-                              setShowModalCityDropdown(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-[13.5px] hover:bg-gray-50 flex items-center justify-between cursor-pointer ${
-                              modalCity === 'Đà Nẵng' ? 'font-bold text-black' : 'text-gray-700'
-                            }`}
-                          >
-                            <span>Đà Nẵng</span>
-                            {modalCity === 'Đà Nẵng' && <i className="ph ph-check font-bold"></i>}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setModalCity('Huế');
-                              setShowModalCityDropdown(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-[13.5px] hover:bg-gray-50 flex items-center justify-between cursor-pointer ${
-                              modalCity === 'Huế' ? 'font-bold text-black' : 'text-gray-700'
-                            }`}
-                          >
-                            <span>Huế</span>
-                            {modalCity === 'Huế' && <i className="ph ph-check font-bold"></i>}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Ô tìm kiếm & Nút bộ lọc */}
-                  <div className="mt-3 flex items-center gap-2.5 shrink-0">
-                    <div className="flex-1 relative flex items-center min-w-0">
-                      <i className="ph ph-magnifying-glass text-gray-400 absolute left-4 text-lg"></i>
-                      <input
-                        type="text"
-                        value={modalSearch}
-                        onChange={(e) => setModalSearch(e.target.value)}
-                        placeholder="Tìm kiếm địa điểm, di tích, ẩm thực..."
-                        className="w-full h-[42px] pl-10 pr-9 bg-white text-[13.5px] placeholder-gray-400 text-gray-900 rounded-full border border-gray-300 focus:border-black focus:outline-none shadow-2xs transition"
-                      />
-                      {modalSearch && (
-                        <button
-                          type="button"
-                          onClick={() => setModalSearch('')}
-                          className="absolute right-3.5 text-gray-400 hover:text-gray-600 cursor-pointer"
-                        >
-                          <i className="ph ph-x-circle text-lg"></i>
-                        </button>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setModalCategory('for-you');
-                        setModalSearch('');
-                        setModalCity('all');
-                      }}
-                      className="h-[42px] px-4 rounded-full border border-gray-300 hover:border-black hover:bg-gray-50 text-[13px] font-medium text-gray-800 transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-2xs"
-                    >
-                      <i className="ph ph-faders text-lg"></i>
-                      <span>Bộ lọc</span>
-                    </button>
-                  </div>
-
-                  {/* Hàng danh mục tabs */}
-                  <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar shrink-0">
-                    {MODAL_CATEGORY_TABS.map((tab) => {
-                      const isActive = modalCategory === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setModalCategory(tab.id)}
-                          className={`whitespace-nowrap h-[32px] px-3.5 text-[12.5px] rounded-full transition-all cursor-pointer shrink-0 flex items-center justify-center ${
-                            isActive
-                              ? 'bg-black text-white font-medium shadow-xs'
-                              : 'text-gray-700 hover:text-black hover:bg-gray-100 font-medium'
-                          }`}
-                        >
-                          {tab.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Tiêu đề nhóm */}
-                  <div className="mt-4 shrink-0">
-                    <h4 className="font-bold text-[16px] text-gray-950 tracking-tight">
-                      {modalTab === 'saved'
-                        ? 'Địa điểm đã thích ở trang Khám phá'
-                        : modalCategory === 'quan-an' || modalCategory === 'restaurants'
-                        ? 'Ẩm thực & Cafe'
-                        : modalCategory === 'di-tich' || modalCategory === 'experiences'
-                        ? 'Trải nghiệm'
-                        : modalCategory === 'canh-quan' || modalCategory === 'scenic'
-                        ? 'Địa điểm'
-                        : modalCategory === 'chua'
-                        ? 'Tâm linh'
-                        : modalCategory === 'all'
-                        ? 'Tất cả địa điểm'
-                        : 'Trải nghiệm đề xuất'}
-                    </h4>
-                  </div>
-
-                  {/* Lưới thẻ 3 cột */}
-                  <div className="mt-3 grid grid-cols-3 gap-x-3.5 gap-y-5">
-                    {modalFilteredPois.length === 0 ? (
-                      <div className="col-span-full py-16 text-center text-gray-500 text-sm">
-                        {modalTab === 'saved'
-                          ? savedIds.size === 0
-                            ? 'Bạn chưa thích địa điểm nào ở trang Khám phá. Hãy bấm thả tim ❤️ tại trang Explore để chọn nhanh vào Ý tưởng tại đây!'
-                            : 'Không tìm thấy địa điểm đã thích nào phù hợp với bộ lọc hiện tại.'
-                          : 'Không tìm thấy địa điểm phù hợp với bộ lọc hiện tại.'}
-                      </div>
-                    ) : (
-                      modalFilteredPois.map((poi) => {
-                        const isAdded = tripIdeas.includes(poi.id);
-                        const ratingVal = (typeof poi.rating === 'number' ? poi.rating : Number(poi.rating || 4.5)).toFixed(1);
-
-                        return (
-                          <div
-                            key={poi.id}
-                            onClick={() => {
-                              setSelectedMapPoiId(poi.id);
-                              setShowAddIdeasModal(false);
-                            }}
-                            className="flex flex-col group cursor-pointer text-left select-none"
-                          >
-                            {/* Ảnh thẻ tỉ lệ 1.05 : 1, bo góc 16px */}
-                            <div className="relative aspect-[1.05/1] w-full rounded-[16px] overflow-hidden bg-gray-100 shadow-2xs">
-                              <img
-                                src={poi.image}
-                                alt={poi.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                onError={(e) => {
-                                  e.currentTarget.src = 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
-                                }}
-                              />
-
-                              {/* Huy hiệu Địa điểm xanh */}
-                              {poi.isGreen && (
-                                <div className="absolute top-2.5 left-2.5 z-10 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[10.5px] font-bold px-2 py-0.5 rounded-full shadow-md backdrop-blur-md flex items-center gap-1 pointer-events-none">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                  <span>🌱 Địa điểm xanh</span>
-                                </div>
-                              )}
-
-                              {/* Nút “+ Thêm” trên thẻ */}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleIdea(poi.id);
-                                }}
-                                className={`absolute top-2.5 right-2.5 h-[28px] px-2.5 rounded-full font-semibold text-[12px] transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1 z-10 ${
-                                  isAdded
-                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                    : 'bg-white text-gray-900 hover:bg-black hover:text-white'
-                                }`}
-                              >
-                                {isAdded ? (
-                                  <>
-                                    <Check size={13} strokeWidth={2.5} />
-                                    <span>Đã thêm</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Plus size={13} strokeWidth={2.5} />
-                                    <span>Thêm</span>
-                                  </>
-                                )}
-                              </button>
-
-                              {/* 5 chấm phân trang dưới đáy ảnh chuẩn Mindtrip */}
-                              <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1 pointer-events-none z-10">
-                                <span className="w-1.5 h-1.5 rounded-full bg-white shadow-xs" />
-                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                                <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                              </div>
-
-                              {/* Icon ⓘ ở góc dưới bên phải */}
-                              <div className="absolute bottom-2.5 right-2.5 pointer-events-none z-10 text-white/90 drop-shadow-xs">
-                                <Info size={13} />
-                              </div>
-                            </div>
-
-                            {/* Dưới ảnh thẻ */}
-                            <div className="mt-2 flex items-baseline justify-between gap-1.5 min-w-0">
-                              <h4 className="font-bold text-[13px] text-gray-950 truncate leading-snug group-hover:text-black" title={poi.name}>
-                                {poi.name}
-                              </h4>
-                              {Number(poi.rating) > 0 && (
-                                <span className="text-[12px] font-bold text-gray-950 shrink-0 flex items-center gap-0.5">
-                                  <Star size={11} className="fill-black text-black" />
-                                  <span>{ratingVal}</span>
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-gray-500 font-normal">
-                              <MapPin size={11} className="text-gray-400 shrink-0" />
-                              <span className="truncate">
-                                {(() => {
-                                  const isCafe = Boolean(
-                                    poi.sub_category?.includes('cafe') || 
-                                    poi.sub_category?.includes('coffee') || 
-                                    /coffee|cafe|cà phê|tiệm trà|workspace/i.test(poi.name)
-                                  );
-                                  if (isCafe) return 'Quán cà phê';
-                                  if (poi.category === 'quan-an') return 'Ẩm thực';
-                                  if (poi.category === 'di-tich') return 'Di tích lịch sử';
-                                  if (poi.category === 'canh-quan') return 'Cảnh quan & Thắng cảnh';
-                                  return 'Chùa & Tâm linh';
-                                })()}
-                              </span>
-                            </div>
-
-                            <div className="mt-0.5 text-[11.5px] text-gray-400 font-normal truncate">
-                              {poi.address || `${poi.city}, Việt Nam`}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </>
-              ) : (
-                /* Tab Tùy chỉnh (Custom) */
-                <div className="pt-4 flex flex-col space-y-4 max-w-lg">
-                  <p className="text-[13.5px] text-gray-700 leading-relaxed">
-                    Bạn có một địa điểm riêng muốn lưu vào chuyến đi này? Nhập tên bên dưới để thêm ngay vào Ý tưởng:
-                  </p>
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={customIdeaInput}
-                      onChange={(e) => setCustomIdeaInput(e.target.value)}
-                      placeholder="Ví dụ: Quán cà phê Yên, Tiệm bánh mì..."
-                      className="w-full h-[42px] px-4 rounded-xl border border-gray-300 focus:border-black focus:outline-none text-[13.5px] shadow-2xs"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && customIdeaInput.trim()) {
-                          const name = customIdeaInput.trim();
-                          const found = allPois.find((p) => p.name.toLowerCase() === name.toLowerCase());
-                          const customId = found ? found.id : `custom-${name}`;
-                          handleToggleIdea(customId);
-                          setCustomIdeaInput('');
-                          setShowAddIdeasModal(false);
-                          setShowIdeasView(true);
-                        }
-                      }}
-                    />
-                    <div className="flex justify-end gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCustomIdeaInput('');
-                          setShowAddIdeasModal(false);
-                        }}
-                        className="h-[38px] px-5 rounded-full border border-gray-200 text-gray-600 text-[13px] font-medium hover:bg-gray-50 transition cursor-pointer"
-                      >
-                        Hủy
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!customIdeaInput.trim()) return;
-                          const name = customIdeaInput.trim();
-                          const found = allPois.find((p) => p.name.toLowerCase() === name.toLowerCase());
-                          const customId = found ? found.id : `custom-${name}`;
-                          handleToggleIdea(customId);
-                          setCustomIdeaInput('');
-                          setShowAddIdeasModal(false);
-                          setShowIdeasView(true);
-                        }}
-                        className="h-[38px] px-6 rounded-full bg-black text-white font-bold text-[13px] hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-2xs"
-                      >
-                        + Thêm vào ý tưởng
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <PlannerAddIdeasModal
+          modalTab={modalTab}
+          onChangeTab={setModalTab}
+          modalCity={modalCity}
+          onChangeCity={setModalCity}
+          modalSearch={modalSearch}
+          onChangeSearch={setModalSearch}
+          modalCategory={modalCategory}
+          onChangeCategory={setModalCategory}
+          categoryTabs={MODAL_CATEGORY_TABS}
+          filteredPois={modalFilteredPois}
+          savedIdsSize={savedIds.size}
+          customIdeaInput={customIdeaInput}
+          onChangeCustomIdeaInput={setCustomIdeaInput}
+          onClose={() => setShowAddIdeasModal(false)}
+          isPoiAdded={(poiId) => tripIdeas.includes(poiId)}
+          onTogglePoi={(poi) => handleToggleIdea(poi.id)}
+          onSelectPoi={(poiId) => {
+            setSelectedMapPoiId(poiId);
+            setShowAddIdeasModal(false);
+          }}
+          onResetFilters={() => {
+            setModalCategory('for-you');
+            setModalSearch('');
+            setModalCity('all');
+          }}
+          onSubmitCustomIdea={() => {
+            const name = customIdeaInput.trim();
+            if (!name) return;
+            const found = allPois.find((p) => p.name.toLowerCase() === name.toLowerCase());
+            const customId = found ? found.id : `custom-${name}`;
+            handleToggleIdea(customId);
+            setCustomIdeaInput('');
+            setShowAddIdeasModal(false);
+            setShowIdeasView(true);
+          }}
+        />
       )}
 
       {/* ─── 1. GIAO DIỆN Ý TƯỞNG ĐÃ LƯU (GIỮ NGUYÊN GỐC CHUẨN MINDTRIP THEO ẢNH) ─── */}
@@ -3424,96 +2157,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
       {/* ─── NGĂN CẨM NANG VĂN HÓA & DU LỊCH XANH HUẾ – ĐÀ NẴNG (MINDTRIP LEARN PRIMER) ─── */}
       {showLearnDrawer && !selectedPoi && (
-        <div
-          className="fixed inset-y-0 right-0 w-full sm:w-[620px] lg:w-[calc(50vw)] xl:w-[calc(50vw)] z-50 bg-white rounded-l-[24px] border-l border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.08),-4px_0_12px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden animate-slideInRight"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="learn-drawer-title"
-        >
-          <div className="px-6 py-4 border-b border-neutral-200/80 flex items-center justify-between gap-3 shrink-0 bg-emerald-50/40">
-            <div className="min-w-0">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-800">
-                <Leaf size={14} className="shrink-0" />
-                <span>Cẩm nang Bản địa Xanh</span>
-              </span>
-              <h3
-                id="learn-drawer-title"
-                className="text-base sm:text-lg font-bold text-neutral-900 tracking-tight mt-0.5 truncate"
-              >
-                Văn hóa, Phong thủy &amp; Mẹo đi Huế – Đà Nẵng
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowLearnDrawer(false)}
-              aria-label="Đóng cẩm nang Huế – Đà Nẵng"
-              className="min-h-[40px] min-w-[40px] rounded-full bg-white hover:bg-neutral-100 border border-neutral-200 text-neutral-700 flex items-center justify-center transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4 text-neutral-700">
-            <section className="p-4 rounded-2xl bg-neutral-50/90 border border-neutral-200/80 space-y-1.5">
-              <h4 className="text-sm font-bold text-neutral-900">
-                1. Phong thủy Cố đô &amp; Cấu trúc 3 vòng thành Đại Nội
-              </h4>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                Kinh thành Huế quy hoạch theo triết lý phong thủy truyền thống: tựa thế &ldquo;tiền án, hậu chẩm&rdquo; lấy Sông Hương làm minh đường và Núi Ngự Bình làm bình phong. Bên trong gồm 3 vòng thành đồng tâm: <strong>Kinh thành</strong> (phòng thủ ngoài cùng), <strong>Hoàng thành</strong> (cơ quan triều đình &amp; Điện Thái Hòa) và <strong>Tử Cấm Thành</strong> (nơi sinh hoạt của hoàng gia). Tại Đà Nẵng, <strong>Bán đảo Sơn Trà</strong> giữ vai trò lá phổi xanh chắn gió và bảo tồn Voọc chà vá chân nâu quý hiếm.
-              </p>
-            </section>
-
-            <section className="p-4 rounded-2xl bg-neutral-50/90 border border-neutral-200/80 space-y-1.5">
-              <h4 className="text-sm font-bold text-neutral-900">
-                2. Quy tắc Trang phục &amp; Ứng xử Di sản Xanh
-              </h4>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                Khi tham quan Đại Nội, Hệ thống Lăng tẩm (Tự Đức, Minh Mạng, Khải Định), Chùa Thiên Mụ hoặc Chùa Linh Ứng, du khách cần mặc áo có tay, quần hoặc váy dài qua gối. Giữ giọng nói nhỏ nhẹ nơi thờ tự, mang bình nước cá nhân để nạp lại tại các trạm xanh và hạn chế túi nylon sử dụng một lần.
-              </p>
-            </section>
-
-            <section className="p-4 rounded-2xl bg-emerald-50/55 border border-emerald-200/80 space-y-1.5">
-              <h4 className="text-sm font-bold text-emerald-950">
-                3. Mẹo Di chuyển Cho Người Lớn Tuổi &amp; Phương tiện Ít Phát thải
-              </h4>
-              <p className="text-xs text-neutral-700 leading-relaxed">
-                Thay vì đi ô tô leo đèo nhiều khúc cua gấp, hãy chọn <strong>Tàu hỏa Di sản Đà Nẵng → Huế</strong> men theo triền núi Đèo Hải Vân và Vịnh Lăng Cô — vừa êm ái cho người lớn tuổi vừa giảm ~60–75% phát thải CO₂. Trong khu di sản Đại Nội nên thuê xe điện nội khu; buổi chiều dạo thuyền rồng điện/chèo tay Sông Hương hoặc đi xe đạp nhẹ quanh vườn thanh trà Làng sinh thái Thủy Biều.
-              </p>
-            </section>
-
-            <section className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-1.5">
-              <h4 className="text-sm font-bold text-amber-950">
-                4. Phương án Dự phòng Mùa Mưa Miền Trung (Tháng 10 – Tháng 12)
-              </h4>
-              <p className="text-xs text-neutral-700 leading-relaxed">
-                Nếu gặp mưa dầm đặc trưng của Huế hoặc gió lớn ven biển Đà Nẵng, hãy chuyển sang các trải nghiệm trong nhà giàu giá trị văn hóa: Bảo tàng Cổ vật Cung đình Huế, Bảo tàng Điêu khắc Chăm Đà Nẵng, thưởng trà sen cung đình, hoặc trải nghiệm ngâm chân thảo mộc &amp; làm mứt thanh trà trong không gian nhà rường ấm cúng tại Làng Thủy Biều.
-              </p>
-            </section>
-          </div>
-
-          <div className="px-6 py-4 border-t border-neutral-200/80 bg-white flex flex-wrap items-center justify-between gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setShowLearnDrawer(false);
-                void handleSendChatMessage(
-                  'Gợi ý mẹo lịch trình Huế – Đà Nẵng nhẹ nhàng cho bố mẹ lớn tuổi và phương án dự phòng trời mưa'
-                );
-              }}
-              className="min-h-[40px] px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-            >
-              <Sparkles size={14} className="shrink-0" />
-              <span>Hỏi AI theo mẹo cẩm nang này</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowLearnDrawer(false)}
-              className="min-h-[40px] px-4 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-900 text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-            >
-              Đóng lại
-            </button>
-          </div>
-        </div>
+        <TripLearnDrawer
+          onClose={() => setShowLearnDrawer(false)}
+          onAskCopilot={(prompt) => {
+            void handleSendChatMessage(prompt);
+          }}
+        />
       )}
 
       {/* Explanation Modal (KG + AI) */}

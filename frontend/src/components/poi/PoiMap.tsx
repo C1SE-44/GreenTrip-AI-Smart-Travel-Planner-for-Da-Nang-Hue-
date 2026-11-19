@@ -890,8 +890,8 @@ function DynamicMarkersLayer({
   // Khi kết thúc kéo (moveend): debounce 220ms nạp vùng mới, cho ghim mới rơi nhẹ xuống, ẩn viên thuốc
   useEffect(() => {
     if (!map) return;
-    let debounceTimer: NodeJS.Timeout | null = null;
-    let hidePillTimer: NodeJS.Timeout | null = null;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let hidePillTimer: ReturnType<typeof setTimeout> | null = null;
 
     const handleMoveStart = () => {
       if (setIsMapLoading) setIsMapLoading(true);
@@ -1385,7 +1385,7 @@ export default function PoiMap({
   const [isMapLoading, setIsMapLoading] = useState<boolean>(false);
 
   // Bộ đếm thời gian tự động đóng ô cơ bản khi dời chuột ra ngoài (450ms, không tức thì để tránh giật)
-  const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const startAutoCloseTimer = useCallback((delay = 450) => {
     if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);

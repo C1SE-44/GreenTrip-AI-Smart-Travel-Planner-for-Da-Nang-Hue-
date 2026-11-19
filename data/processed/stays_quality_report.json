@@ -1,0 +1,84 @@
+{
+  "generated_at": "2026-11-19T01:20:01+00:00",
+  "input_records": 3250,
+  "output_records": 2989,
+  "dropped_total": 69,
+  "dropped_by_reason": {
+    "non_tourist_residential:khu lien hop can ho": 22,
+    "non_tourist_residential:chung cu": 14,
+    "missing_or_invalid_coordinates": 4,
+    "city_centroid_placeholder_pin": 3,
+    "non_tourist_residential:toa nha voi cac can ho da duoc hoan thien": 3,
+    "missing_address": 2,
+    "non_stay_name:nha o xa hoi": 2,
+    "non_stay_name:khu do thi": 2,
+    "non_stay_name:khu pho du lich": 1,
+    "non_stay_name:dai hoc": 1,
+    "non_stay_name:cho thue leu": 1,
+    "non_stay_name:tap hoa": 1,
+    "non_stay_name:truong tieu hoc": 1,
+    "non_stay_name:ho phuoc hoa": 1,
+    "non_stay_name:duong so 16": 1,
+    "non_stay_name:cu dinh": 1,
+    "non_stay_name:duy phuoc": 1,
+    "non_stay_name:nha tran van nhi": 1,
+    "non_stay_name:xuong noi that": 1,
+    "non_stay_name:cong ty co phan can ho": 1,
+    "non_stay_name:nha thay chan": 1,
+    "non_stay_name:thon cam lanh": 1,
+    "non_stay_name:noi that thien an": 1,
+    "outside_city_bounds:HUE": 1,
+    "non_stay_name:cong ty du lich": 1
+  },
+  "room_variants_merged": 192,
+  "dummy_phones_purged": 5,
+  "url_rules_applied": {
+    "official_website_verified": 574,
+    "purged_aggregator_or_spam_website": 506,
+    "moved_facebook_to_social_links": 296,
+    "moved_ota_to_social_links": 294,
+    "moved_instagram_to_social_links": 6,
+    "moved_zalo_to_social_links": 6
+  },
+  "cities": {
+    "DANANG": 2148,
+    "HUE": 841
+  },
+  "sub_categories": {
+    "homestay": 854,
+    "hotel": 809,
+    "villa": 345,
+    "resort": 319,
+    "serviced_apartment": 318,
+    "guesthouse": 295,
+    "hostel": 28,
+    "eco_lodge": 21
+  },
+  "budget_tiers": {
+    "$": 1335,
+    "$$": 1136,
+    "$$$": 518
+  },
+  "verification_status": {
+    "VERIFIED_ACTIVE": 2497,
+    "VERIFIED_PARTIAL": 442,
+    "NEEDS_REVIEW": 50
+  },
+  "completeness": {
+    "address": 2989,
+    "coordinates": 2989,
+    "image_url": 2884,
+    "phone_number": 2162,
+    "official_website_url": 574,
+    "estimated_cost": 2122,
+    "raw_rating": 2552,
+    "review_count_gt_0": 2395
+  },
+  "db_constraint_violations": [],
+  "live_image_http_check": {
+    "checked": 50,
+    "ok": 50,
+    "failed": 0,
+    "failures": []
+  }
+}

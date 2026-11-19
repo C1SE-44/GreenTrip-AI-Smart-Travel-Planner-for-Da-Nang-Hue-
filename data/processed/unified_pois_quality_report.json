@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-11-19T04:17:08+00:00",
+  "existing_db_pois": 482,
+  "stays_cleaned_input": 2989,
+  "stays_dropped_by_mindtrip_gate": {
+    "status:VERIFIED_PARTIAL": 442,
+    "status:NEEDS_REVIEW": 50,
+    "zero_reviews": 168
+  },
+  "stays_after_mindtrip_gate": 2329,
+  "stays_brand_or_condo_merged": 51,
+  "cross_dataset_duplicates_removed": [
+    {
+      "db_name": "Leaf Village & Farm - Làng Lá",
+      "stay_name": "Leaf Village & Farm - Làng Lá"
+    },
+    {
+      "db_name": "YesHue Eco Waterfall Retreat",
+      "stay_name": "YesHue Eco Waterfall Retreat"
+    },
+    {
+      "db_name": "Hue Ecolodge",
+      "stay_name": "Hue Ecolodge"
+    },
+    {
+      "db_name": "VỌC Glamping",
+      "stay_name": "VỌC Glamping"
+    }
+  ],
+  "stays_added": 2274,
+  "unified_total_records": 2756,
+  "by_source_type": {
+    "existing_poi": 482,
+    "new_stay": 2274
+  },
+  "by_city": {
+    "DANANG": 1813,
+    "HUE": 943
+  },
+  "by_category": {
+    "Lưu trú và nghỉ dưỡng": 2274,
+    "Ẩm thực và quán ăn": 143,
+    "Cảnh quan và thiên nhiên": 117,
+    "Quán cafe giải khát": 110,
+    "Di tích lịch sử và văn hóa": 67,
+    "Tâm linh & Tôn giáo": 45
+  },
+  "completeness": {
+    "address": 2756,
+    "image_url": 2756,
+    "gallery_urls_nonempty": 2756,
+    "phone_number": 2278,
+    "website_url": 619,
+    "satisfaction_score": 2756,
+    "estimated_cost": 2220
+  },
+  "db_constraint_violations": [],
+  "live_image_http_check": {
+    "checked": 50,
+    "ok": 50,
+    "failed": 0,
+    "failures": []
+  }
+}

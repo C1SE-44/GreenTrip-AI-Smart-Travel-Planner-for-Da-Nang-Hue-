@@ -21,10 +21,12 @@
   ```text
   (Dán kết quả chạy pytest tại đây)
   ```
-- [ ] Frontend (`npm run lint && npm run typecheck && npm run build`):
+- [ ] Frontend (`npm run lint:ci && npm run typecheck && npm run test:unit && npm run build`):
   ```text
   (Dán kết quả build/typecheck tại đây)
   ```
+- [ ] Kiểm thử chức năng, API & phân quyền (`401` khi thiếu token, `403`/`404` khi truy cập dữ liệu người khác nếu liên quan):
+  - ...
 
 ### 3.2. Ảnh chụp màn hình / Video kết quả chạy thực tế trên máy
 *(Đính kèm ảnh chụp giao diện hoặc response từ Swagger/Postman)*
@@ -47,8 +49,8 @@
 
 ## 6. Checklist tự kiểm tra trước khi yêu cầu Review & Merge
 - [ ] **Branch**: Đặt tên đúng chuẩn `feature/#<issue>_<short-description>` hoặc `bugfix/#<issue>_<short-description>` và tách từ `develop`.
-- [ ] **Scope Lock**: Chỉ sửa đúng các file thuộc phạm vi task, không tự ý refactor lan man.
-- [ ] **Clean Code**: Đã tự đọc lại `git diff`, xóa toàn bộ dead code, comment lỗi thời, `console.log`/debug log và đảm bảo không lộ secret/API key.
+- [ ] **PRD & Scope Lock**: Đã đối chiếu `PRD.md`, chỉ sửa đúng phạm vi task và **không tự ý sửa code của thành viên khác** khi chưa trao đổi/được đồng ý.
+- [ ] **Clean Code**: Code đơn giản, dễ đọc, đặt tên rõ nghĩa; đã tự đọc lại `git diff`, xóa dead code, `console.log`/debug log và đảm bảo không lộ secret/API key.
 - [ ] **Commit**: Các commit nhỏ, rõ nghĩa theo chuẩn (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`).
 - [ ] **Review**: Đã được AI review và gán ít nhất 1 Reviewer trong nhóm (không tự ý `Resolve` comment của người khác).
 - [ ] **CI/CD**: Toàn bộ checks trên GitHub Actions đã xanh.

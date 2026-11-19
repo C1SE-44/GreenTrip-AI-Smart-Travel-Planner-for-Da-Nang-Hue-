@@ -1,0 +1,139 @@
+# Product Requirements Document (PRD) — GreenTrip AI
+
+* **Tên dự án:** GreenTrip AI (Smart Eco-Friendly Travel Planner for Da Nang & Hue)
+* **Phiên bản:** 1.0.0 (MVP — Đồ án tốt nghiệp C1SE-44)
+* **Phạm vi địa lý:** Đà Nẵng & Thừa Thiên Huế
+* **Trạng thái:** Đã chốt yêu cầu (Khớp 100% với codebase hiện tại — Ready for Verification & Iteration)
+
+> **Quy tắc bắt buộc:** Trước khi code bất kỳ tính năng mới nào hoặc thay đổi hành vi sản phẩm, cả thành viên nhóm và AI Agent phải đọc, đối chiếu và cập nhật (nếu cần) file `PRD.md` này, sau đó xác nhận lại yêu cầu trước khi sửa code.
+
+---
+
+## 1. Mục tiêu sản phẩm & Bài toán giải quyết (What & Why)
+
+### 1.1. Bối cảnh & Điểm đau của người dùng (Problem Space)
+Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đang gặp 4 trở ngại lớn:
+1. **Lãng phí thời gian & di chuyển kiệt sức:** Mất nhiều ngày đọc review rời rạc trên mạng xã hội, dẫn đến lịch trình xếp đường đi zíc-zắc qua lại giữa các quận/huyện, tốn chi phí và thời gian di chuyển.
+2. **Dễ "cháy túi" (vượt ngân sách):** Thiếu công cụ theo dõi và kiểm soát chi phí thực tế theo trần ngân sách (`B_max`) và theo từng nhóm chi tiêu (ăn uống, lưu trú, tham quan).
+3. **Bị động trước thời tiết miền Trung:** Thời tiết Đà Nẵng – Huế biến động nhanh (mưa dầm bất chợt tại Huế, gió/biển động tại Đà Nẵng). Khi hoạt động ngoài trời bị gián đoạn, du khách lúng túng không tìm được điểm trong nhà tương đương.
+4. **Áp lực quá tải du lịch (Overtourism) & thiếu minh bạch gợi ý:** Các điểm trung tâm đông đúc, thiếu gợi ý sinh thái/làng nghề bản địa ít phát thải CO₂ và thiếu lời giải thích rõ ràng *vì sao địa điểm này phù hợp*.
+
+### 1.2. Mục tiêu sản phẩm (Product Goals)
+* Cung cấp nền tảng web lập lịch trình du lịch thông minh, hỗ trợ khám phá địa điểm xanh và tự động xếp lịch cá nhân hóa từng ngày (mục tiêu phản hồi nhanh dưới 10 giây).
+* Tối ưu tuyến đường di chuyển theo cụm địa lý (Clustering — tránh đi zíc-zắc), ước tính quãng đường và phát thải carbon (CO₂) theo phương tiện.
+* Giải thích lý do đề xuất địa điểm bằng **Knowledge Graph (Neo4j)** và tư vấn theo ngữ cảnh bằng **AI Travel Copilot (Gemini)**.
+* Hỗ trợ phản ứng linh hoạt khi trời mưa, theo dõi ngân sách theo thời gian thực và xuất lịch trình ngoại tuyến (`.ics` Calendar, `.pdf`, checklist hành trang xanh).
+
+---
+
+## 2. Đối tượng sử dụng & Phân quyền (User Roles & Permissions)
+
+| Vai trò (Role) | Mô tả | Quyền hạn & Giới hạn (MVP v1.0) |
+| :--- | :--- | :--- |
+| **Guest (Khách vãng lai)** | Người dùng chưa đăng nhập tài khoản. | - Xem Landing Page (`/`), Trang chủ (`/home`), Khám phá & Bản đồ xanh (`/explore`), xem chi tiết POI & giải thích Knowledge Graph.<br>- Trải nghiệm không gian Planner (`/planner`, `/trips`, `/chat`) và lưu nháp tạm trên trình duyệt.<br>- **Giới hạn:** Không lưu vĩnh viễn chuyến đi/bộ sưu tập vào Database tài khoản; không sử dụng các endpoint yêu cầu JWT (`/saved-places/*`, `/my-trips/*`, `/auth/me`). |
+| **Authenticated User (Du khách đã đăng nhập)** | Đăng ký/đăng nhập bằng **Email + Mật khẩu + xác thực OTP** (`/verify-email`) hoặc **Google OAuth 2.0**. | - Toàn quyền của Guest.<br>- Quản lý hồ sơ cá nhân, đổi mật khẩu, cập nhật ảnh đại diện (`/profile`).<br>- Tạo/sửa/xóa bộ sưu tập và lưu địa điểm yêu thích (`/saved`).<br>- Tạo, sửa, xóa, đồng bộ nhiều chuyến đi cá nhân (`/my-trips`) và lịch trình từng ngày lên Database.<br>- Xuất lịch trình ngoại tuyến (`.ics`, `.pdf`) và chat AI Copilot gắn ngữ cảnh chuyến đi. |
+| **Engineering / Maintainer (Nhóm phát triển)** | Thành viên kỹ thuật vận hành dữ liệu & hạ tầng. | - Quản trị dữ liệu POI, migration SQL (`backend/migrations/`), dữ liệu đồ thị Neo4j (`backend/neo4j/`), giám sát CI/CD qua repository và scripts kỹ thuật (chưa có giao diện Admin Portal riêng trong v1.0). |
+
+---
+
+## 3. Danh sách tính năng (Feature Scope)
+
+### 3.1. Trong phạm vi MVP (In-Scope — v1.0)
+* **F-01 — Xác thực, Hồ sơ & Onboarding (`PB01`):** Đăng ký Email + mã OTP qua SMTP, đăng nhập Email/Mật khẩu, đăng nhập Google OAuth 2.0, quên/đổi mật khẩu, cập nhật hồ sơ & avatar (`/profile`), và luồng Onboarding (`/onboarding`) thu thập sở thích ban đầu.
+* **F-02 — Khám phá địa điểm xanh & Lọc trọng số (`PB08`):** Trang `/home` và `/explore` chia 2 cột (danh sách POI + bản đồ `PoiMap` đồng bộ hover/select), gắn nhãn **Địa điểm xanh**, lọc theo thành phố (Đà Nẵng / Huế), danh mục (Ẩm thực, Di tích, Cảnh quan, Chùa), từ khóa và trọng số ưu tiên bền vững.
+* **F-03 — Giải thích đề xuất bằng Knowledge Graph (`PB10`):** Xem chi tiết POI (`PoiDetailSection`) và mở modal giải thích *"Vì sao địa điểm này phù hợp?"* dựa trên dữ liệu đồ thị Neo4j (`GET /pois/{poi_id}/explanation-facts`).
+* **F-04 — Bộ sưu tập & Địa điểm đã lưu (`Saved Places`):** Thả tim lưu địa điểm và tổ chức theo các bộ sưu tập cá nhân (`/saved`), đồng bộ trực tiếp vào modal thêm điểm trong Planner.
+* **F-05 — Thiết lập thông số chuyến đi & Gợi ý cá nhân hóa (`PB07`, `PB09`):** Chọn điểm đến (Đà Nẵng / Huế / Cả 2), lịch ngày đi/về hoặc số ngày linh hoạt, số du khách, ngân sách theo 3 nhóm độc lập (Ăn uống, Lưu trú, Hoạt động) và nhận gợi ý POI phù hợp (`POST /v1/recommendations/poi`).
+* **F-06 — Không gian Lịch trình Split-Screen, Xếp lịch tự động & Tối ưu xanh (`PB11`):**
+  * Giao diện chia đôi: Timeline theo ngày (bên trái) + Bản đồ lộ trình đánh số thứ tự & lọc theo ngày (bên phải).
+  * Trợ lý xếp lịch theo 3 nhịp độ (`Relaxed` / `Balanced` / `Fast`), tự chèn khung giờ nghỉ, kiểm tra xung đột giờ mở cửa.
+  * **Tối ưu đường đi (No Zig-zag):** Gom cụm điểm dừng giảm đi vòng, ước tính tổng km và phát thải CO₂ theo phương tiện (ô tô, xe máy, công cộng, đi bộ).
+  * **Theo dõi ngân sách (`C_total` vs `B_max`):** Tính tổng chi phí dự kiến theo số khách và cảnh báo ngay khi vượt trần ngân sách.
+  * **Ứng phó thời tiết 1 chạm (Rainy Day Switch):** Đổi nhanh hoạt động ngoài trời sang điểm trong nhà phù hợp kèm hoàn tác (Undo) và gợi ý điểm thay thế lân cận.
+* **F-07 — Trợ lý AI Travel Copilot & Cẩm nang Bản địa Xanh (`PB14`):** Chat trực tiếp trong không gian chuyến đi (`TripOverviewView`, `/chat`) qua `POST /trips/copilot/chat` để nhận tư vấn, highlight địa điểm lên bản đồ, thêm vào Ý tưởng hoặc cập nhật lịch trình; tích hợp ngăn **Cẩm nang Bản địa Xanh** (phong thủy Cố đô, trang phục di sản, di chuyển cho người lớn tuổi, dự phòng mùa mưa).
+* **F-08 — Xuất dữ liệu ngoại tuyến (Offline Export):** Xuất lịch trình ra `.ics` (tương thích Google/Apple Calendar), xuất `.pdf` (Backend ReportLab / in PDF) và checklist hành trang du lịch xanh.
+
+### 3.2. Ngoài phạm vi MVP / Kế hoạch giai đoạn sau (Out-of-Scope & Planned v1.1)
+* **Không làm trong v1.0:**
+  * Không tích hợp cổng thanh toán trực tiếp (In-app Payment / VNPay / MoMo) cho vé máy bay, khách sạn hay vé tham quan.
+  * Không xây dựng mạng xã hội chia sẻ ảnh hoặc tính năng nhắn tin trực tiếp giữa người dùng với nhau.
+* **Kế hoạch mở rộng (`Planned / v1.1` — chưa triển khai trong code v1.0):**
+  * Giao diện quản trị riêng (**System Admin Portal**) quản lý Master POI Data & dashboard giám sát quota API.
+  * Chia sẻ liên kết chuyến đi có tương tác nhóm (**Share link bình chọn / voting**).
+  * Chèn **mã QR bản đồ & danh bạ khẩn cấp** tự động trong file `.pdf` xuất từ Backend.
+  * Giới hạn số lượt xuất file theo ngày riêng cho Guest (ví dụ 2 lần/ngày) và cơ chế tự động retry LLM 2 lần có cấu hình timeout 15 giây tập trung.
+
+---
+
+## 4. Luồng thao tác người dùng (User Flows)
+
+### Flow 1: Truy cập lần đầu, Đăng nhập & Onboarding
+1. Người dùng vào `/` (`LandingPage`) → chọn **Khám phá ngay** (vào `/explore` ở chế độ Guest) hoặc **Đăng nhập / Đăng ký** (`/login`, `/register`).
+2. Đăng ký bằng Email → nhận OTP qua email → xác thực tại `/verify-email` → hoàn tất Onboarding (`/onboarding`) → vào `/home` hoặc `/explore`.
+3. Hoặc đăng nhập nhanh bằng Google OAuth (`POST /auth/google`) → nhận JWT và vào ứng dụng.
+
+### Flow 2: Khám phá, Xem giải thích xanh & Lưu bộ sưu tập
+1. Tại `/explore`, người dùng chọn thành phố (Đà Nẵng / Huế), lọc danh mục hoặc chỉnh trọng số ưu tiên bền vững.
+2. Di chuột vào thẻ POI → ghim tương ứng sáng nổi bật trên `PoiMap`; bấm vào thẻ → mở chi tiết POI và xem giải thích Knowledge Graph (`PB10`).
+3. Bấm thả tim → nếu đã đăng nhập, chọn bộ sưu tập để lưu về `/saved` (`/saved-places/*`).
+
+### Flow 3: Tạo chuyến đi & Chat cùng AI Copilot
+1. Người dùng vào `/planner` (`/trips` / `/my-trips`) → bấm **Tạo chuyến đi mới** → nhập điểm đến, ngày đi, số khách, ngân sách.
+2. Trong màn hình tổng quan chuyến đi (`TripOverviewView`), cột trái là **AI Copilot Chat**, cột phải là **Bản đồ & Drawer Ý tưởng / Lịch trình / Cẩm nang**.
+3. Người dùng hỏi AI → nhận gợi ý địa điểm gắn liên kết bản đồ → bấm **+ Thêm vào Ý tưởng** hoặc mở **Xem lịch theo ngày**.
+
+### Flow 4: Xếp lịch theo ngày, Tinh chỉnh, Ứng phó thời tiết & Xuất file
+1. Tại `TripItineraryView`, người dùng chọn nhịp độ (`Relaxed` / `Balanced` / `Fast`) để hệ thống xếp lịch hoặc tự thêm/xóa/sửa giờ, tiêu đề, ghi chú từng điểm dừng.
+2. Bấm **Tối ưu đường đi** để gom cụm điểm gần nhau, đổi phương tiện để đối chiếu lượng CO₂ tiết kiệm và kiểm tra thanh tổng ngân sách.
+3. Khi gặp mưa, bấm chuyển chế độ mưa (Rainy Day Switch) để thay điểm ngoài trời bằng điểm trong nhà (có hỗ trợ Undo) hoặc chọn điểm thay thế lân cận.
+4. Lưu lịch trình (đồng bộ lên Database nếu đã đăng nhập; nếu là Guest sẽ gợi ý đăng nhập để đồng bộ) và bấm xuất `.ics` / `.pdf`.
+
+---
+
+## 5. Ma trận phân quyền & Quy tắc nghiệp vụ (Permissions & Business Rules)
+
+### 5.1. Ma trận phân quyền API (Bắt buộc kiểm thử `401` / `403` / `404`)
+
+| Nhóm Endpoint | Yêu cầu xác thực | Quy tắc phân quyền & bảo vệ |
+| :--- | :--- | :--- |
+| `GET /health`, `GET /pois/*`, `GET /itineraries/*`, `POST /v1/recommendations/poi` | Công khai (Public) | Chỉ trả dữ liệu POI, gợi ý và tuyến hành trình mẫu công khai. |
+| `POST /auth/login`, `/register`, `/verify-email`, `/google`, `/check-email` | Công khai + Rate Limit | Áp dụng rate limiting (`rate_limit.py`) chống brute-force / spam OTP. |
+| `GET/PATCH /auth/me`, `POST /auth/change-password`, `PUT /auth/me/avatar` | Bắt buộc JWT (`get_current_user_id`) | Thiếu/sai token trả `401`; chỉ được đọc/sửa hồ sơ của chính chủ token. |
+| `/saved-places/*` | Bắt buộc JWT (`get_current_user_id`) | Bộ sưu tập và địa điểm lưu gắn chặt `user_id`; không truy cập dữ liệu user khác. |
+| `/my-trips/*` | Bắt buộc JWT (`get_current_user_id`) | Chỉ chủ sở hữu `trip` mới được xem, sửa, xóa, xuất PDF; sai chủ sở hữu trả `403`/`404`. |
+| `/trips/{trip_id}/itinerary`, `POST /trips/copilot/chat` | JWT (hỗ trợ ngữ cảnh chuyến đi + Rate Limit cho Copilot) | Copilot áp dụng rate limit chống spam token AI; chuyến đi gắn tài khoản phải xác thực quyền sở hữu trước khi ghi đè. |
+
+### 5.2. Quy tắc nghiệp vụ cốt lõi (Business Rules & Constraints)
+* **Kiểm soát ngân sách (`C_total` vs `B_max`):** Hệ thống tính chi phí dự kiến theo số khách và danh mục. Khi tổng chi phí vượt trần ngân sách `B_max`, giao diện bắt buộc hiển thị cảnh báo vượt mức rõ ràng để người dùng điều chỉnh hoặc đổi điểm miễn phí/phù hợp hơn.
+* **Thời gian di chuyển hợp lý:** Chặng liên tỉnh Đà Nẵng ↔ Huế cần tính dư thời gian di chuyển (tối thiểu ~2,0–2,5 tiếng), tránh xếp các điểm dừng chồng lấn giờ mở cửa.
+* **Chống quá tải nhịp độ (Pacing):** Giới hạn mật độ điểm tham quan theo mức nhịp độ (`Relaxed` / `Balanced` / `Fast`) và tự động bố trí khung nghỉ ngơi/ăn uống hợp lý trong ngày.
+* **An toàn khi lỗi dịch vụ ngoài (Neo4j / Gemini):** Khi dịch vụ AI hoặc Neo4j gặp lỗi/timeout, Backend phải trả thông báo lỗi thân thiện (không rò rỉ stack trace hay secret) và giữ nguyên dữ liệu người dùng đang thao tác trên giao diện.
+
+---
+
+## 6. Tiêu chí hoàn thành & Checklist trước khi code
+
+### 6.1. Tiêu chí nghiệm thu sản phẩm (Acceptance Criteria — v1.0)
+- [ ] **Độ chính xác địa lý:** Các POI Đà Nẵng – Huế hiển thị có tọa độ (`lat`, `lng`) hợp lệ và hiển thị đúng vị trí trên bản đồ `PoiMap`.
+- [ ] **Tối ưu lộ trình:** Nút *Tối ưu đường đi* gom cụm hợp lý, giảm quãng đường zíc-zắc và cập nhật lại số km + lượng CO₂ tương ứng.
+- [ ] **Định dạng xuất ngoại tuyến:** File `.ics` nhập được vào Google/Apple Calendar không lỗi cú pháp; file `.pdf` hiển thị rõ lịch trình và thông tin điểm dừng.
+- [ ] **Hiệu năng & Trạng thái phản hồi:** Có đầy đủ 4 trạng thái UI (`Loading` Skeleton, `Populated`, `Empty`, `Error` có nút thử lại); không có lỗi runtime trên Console.
+- [ ] **Tương thích màn hình & WCAG 2.2 AA:** Giao diện responsive không tràn ngang trên Desktop (`≥ 1280px`) và Mobile (`320px–480px`), tuân thủ checklist 10 bước trong [AGENTS.md](AGENTS.md).
+- [ ] **Kiểm thử tự động & Phân quyền:** Pass `pytest -v backend/tests`, `npm run lint:ci && npm run typecheck && npm run test:unit && npm run build`, và xác minh các case `401`/`403`/`404`.
+
+### 6.2. Checklist kiểm tra `PRD.md` trước mỗi task mới
+- [ ] Tính năng này phục vụ **vai trò người dùng** nào ở Mục 2?
+- [ ] Thuộc **In-Scope v1.0** hay **Out-of-Scope / Planned v1.1** ở Mục 3?
+- [ ] Đi qua luồng thao tác và endpoint nào ở Mục 4 & Mục 5 (có cần kiểm thử `401`/`403`/`404` không)?
+- [ ] Phạm vi **không làm** trong task hiện tại là gì để tránh sửa lan man?
+
+---
+
+## 7. Tài liệu đặc tả chi tiết liên quan
+- Quy tắc dự án & AI Agent: [AGENTS.md](AGENTS.md)
+- Thiết kế UI/UX chuẩn: [docs/UI_UX_MASTER_SPEC.md](docs/UI_UX_MASTER_SPEC.md)
+- Đặc tả AI Copilot: [docs/COPILOT_AI_ADAPTATION_SPEC.md](docs/COPILOT_AI_ADAPTATION_SPEC.md)
+- Hợp đồng Auth PB01: [docs/PB01-SIGNUP-API-CONTRACT.md](docs/PB01-SIGNUP-API-CONTRACT.md)
+- Thông số chuyến đi PB07: [docs/PB07-TRIP-PARAMETERS-WIREFRAME-AND-CONTRACT.md](docs/PB07-TRIP-PARAMETERS-WIREFRAME-AND-CONTRACT.md)
+- Xếp lịch & Nghỉ ngơi PB11: [docs/PB11-TRAVEL-ASSISTANT-REST-PLANNING.md](docs/PB11-TRAVEL-ASSISTANT-REST-PLANNING.md)
+- Luồng tư vấn POI: [docs/user_flows/copilot_poi_advice_flow.md](docs/user_flows/copilot_poi_advice_flow.md)

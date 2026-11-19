@@ -34,7 +34,12 @@ Nền tảng lập kế hoạch du lịch bền vững thông minh dành cho **�
 ├── docs/                   # Đặc tả API, UI/UX Master Spec, ERD (.drawio), Postman collection
 ├── specs/                  # Spec-Driven Development specs theo từng feature
 ├── docker-compose.yml      # Chạy đồng bộ Backend + Frontend (+ optional local PostGIS)
-├── AGENTS.md               # Quy tắc làm việc bắt buộc cho thành viên & AI Agent
+├── PRD.md                  # Đặc tả sản phẩm: đối tượng dùng, tính năng, user flows, phân quyền
+├── ARCHITECTURE.md         # Kiến trúc hệ thống, phân lớp BE/FE, sơ đồ DB & luồng dữ liệu
+├── API_SPEC.md             # Hợp đồng HTTP/JSON API giữa Frontend và Backend
+├── AGENTS.md               # Quy tắc làm việc bắt buộc cho thành viên & AI Agent (Antigravity/Codex)
+├── .github/copilot-instructions.md  # Con trỏ tự động nạp quy tắc cho GitHub Copilot
+├── .cursor/rules/          # Con trỏ tự động nạp quy tắc cho Cursor
 ├── CONTRIBUTING.md         # Nội quy nhóm & Git Flow Rule
 └── DOCKER_GUIDE.md         # Hướng dẫn chi tiết chạy bằng Docker Compose
 ```
@@ -107,8 +112,9 @@ npm run build
 
 ## Tài liệu tham chiếu quan trọng
 
-- **Quy trình nhóm & Git Flow**: [CONTRIBUTING.md](CONTRIBUTING.md) · [AGENTS.md](AGENTS.md)
+- **Đặc tả sản phẩm, Kiến trúc & Hợp đồng API**: [PRD.md](PRD.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [API_SPEC.md](API_SPEC.md)
+- **Quy trình nhóm, AI Agent & Git Flow**: [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Thứ tự SQL Migrations**: [backend/migrations/README.md](backend/migrations/README.md)
 - **Thiết kế UI/UX**: [docs/UI_UX_MASTER_SPEC.md](docs/UI_UX_MASTER_SPEC.md)
 - **Thiết lập Neo4j Aura**: [docs/NEO4J_AURA_SETUP.md](docs/NEO4J_AURA_SETUP.md)
-- **Security Review (Sprint 1)**: [SECURITY-REVIEW.md](SECURITY-REVIEW.md)
+- **Security Review (Sprint 1)**: [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md)

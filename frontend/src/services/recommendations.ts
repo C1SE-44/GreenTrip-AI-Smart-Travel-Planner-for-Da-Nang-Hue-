@@ -1,4 +1,4 @@
-import { API_BASE_URL, fetchJson } from '@/lib/api';
+import { fetchJson } from '@/lib/api';
 import type { ValidatedTripData } from '@/services/tripService';
 
 export type RecommendationBudgetBand = 1 | 2 | 3;
@@ -62,17 +62,11 @@ export async function fetchParsedSliderWeights(
   return fetchJson<ParsedSliderWeights>(`/pois/weights?${query.toString()}`);
 }
 
-/** Calls PB09 through the Vite proxy or directly through an absolute API URL. */
+/** Calls PB09 through the canonical /v1/recommendations/poi route (Vite proxy adds /api in dev/Docker). */
 export async function fetchPoiRecommendations(
   request: RecommendationRequest,
 ): Promise<RecommendationResponse> {
-  const baseHasApiSuffix = /\/api$/i.test(API_BASE_URL);
-  const usesRelativeViteProxy = API_BASE_URL.startsWith('/');
-  const endpoint = baseHasApiSuffix && !usesRelativeViteProxy
-    ? '/v1/recommendations/poi'
-    : '/api/v1/recommendations/poi';
-
-  return fetchJson<RecommendationResponse>(endpoint, {
+  return fetchJson<RecommendationResponse>('/v1/recommendations/poi', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),

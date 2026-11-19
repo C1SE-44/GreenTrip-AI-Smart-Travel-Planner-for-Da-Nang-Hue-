@@ -1,6 +1,16 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
+from app.rate_limit import rate_limiter
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter_state():
+    """Keep sliding-window rate limits isolated across test cases."""
+    rate_limiter.reset()
+    yield
+    rate_limiter.reset()
+
 
 @pytest.fixture(autouse=True)
 def prevent_real_smtp_connections():

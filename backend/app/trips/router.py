@@ -6,6 +6,7 @@ from psycopg import Connection
 
 from app.auth.service import decode_access_token
 from app.db.postgres import get_connection
+from app.rate_limit import rate_limit
 from app.trips.itinerary_repository import get_itinerary, save_itinerary
 from app.trips.schemas import (
     CopilotChatRequest,
@@ -86,6 +87,7 @@ def validate_trip_parameters(payload: TripParametersRequest) -> TripParametersRe
     "/copilot/chat",
     response_model=CopilotChatResponse,
     status_code=status.HTTP_200_OK,
+    dependencies=[Depends(rate_limit("copilot_chat", max_requests=20, window_seconds=60))],
     summary="In-Planner AI Travel Copilot Chat (PB14)",
     description="Trợ lý du lịch AI nhận ngữ cảnh chuyến đi hiện tại để tư vấn và xử lý đổi quán chay, gợi ý tránh mưa.",
 )

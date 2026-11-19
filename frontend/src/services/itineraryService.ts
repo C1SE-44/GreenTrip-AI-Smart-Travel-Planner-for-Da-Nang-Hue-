@@ -335,11 +335,11 @@ export async function getRoutePositionsForStops(
     }
   }
 
-  // 3. Gọi backend /api/itineraries/compute với danh sách stops (timeout 9s để OSRM tính toán đầy đủ hàng nghìn điểm GPS)
+  // 3. Gọi backend /itineraries/compute với danh sách stops (timeout 9s để OSRM tính toán đầy đủ hàng nghìn điểm GPS)
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 9000);
-    const computed = await fetchJson<DayRouteResponse>('/api/itineraries/compute', {
+    const computed = await fetchJson<DayRouteResponse>('/itineraries/compute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ stops: validStops }),

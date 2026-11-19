@@ -1880,20 +1880,19 @@ export default function TripItineraryView({
                       className="absolute right-0 top-9 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 p-1.5 z-50 text-xs animate-fadeIn"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {[
+                      {([
                         { id: 'all', label: 'Tất cả' },
                         { id: 'quan-an', label: 'Quán ăn' },
                         { id: 'di-tich', label: 'Di tích' },
                         { id: 'canh-quan', label: 'Cảnh quan' },
                         { id: 'chua', label: 'Chùa' },
                         { id: 'unplaced', label: 'Chưa xếp lịch' },
-                      ].map((item) => (
+                      ] as const).map((item) => (
                         <button
                           key={item.id}
                           type="button"
                           onClick={() => {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            setIdeasFilter(item.id as any);
+                            setIdeasFilter(item.id);
                             setShowIdeasFilterMenu(false);
                           }}
                           className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-medium flex items-center justify-between cursor-pointer text-gray-800"

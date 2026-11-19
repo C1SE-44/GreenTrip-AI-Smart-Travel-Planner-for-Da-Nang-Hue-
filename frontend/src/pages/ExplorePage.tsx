@@ -33,7 +33,6 @@ import ExploreFilterModal, {
   matchesPoiSubCategory,
   matchesPoiFeature,
 } from '@/components/poi/ExploreFilterModal';
-import QuickFilterBar from '@/components/poi/QuickFilterBar';
 import {
   computePoiWeightedScore,
   ECO_PRIORITY_WEIGHT_MAP,

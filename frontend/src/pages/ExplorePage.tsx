@@ -8,9 +8,20 @@ import { MorphFavoriteButton, MorphAddButton } from '@/components/ui/MorphButton
 import CreateTripCopilotModal from '@/components/planner/CreateTripCopilotModal';
 import IdeationChatView from '@/components/planner/IdeationChatView';
 import type { CopilotTripMessage } from '@/components/planner/copilotTripData';
-import type { CostBreakdown, DailyItineraryOutline, MatchedPOI } from '@/services/tripService';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
-import { pois, categoryLabels, normalizePois, getGalleryImages, SUB_CATEGORY_LABELS, type PaginatedPoisResponse, isCuratedHighlight } from '@/data/pois';
+import { pois, normalizePois, isCuratedHighlight } from '@/data/pois';
+import ExplorePoiCard from '@/components/explore/ExplorePoiCard';
+import {
+  CATEGORY_META,
+  CITY_CENTERS,
+  getDistanceFromLatLonInKm,
+  matchesTimeOfDay,
+  SEEDED_SAMPLE_TRIPS,
+  type ExploreTabId,
+  type UserTrip,
+} from '@/components/explore/exploreUtils';
+export { SEEDED_SAMPLE_TRIPS };
+export type { ExploreTabId, UserTrip };
 import PoiMap from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import SavedPlacesView from '@/components/saved/SavedPlacesView';
@@ -46,43 +57,10 @@ import {
 type CityFilter = 'all' | PoiCity;
 type CategoryFilter = 'all' | PoiCategory;
 
-export interface UserTrip {
-  id: string;
-  title: string;
-  destination: string;
-  startDate?: string;
-  peopleCount: number;
-  tags?: string[];
-  budgetTier?: string;
-  flexibleDays?: number;
-  flexibleMonth?: string;
-  notes?: string;
-  createdAt: string;
-  image?: string;
-  daysCount?: number;
-  coverImage?: string;
-  status?: string;
-  prompt?: string;
-  totalBudget?: number;
-  itineraryOutline?: DailyItineraryOutline[];
-  matchedPois?: MatchedPOI[];
-  costBreakdown?: Partial<CostBreakdown>;
-  pacingLabel?: string;
-  pacingLevel?: 'Relaxed' | 'Balanced' | 'Fast';
-  ideas?: string[];
-  customIdeas?: Array<{ id: string; name: string; city: PoiCity; address?: string }>;
-  savedPlaces?: string[];
-  copilotChatHistory?: CopilotTripMessage[];
-}
-
 interface AddToTripSelection {
   poiIds: string[];
   label?: string;
 }
-
-
-export type ExploreTabId = 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua';
-
 
 const TAB_DISPLAY_LABELS: Record<string, string> = {
   'for-you': 'Cho bạn',
@@ -98,164 +76,6 @@ const TABS: { id: ExploreTabId; label: string }[] = [
   { id: 'di-tich', label: 'Di tích & Lịch sử' },
   { id: 'canh-quan', label: 'Cảnh quan & Thiên nhiên' },
   { id: 'chua', label: 'Chùa & Tâm linh' },
-];
-
-
-const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
-  'quan-an': { icon: 'ph-fork-knife', label: 'Quán ăn' },
-  'di-tich': { icon: 'ph-landmark', label: 'Di tích' },
-  'chua': { icon: 'ph-hands-praying', label: 'Chùa & Tâm linh' },
-  'canh-quan': { icon: 'ph-mountains', label: 'Cảnh quan' },
-};
-
-
-const CITY_CENTERS: Record<string, { lat: number; lng: number }> = {
-  'Đà Nẵng': { lat: 16.0678, lng: 108.2208 }, // Cầu Rồng / Trung tâm Hải Châu
-  'Huế': { lat: 16.4637, lng: 107.5909 },     // Đại Nội / Bờ Nam sông Hương
-  default: { lat: 16.0678, lng: 108.2208 },
-};
-
-function getDistanceFromLatLonInKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371; // Bán kính trái đất (km)
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {
-  if (timeOfDayList.length === 0) return true;
-
-  return timeOfDayList.some((tod) => {
-    // 1. Explicit best_time match if provided
-    if (poi.best_time && poi.best_time.length > 0) {
-      const matchExplicit = poi.best_time.some((t) => t.toLowerCase().includes(tod));
-      if (matchExplicit) return true;
-    }
-
-    const name = poi.name.toLowerCase();
-    const desc = (poi.description || '').toLowerCase();
-    const sub = (poi.sub_category || '').toLowerCase();
-
-    if (tod === 'morning') {
-      // Buổi sáng: Chùa, danh thắng đón bình minh, quán ăn sáng, cafe sáng
-      if (poi.category === 'chua') return true;
-      if (
-        sub === 'traditional_noodles' ||
-        name.includes('bún') ||
-        name.includes('mì') ||
-        name.includes('phở') ||
-        name.includes('cháo')
-      )
-        return true;
-      if (
-        sub === 'workspace_study_cafe' ||
-        sub === 'specialty_roastery' ||
-        sub === 'retro_street_cafe'
-      )
-        return true;
-      if (
-        name.includes('bình minh') ||
-        desc.includes('bình minh') ||
-        name.includes('mỹ khê') ||
-        name.includes('chợ')
-      )
-        return true;
-      if (poi.category === 'di-tich') return true;
-      return false;
-    }
-
-    if (tod === 'afternoon') {
-      // Buổi chiều: Cảnh quan biển, đèo, vịnh, bảo tàng, cafe view đẹp
-      if (poi.category === 'canh-quan') return true;
-      if (poi.category === 'di-tich') return true;
-      if (sub === 'scenic_view_cafe' || sub === 'desserts_bakery') return true;
-      if (name.includes('hoàng hôn') || desc.includes('hoàng hôn') || desc.includes('chiều'))
-        return true;
-      if (poi.category === 'quan-an') return true;
-      return false;
-    }
-
-    if (tod === 'evening') {
-      // Buổi tối: Cầu Rồng, Cầu Sông Hàn, phố đêm, bar/pub, ăn tối, hải sản
-      if (
-        name.includes('cầu rồng') ||
-        name.includes('sông hàn') ||
-        name.includes('cầu trường tiền')
-      )
-        return true;
-      if (
-        name.includes('chợ đêm') ||
-        name.includes('phố đi bộ') ||
-        desc.includes('đêm') ||
-        desc.includes('tối')
-      )
-        return true;
-      if (
-        sub === 'nightlife_bars_pubs' ||
-        sub === 'scenic_view_cafe' ||
-        sub === 'heritage_fine_dining' ||
-        sub === 'coastal_seafood'
-      )
-        return true;
-      if (poi.category === 'quan-an') return true;
-      return false;
-    }
-
-    return true;
-  });
-}
-
-export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
-  {
-    id: 'sample-danang-hue-3d',
-    title: 'Hành trình Xanh Đà Nẵng - Huế (3 Ngày)',
-    destination: 'Đà Nẵng & Huế',
-    startDate: 'Ngày 10 – 12 tháng 11',
-    peopleCount: 2,
-    daysCount: 3,
-    tags: ['Đà Nẵng & Huế', '3 Ngày', 'Lộ trình tối ưu OSRM', 'Xanh'],
-    createdAt: '2026-11-08',
-    image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
-    ideas: [
-      '029a28df-b091-49d9-a911-738572c72464',
-      'd58fe815-4aa1-45b2-831a-11b97e130918',
-      'bfed964e-ff10-44f4-8654-2136245ab062',
-    ],
-  },
-  {
-    id: 'sample-danang-hue-5d',
-    title: 'Đà Nẵng - Huế Trọn Vẹn (5 Ngày)',
-    destination: 'Đà Nẵng & Huế',
-    startDate: 'Ngày 15 – 19 tháng 11',
-    peopleCount: 2,
-    daysCount: 5,
-    tags: ['Đà Nẵng & Huế', '5 Ngày', 'Di sản & Biển xanh'],
-    createdAt: '2026-11-08',
-    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'sample-central-vietnam-7d',
-    title: 'Khám phá Miền Trung Huyền Diệu (7 Ngày)',
-    destination: 'Đà Nẵng & Huế',
-    startDate: 'Ngày 20 – 26 tháng 11',
-    peopleCount: 4,
-    daysCount: 7,
-    tags: ['Miền Trung', '7 Ngày', 'Tour gia đình'],
-    createdAt: '2026-11-08',
-    image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800&auto=format&fit=crop&q=80',
-  },
 ];
 
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'home' | 'explore' | 'trips' | 'saved' | 'chat' | 'profile' }) {
@@ -1945,7 +1765,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             <div className="grid grid-cols-2 gap-[32px] pb-16">
               {filteredPois.map((poi, idx) => (
                 <div key={poi.id} data-poi-id={poi.id}>
-                  <PoiCard
+                  <ExplorePoiCard
                     poi={poi}
                     index={idx}
                     active={poi.id === selectedMapPoiId}
@@ -2125,220 +1945,5 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         onClose={() => setAddToTripSelection(null)}
       />
     </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="col-span-2 flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 py-16 text-center animate-fadeIn">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-        <i className="ph ph-magnifying-glass text-xl text-gray-400"></i>
-      </div>
-      <p className="text-[14px] font-bold text-black">Không tìm thấy địa điểm</p>
-      <p className="text-xs text-gray-400 mt-1">Thử tìm kiếm với từ khóa khác hoặc bỏ bộ lọc</p>
-    </div>
-  );
-}
-
-function ErrorState({ message }: { message: string }) {
-  return (
-    <div className="col-span-2 flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 py-12 text-center animate-fadeIn">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-        <i className="ph ph-warning-circle text-2xl text-red-600"></i>
-      </div>
-      <p className="text-sm font-medium text-red-700">Không thể tải địa điểm</p>
-      <p className="mt-1 text-xs text-red-600">{message}</p>
-    </div>
-  );
-}
-
-
-function PoiCard({
-  poi,
-  active = false,
-  favorite = false,
-  favoritePending = false,
-  isAdded = false,
-  onClick,
-  onHover,
-  onToggleFavorite,
-  onToggleAddTrip,
-}: {
-  poi: Poi;
-  index?: number;
-  active?: boolean;
-  favorite?: boolean;
-  favoritePending?: boolean;
-  isAdded?: boolean;
-  onClick: () => void;
-  onHover: (id: string | null) => void;
-  onToggleFavorite: (id: string, poi?: Poi) => void;
-  onToggleAddTrip?: (id: string) => void;
-}) {
-  const [imgIdx, setImgIdx] = useState(0);
-  const [isCardHovered, setIsCardHovered] = useState(false);
-
-  const gallery = useMemo(() => getGalleryImages(poi), [poi]);
-
-  return (
-    <article
-      onClick={onClick}
-      onMouseEnter={() => {
-        setIsCardHovered(true);
-        onHover(poi.id);
-      }}
-      onMouseLeave={() => {
-        setIsCardHovered(false);
-        onHover(null);
-      }}
-      className="flex flex-col group cursor-pointer"
-    >
-      {/* 1. Card Image Box: aspect-[1.05/1], rounded-[20px], isolate để các nút con không bao giờ thoát ra ngoài đè lên header */}
-      <div className={`relative w-full aspect-[1.05/1] rounded-[20px] overflow-hidden bg-gray-100 shadow-sm transition-all duration-200 isolate ${active ? 'ring-2 ring-black' : ''}`}>
-        <img
-          src={gallery[imgIdx] || poi.image}
-          alt={poi.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
-
-        {/* Nút tròn chuyển ảnh ‹ (chỉ hiện khi hover và từ ảnh thứ 2 trở đi) */}
-        {isCardHovered && imgIdx > 0 && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setImgIdx((prev) => Math.max(0, prev - 1));
-            }}
-            className="absolute left-3.5 top-[45%] -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 hover:bg-black/75 backdrop-blur-md text-white shadow-sm flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-10 cursor-pointer"
-            title="Ảnh trước"
-          >
-            <i className="ph ph-caret-left text-lg font-bold"></i>
-          </button>
-        )}
-
-        {/* Nút tròn chuyển ảnh › (chỉ hiện khi hover và chưa đến ảnh cuối) */}
-        {isCardHovered && imgIdx < gallery.length - 1 && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setImgIdx((prev) => Math.min(gallery.length - 1, prev + 1));
-            }}
-            className="absolute right-3.5 top-[45%] -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 hover:bg-black/75 backdrop-blur-md text-white shadow-sm flex items-center justify-center hover:scale-110 active:scale-90 transition-all z-10 cursor-pointer"
-            title="Ảnh kế tiếp"
-          >
-            <i className="ph ph-caret-right text-lg font-bold"></i>
-          </button>
-        )}
-
-        {/* Gradient bóng râm bảo vệ tương phản cho nút bấm */}
-        <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/35 via-black/10 to-transparent pointer-events-none z-[5]" />
-
-        {/* Huy hiệu Điểm Xanh (EcoScore) chuẩn Quiet Luxury 3 Tầng */}
-        {poi.isGreen && (
-          <div 
-            className="absolute top-3 left-3 z-10 pointer-events-auto cursor-help"
-            title="Địa điểm du lịch xanh: Thân thiện môi trường, tiết kiệm năng lượng và bảo tồn văn hóa địa phương"
-          >
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 backdrop-blur-md text-emerald-200 border border-emerald-400/40 text-[11px] font-bold tracking-tight shadow-md">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-              </span>
-              <Leaf size={11} className="text-emerald-400 shrink-0" />
-              <span>Địa điểm xanh</span>
-            </span>
-          </div>
-        )}
-
-        {/* Nút tim và "+" với Morphicons spring physics */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
-          <button
-            type="button"
-            aria-label={favorite ? `Bỏ lưu ${poi.name}` : `Lưu ${poi.name}`}
-            aria-pressed={favorite}
-            aria-busy={favoritePending}
-            disabled={favoritePending}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFavorite(poi.id, poi);
-            }}
-            className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-wait disabled:opacity-70 ${
-              favorite ? 'bg-white text-rose-600' : 'bg-black/35 hover:bg-black/55 text-white'
-            }`}
-            title="Lưu yêu thích"
-          >
-            <i className={`ph ${favorite ? 'ph-fill ph-heart text-rose-600' : 'ph-heart'} text-lg`} />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleAddTrip?.(poi.id);
-            }}
-            className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95 text-white ${
-              isAdded ? 'bg-emerald-600' : 'bg-black/35 hover:bg-black/55'
-            }`}
-            title={isAdded ? 'Đã thêm vào chuyến đi' : 'Thêm vào chuyến đi'}
-          >
-            <i className={`ph ${isAdded ? 'ph-check font-bold' : 'ph-plus font-bold'} text-base`} />
-          </button>
-        </div>
-
-        {/* Chấm phân trang bên dưới đổi theo ảnh đang xem */}
-        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 pointer-events-none z-10">
-          {gallery.slice(0, 5).map((_, i) => (
-            <span
-              key={i}
-              className={`w-1.5 h-1.5 rounded-full transition-all ${
-                i === imgIdx ? 'bg-white scale-125 shadow-xs' : 'bg-white/40'
-              }`}
-            />
-          ))}
-        </div>
-
-
-      </div>
-
-      {/* 2. Card Details: Tên, Rating, loại hình, địa chỉ chuẩn Quiet Luxury */}
-      <div className="mt-2.5 space-y-1">
-        <div className="flex items-baseline justify-between gap-2 min-w-0">
-          <h3 className="font-bold text-[15px] text-gray-950 tracking-tight truncate leading-tight group-hover:text-emerald-800 transition-colors">
-            {poi.name}
-          </h3>
-          {Number(poi.rating) > 0 && (
-            <span className="flex items-center gap-1 text-[13px] font-bold text-gray-900 shrink-0">
-              <i className="ph ph-fill ph-star text-[12px] text-amber-500"></i>
-              <span>{(typeof poi.rating === 'number' ? poi.rating : Number(poi.rating || 4.5)).toFixed(1)}</span>
-            </span>
-          )}
-        </div>
-
-        {(() => {
-          const isCafe = Boolean(
-            poi.sub_category?.includes('cafe') || 
-            poi.sub_category?.includes('coffee') || 
-            /coffee|cafe|cà phê|tiệm trà|workspace/i.test(poi.name)
-          );
-          const resolvedCategoryLabel = poi.sub_category && SUB_CATEGORY_LABELS[poi.sub_category]
-            ? SUB_CATEGORY_LABELS[poi.sub_category]
-            : isCafe
-              ? 'Quán cà phê'
-              : CATEGORY_META[poi.category]?.label || 'Điểm tham quan';
-          const resolvedCategoryIcon = isCafe
-            ? 'ph-coffee'
-            : (CATEGORY_META[poi.category]?.icon || 'ph-map-pin');
-
-          return (
-            <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-normal">
-              <i className={`ph ${resolvedCategoryIcon} text-gray-400 text-[14px] shrink-0`}></i>
-              <span className="truncate">{resolvedCategoryLabel}</span>
-            </div>
-          );
-        })()}
-
-        <div className="text-[12.5px] text-gray-400 font-normal truncate">
-          <span>{poi.address || `${poi.city === 'Đà Nẵng' ? 'Hải Châu, Đà Nẵng' : `${poi.city}, Việt Nam`}`}</span>
-        </div>
-      </div>
-    </article>
   );
 }

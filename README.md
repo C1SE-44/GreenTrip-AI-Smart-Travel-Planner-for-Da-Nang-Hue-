@@ -35,6 +35,8 @@ Nền tảng lập kế hoạch du lịch bền vững thông minh dành cho **�
 ├── specs/                  # Spec-Driven Development specs theo từng feature
 ├── docker-compose.yml      # Chạy đồng bộ Backend + Frontend (+ optional local PostGIS)
 ├── PRD.md                  # Đặc tả sản phẩm: đối tượng dùng, tính năng, user flows, phân quyền
+├── ARCHITECTURE.md         # Kiến trúc hệ thống, phân lớp BE/FE, sơ đồ DB & luồng dữ liệu
+├── API_SPEC.md             # Hợp đồng HTTP/JSON API giữa Frontend và Backend
 ├── AGENTS.md               # Quy tắc làm việc bắt buộc cho thành viên & AI Agent (Antigravity/Codex)
 ├── .github/copilot-instructions.md  # Con trỏ tự động nạp quy tắc cho GitHub Copilot
 ├── .cursor/rules/          # Con trỏ tự động nạp quy tắc cho Cursor
@@ -110,7 +112,7 @@ npm run build
 
 ## Tài liệu tham chiếu quan trọng
 
-- **Đặc tả sản phẩm (đọc trước khi code)**: [PRD.md](PRD.md)
+- **Đặc tả sản phẩm, Kiến trúc & Hợp đồng API**: [PRD.md](PRD.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [API_SPEC.md](API_SPEC.md)
 - **Quy trình nhóm, AI Agent & Git Flow**: [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Thứ tự SQL Migrations**: [backend/migrations/README.md](backend/migrations/README.md)
 - **Thiết kế UI/UX**: [docs/UI_UX_MASTER_SPEC.md](docs/UI_UX_MASTER_SPEC.md)

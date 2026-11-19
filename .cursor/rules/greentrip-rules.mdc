@@ -6,9 +6,10 @@ alwaysApply: true
 
 # GreenTrip AI — Mandatory Project Rules
 
-Trước khi sửa bất kỳ file nào trong repository, bắt buộc đọc và tuân thủ đầy đủ hai tài liệu gốc:
+Trước khi sửa bất kỳ file nào trong repository, bắt buộc đọc và tuân thủ đầy đủ các tài liệu gốc:
 1. `AGENTS.md` (Tech stack, cấu trúc thư mục, 7 nguyên tắc cốt lõi, Git Flow, UI/UX 10 bước).
 2. `PRD.md` (Đối tượng người dùng, danh sách tính năng, luồng thao tác, phân quyền API).
+3. `ARCHITECTURE.md` & `API_SPEC.md` (Sơ đồ phân lớp BE/FE, DB schema và hợp đồng JSON API khi sửa kiến trúc hoặc endpoint).
 
 ## Checklist bắt buộc mỗi phiên làm việc
 - Đối chiếu `PRD.md` và xác nhận phạm vi task nhỏ trước khi viết code.

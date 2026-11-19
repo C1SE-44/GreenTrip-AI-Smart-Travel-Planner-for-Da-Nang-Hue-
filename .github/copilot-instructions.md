@@ -1,6 +1,6 @@
 # GitHub Copilot Instructions — GreenTrip AI
 
-> Nguồn quy tắc duy nhất (Single Source of Truth): hãy luôn đọc và tuân thủ đầy đủ [AGENTS.md](../AGENTS.md) và [PRD.md](../PRD.md) trước khi đề xuất hoặc sửa bất kỳ dòng code nào.
+> Nguồn quy tắc duy nhất (Single Source of Truth): hãy luôn đọc và tuân thủ đầy đủ [AGENTS.md](../AGENTS.md) và [PRD.md](../PRD.md) (kèm [ARCHITECTURE.md](../ARCHITECTURE.md) và [API_SPEC.md](../API_SPEC.md) khi làm việc với kiến trúc/API) trước khi đề xuất hoặc sửa bất kỳ dòng code nào.
 
 ## Tóm tắt 7 quy tắc bắt buộc
 1. **Đối chiếu `PRD.md` trước khi code**: Xác định rõ đối tượng người dùng, tính năng, luồng thao tác và phân quyền; nếu có yêu cầu mới thì cập nhật `PRD.md` và xác nhận trước khi sửa code.

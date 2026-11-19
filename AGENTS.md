@@ -1,6 +1,6 @@
 # GreenTrip AI — Quy Tắc Làm Việc Bắt Buộc (Team & AI Agent Rules)
 
-> **BẮT BUỘC ĐỌC TRƯỚC KHI SỬA CODE**: Mọi AI Agent (Antigravity, Copilot, Cursor, Codex...) và mọi thành viên dự án **GreenTrip AI** phải đọc file này cùng [PRD.md](PRD.md) trước khi thực hiện bất kỳ thay đổi mã nguồn nào.
+> **BẮT BUỘC ĐỌC TRƯỚC KHI SỬA CODE**: Mọi AI Agent (Antigravity, Copilot, Cursor, Codex...) và mọi thành viên dự án **GreenTrip AI** phải đọc file này cùng [PRD.md](PRD.md) (và đối chiếu [ARCHITECTURE.md](ARCHITECTURE.md), [API_SPEC.md](API_SPEC.md) khi đụng tới kiến trúc hoặc API) trước khi thực hiện bất kỳ thay đổi mã nguồn nào.
 
 ---
 
@@ -36,6 +36,8 @@
 
 ```text
 ├── PRD.md                   # Đặc tả sản phẩm: đối tượng, tính năng, user flows, phân quyền
+├── ARCHITECTURE.md          # Kiến trúc hệ thống, phân lớp BE/FE, DB schema & luồng dữ liệu
+├── API_SPEC.md              # Hợp đồng HTTP/JSON API giữa FE và BE
 ├── AGENTS.md                # Quy tắc dự án cho AI Agent & thành viên (file gốc)
 ├── CONTRIBUTING.md          # Sổ tay nội quy nhóm & Git Flow
 ├── backend/

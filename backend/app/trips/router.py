@@ -65,6 +65,11 @@ def write_trip_itinerary(
 ) -> TripItineraryResponse:
     if trip_id != payload.trip_id:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Mã chuyến đi không khớp.")
+    if trip_id.startswith("sample-"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chuyến đi mẫu chỉ dùng để tham khảo. Hãy bấm 'Dùng mẫu này' để tạo bản sao riêng và chỉnh sửa.",
+        )
     user_id = _optional_user_id(authorization)
     previous = get_itinerary(trip_id, user_id)
     validate_schedule_changes(payload, previous)

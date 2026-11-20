@@ -1,6 +1,7 @@
 import { API_BASE_URL, fetchJson } from '../lib/api';
 import type { CopilotStop } from '@/components/planner/copilotTripData';
 import type { OwnedTripSummary } from '@/utils/accountTrips';
+import type { TripItinerary } from '@/services/itineraryService';
 
 export interface TripParametersPayload {
   destination: string;
@@ -159,4 +160,11 @@ export async function getMyTrips(): Promise<OwnedTripSummary[]> {
 
 export async function deleteMyTrip(tripId: string): Promise<void> {
   await fetchJson(`/my-trips/${encodeURIComponent(tripId)}`, { method: 'DELETE' });
+}
+
+export async function cloneSampleTrip(sampleTripId: string, startDate?: string): Promise<TripItinerary> {
+  const qs = startDate ? `?start_date=${encodeURIComponent(startDate)}` : '';
+  return fetchJson<TripItinerary>(`/my-trips/clone-sample/${encodeURIComponent(sampleTripId)}${qs}`, {
+    method: 'POST',
+  });
 }

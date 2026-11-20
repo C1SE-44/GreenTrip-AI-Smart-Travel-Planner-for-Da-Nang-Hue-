@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.auth.dependencies import get_current_user_id
 from app.trips.itinerary_repository import (
+    clone_sample_itinerary,
     delete_user_itinerary,
     get_itinerary_with_ownership,
     list_user_itineraries,
@@ -18,6 +19,28 @@ from app.trips.schemas import (
 )
 
 router = APIRouter(tags=["My Trips"])
+
+
+@router.post(
+    "/clone-sample/{sample_trip_id}",
+    response_model=TripItineraryResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Sao chép chuyến đi mẫu thành chuyến đi riêng",
+    description="Tạo một bản sao độc lập thuộc tài khoản đang đăng nhập từ chuyến đi mẫu (sample-*) để tự do chỉnh sửa.",
+)
+def clone_sample_trip(
+    sample_trip_id: str,
+    start_date: str | None = Query(
+        default=None,
+        description="Ngày khởi hành YYYY-MM-DD (mặc định hôm nay theo giờ Việt Nam)",
+    ),
+    current_user_id: str = Depends(get_current_user_id),
+) -> TripItineraryResponse:
+    return clone_sample_itinerary(
+        sample_trip_id=sample_trip_id,
+        user_id=current_user_id,
+        start_date=start_date,
+    )
 
 
 @router.post(

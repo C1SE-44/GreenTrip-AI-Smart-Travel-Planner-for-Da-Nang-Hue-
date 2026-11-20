@@ -101,6 +101,7 @@ import ItineraryMapPanel from './ItineraryMapPanel';
 import ItineraryAddPlacesModal from './ItineraryAddPlacesModal';
 import TripDayEditorModal from './TripDayEditorModal';
 import ExpiredTripBanner from './ExpiredTripBanner';
+import SampleTripReadOnlyBanner from './SampleTripReadOnlyBanner';
 import { dateAt, vietnamNow } from '@/utils/tripDates';
 
 export interface TripItineraryViewProps {
@@ -108,6 +109,7 @@ export interface TripItineraryViewProps {
   allPois?: Poi[];
   recommendations?: Poi[];
   recommendationsLoading?: boolean;
+  onUseSampleTrip?: (sampleTripId: string) => Promise<void> | void;
   onBack: () => void;
   onUpdateTrip?: (updatedTrip: UserTrip) => void;
   isDrawerMode?: boolean;
@@ -121,6 +123,7 @@ export default function TripItineraryView({
   allPois = [],
   recommendations,
   recommendationsLoading = false,
+  onUseSampleTrip,
   onBack,
   onUpdateTrip,
   isDrawerMode = false,
@@ -389,6 +392,11 @@ export default function TripItineraryView({
       setSaveErrorAction(null);
 
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (nextPlan.trip_id.startsWith('sample-')) {
+        setHasUnsavedChanges(false);
+        setSyncFeedback('Chuyến đi mẫu đang ở chế độ chỉ xem. Bấm "Dùng mẫu này" để tạo bản sao riêng và lưu thay đổi.');
+        return;
+      }
       saveTimer.current = setTimeout(async () => {
         setIsSaving(true);
         try {
@@ -880,6 +888,10 @@ export default function TripItineraryView({
 
   // Lưu & Chia sẻ (Soft-Prompt cho khách chưa đăng nhập)
   const handleSaveAndShare = async () => {
+    if (trip.id.startsWith('sample-')) {
+      setSyncFeedback('Chuyến đi mẫu đang ở chế độ chỉ xem. Bấm "Dùng mẫu này" để tạo bản sao riêng và lưu.');
+      return;
+    }
     const token =
       typeof localStorage !== 'undefined'
         ? localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
@@ -1611,15 +1623,18 @@ export default function TripItineraryView({
       )}
 
       {!isDrawerMode && (
-        <ExpiredTripBanner
-          trip={trip}
-          plan={plan}
-          onUpdateTrip={onUpdateTrip}
-          onPlanUpdated={(next) => {
-            latestPlan.current = next;
-            setPlan(next);
-          }}
-        />
+        <>
+          <SampleTripReadOnlyBanner trip={trip} onUseSample={onUseSampleTrip} />
+          <ExpiredTripBanner
+            trip={trip}
+            plan={plan}
+            onUpdateTrip={onUpdateTrip}
+            onPlanUpdated={(next) => {
+              latestPlan.current = next;
+              setPlan(next);
+            }}
+          />
+        </>
       )}
 
       {/* Guest Soft-Prompt & Sync Feedback Banner (non-blocking) */}

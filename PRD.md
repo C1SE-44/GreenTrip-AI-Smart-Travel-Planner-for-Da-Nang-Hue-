@@ -30,7 +30,7 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 
 | Vai trò (Role) | Mô tả | Quyền hạn & Giới hạn (MVP v1.0) |
 | :--- | :--- | :--- |
-| **Guest (Khách vãng lai)** | Người dùng chưa đăng nhập tài khoản. | - Xem Landing Page (`/`), Trang chủ (`/home`), Khám phá & Bản đồ xanh (`/explore`), xem chi tiết POI & giải thích Knowledge Graph.<br>- Trải nghiệm không gian Planner (`/planner`, `/trips`, `/chat`) và lưu nháp tạm trên trình duyệt.<br>- **Giới hạn:** Không lưu vĩnh viễn chuyến đi/bộ sưu tập vào Database tài khoản; không sử dụng các endpoint yêu cầu JWT (`/saved-places/*`, `/my-trips/*`, `/auth/me`). |
+| **Guest (Khách vãng lai)** | Người dùng chưa đăng nhập tài khoản. | - Xem Landing Page (`/`), Trang chủ (`/home`), Khám phá & Bản đồ xanh (`/explore`), xem chi tiết POI & giải thích Knowledge Graph.<br>- Xem các hành trình mẫu (`sample-*`) ở chế độ **chỉ xem (`read-only`)**.<br>- **Giới hạn:** Bấm **Tạo chuyến đi**, **Khởi tạo nhanh** hoặc **Dùng mẫu này** sẽ chuyển sang đăng nhập (sau khi đăng nhập tự động quay lại hoàn tất thao tác); không truy cập các endpoint yêu cầu JWT (`/saved-places/*`, `/my-trips/*`, `/auth/me`). |
 | **Authenticated User (Du khách đã đăng nhập)** | Đăng ký/đăng nhập bằng **Email + Mật khẩu + xác thực OTP** (`/verify-email`) hoặc **Google OAuth 2.0**. | - Toàn quyền của Guest.<br>- Quản lý hồ sơ cá nhân, đổi mật khẩu, cập nhật ảnh đại diện (`/profile`).<br>- Tạo/sửa/xóa bộ sưu tập và lưu địa điểm yêu thích (`/saved`).<br>- Tạo, sửa, xóa, đồng bộ nhiều chuyến đi cá nhân (`/my-trips`) và lịch trình từng ngày lên Database.<br>- Xuất lịch trình ngoại tuyến (`.ics`, `.pdf`) và chat AI Copilot gắn ngữ cảnh chuyến đi. |
 | **Engineering / Maintainer (Nhóm phát triển)** | Thành viên kỹ thuật vận hành dữ liệu & hạ tầng. | - Quản trị dữ liệu POI, migration SQL (`backend/migrations/`), dữ liệu đồ thị Neo4j (`backend/neo4j/`), giám sát CI/CD qua repository và scripts kỹ thuật (chưa có giao diện Admin Portal riêng trong v1.0). |
 
@@ -96,12 +96,12 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 
 | Nhóm Endpoint | Yêu cầu xác thực | Quy tắc phân quyền & bảo vệ |
 | :--- | :--- | :--- |
-| `GET /health`, `GET /pois/*`, `GET /itineraries/*`, `POST /v1/recommendations/poi` | Công khai (Public) | Chỉ trả dữ liệu POI, gợi ý và tuyến hành trình mẫu công khai. |
+| `GET /health`, `GET /pois/*`, `GET /itineraries/*`, `GET /trips/sample-*/itinerary`, `POST /v1/recommendations/poi` | Công khai (Public) | Chỉ trả dữ liệu POI, gợi ý và tuyến/lịch trình mẫu công khai ở chế độ **chỉ đọc**. |
 | `POST /auth/login`, `/register`, `/verify-email`, `/google`, `/check-email` | Công khai + Rate Limit | Áp dụng rate limiting (`rate_limit.py`) chống brute-force / spam OTP. |
 | `GET/PATCH /auth/me`, `POST /auth/change-password`, `PUT /auth/me/avatar` | Bắt buộc JWT (`get_current_user_id`) | Thiếu/sai token trả `401`; chỉ được đọc/sửa hồ sơ của chính chủ token. |
 | `/saved-places/*` | Bắt buộc JWT (`get_current_user_id`) | Bộ sưu tập và địa điểm lưu gắn chặt `user_id`; không truy cập dữ liệu user khác. |
-| `/my-trips/*` | Bắt buộc JWT (`get_current_user_id`) | Chỉ chủ sở hữu `trip` mới được xem, sửa, xóa, xuất PDF; sai chủ sở hữu trả `403`/`404`. |
-| `/trips/{trip_id}/itinerary`, `POST /trips/copilot/chat` | JWT (hỗ trợ ngữ cảnh chuyến đi + Rate Limit cho Copilot) | Copilot áp dụng rate limit chống spam token AI; chuyến đi gắn tài khoản phải xác thực quyền sở hữu trước khi ghi đè. |
+| `/my-trips/*`, `POST /my-trips/clone-sample/{sample_trip_id}` | Bắt buộc JWT (`get_current_user_id`) | Chỉ chủ sở hữu `trip` mới được tạo/sao chép bản mẫu (`201`), xem, sửa, xóa, xuất PDF; sai chủ sở hữu trả `403`/`404`. |
+| `/trips/{trip_id}/itinerary`, `POST /trips/copilot/chat` | JWT (hỗ trợ ngữ cảnh chuyến đi + Rate Limit cho Copilot) | Copilot áp dụng rate limit chống spam token AI; `PUT /trips/sample-*/itinerary` trả **`403 Forbidden`** (chỉ đọc); chuyến đi cá nhân phải xác thực quyền sở hữu trước khi ghi đè. |
 
 ### 5.2. Quy tắc nghiệp vụ cốt lõi (Business Rules & Constraints)
 * **Kiểm soát ngân sách (`C_total` vs `B_max`):** Hệ thống tính chi phí dự kiến theo số khách và danh mục. Khi tổng chi phí vượt trần ngân sách `B_max`, giao diện bắt buộc hiển thị cảnh báo vượt mức rõ ràng để người dùng điều chỉnh hoặc đổi điểm miễn phí/phù hợp hơn.

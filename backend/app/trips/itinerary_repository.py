@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime
 from typing import Any
-from uuid import uuid4
-from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 
@@ -300,92 +298,6 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                 )
     except Exception as error:
         raise HTTPException(status_code=503, detail="Chưa thể tải lịch trình từ cơ sở dữ liệu.") from error
-
-
-def _vietnam_today() -> date:
-    try:
-        return datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date()
-    except Exception:
-        return datetime.now(timezone(timedelta(hours=7))).date()
-
-
-def clone_sample_itinerary(
-    sample_trip_id: str,
-    user_id: str,
-    start_date: str | None = None,
-) -> TripItineraryResponse:
-    """Create a user-owned editable copy of a public sample-* itinerary."""
-    if not sample_trip_id.startswith("sample-"):
-        raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi mẫu.")
-
-    source = get_itinerary(sample_trip_id, user_id=None)
-    if source is None:
-        raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi mẫu.")
-
-    today_vn = _vietnam_today()
-    if start_date is not None and start_date.strip():
-        raw_start = start_date.strip()
-        try:
-            base_date = date.fromisoformat(raw_start)
-        except ValueError as error:
-            raise HTTPException(
-                status_code=422,
-                detail="Ngày bắt đầu không hợp lệ. Vui lòng dùng định dạng YYYY-MM-DD.",
-            ) from error
-        if base_date < today_vn:
-            raise HTTPException(
-                status_code=422,
-                detail="Không thể sao chép chuyến đi với ngày bắt đầu trong quá khứ.",
-            )
-    else:
-        base_date = today_vn
-
-    new_trip_id = f"trip-{uuid4().hex[:12]}"
-    cloned_days: list[ItineraryDay] = []
-    source_days = sorted(source.days, key=lambda d: d.day_number)
-    for day in source_days:
-        new_day_id = f"{new_trip_id}-day-{day.day_number}"
-        day_date = (base_date + timedelta(days=day.day_number - 1)).isoformat()
-        cloned_stops = [
-            ItineraryStop(
-                stop_id=f"{new_trip_id}-d{day.day_number}-s{idx}-{uuid4().hex[:6]}",
-                poi_id=stop.poi_id,
-                title=stop.title,
-                city=stop.city,
-                address=stop.address,
-                category=stop.category,
-                stop_type=stop.stop_type,
-                source=stop.source,
-                sequence=idx,
-                duration_minutes=stop.duration_minutes,
-                start_time=stop.start_time,
-                end_time=stop.end_time,
-                comment=stop.comment,
-                latitude=stop.latitude,
-                longitude=stop.longitude,
-            )
-            for idx, stop in enumerate(day.stops)
-        ]
-        cloned_days.append(
-            ItineraryDay(
-                day_id=new_day_id,
-                day_number=day.day_number,
-                date=day_date,
-                title=day.title,
-                note=day.note,
-                stops=cloned_stops,
-            )
-        )
-
-    cloned_payload = TripItinerarySyncRequest(
-        trip_id=new_trip_id,
-        title=source.title,
-        destination=source.destination,
-        start_date=base_date.isoformat(),
-        days_count=len(cloned_days) or source.days_count,
-        days=cloned_days,
-    )
-    return save_itinerary(cloned_payload, user_id=user_id)
 
 
 def list_user_itineraries(user_id: str) -> list[MyTripSummaryResponse]:

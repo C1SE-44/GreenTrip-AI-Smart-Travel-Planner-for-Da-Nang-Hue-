@@ -260,17 +260,11 @@ def test_itinerary_rejects_overlapping_activity_times() -> None:
     assert "khung giờ bị trùng" in response.json()["detail"][0]["msg"].lower()
 
 
-def test_sample_trip_is_read_only_for_put_and_can_be_cloned_by_authenticated_user(tmp_path, monkeypatch) -> None:
-    from datetime import datetime, timezone
-    from app.auth.service import create_access_token
-    from app.config import get_settings
+def test_guest_can_read_and_update_seeded_sample_trip_while_private_trip_stays_404(tmp_path, monkeypatch) -> None:
     from app.db import postgres
 
     monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", tmp_path / "sample_access.sqlite")
     monkeypatch.setattr(postgres, "get_settings", lambda: Settings(DATABASE_URL=""))
-    monkeypatch.setenv("JWT_SECRET_KEY", "phase1-sample-secret")
-    monkeypatch.setenv("JWT_ALGORITHM", "HS256")
-    get_settings.cache_clear()
 
     with postgres.get_connection() as conn:
         cur = conn.cursor()
@@ -299,20 +293,17 @@ def test_sample_trip_is_read_only_for_put_and_can_be_cloned_by_authenticated_use
         )
         conn.commit()
 
-    try:
-        user_a_token = create_access_token("user-a")
-        user_b_token = create_access_token("user-b")
-        today_vn = datetime.now(timezone(timedelta(hours=7))).date().isoformat()
+    with TestClient(app) as client:
+        guest_get = client.get("/trips/sample-demo-3d/itinerary")
+        assert guest_get.status_code == 200
+        body = guest_get.json()
+        assert body["days"][0]["stops"][0]["sequence"] == 0
+        assert body["days"][0]["stops"][0]["stop_type"] == "poi"
+        assert body["days"][0]["stops"][0]["source"] == "idea"
 
-        with TestClient(app) as client:
-            guest_get = client.get("/trips/sample-demo-3d/itinerary")
-            assert guest_get.status_code == 200
-            body = guest_get.json()
-            assert body["days"][0]["stops"][0]["sequence"] == 0
-            assert body["days"][0]["stops"][0]["stop_type"] == "poi"
-            assert body["days"][0]["stops"][0]["source"] == "idea"
-
-            put_payload = {
+        guest_put = client.put(
+            "/trips/sample-demo-3d/itinerary",
+            json={
                 "trip_id": "sample-demo-3d",
                 "title": "Demo 3N Updated",
                 "destination": "Đà Nẵng & Huế",
@@ -337,55 +328,12 @@ def test_sample_trip_is_read_only_for_put_and_can_be_cloned_by_authenticated_use
                         ],
                     }
                 ],
-            }
-            guest_put = client.put("/trips/sample-demo-3d/itinerary", json=put_payload)
-            assert guest_put.status_code == 403
+            },
+        )
+        assert guest_put.status_code == 200
 
-            auth_put = client.put(
-                "/trips/sample-demo-3d/itinerary",
-                json=put_payload,
-                headers={"Authorization": f"Bearer {user_a_token}"},
-            )
-            assert auth_put.status_code == 403
-
-            unauth_clone = client.post("/my-trips/clone-sample/sample-demo-3d")
-            assert unauth_clone.status_code == 401
-
-            cloned_res = client.post(
-                "/my-trips/clone-sample/sample-demo-3d",
-                headers={"Authorization": f"Bearer {user_a_token}"},
-            )
-            assert cloned_res.status_code == 201
-            cloned_body = cloned_res.json()
-            cloned_id = cloned_body["trip_id"]
-            assert cloned_id.startswith("trip-")
-            assert cloned_body["start_date"] == today_vn
-            assert cloned_body["days"][0]["day_id"] != "sample-demo-3d-d1"
-            assert cloned_body["days"][0]["stops"][0]["title"] == "Cầu Rồng"
-            assert cloned_body["days"][0]["stops"][0]["stop_id"] != "sample-demo-3d-d1-s1"
-
-            owner_get = client.get(
-                f"/my-trips/{cloned_id}",
-                headers={"Authorization": f"Bearer {user_a_token}"},
-            )
-            assert owner_get.status_code == 200
-
-            forbidden_get = client.get(
-                f"/my-trips/{cloned_id}",
-                headers={"Authorization": f"Bearer {user_b_token}"},
-            )
-            assert forbidden_get.status_code in (403, 404)
-
-            missing_clone = client.post(
-                "/my-trips/clone-sample/nonexistent",
-                headers={"Authorization": f"Bearer {user_a_token}"},
-            )
-            assert missing_clone.status_code == 404
-
-            private_get = client.get("/trips/private-user-trip/itinerary")
-            assert private_get.status_code == 404
-    finally:
-        get_settings.cache_clear()
+        private_get = client.get("/trips/private-user-trip/itinerary")
+        assert private_get.status_code == 404
 
 
 def test_save_itinerary_sql_has_no_unescaped_psycopg_percent_placeholders(tmp_path, monkeypatch) -> None:

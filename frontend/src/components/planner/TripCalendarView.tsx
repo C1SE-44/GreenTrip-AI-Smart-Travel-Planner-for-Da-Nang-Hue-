@@ -34,7 +34,6 @@ import {
   updateDateRangeWithDays,
 } from '@/services/itineraryService';
 import ExpiredTripBanner from './ExpiredTripBanner';
-import SampleTripReadOnlyBanner from './SampleTripReadOnlyBanner';
 import PoiMap from '@/components/poi/PoiMap';
 import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
@@ -42,7 +41,6 @@ import { useSavedPlaces } from '@/context/SavedPlacesContext';
 export interface TripCalendarViewProps {
   trip: UserTrip;
   allPois: Poi[];
-  onUseSampleTrip?: (sampleTripId: string) => Promise<void> | void;
   onBack: () => void;
   onUpdateTrip?: (trip: UserTrip) => void;
   onNavigateToItinerary?: () => void;
@@ -87,7 +85,6 @@ function getStopCategoryTheme(category: string | null) {
 export default function TripCalendarView({
   trip,
   allPois,
-  onUseSampleTrip,
   onBack,
   onUpdateTrip,
   onNavigateToItinerary,
@@ -148,9 +145,6 @@ export default function TripCalendarView({
 
   const persistPlan = (nextPlan: TripItinerary) => {
     setPlan(nextPlan);
-    if (nextPlan.trip_id.startsWith('sample-')) {
-      return;
-    }
     setIsSaving(true);
     saveTripItinerary(nextPlan)
       .then(() => setIsSaving(false))
@@ -312,7 +306,6 @@ export default function TripCalendarView({
         </div>
       </header>
 
-      <SampleTripReadOnlyBanner trip={trip} onUseSample={onUseSampleTrip} />
       <ExpiredTripBanner
         trip={trip}
         plan={plan}

@@ -13,6 +13,7 @@ const MODAL_CATEGORY_TABS = [
 import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import PoiMap from '@/components/poi/PoiMap';
+import PoiImage from '@/components/ui/PoiImage';
 import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { filterSavedPlaces, type SavedPlacesCityFilter } from '@/components/saved/savedPlacesFilters';
@@ -635,7 +636,7 @@ export default function SavedPlacesView({
                   <span className="grid aspect-[1.28/1] grid-cols-2 gap-1 overflow-hidden rounded-2xl bg-neutral-100">
                     {Array.from({ length: 4 }, (_, index) => {
                       const image = collection.cover_images[index];
-                      if (image) return <img key={`${image}-${index}`} src={image} alt="" loading="lazy" className="h-full min-h-0 w-full object-cover" />;
+                      if (image) return <PoiImage key={`${image}-${index}`} src={image} alt="" fallbackSeed={`${collection.collection_id}-${index}`} className="h-full min-h-0 w-full object-cover" />;
                       return <span key={`empty-${index}`} className="flex h-full min-h-0 w-full items-center justify-center bg-neutral-100 text-neutral-600" aria-hidden="true">{collection.cover_images.length === 0 && index === 0 ? <Heart size={28} /> : null}</span>;
                     })}
                   </span>
@@ -877,13 +878,14 @@ export default function SavedPlacesView({
                     return (
                       <div key={poi.id} className="flex flex-col group cursor-pointer text-left select-none">
                         <div className="relative aspect-[1.05/1] w-full rounded-[16px] overflow-hidden bg-gray-100 shadow-2xs">
-                          <img
+                          <PoiImage
                             src={poi.image}
                             alt={poi.name}
+                            poiId={poi.id}
+                            poiName={poi.name}
+                            category={poi.category}
+                            city={poi.city}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            onError={(e) => {
-                              e.currentTarget.src = 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
-                            }}
                           />
                           {poi.isGreen && (
                             <div className="absolute top-2.5 left-2.5 z-10 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[10.5px] font-bold px-2 py-0.5 rounded-full shadow-md backdrop-blur-md flex items-center gap-1 pointer-events-none">

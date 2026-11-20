@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { Heart } from 'lucide-react';
 import type { Poi, PoiCategory } from '@/data/pois';
-import { getGalleryImages, getDeterministicImage, SUB_CATEGORY_LABELS, categoryLabels } from '@/data/pois';
+import { getGalleryImages, SUB_CATEGORY_LABELS, categoryLabels } from '@/data/pois';
 import ExplanationModal from '@/components/poi/ExplanationModal';
+import PoiImage from '@/components/ui/PoiImage';
 
 const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
   'quan-an': { icon: 'ph-fork-knife', label: 'Quán ăn' },
@@ -166,18 +167,15 @@ export default function PoiCard({
             ? 'ring-2 ring-emerald-500/50 shadow-md'
             : ''
       }`}>
-        <img
+        <PoiImage
           src={gallery[imgIdx] || poi.image}
           alt={poi.name}
-          referrerPolicy="no-referrer"
+          poiId={poi.id}
+          poiName={poi.name}
+          category={poi.category}
+          city={poi.city}
+          fallbackSeed={`${poi.id}_${imgIdx}`}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => {
-            const target = e.currentTarget;
-            const fallback = getDeterministicImage(poi.name, `${poi.id}_${imgIdx}`, poi.category, poi.city);
-            if (target.src !== fallback) {
-              target.src = fallback;
-            }
-          }}
         />
 
         {/* Nút tròn chuyển ảnh ‹ */}

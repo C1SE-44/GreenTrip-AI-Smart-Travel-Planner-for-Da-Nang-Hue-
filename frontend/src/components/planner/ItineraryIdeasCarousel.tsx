@@ -3,6 +3,7 @@ import { ChevronRight, Clock, ExternalLink, Heart, MoreHorizontal, Trash2 } from
 import type { Poi } from '@/data/pois';
 import type { ItineraryDay } from '@/services/itineraryService';
 import { formatCategoryLabel, getCategoryIcon, getPoiImage } from './tripItineraryUtils';
+import PoiImage from '@/components/ui/PoiImage';
 
 interface ItineraryIdeasCarouselProps {
   pois: Poi[];
@@ -55,11 +56,14 @@ export default function ItineraryIdeasCarousel({
               className="w-[180px] h-[200px] shrink-0 rounded-2xl relative overflow-hidden group select-none shadow-sm hover:shadow-md transition-all border border-gray-100"
             >
               {/* Ảnh toàn thẻ */}
-              <img
+              <PoiImage
                 src={getPoiImage(poi)}
                 alt={poi.name}
+                poiId={poi.id}
+                poiName={poi.name}
+                category={poi.category}
+                city={poi.city}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
-                loading="lazy"
               />
 
               {/* Nút yêu thích & Menu ... góc trên phải */}

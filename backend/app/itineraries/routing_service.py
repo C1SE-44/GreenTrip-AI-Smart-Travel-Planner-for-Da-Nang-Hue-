@@ -74,17 +74,18 @@ def get_corridor_between_points(
         return [pt[:] for pt in reversed(CORRIDOR_DA_NANG_HUE_GEOJSON)]
 
     # North Da Nang (Nam Ô / Hải Vân) vs South/East Da Nang (Hải Châu / Sơn Trà / Thanh Khê)
-    is_north_dn_from = from_lat > 16.12 and from_lon < 108.15
-    is_south_dn_to = to_lat <= 16.10 and to_lon >= 108.16
-    is_south_dn_from = from_lat <= 16.10 and from_lon >= 108.16
-    is_north_dn_to = to_lat > 16.12 and to_lon < 108.15
+    is_north_dn_from = from_lat >= 16.12 and from_lon <= 108.15
+    is_south_dn_to = to_lat <= 16.12 and to_lon >= 108.16
+    is_south_dn_from = from_lat <= 16.12 and from_lon >= 108.16
+    is_north_dn_to = to_lat >= 16.12 and to_lon <= 108.15
 
     da_nang_bay_bypass = [
-        [108.1360, 16.1360],  # Nam Ô
-        [108.1550, 16.1150],  # Nguyễn Lương Bằng
-        [108.1680, 16.0900],  # Tôn Đức Thắng
-        [108.1750, 16.0780],  # Bến xe
-        [108.1835, 16.0685],  # Ngã Ba Huế
+        [108.1360, 16.1360],  # Cầu Nam Ô
+        [108.1460, 16.1150],  # Nguyễn Lương Bằng (Hòa Khánh Bắc)
+        [108.1580, 16.0880],  # Tôn Đức Thắng (Hòa Khánh Nam)
+        [108.1720, 16.0750],  # Bến xe Trung tâm Đà Nẵng
+        [108.1835, 16.0685],  # Cầu vượt Ngã Ba Huế
+        [108.1980, 16.0650],  # Đường Điện Biên Phủ
     ]
 
     if is_north_dn_from and is_south_dn_to:

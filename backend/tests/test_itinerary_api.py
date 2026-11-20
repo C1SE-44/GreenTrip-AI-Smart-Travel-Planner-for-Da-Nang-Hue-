@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from pathlib import Path
 import sys
 
@@ -16,17 +17,19 @@ def test_itinerary_days_and_stops_persist_and_can_be_reordered(tmp_path, monkeyp
 
     monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", tmp_path / "itinerary.sqlite")
     monkeypatch.setattr(postgres, "get_settings", lambda: Settings(DATABASE_URL=""))
+    day1 = (date.today() + timedelta(days=5)).isoformat()
+    day2 = (date.today() + timedelta(days=6)).isoformat()
     payload = {
         "trip_id": "pb11-trip-roundtrip",
         "title": "Đà Nẵng & Huế cuối tuần",
         "destination": "Đà Nẵng & Huế",
-        "start_date": "2026-11-15",
+        "start_date": day1,
         "days_count": 2,
         "days": [
             {
                 "day_id": "pb11-day-1",
                 "day_number": 1,
-                "date": "2026-11-15",
+                "date": day1,
                 "title": "Đà Nẵng",
                 "note": "Đi chậm, dành thời gian nghỉ trưa.",
                 "stops": [
@@ -65,7 +68,7 @@ def test_itinerary_days_and_stops_persist_and_can_be_reordered(tmp_path, monkeyp
                     },
                 ],
             },
-            {"day_id": "pb11-day-2", "day_number": 2, "date": "2026-11-16", "title": "Huế", "note": "", "stops": []},
+            {"day_id": "pb11-day-2", "day_number": 2, "date": day2, "title": "Huế", "note": "", "stops": []},
         ],
     }
 

@@ -176,6 +176,8 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
 
 
 def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> TripItineraryResponse:
+    is_sample = payload.trip_id.startswith("sample-")
+    effective_user_id = None if is_sample else user_id
     try:
         with get_connection() as connection:
             with connection.cursor() as cursor:
@@ -183,8 +185,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                 cursor.execute("SELECT user_id FROM public.itineraries WHERE trip_id = %s", (payload.trip_id,))
                 existing = cursor.fetchone()
                 owner_id = existing[0] if existing else None
-                is_shared_sample = payload.trip_id.startswith("sample-") and owner_id == "demo-user"
-                if owner_id and owner_id != user_id and not is_shared_sample:
+                if not is_sample and owner_id and owner_id != user_id:
                     raise HTTPException(status_code=404, detail="Không tìm thấy lịch trình.")
 
                 cursor.execute(
@@ -193,7 +194,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                     VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s)
                     ON CONFLICT (trip_id) DO UPDATE SET
                         -- ponytail: keep original ownership so anonymous trips cannot be claimed by another user
-                        user_id = itineraries.user_id,
+                        user_id = CASE WHEN itineraries.trip_id LIKE 'sample-%' THEN NULL ELSE itineraries.user_id END,
                         title = EXCLUDED.title,
                         destination = EXCLUDED.destination,
                         start_date = EXCLUDED.start_date,
@@ -202,7 +203,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                         total_days = EXCLUDED.days_count,
                         updated_at = CURRENT_TIMESTAMP
                     """,
-                    (payload.trip_id, user_id, payload.title, payload.destination, payload.start_date, payload.days_count, payload.trip_id, payload.days_count),
+                    (payload.trip_id, effective_user_id, payload.title, payload.destination, payload.start_date, payload.days_count, payload.trip_id, payload.days_count),
                 )
                 cursor.execute(
                     "DELETE FROM public.itinerary_stops WHERE day_id IN (SELECT day_id FROM public.itinerary_days WHERE trip_id = %s)",
@@ -250,8 +251,8 @@ def get_itinerary(trip_id: str, user_id: str | None) -> TripItineraryResponse | 
                     (trip_id,),
                 )
                 trip = cursor.fetchone()
-                is_shared_sample = bool(trip and trip_id.startswith("sample-") and trip[1] == "demo-user")
-                if not trip or (trip[1] and trip[1] != user_id and not is_shared_sample):
+                is_sample = trip_id.startswith("sample-")
+                if not trip or (not is_sample and trip[1] and trip[1] != user_id):
                     return None
                 cursor.execute(
                     "SELECT day_id, day_number, date, title, note FROM public.itinerary_days WHERE trip_id = %s ORDER BY day_number",

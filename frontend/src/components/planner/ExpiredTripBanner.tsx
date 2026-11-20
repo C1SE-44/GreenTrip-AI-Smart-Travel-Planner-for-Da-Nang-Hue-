@@ -29,6 +29,10 @@ export default function ExpiredTripBanner({
   const [isRolling, setIsRolling] = useState(false);
   const [error, setError] = useState('');
 
+  if (trip.id.startsWith('sample-')) {
+    return null;
+  }
+
   const start = tripStartDate(trip.startDate);
   const count = trip.daysCount || 1;
   const end = start ? dateAt(start, count - 1) : null;

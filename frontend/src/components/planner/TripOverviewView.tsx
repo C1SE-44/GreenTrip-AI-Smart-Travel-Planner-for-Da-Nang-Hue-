@@ -69,6 +69,7 @@ import TripBudgetModal from './TripBudgetModal';
 import PlannerAddIdeasModal from './PlannerAddIdeasModal';
 import TripLearnDrawer from './TripLearnDrawer';
 import ExpiredTripBanner from './ExpiredTripBanner';
+import SampleTripReadOnlyBanner from './SampleTripReadOnlyBanner';
 
 export { FormattedCopilotMessage, type CopilotChatMessageItem };
 export { parseCategoryBudgets, type CategoryBudgets };
@@ -77,6 +78,7 @@ export interface TripOverviewViewProps {
   trip: UserTrip;
   allPois?: Poi[];
   currentUser?: UserProfile | null;
+  onUseSampleTrip?: (sampleTripId: string) => Promise<void> | void;
   onBack: () => void;
   onOpenItineraryDetails?: () => void;
   onUpdateTrip?: (updatedTrip: UserTrip) => void;
@@ -88,6 +90,7 @@ export default function TripOverviewView({
   trip,
   allPois: allPoisProp,
   currentUser,
+  onUseSampleTrip,
   onBack,
   onOpenItineraryDetails,
   onUpdateTrip,
@@ -235,6 +238,11 @@ export default function TripOverviewView({
     });
     const nextPlan = { ...itineraryPlan, days: updatedDays };
     setItineraryPlan(nextPlan);
+    if (trip.id.startsWith('sample-')) {
+      setToastMessage('Chuyến đi mẫu đang ở chế độ chỉ xem. Bấm "Dùng mẫu này" để tạo bản sao và lưu.');
+      setTimeout(() => setToastMessage(null), 3500);
+      return;
+    }
     saveTripItinerary(nextPlan);
     setToastMessage(`Đã thêm "${poi.name}" vào Ngày ${dayNum}`);
   };
@@ -251,6 +259,11 @@ export default function TripOverviewView({
     });
     const nextPlan = { ...itineraryPlan, days: updatedDays };
     setItineraryPlan(nextPlan);
+    if (trip.id.startsWith('sample-')) {
+      setToastMessage('Chuyến đi mẫu đang ở chế độ chỉ xem. Bấm "Dùng mẫu này" để lưu thay đổi.');
+      setTimeout(() => setToastMessage(null), 3500);
+      return;
+    }
     saveTripItinerary(nextPlan);
   };
 
@@ -1007,7 +1020,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           days: nextDays,
         };
         setItineraryPlan(nextPlan);
-        saveTripItinerary(nextPlan);
+        if (!trip.id.startsWith('sample-')) {
+          saveTripItinerary(nextPlan);
+        }
       }
 
       if (res.updated_days_count || res.updated_destination) {
@@ -1302,6 +1317,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         </div>
       </div>
 
+      <SampleTripReadOnlyBanner trip={trip} onUseSample={onUseSampleTrip} />
       <ExpiredTripBanner
         trip={trip}
         plan={itineraryPlan}

@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { extractTripIntentFromPrompt } from "@/utils/vietnamesePromptExtractor";
+import { hasAuthToken, savePendingPlannerAction } from "@/utils/pendingPlannerAction";
 import { buildDefaultCopilotItinerary } from "@/components/planner/copilotTripData";
 import type { UserTrip } from "@/pages/ExplorePage";
 
@@ -125,6 +126,12 @@ export default function LandingPage() {
           : "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
       itineraryOutline: buildDefaultCopilotItinerary(destination, days),
     };
+
+    if (!hasAuthToken()) {
+      savePendingPlannerAction({ type: "quick_launch", trip: quickLaunchTrip });
+      navigate("/login", { state: { returnTo: "/planner" } });
+      return;
+    }
 
     navigate("/planner", { state: { quickLaunchTrip } });
   };

@@ -34,8 +34,13 @@ import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
 import { clearAuthSession, getMe, type UserProfile } from '@/services/auth';
-import { deleteMyTrip, getMyTrips } from '@/services/tripService';
+import { cloneSampleTrip, deleteMyTrip, getMyTrips } from '@/services/tripService';
 import { loadAccountTrips, tripStorageKey } from '@/utils/accountTrips';
+import {
+  consumePendingPlannerAction,
+  hasAuthToken,
+  savePendingPlannerAction,
+} from '@/utils/pendingPlannerAction';
 import { getPois, getAllPois } from '@/services/poi';
 import ExploreFilterModal, {
   type ExploreFilterValues,
@@ -219,10 +224,64 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     setSelectedTripForDetails((current) => current?.id === tripId ? updateTripPlaces(current) : current);
   };
 
+  const requestCreateTrip = useCallback(
+    (poiIds?: string[]) => {
+      if (!hasAuthToken()) {
+        savePendingPlannerAction({ type: 'create_trip', poiIds });
+        navigate('/login', { state: { returnTo: '/planner' } });
+        return;
+      }
+      if (poiIds && poiIds.length > 0) {
+        setPendingAddToTripPoiIds(poiIds);
+      }
+      setIsCreateTripModalOpen(true);
+    },
+    [navigate]
+  );
+
+  const handleCloneSampleTrip = useCallback(
+    async (sampleTripId: string, openInItinerary = false) => {
+      if (!hasAuthToken()) {
+        savePendingPlannerAction({ type: 'clone_sample', sampleTripId });
+        navigate('/login', { state: { returnTo: '/planner' } });
+        return;
+      }
+      const cloned = await cloneSampleTrip(sampleTripId);
+      try {
+        localStorage.setItem(`greentrip_itinerary_${cloned.trip_id}`, JSON.stringify(cloned));
+      } catch (e) {
+        console.error(e);
+      }
+      const template = SEEDED_SAMPLE_TRIPS.find((t) => t.id === sampleTripId);
+      const newTrip: UserTrip = {
+        id: cloned.trip_id,
+        title: cloned.title,
+        destination: cloned.destination,
+        startDate: cloned.start_date || '',
+        daysCount: cloned.days_count,
+        peopleCount: template?.peopleCount || 2,
+        tags: template?.tags,
+        image: template?.image,
+        ideas: template?.ideas,
+        createdAt: new Date().toISOString(),
+      };
+      setUserTrips((prev) => [newTrip, ...prev.filter((t) => t.id !== newTrip.id)]);
+      setActiveOverviewTrip(newTrip);
+      if (openInItinerary) {
+        setSelectedTripForDetails(newTrip);
+        setActiveTripSubTab('itinerary');
+      } else {
+        setSelectedTripForDetails(null);
+        setActiveTripSubTab('ideas');
+      }
+      setViewMode('trips');
+    },
+    [navigate]
+  );
+
   const createTripForPois = (poiIds: string[]) => {
     setAddToTripSelection(null);
-    setPendingAddToTripPoiIds(poiIds);
-    setIsCreateTripModalOpen(true);
+    requestCreateTrip(poiIds);
   };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -419,6 +478,38 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     setUserTrips(SEEDED_SAMPLE_TRIPS);
     navigate('/login', { replace: true });
   };
+
+  useEffect(() => {
+    if (profileLoading || !currentUser) return;
+    const pendingAction = consumePendingPlannerAction();
+    if (!pendingAction) return;
+
+    if (pendingAction.type === 'create_trip') {
+      if (pendingAction.poiIds && pendingAction.poiIds.length > 0) {
+        setPendingAddToTripPoiIds(pendingAction.poiIds);
+      }
+      setViewMode('trips');
+      setIsCreateTripModalOpen(true);
+      return;
+    }
+
+    if (pendingAction.type === 'quick_launch') {
+      const quickTrip = pendingAction.trip;
+      quickLaunchTripRef.current = quickTrip;
+      setUserTrips((prev) => [quickTrip, ...prev.filter((t) => t.id !== quickTrip.id)]);
+      setActiveOverviewTrip(quickTrip);
+      setSelectedTripForDetails(quickTrip);
+      setActiveTripSubTab('itinerary');
+      setViewMode('trips');
+      return;
+    }
+
+    if (pendingAction.type === 'clone_sample') {
+      handleCloneSampleTrip(pendingAction.sampleTripId).catch((err) => {
+        console.error('Could not resume sample trip clone after login:', err);
+      });
+    }
+  }, [currentUser, profileLoading, handleCloneSampleTrip]);
 
   const needsPois = initialView !== 'profile';
 
@@ -987,7 +1078,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                     setActiveTripSubTab('ideas');
                   } else {
                     setActiveOverviewTrip(null);
-                    setIsCreateTripModalOpen(true);
+                    requestCreateTrip();
                   }
                   navigate('/planner'); 
                 }, 
@@ -1147,7 +1238,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                     type="button"
                     onClick={() => {
                       setIdeationDraft(null);
-                      setIsCreateTripModalOpen(true);
+                      requestCreateTrip();
                     }}
                     className="w-9 h-9 bg-black hover:bg-neutral-800 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 group/newchat relative"
                     title="Tạo chuyến đi"
@@ -1182,7 +1273,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                   type="button"
                   onClick={() => {
                     setIdeationDraft(null);
-                    setIsCreateTripModalOpen(true);
+                    requestCreateTrip();
                   }}
                   className="w-full h-[46px] px-3 bg-black hover:bg-neutral-800 text-white font-semibold text-[13.5px] rounded-full transition-all text-center border border-black shadow-xs cursor-pointer flex items-center justify-center gap-2 active:scale-98 group/create-btn"
                   title="Tạo chuyến đi mới đến Đà Nẵng hoặc Huế"
@@ -1240,8 +1331,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             setViewMode('saved');
             navigate('/saved');
           }}
-          onCreateTrip={(defaultDest, defaultTitle) => {
-            setIsCreateTripModalOpen(true);
+          onCreateTrip={(_defaultDest, _defaultTitle) => {
+            requestCreateTrip();
           }}
           currentUser={currentUser}
         />
@@ -1251,6 +1342,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             <TripCalendarView
               trip={(activeOverviewTrip || selectedTripForDetails)!}
               allPois={allPois}
+              onUseSampleTrip={handleCloneSampleTrip}
               onBack={() => {
                 setActiveOverviewTrip(null);
                 setSelectedTripForDetails(null);
@@ -1270,6 +1362,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             <TripItineraryView
               trip={selectedTripForDetails}
               allPois={allPois}
+              onUseSampleTrip={handleCloneSampleTrip}
               onBack={() => {
                 setActiveOverviewTrip(null);
                 setSelectedTripForDetails(null);
@@ -1294,6 +1387,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               trip={activeOverviewTrip}
               allPois={allPois}
               currentUser={currentUser}
+              onUseSampleTrip={handleCloneSampleTrip}
               onBack={() => {
                 setActiveOverviewTrip(null);
                 setSelectedTripForDetails(null);
@@ -1319,7 +1413,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 Lịch trình của bạn
               </h1>
               <button
-                onClick={() => setIsCreateTripModalOpen(true)}
+                onClick={() => requestCreateTrip()}
                 className="ml-auto w-auto whitespace-nowrap bg-black text-white hover:bg-neutral-800 h-[40px] px-[36px] rounded-full text-[13.5px] font-semibold flex items-center gap-[14px] transition active:scale-95 shadow-xs cursor-pointer shrink-0"
               >
                 <i className="ph ph-plus font-bold text-sm"></i>
@@ -1445,7 +1539,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                   </p>
                   {/* Nút Tạo chuyến đi đầu tiên: cao 100px (h-[54px]), padding 48px, cỡ chữ 15px, không bị cắt đáy */}
                   <button
-                    onClick={() => setIsCreateTripModalOpen(true)}
+                    onClick={() => requestCreateTrip()}
                     className="bg-black text-white px-[48px] h-[54px] rounded-full text-[15px] font-semibold hover:bg-neutral-800 transition active:scale-95 shadow-xs cursor-pointer flex items-center justify-center shrink-0"
                   >
                     Tạo chuyến đi đầu tiên
@@ -1455,7 +1549,9 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 /* Grid of Trip Cards */
                 <div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {userTrips.map((trip) => (
+                    {userTrips.map((trip) => {
+                      const isSampleTrip = trip.id.startsWith('sample-');
+                      return (
                       <div
                         key={trip.id}
                         onClick={() => {
@@ -1474,6 +1570,11 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                           <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">
                             {trip.destination}
                           </span>
+                          {isSampleTrip && (
+                            <span className="absolute top-3 right-3 bg-emerald-900/85 backdrop-blur-md text-emerald-50 text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                              Hành trình mẫu
+                            </span>
+                          )}
                         </div>
                         <div className="p-4 flex-1 flex flex-col justify-between">
                           <div>
@@ -1484,27 +1585,42 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                               <i className="ph ph-calendar-blank"></i> {trip.startDate || 'Tháng 11, 2026'} • {trip.peopleCount} người
                             </p>
                           </div>
-                          <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setUserTrips((prev) => prev.filter((t) => t.id !== trip.id));
-                                if (currentUser && !trip.id.startsWith('sample-')) {
-                                  deleteMyTrip(trip.id).catch(() => undefined);
-                                }
-                              }}
-                              className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 cursor-pointer"
-                              title="Xóa chuyến đi"
-                            >
-                              <i className="ph ph-trash"></i> Xóa
-                            </button>
+                          <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                            {isSampleTrip ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCloneSampleTrip(trip.id).catch((err) => console.error(err));
+                                }}
+                                className="min-h-[36px] px-3 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                                title="Sao chép hành trình mẫu thành chuyến đi riêng"
+                              >
+                                <i className="ph ph-copy"></i> Dùng mẫu này
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setUserTrips((prev) => prev.filter((t) => t.id !== trip.id));
+                                  if (currentUser) {
+                                    deleteMyTrip(trip.id).catch(() => undefined);
+                                  }
+                                }}
+                                className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 cursor-pointer"
+                                title="Xóa chuyến đi"
+                              >
+                                <i className="ph ph-trash"></i> Xóa
+                              </button>
+                            )}
                             <span className="text-xs font-bold text-black flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                               Xem lịch trình <i className="ph ph-arrow-right text-[11px]"></i>
                             </span>
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )            ) : (
@@ -1530,7 +1646,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                     Bạn chưa có chuyến đi nào. Hãy tạo chuyến đi mới để tự do sắp xếp lịch trình nhé!
                   </p>
                   <button
-                    onClick={() => setIsCreateTripModalOpen(true)}
+                    onClick={() => requestCreateTrip()}
                     className="px-5 py-2 bg-black hover:bg-neutral-800 text-white rounded-full text-xs font-semibold transition cursor-pointer"
                   >
                     + Tạo chuyến đi ngay
@@ -1559,6 +1675,10 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         <IdeationChatView
           allPois={allPois}
           onCreateTripFromIdea={({ initialPrompt, selectedPoiIds, chatHistory }) => {
+            if (!hasAuthToken()) {
+              requestCreateTrip(selectedPoiIds.length > 0 ? selectedPoiIds : undefined);
+              return;
+            }
             setIdeationDraft({ initialPrompt, chatHistory });
             setPendingAddToTripPoiIds(selectedPoiIds.length > 0 ? selectedPoiIds : null);
             setIsCreateTripModalOpen(true);

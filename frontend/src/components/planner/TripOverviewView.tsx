@@ -67,6 +67,7 @@ import { TripWhereModal, TripWhenModal, TripWhoModal } from './TripParameterModa
 import TripBudgetModal from './TripBudgetModal';
 import PlannerAddIdeasModal from './PlannerAddIdeasModal';
 import TripLearnDrawer from './TripLearnDrawer';
+import ExpiredTripBanner from './ExpiredTripBanner';
 
 export { FormattedCopilotMessage, type CopilotChatMessageItem };
 export { parseCategoryBudgets, type CategoryBudgets };
@@ -1295,6 +1296,14 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           </button>
         </div>
       </div>
+
+      <ExpiredTripBanner
+        trip={trip}
+        plan={itineraryPlan}
+        onUpdateTrip={onUpdateTrip}
+        onPlanUpdated={(next) => setItineraryPlan(next)}
+        onOpenWhen={() => setShowWhenModal(true)}
+      />
 
       {/* ─── NỘI DUNG CHÍNH: BỐ CỤC CHUẨN TRANG EXPLORE (CỘT GIỮA + BẢN ĐỒ FLEX-1) ─── */}
       <div className="flex-1 min-h-0 flex items-stretch overflow-hidden">

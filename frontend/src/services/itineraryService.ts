@@ -1,6 +1,7 @@
 import { fetchJson } from '@/lib/api';
 import type { Poi } from '@/data/pois';
 import type { UserTrip } from '@/pages/ExplorePage';
+import { dateAt, tripStartDate, vietnamNow } from '@/utils/tripDates';
 
 export interface RouteStop {
   order: number;
@@ -429,25 +430,21 @@ export interface TripItinerary {
 
 export function createEmptyItinerary(trip: UserTrip): TripItinerary {
   const count = Math.max(1, Math.min(31, trip.daysCount || 1));
-  const start = trip.startDate && /^\d{4}-\d{2}-\d{2}$/.test(trip.startDate) ? trip.startDate : null;
+  const start = tripStartDate(trip.startDate);
   return {
     trip_id: trip.id,
     title: trip.title,
     destination: trip.destination,
     start_date: start,
     days_count: count,
-    days: Array.from({ length: count }, (_, index) => {
-      const date = start ? new Date(`${start}T12:00:00`) : null;
-      if (date) date.setDate(date.getDate() + index);
-      return {
-        day_id: `${trip.id}-day-${index + 1}`,
-        day_number: index + 1,
-        date: date ? date.toISOString().slice(0, 10) : null,
-        title: '',
-        note: '',
-        stops: [],
-      };
-    }),
+    days: Array.from({ length: count }, (_, index) => ({
+      day_id: `${trip.id}-day-${index + 1}`,
+      day_number: index + 1,
+      date: start ? dateAt(start, index) : null,
+      title: '',
+      note: '',
+      stops: [],
+    })),
   };
 }
 
@@ -641,63 +638,167 @@ export function stopFromPoi(poi: Poi, source: 'idea' | 'manual' | 'assistant' = 
   };
 }
 
+const itineraryWrites = new Map<string, Promise<TripItinerary>>();
+const itineraryReads = new Map<string, Promise<TripItinerary>>();
+
 export async function getTripItinerary(tripId: string): Promise<TripItinerary> {
-  try {
-    const remote = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(tripId)}/itinerary`);
-    if (remote && remote.trip_id) {
-      try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(`greentrip_itinerary_${tripId}`, JSON.stringify(remote));
+  const existingRead = itineraryReads.get(tripId);
+  if (existingRead) return existingRead;
+
+  const fetchPromise = (async () => {
+    await itineraryWrites.get(tripId)?.catch(() => undefined);
+    const key = `greentrip_itinerary_${tripId}`;
+    const cacheBeforeRead = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+    try {
+      const remote = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(tripId)}/itinerary`);
+      if (remote && remote.trip_id) {
+        try {
+          if (typeof localStorage !== 'undefined') {
+            const current = localStorage.getItem(key);
+            if (current && current !== cacheBeforeRead) return JSON.parse(current) as TripItinerary;
+            localStorage.setItem(key, JSON.stringify(remote));
+          }
+        } catch (e) {
+          console.warn('Failed to cache itinerary to localStorage', e);
         }
-      } catch (e) {
-        console.warn('Failed to cache itinerary to localStorage', e);
+        return remote;
       }
-      return remote;
+    } catch (err) {
+      const localRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+      if (localRaw) {
+        try {
+          return JSON.parse(localRaw) as TripItinerary;
+        } catch (e) {
+          console.warn('Failed to parse localStorage itinerary', e);
+        }
+      }
+      throw err;
     }
-  } catch (err) {
-    const localRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(`greentrip_itinerary_${tripId}`) : null;
+    const localRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
     if (localRaw) {
-      try {
-        return JSON.parse(localRaw) as TripItinerary;
-      } catch (e) {
-        console.warn('Failed to parse localStorage itinerary', e);
+      return JSON.parse(localRaw) as TripItinerary;
+    }
+    throw new Error(`Itinerary not found for trip ${tripId}`);
+  })();
+
+  itineraryReads.set(tripId, fetchPromise);
+  try {
+    return await fetchPromise;
+  } finally {
+    itineraryReads.delete(tripId);
+  }
+}
+
+export function scheduleError(next: TripItinerary, previous?: TripItinerary | null): string {
+  const old = new Map(
+    previous?.days.flatMap((day) =>
+      day.stops.map((stop) => [
+        stop.stop_id,
+        {
+          date: day.date || (previous.start_date ? dateAt(previous.start_date, day.day_number - 1) : null),
+          time: stop.start_time,
+          end: stop.end_time,
+        },
+      ] as const)
+    )
+  );
+  const now = vietnamNow();
+  const prevStart = tripStartDate(previous?.start_date);
+  const nextStart = tripStartDate(next.start_date);
+  const isTripShiftForward = Boolean(
+    previous &&
+      nextStart &&
+      nextStart >= now.date &&
+      (!prevStart || nextStart > prevStart)
+  );
+
+  for (const day of next.days) {
+    const date = day.date || (next.start_date ? dateAt(next.start_date, day.day_number - 1) : null);
+    for (const stop of day.stops) {
+      if (!date || !stop.start_time) continue;
+      const before = old.get(stop.stop_id);
+      if (before?.date === date && before.time === stop.start_time && before.end === stop.end_time) continue;
+      if (isTripShiftForward && before && before.time === stop.start_time && before.end === stop.end_time && date >= now.date) {
+        continue;
+      }
+      if (prevStart && nextStart === prevStart && nextStart < now.date && before) {
+        continue;
+      }
+      const [hour, minute] = stop.start_time.split(':').map(Number);
+      if (date < now.date || (date === now.date && hour * 60 + minute < now.minutes)) {
+        return 'Không thể thêm hoặc dời hoạt động vào quá khứ (giờ Việt Nam).';
       }
     }
-    throw err;
   }
-  const localRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(`greentrip_itinerary_${tripId}`) : null;
-  if (localRaw) {
-    return JSON.parse(localRaw) as TripItinerary;
-  }
-  throw new Error(`Itinerary not found for trip ${tripId}`);
+  return '';
 }
 
 export async function saveTripItinerary(itinerary: TripItinerary): Promise<TripItinerary> {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(`greentrip_itinerary_${itinerary.trip_id}`, JSON.stringify(itinerary));
+  const storageKey = `greentrip_itinerary_${itinerary.trip_id}`;
+  const writePromise = (async () => {
+    let previous: TripItinerary | null = null;
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(storageKey) : null;
+      if (raw) previous = JSON.parse(raw) as TripItinerary;
+    } catch {
+      previous = null;
     }
-  } catch (e) {
-    console.warn('Failed to save itinerary to localStorage', e);
-  }
+    if (!previous) {
+      try {
+        previous = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(itinerary.trip_id)}/itinerary`);
+      } catch {
+        previous = null;
+      }
+    }
 
-  try {
-    return await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(itinerary.trip_id)}/itinerary`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(itinerary),
-    });
-  } catch (err) {
-    console.warn('Backend saveTripItinerary failed, using local storage state', err);
-    // Keep offline edits available locally, but do not hide server validation or
-    // authorization errors: the UI needs to let travelers correct those cases.
-    if (typeof err === 'object' && err !== null && 'status' in err && typeof err.status === 'number') {
-      throw err;
+    const validationMessage = scheduleError(itinerary, previous);
+    if (validationMessage) {
+      throw new Error(validationMessage);
     }
-    return {
-      ...itinerary,
-      updated_at: new Date().toISOString(),
-    };
+
+    try {
+      const saved = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(itinerary.trip_id)}/itinerary`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(itinerary),
+      });
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(storageKey, JSON.stringify(saved));
+        }
+      } catch (e) {
+        console.warn('Failed to save itinerary to localStorage', e);
+      }
+      return saved;
+    } catch (err) {
+      console.warn('Backend saveTripItinerary failed, using local storage state', err);
+      // Keep offline edits available locally, but do not hide server validation or
+      // authorization errors: the UI needs to let travelers correct those cases.
+      if (typeof err === 'object' && err !== null && 'status' in err && typeof err.status === 'number') {
+        throw err;
+      }
+      const fallback = {
+        ...itinerary,
+        updated_at: new Date().toISOString(),
+      };
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(storageKey, JSON.stringify(fallback));
+        }
+      } catch (e) {
+        console.warn('Failed to save itinerary to localStorage', e);
+      }
+      return fallback;
+    }
+  })();
+
+  itineraryWrites.set(itinerary.trip_id, writePromise);
+  try {
+    return await writePromise;
+  } finally {
+    if (itineraryWrites.get(itinerary.trip_id) === writePromise) {
+      itineraryWrites.delete(itinerary.trip_id);
+    }
   }
 }
 
@@ -924,9 +1025,13 @@ export function normalizeSequence(days: ItineraryDay[]): ItineraryDay[] {
 
 export function alignItineraryToTrip(itinerary: TripItinerary, trip: UserTrip): { itinerary: TripItinerary; changed: boolean; warning: string } {
   const requestedDays = Math.max(1, Math.min(31, trip.daysCount || itinerary.days_count));
+  const nextStart = tripStartDate(trip.startDate);
   const days = [...itinerary.days].sort((a, b) => a.day_number - b.day_number);
   let warning = '';
-  let changed = itinerary.title !== trip.title || itinerary.destination !== trip.destination;
+  let changed =
+    itinerary.title !== trip.title ||
+    itinerary.destination !== trip.destination ||
+    (itinerary.start_date || null) !== nextStart;
 
   if (requestedDays < days.length) {
     const overflowDays = days.slice(requestedDays);
@@ -938,18 +1043,11 @@ export function alignItineraryToTrip(itinerary: TripItinerary, trip: UserTrip): 
       changed = true;
     }
   } else if (requestedDays > days.length) {
-    const startDate = itinerary.start_date ? new Date(`${itinerary.start_date}T12:00:00`) : null;
     for (let dayNumber = days.length + 1; dayNumber <= requestedDays; dayNumber += 1) {
-      let date: string | null = null;
-      if (startDate && !Number.isNaN(startDate.getTime())) {
-        const nextDate = new Date(startDate);
-        nextDate.setDate(nextDate.getDate() + dayNumber - 1);
-        date = nextDate.toISOString().slice(0, 10);
-      }
       days.push({
         day_id: `${itinerary.trip_id}-day-${dayNumber}`,
         day_number: dayNumber,
-        date,
+        date: nextStart ? dateAt(nextStart, dayNumber - 1) : null,
         title: '',
         note: '',
         stops: [],
@@ -958,11 +1056,18 @@ export function alignItineraryToTrip(itinerary: TripItinerary, trip: UserTrip): 
     changed = true;
   }
 
-  const alignedDays = normalizeSequence(days.map((day, index) => ({ ...day, day_number: index + 1 })));
+  const alignedDays = normalizeSequence(
+    days.map((day, index) => {
+      const nextDate = nextStart ? dateAt(nextStart, index) : null;
+      if ((day.date || null) !== nextDate) changed = true;
+      return { ...day, day_number: index + 1, date: nextDate };
+    })
+  );
   const nextItinerary: TripItinerary = {
     ...itinerary,
     title: trip.title,
     destination: trip.destination,
+    start_date: nextStart,
     days_count: alignedDays.length,
     days: alignedDays,
   };

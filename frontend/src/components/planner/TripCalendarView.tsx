@@ -33,6 +33,7 @@ import {
   parseStartDateFromTrip,
   updateDateRangeWithDays,
 } from '@/services/itineraryService';
+import ExpiredTripBanner from './ExpiredTripBanner';
 import PoiMap from '@/components/poi/PoiMap';
 import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
@@ -304,6 +305,13 @@ export default function TripCalendarView({
           </button>
         </div>
       </header>
+
+      <ExpiredTripBanner
+        trip={trip}
+        plan={plan}
+        onUpdateTrip={onUpdateTrip}
+        onPlanUpdated={(next) => setPlan(next)}
+      />
 
       {/* ─── NỘI DUNG CHÍNH: BỐ CỤC 2 CỘT (LỊCH CALENDAR + BẢN ĐỒ / Ý TƯỞNG) ─── */}
       <div className="flex-1 min-h-0 flex items-stretch overflow-hidden bg-white print-scroll-unlock">

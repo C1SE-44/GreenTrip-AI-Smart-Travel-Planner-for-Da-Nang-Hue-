@@ -100,6 +100,8 @@ import ItineraryIdeasCarousel from './ItineraryIdeasCarousel';
 import ItineraryMapPanel from './ItineraryMapPanel';
 import ItineraryAddPlacesModal from './ItineraryAddPlacesModal';
 import TripDayEditorModal from './TripDayEditorModal';
+import ExpiredTripBanner from './ExpiredTripBanner';
+import { dateAt, vietnamNow } from '@/utils/tripDates';
 
 export interface TripItineraryViewProps {
   trip: UserTrip;
@@ -579,6 +581,11 @@ export default function TripItineraryView({
         startMinutes = (h || 8) * 60 + (m || 0) + 15;
       }
 
+      const now = vietnamNow();
+      if (day.date === now.date && startMinutes < now.minutes + 15) {
+        startMinutes = Math.min(22 * 60, now.minutes + 15);
+      }
+
       const startH = Math.min(22, Math.floor(startMinutes / 60));
       const startM = startMinutes % 60;
       const endTotalM = startMinutes + dur;
@@ -627,6 +634,30 @@ export default function TripItineraryView({
     });
 
     if (!movingStop) return;
+
+    const targetDay = plan.days.find((d) => d.day_number === toDayNumber);
+    const targetDate = targetDay?.date || (plan.start_date ? dateAt(plan.start_date, toDayNumber - 1) : null);
+    const dur = movingStop.duration_minutes || 90;
+    const targetExistingStops = targetDay?.stops || [];
+    const prevStop = targetExistingStops.length > 0 ? targetExistingStops[targetExistingStops.length - 1] : null;
+
+    let startMinutes = 8 * 60;
+    if (prevStop && prevStop.end_time) {
+      const [h, m] = prevStop.end_time.split(':').map(Number);
+      startMinutes = (h || 8) * 60 + (m || 0) + 15;
+    }
+    const now = vietnamNow();
+    if (targetDate === now.date && startMinutes < now.minutes + 15) {
+      startMinutes = Math.min(22 * 60, now.minutes + 15);
+    }
+    const startH = Math.min(22, Math.floor(startMinutes / 60));
+    const startM = startMinutes % 60;
+    const endTotalM = startMinutes + dur;
+    const endH = Math.min(23, Math.floor(endTotalM / 60));
+    const endM = endTotalM % 60;
+
+    movingStop.start_time = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
+    movingStop.end_time = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 
     const nextDays = cleanedDays.map((day) => {
       if (day.day_number !== toDayNumber) return day;
@@ -1577,6 +1608,18 @@ export default function TripItineraryView({
             </button>
           </div>
         </header>
+      )}
+
+      {!isDrawerMode && (
+        <ExpiredTripBanner
+          trip={trip}
+          plan={plan}
+          onUpdateTrip={onUpdateTrip}
+          onPlanUpdated={(next) => {
+            latestPlan.current = next;
+            setPlan(next);
+          }}
+        />
       )}
 
       {/* Guest Soft-Prompt & Sync Feedback Banner (non-blocking) */}

@@ -335,3 +335,42 @@ def test_guest_can_read_and_update_seeded_sample_trip_while_private_trip_stays_4
         private_get = client.get("/trips/private-user-trip/itinerary")
         assert private_get.status_code == 404
 
+
+def test_save_itinerary_sql_has_no_unescaped_psycopg_percent_placeholders(tmp_path, monkeypatch) -> None:
+    import inspect
+    import re
+    from app.db import postgres
+    from app.trips.itinerary_repository import save_itinerary
+    from app.trips.schemas import TripItinerarySyncRequest
+
+    source = inspect.getsource(save_itinerary)
+    assert "LIKE 'sample-%'" not in source
+    assert re.findall(r"%(?![sbt%])", source) == []
+
+    monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", tmp_path / "psycopg-check.sqlite")
+    monkeypatch.setattr(postgres, "get_settings", lambda: Settings(DATABASE_URL=""))
+
+    orig_execute = postgres.SQLiteCursorWrapper.execute
+
+    def strict_execute(self, sql, params=None):
+        bad_tokens = re.findall(r"%(?![sbt%])", sql)
+        assert bad_tokens == [], f"Invalid psycopg placeholder(s): {bad_tokens} in SQL: {sql}"
+        return orig_execute(self, sql, params)
+
+    monkeypatch.setattr(postgres.SQLiteCursorWrapper, "execute", strict_execute)
+    day1 = (date.today() + timedelta(days=5)).isoformat()
+    payload = TripItinerarySyncRequest(
+        trip_id="sample-strict-check",
+        title="Sample Strict Check",
+        destination="Đà Nẵng",
+        start_date=day1,
+        days_count=1,
+        days=[{"day_id": "sample-strict-d1", "day_number": 1, "date": day1, "title": "Ngày 1", "note": "", "stops": []}],
+    )
+    saved = save_itinerary(payload, user_id=None)
+    assert saved.trip_id == "sample-strict-check"
+    # Second save hits ON CONFLICT DO UPDATE (where LIKE 'sample-%' previously crashed psycopg)
+    saved_again = save_itinerary(payload, user_id=None)
+    assert saved_again.trip_id == "sample-strict-check"
+
+

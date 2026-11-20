@@ -194,7 +194,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                     VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s)
                     ON CONFLICT (trip_id) DO UPDATE SET
                         -- ponytail: keep original ownership so anonymous trips cannot be claimed by another user
-                        user_id = CASE WHEN itineraries.trip_id LIKE 'sample-%' THEN NULL ELSE itineraries.user_id END,
+                        user_id = CASE WHEN SUBSTR(itineraries.trip_id, 1, 7) = 'sample-' THEN NULL ELSE itineraries.user_id END,
                         title = EXCLUDED.title,
                         destination = EXCLUDED.destination,
                         start_date = EXCLUDED.start_date,

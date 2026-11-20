@@ -420,8 +420,10 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     navigate('/login', { replace: true });
   };
 
+  const needsPois = initialView !== 'profile';
+
   useEffect(() => {
-    if (initialView === 'profile') {
+    if (!needsPois) {
       setLoading(false);
       return;
     }
@@ -462,7 +464,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     return () => {
       active = false;
     };
-  }, [initialView, cityFilter, categoryFilter, filterValues]);
+  }, [needsPois, cityFilter, categoryFilter, filterValues]);
 
   const handleTabChange = (tabId: ExploreTabId) => {
     setActiveTab(tabId);
@@ -1291,6 +1293,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             <TripOverviewView
               trip={activeOverviewTrip}
               allPois={allPois}
+              currentUser={currentUser}
               onBack={() => {
                 setActiveOverviewTrip(null);
                 setSelectedTripForDetails(null);

@@ -28,6 +28,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
+import type { UserProfile } from '@/services/auth';
 import { 
   pois as defaultAllPois, 
   normalizePois,
@@ -75,6 +76,7 @@ export { parseCategoryBudgets, type CategoryBudgets };
 export interface TripOverviewViewProps {
   trip: UserTrip;
   allPois?: Poi[];
+  currentUser?: UserProfile | null;
   onBack: () => void;
   onOpenItineraryDetails?: () => void;
   onUpdateTrip?: (updatedTrip: UserTrip) => void;
@@ -85,6 +87,7 @@ type RecommendedPoi = Poi & { matchScore?: number };
 export default function TripOverviewView({
   trip,
   allPois: allPoisProp,
+  currentUser,
   onBack,
   onOpenItineraryDetails,
   onUpdateTrip,
@@ -97,8 +100,10 @@ export default function TripOverviewView({
   const [loadedPois, setLoadedPois] = useState<Poi[]>([]);
 
   useEffect(() => {
-    if (allPoisProp && allPoisProp.length > 0) {
-      setLoadedPois(allPoisProp);
+    if (allPoisProp !== undefined) {
+      if (allPoisProp.length > 0) {
+        setLoadedPois(allPoisProp);
+      }
       return;
     }
     getAllPois()
@@ -863,7 +868,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           destination: trip.destination || 'Đà Nẵng & Huế',
           days_count: trip.daysCount || 4,
           current_day: dayTargetForAdd || 1,
-          traveler_name: 'Nguyên',
+          traveler_name: currentUser?.full_name?.trim() || undefined,
           saved_ideas: tripIdeas,
           total_budget: trip.totalBudget && trip.totalBudget > 0 ? trip.totalBudget : undefined,
           num_people: trip.peopleCount || 2,

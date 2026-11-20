@@ -252,6 +252,24 @@ export async function getPois(params: GetPoisParams = {}): Promise<PaginatedPois
   return fetchJson<PaginatedPoisResponse>(path);
 }
 
+const ALL_POIS_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_CONCURRENT_POI_PAGES = 2;
+const allPoisCache = new Map<string, { expiresAt: number; data: PaginatedPoisResponse }>();
+const allPoisInFlight = new Map<string, Promise<PaginatedPoisResponse>>();
+
+function buildAllPoisCacheKey(params: GetPoisParams): string {
+  const normalizedEntries = (Object.keys(params) as (keyof GetPoisParams)[])
+    .sort()
+    .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
+    .map((key) => `${key}=${String(params[key])}`);
+  return normalizedEntries.join('&');
+}
+
+export function clearAllPoisCache(): void {
+  allPoisCache.clear();
+  allPoisInFlight.clear();
+}
+
 /**
  * Lấy toàn bộ danh sách POI (hỗ trợ tự động phân trang nếu backend giới hạn số lượng trên 1 trang).
  * Đảm bảo 100% tất cả 482 POIs (bao gồm Cầu Rồng, Chùa Linh Ứng, Ngũ Hành Sơn...) đều được kích hoạt.
@@ -261,55 +279,74 @@ export async function getAllPois(params: GetPoisParams = {}): Promise<PaginatedP
     params.limit !== undefined && params.limit > 0
       ? Math.min(Math.floor(params.limit), 100)
       : 100;
-  const firstPage = await getPois({ ...params, page: 1, limit: pageSize });
-  const items = [...(firstPage.items ?? [])];
-  const totalPages = firstPage.pagination?.total_pages ?? 1;
+  const cacheKey = buildAllPoisCacheKey({ ...params, limit: pageSize });
 
-  if (totalPages > 1 && items.length < (firstPage.pagination?.total ?? 0)) {
-    const remainingPages = await Promise.all(
-      Array.from({ length: totalPages - 1 }, (_, index) =>
-        getPois({ ...params, page: index + 2, limit: pageSize }),
-      ),
-    );
-    for (const page of remainingPages) {
-      if (page.items) {
-        items.push(...page.items);
-      }
-    }
+  const cached = allPoisCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) {
+    return { ...cached.data, items: [...cached.data.items] };
   }
 
-  return {
-    items,
-    pagination: {
-      page: 1,
-      limit: items.length,
-      total: items.length,
-      total_pages: 1,
-      has_next: false,
-      has_previous: false,
-    },
-  };
+  const existingInFlight = allPoisInFlight.get(cacheKey);
+  if (existingInFlight) {
+    return existingInFlight;
+  }
+
+  const requestPromise = (async () => {
+    const firstPage = await getPois({ ...params, page: 1, limit: pageSize });
+    const items = [...(firstPage.items ?? [])];
+    const totalPages = firstPage.pagination?.total_pages ?? 1;
+
+    if (totalPages > 1 && items.length < (firstPage.pagination?.total ?? 0)) {
+      for (let p = 2; p <= totalPages; p += MAX_CONCURRENT_POI_PAGES) {
+        const batchPages: number[] = [];
+        for (let offset = 0; offset < MAX_CONCURRENT_POI_PAGES && p + offset <= totalPages; offset += 1) {
+          batchPages.push(p + offset);
+        }
+        const batchResults = await Promise.all(
+          batchPages.map((pageNum) => getPois({ ...params, page: pageNum, limit: pageSize })),
+        );
+        for (const page of batchResults) {
+          if (page.items) {
+            items.push(...page.items);
+          }
+        }
+      }
+    }
+
+    const result: PaginatedPoisResponse = {
+      items,
+      pagination: {
+        page: 1,
+        limit: items.length,
+        total: items.length,
+        total_pages: 1,
+        has_next: false,
+        has_previous: false,
+      },
+    };
+    allPoisCache.set(cacheKey, {
+      expiresAt: Date.now() + ALL_POIS_CACHE_TTL_MS,
+      data: result,
+    });
+    return { ...result, items: [...result.items] };
+  })();
+
+  allPoisInFlight.set(cacheKey, requestPromise);
+  try {
+    return await requestPromise;
+  } finally {
+    if (allPoisInFlight.get(cacheKey) === requestPromise) {
+      allPoisInFlight.delete(cacheKey);
+    }
+  }
 }
 
 export async function getPoisByIds(ids: string[]): Promise<BackendPoiItem[]> {
   const requestedIds = new Set(ids.map(String));
   if (requestedIds.size === 0) return [];
 
-  const firstPage = await getPois({ page: 1, limit: 100 });
-  const pages = [firstPage];
-  const totalPages = firstPage.pagination?.total_pages ?? 1;
-  if (totalPages > 1) {
-    const remainingPages = await Promise.all(
-      Array.from({ length: totalPages - 1 }, (_, index) =>
-        getPois({ page: index + 2, limit: 100 }),
-      ),
-    );
-    pages.push(...remainingPages);
-  }
-
-  return pages
-    .flatMap((page) => page.items ?? [])
-    .filter((poi) => requestedIds.has(String(poi.id)));
+  const all = await getAllPois({ limit: 100 });
+  return all.items.filter((poi) => requestedIds.has(String(poi.id)));
 }
 
 // ─────────────────────────────────────────────

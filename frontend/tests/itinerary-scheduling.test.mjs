@@ -8,11 +8,19 @@ import ts from 'typescript';
 const root = fileURLToPath(new URL('..', import.meta.url));
 
 async function loadItineraryService() {
+  const tripDatesSource = await readFile(path.join(root, 'src/utils/tripDates.ts'), 'utf8');
+  const tripDatesCode = ts.transpileModule(tripDatesSource, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const tripDatesUrl = `data:text/javascript;base64,${Buffer.from(tripDatesCode).toString('base64')}`;
+
   const source = await readFile(path.join(root, 'src/services/itineraryService.ts'), 'utf8');
-  const testableSource = source.replace(
-    "import { fetchJson } from '@/lib/api';",
-    'const fetchJson = async () => { throw new Error("Network is not used by these tests"); };',
-  );
+  const testableSource = source
+    .replace(
+      "import { fetchJson } from '@/lib/api';",
+      'const fetchJson = async () => { throw new Error("Network is not used by these tests"); };',
+    )
+    .replace("from '@/utils/tripDates';", `from '${tripDatesUrl}';`);
   const compiled = ts.transpileModule(testableSource, {
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
   }).outputText;

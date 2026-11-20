@@ -34,6 +34,8 @@ import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
 import { clearAuthSession, getMe, type UserProfile } from '@/services/auth';
+import { deleteMyTrip, getMyTrips } from '@/services/tripService';
+import { loadAccountTrips, tripStorageKey } from '@/utils/accountTrips';
 import { getPois, getAllPois } from '@/services/poi';
 import ExploreFilterModal, {
   type ExploreFilterValues,
@@ -111,35 +113,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     return () => window.removeEventListener('auth-change', checkSavedPageAccess);
   }, [initialView, navigate]);
 
-  const [userTrips, setUserTrips] = useState<UserTrip[]>(() => {
-    let savedTrips: UserTrip[] = [];
-    try {
-      const raw = localStorage.getItem('greentrip_user_trips');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          savedTrips = parsed.map((t: UserTrip) => {
-            const rawTitle = (t.title || '').trim();
-            const isBadTitle = !rawTitle || rawTitle.length <= 3 || ['ư', 'a', 'ơi', 'alo'].includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().startsWith('bắt đầu');
-            return isBadTitle ? { ...t, title: `Chuyến đi ${t.destination || 'Đà Nẵng & Huế'}` } : t;
-          });
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    const savedIds = new Set(savedTrips.map((t) => t.id));
-    const missingSamples = SEEDED_SAMPLE_TRIPS.filter((s) => !savedIds.has(s.id));
-    return savedTrips.length > 0 ? [...savedTrips, ...missingSamples] : SEEDED_SAMPLE_TRIPS;
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('greentrip_user_trips', JSON.stringify(userTrips));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [userTrips]);
+  const [userTrips, setUserTrips] = useState<UserTrip[]>(SEEDED_SAMPLE_TRIPS);
+  const [tripsOwner, setTripsOwner] = useState<string | null>(null);
+  const quickLaunchTripRef = useRef<UserTrip | null>(null);
 
   // Consume zero-friction quickLaunchTrip from LandingPage Hero
   useEffect(() => {
@@ -147,15 +123,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     const quickTrip = state?.quickLaunchTrip;
     if (!quickTrip) return;
 
-    setUserTrips((prev) => {
-      const next = [quickTrip, ...prev.filter((t) => t.id !== quickTrip.id)];
-      try {
-        localStorage.setItem('greentrip_user_trips', JSON.stringify(next));
-      } catch (e) {
-        console.error(e);
-      }
-      return next;
-    });
+    quickLaunchTripRef.current = quickTrip;
+    setUserTrips((prev) => [quickTrip, ...prev.filter((t) => t.id !== quickTrip.id)]);
     setActiveOverviewTrip(quickTrip);
     setSelectedTripForDetails(quickTrip);
     setActiveTripSubTab('itinerary');
@@ -355,6 +324,18 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [updateThumb, allPois]);
 
   useEffect(() => {
+    if (!tripsOwner || !currentUser || tripsOwner !== currentUser.user_id) return;
+    const storageKey = tripStorageKey(tripsOwner);
+    const privateTrips = userTrips.filter((t) => !t.id.startsWith('sample-'));
+    if (!privateTrips.length && localStorage.getItem(storageKey) === null) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(privateTrips));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [userTrips, tripsOwner, currentUser]);
+
+  useEffect(() => {
     let active = true;
     let profileRequestId = 0;
 
@@ -363,9 +344,46 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       setProfileLoading(true);
       try {
         const profile = await getMe();
-        if (active && requestId === profileRequestId) setCurrentUser(profile);
+        if (!active || requestId !== profileRequestId) return;
+        setCurrentUser(profile);
+        try {
+          const owned = await loadAccountTrips(localStorage, profile.user_id, getMyTrips);
+          if (!active || requestId !== profileRequestId) return;
+          const normalizedOwned = owned.map((t) => {
+            const rawTitle = (t.title || '').trim();
+            const isBadTitle = !rawTitle || rawTitle.length <= 3 || ['ư', 'a', 'ơi', 'alo'].includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().startsWith('bắt đầu');
+            return {
+              ...t,
+              title: isBadTitle ? `Chuyến đi ${t.destination || 'Đà Nẵng & Huế'}` : t.title,
+              image:
+                t.image ||
+                t.coverImage ||
+                (t.destination === 'Huế'
+                  ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
+                  : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
+            };
+          });
+          const quickTrip = quickLaunchTripRef.current;
+          const mergedPrivate = quickTrip && !normalizedOwned.some((t) => t.id === quickTrip.id)
+            ? [quickTrip, ...normalizedOwned]
+            : normalizedOwned;
+          const mergedIds = new Set(mergedPrivate.map((t) => t.id));
+          const missingSamples = SEEDED_SAMPLE_TRIPS.filter((s) => !mergedIds.has(s.id));
+          setUserTrips([...mergedPrivate, ...missingSamples]);
+          setTripsOwner(profile.user_id);
+        } catch {
+          if (!active || requestId !== profileRequestId) return;
+          const quickTrip = quickLaunchTripRef.current;
+          setUserTrips(quickTrip ? [quickTrip, ...SEEDED_SAMPLE_TRIPS.filter((s) => s.id !== quickTrip.id)] : SEEDED_SAMPLE_TRIPS);
+          setTripsOwner(profile.user_id);
+        }
       } catch {
-        if (active && requestId === profileRequestId) setCurrentUser(null);
+        if (active && requestId === profileRequestId) {
+          setCurrentUser(null);
+          setTripsOwner(null);
+          const quickTrip = quickLaunchTripRef.current;
+          setUserTrips(quickTrip ? [quickTrip, ...SEEDED_SAMPLE_TRIPS.filter((s) => s.id !== quickTrip.id)] : SEEDED_SAMPLE_TRIPS);
+        }
       } finally {
         if (active && requestId === profileRequestId) setProfileLoading(false);
       }
@@ -374,7 +392,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     loadUserProfile();
 
     const onAuthChange = () => {
+      quickLaunchTripRef.current = null;
       setCurrentUser(null);
+      setTripsOwner(null);
+      setActiveOverviewTrip(null);
+      setSelectedTripForDetails(null);
+      setUserTrips(SEEDED_SAMPLE_TRIPS);
       setProfileLoading(true);
       loadUserProfile();
     };
@@ -388,7 +411,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
   const handleLogout = () => {
     clearAuthSession();
+    quickLaunchTripRef.current = null;
     setCurrentUser(null);
+    setTripsOwner(null);
+    setActiveOverviewTrip(null);
+    setSelectedTripForDetails(null);
+    setUserTrips(SEEDED_SAMPLE_TRIPS);
     navigate('/login', { replace: true });
   };
 
@@ -1234,16 +1262,6 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 setActiveOverviewTrip(updatedTrip);
                 setSelectedTripForDetails(updatedTrip);
                 setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
-                try {
-                  const raw = localStorage.getItem('greentrip_user_trips');
-                  if (raw) {
-                    const trips: UserTrip[] = JSON.parse(raw);
-                    const updatedList = trips.map((t) => (t.id === updatedTrip.id ? updatedTrip : t));
-                    localStorage.setItem('greentrip_user_trips', JSON.stringify(updatedList));
-                  }
-                } catch (e) {
-                  console.error(e);
-                }
               }}
             />
           ) : (activeTripSubTab === 'itinerary' && selectedTripForDetails) ? (
@@ -1267,16 +1285,6 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 setSelectedTripForDetails(updatedTrip);
                 setActiveOverviewTrip(updatedTrip);
                 setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
-                try {
-                  const raw = localStorage.getItem('greentrip_user_trips');
-                  if (raw) {
-                    const trips: UserTrip[] = JSON.parse(raw);
-                    const updatedList = trips.map((t) => (t.id === updatedTrip.id ? updatedTrip : t));
-                    localStorage.setItem('greentrip_user_trips', JSON.stringify(updatedList));
-                  }
-                } catch (e) {
-                  console.error(e);
-                }
               }}
             />
           ) : activeOverviewTrip ? (
@@ -1294,16 +1302,6 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               onUpdateTrip={(updatedTrip) => {
                 setActiveOverviewTrip(updatedTrip);
                 setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
-                try {
-                  const raw = localStorage.getItem('greentrip_user_trips');
-                  if (raw) {
-                    const trips: UserTrip[] = JSON.parse(raw);
-                    const updatedList = trips.map((t) => (t.id === updatedTrip.id ? updatedTrip : t));
-                    localStorage.setItem('greentrip_user_trips', JSON.stringify(updatedList));
-                  }
-                } catch (e) {
-                  console.error(e);
-                }
               }}
             />
           ) : null
@@ -1488,6 +1486,9 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setUserTrips((prev) => prev.filter((t) => t.id !== trip.id));
+                                if (currentUser && !trip.id.startsWith('sample-')) {
+                                  deleteMyTrip(trip.id).catch(() => undefined);
+                                }
                               }}
                               className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 cursor-pointer"
                               title="Xóa chuyến đi"
@@ -1513,14 +1514,6 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                     onBack={() => setTripsSubTab('trips')}
                     onUpdateTrip={(updatedTrip) => {
                       setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
-                      try {
-                        localStorage.setItem(
-                          'greentrip_user_trips',
-                          JSON.stringify(userTrips.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)))
-                        );
-                      } catch (e) {
-                        console.error(e);
-                      }
                     }}
                   />
                 </div>

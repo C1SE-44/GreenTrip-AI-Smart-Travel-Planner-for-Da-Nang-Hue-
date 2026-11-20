@@ -87,7 +87,7 @@ export default function ChangePasswordForm({ hasPassword }: ChangePasswordFormPr
                 onChange={(event) => setValue(event.target.value)}
                 required
                 maxLength={128}
-                className="pr-14"
+                className="pr-14 bg-white border-neutral-300 focus:ring-emerald-800 focus:border-emerald-800"
               />
               <button
                 type="button"
@@ -102,8 +102,8 @@ export default function ChangePasswordForm({ hasPassword }: ChangePasswordFormPr
           ))}
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="dark" loading={loading} className="min-h-11">{loading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}</Button>
-            <Button type="button" variant="ghostDark" className="min-h-11" onClick={() => { setExpanded(false); setError(null); }}>
+            <Button type="submit" variant="dark" loading={loading} className="min-h-11 rounded-full px-5">{loading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}</Button>
+            <Button type="button" variant="ghostDark" className="min-h-11 rounded-full px-5" onClick={() => { setExpanded(false); setError(null); }}>
               Hủy
             </Button>
           </div>

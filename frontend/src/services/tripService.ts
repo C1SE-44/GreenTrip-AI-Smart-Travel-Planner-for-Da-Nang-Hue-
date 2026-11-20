@@ -1,5 +1,6 @@
-import { API_BASE_URL } from '../lib/api';
+import { API_BASE_URL, fetchJson } from '../lib/api';
 import type { CopilotStop } from '@/components/planner/copilotTripData';
+import type { OwnedTripSummary } from '@/utils/accountTrips';
 
 export interface TripParametersPayload {
   destination: string;
@@ -150,4 +151,12 @@ export async function validateTripParameters(
   }
 
   return data as TripParametersResponse;
+}
+
+export async function getMyTrips(): Promise<OwnedTripSummary[]> {
+  return fetchJson<OwnedTripSummary[]>('/my-trips');
+}
+
+export async function deleteMyTrip(tripId: string): Promise<void> {
+  await fetchJson(`/my-trips/${encodeURIComponent(tripId)}`, { method: 'DELETE' });
 }

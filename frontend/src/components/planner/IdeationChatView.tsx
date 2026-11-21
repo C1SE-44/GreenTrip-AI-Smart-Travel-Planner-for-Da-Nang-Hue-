@@ -16,7 +16,7 @@ import {
 import { normalizeCategory, normalizeCity, type Poi } from '@/data/pois';
 import PoiImage from '@/components/ui/PoiImage';
 import PoiMap from '@/components/poi/PoiMap';
-import { sendCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
+import { streamCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
 import { extractTripIntentFromPrompt } from '@/utils/vietnamesePromptExtractor';
 import { FormattedCopilotMessage } from './TripOverviewView';
 import type { CopilotTripMessage } from './copilotTripData';
@@ -114,6 +114,8 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
 
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastFailedPrompt, setLastFailedPrompt] = useState<string | null>(null);
   const [tripMemory, setTripMemory] = useState<Record<string, string>>({});
@@ -199,27 +201,35 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
     if (!rawText) setInput('');
     setErrorMessage(null);
     setLastFailedPrompt(null);
+    setStreamingText('');
+    setStreamingStatus(null);
     setIsSending(true);
 
     const parsed = extractTripIntentFromPrompt(`${combinedUserText} ${text}`.trim());
 
     try {
-      const res = await sendCopilotChat({
-        message: text,
-        trip_context: {
-          mode: 'ideation',
-          destination: parsed.destination || 'Đà Nẵng & Huế',
-          days_count: parsed.days || 4,
-          current_day: 1,
-          saved_ideas: selectedIdeaPoiIds,
-          active_constraints: activeConstraints,
-          trip_memory: tripMemory,
-          conversation_history: nextMessages.slice(-8).map((m) => ({
-            role: m.sender,
-            content: m.text,
-          })),
+      const res = await streamCopilotChat(
+        {
+          message: text,
+          trip_context: {
+            mode: 'ideation',
+            destination: parsed.destination || 'Đà Nẵng & Huế',
+            days_count: parsed.days || 4,
+            current_day: 1,
+            saved_ideas: selectedIdeaPoiIds,
+            active_constraints: activeConstraints,
+            trip_memory: tripMemory,
+            conversation_history: nextMessages.slice(-8).map((m) => ({
+              role: m.sender,
+              content: m.text,
+            })),
+          },
         },
-      });
+        {
+          onStatus: (statusMsg) => setStreamingStatus(statusMsg),
+          onDelta: (chunk) => setStreamingText((prev) => prev + chunk),
+        }
+      );
 
       if (res.detected_constraints) {
         setActiveConstraints(res.detected_constraints);
@@ -245,6 +255,8 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
       setErrorMessage('Không thể kết nối tới trợ lý AI lúc này. Vui lòng kiểm tra backend và thử lại.');
       setLastFailedPrompt(text);
     } finally {
+      setStreamingText('');
+      setStreamingStatus(null);
       setIsSending(false);
     }
   };
@@ -559,9 +571,29 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
           )}
 
           {isSending && (
-            <div className="flex items-center gap-2.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-2xl px-4 py-3 w-fit shadow-2xs">
-              <Loader2 size={15} className="animate-spin text-emerald-700" />
-              <span>Đang tra cứu Đồ thị Tri thức Miền Trung...</span>
+            <div aria-live="polite" className="w-full space-y-2">
+              {streamingText ? (
+                <div className="bg-white border border-emerald-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-1">
+                  <FormattedCopilotMessage
+                    text={streamingText}
+                    entityLookup={entityLookup}
+                    onHoverPoi={setHoveredPoiId}
+                    onSelectPoi={(poiId) => {
+                      setSelectedMapPoiId(poiId);
+                      setIsMapOpen(true);
+                    }}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="inline-block w-1.5 h-4 align-middle bg-emerald-600 rounded-xs animate-pulse"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-2xl px-4 py-3 w-fit shadow-2xs">
+                  <Loader2 size={15} className="animate-spin text-emerald-700" />
+                  <span>{streamingStatus || 'Đang tra cứu Đồ thị Tri thức Miền Trung...'}</span>
+                </div>
+              )}
             </div>
           )}
 

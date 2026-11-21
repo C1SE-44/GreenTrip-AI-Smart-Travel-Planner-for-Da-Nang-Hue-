@@ -4,10 +4,10 @@ import type { Poi, FeaturedReview, MenuItem } from '@/data/pois';
 import {
   categoryLabels,
   getGalleryImages,
-  getDeterministicImage,
   SUB_CATEGORY_LABELS,
   VIBE_LABELS,
 } from '@/data/pois';
+import PoiImage from '@/components/ui/PoiImage';
 
 interface PoiDetailSectionProps {
   poi: Poi;
@@ -246,14 +246,6 @@ export default function PoiDetailSection({
     setTimeout(() => setCopiedPhone(false), 2000);
   };
 
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>, idx: number) => {
-    const target = e.currentTarget;
-    const fallback = getDeterministicImage(poi.name, `${poi.id}_${idx}`, poi.category, poi.city);
-    if (target.src !== fallback) {
-      target.src = fallback;
-    }
-  };
-
   const detailContent = (
     <section
       className={
@@ -405,21 +397,27 @@ export default function PoiDetailSection({
           }}
         >
           <div className="row-span-2 col-span-1 h-full w-full relative overflow-hidden bg-neutral-100 group">
-            <img
+            <PoiImage
               alt={poi.name}
-              referrerPolicy="no-referrer"
-              onError={(e) => handleImageError(e, 0)}
+              poiId={poi.id}
+              poiName={poi.name}
+              category={poi.category}
+              city={poi.city}
+              fallbackSeed={`${poi.id}_0`}
+              priority
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               src={galleryImages[0]}
             />
           </div>
           {[1, 2, 3, 4].map((idx) => (
             <div key={idx} className="row-span-1 col-span-1 h-full w-full relative overflow-hidden bg-neutral-100 group">
-              <img
+              <PoiImage
                 alt={`${poi.name} - ảnh ${idx + 1}`}
-                referrerPolicy="no-referrer"
-                loading="lazy"
-                onError={(e) => handleImageError(e, idx)}
+                poiId={poi.id}
+                poiName={poi.name}
+                category={poi.category}
+                city={poi.city}
+                fallbackSeed={`${poi.id}_${idx}`}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 src={galleryImages[idx]}
               />
@@ -430,21 +428,27 @@ export default function PoiDetailSection({
         {/* 3B. Lưới 5 ảnh thực tế Mobile (< 640px, tối ưu 320px không cắt méo) */}
         <div className="grid sm:hidden grid-cols-2 gap-2 rounded-2xl overflow-hidden">
           <div className="col-span-2 aspect-[16/10] w-full bg-neutral-100 overflow-hidden">
-            <img
+            <PoiImage
               alt={poi.name}
-              referrerPolicy="no-referrer"
-              onError={(e) => handleImageError(e, 0)}
+              poiId={poi.id}
+              poiName={poi.name}
+              category={poi.category}
+              city={poi.city}
+              fallbackSeed={`${poi.id}_0`}
+              priority
               className="w-full h-full object-cover"
               src={galleryImages[0]}
             />
           </div>
           {[1, 2, 3, 4].map((idx) => (
             <div key={idx} className="aspect-[4/3] w-full bg-neutral-100 overflow-hidden">
-              <img
+              <PoiImage
                 alt={`${poi.name} - ảnh ${idx + 1}`}
-                referrerPolicy="no-referrer"
-                loading="lazy"
-                onError={(e) => handleImageError(e, idx)}
+                poiId={poi.id}
+                poiName={poi.name}
+                category={poi.category}
+                city={poi.city}
+                fallbackSeed={`${poi.id}_${idx}`}
                 className="w-full h-full object-cover"
                 src={galleryImages[idx]}
               />
@@ -771,9 +775,13 @@ export default function PoiDetailSection({
                       onClick={() => onSelectNearbyPoi?.(np.id)}
                       className="rounded-xl border border-neutral-200 bg-neutral-50/70 hover:bg-white hover:border-neutral-400 p-2.5 text-left transition cursor-pointer flex items-center gap-2.5 min-h-[56px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
                     >
-                      <img
+                      <PoiImage
                         src={np.image}
                         alt={np.name}
+                        poiId={np.id}
+                        poiName={np.name}
+                        category={np.category}
+                        city={np.city}
                         className="w-11 h-11 rounded-lg object-cover shrink-0 border border-neutral-200"
                       />
                       <div className="min-w-0 flex-1">
@@ -965,9 +973,14 @@ export default function PoiDetailSection({
             >
               ✕
             </button>
-            <img
+            <PoiImage
               src={menuImageUrl}
               alt={`Bảng giá thực đơn chi tiết ${poi.name}`}
+              poiId={poi.id}
+              poiName={poi.name}
+              category={poi.category}
+              city={poi.city}
+              priority
               className="w-full h-auto max-h-[85vh] object-contain"
             />
           </div>

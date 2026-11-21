@@ -13,7 +13,8 @@ import {
   Star,
   X,
 } from 'lucide-react';
-import type { Poi } from '@/data/pois';
+import { normalizeCategory, normalizeCity, type Poi } from '@/data/pois';
+import PoiImage from '@/components/ui/PoiImage';
 import PoiMap from '@/components/poi/PoiMap';
 import { sendCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
 import { extractTripIntentFromPrompt } from '@/utils/vietnamesePromptExtractor';
@@ -478,12 +479,13 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
                               className="w-[235px] shrink-0 snap-start rounded-2xl bg-white border border-neutral-200/90 hover:border-neutral-400 overflow-hidden shadow-2xs transition cursor-pointer flex flex-col"
                             >
                               <div className="relative h-28 bg-neutral-100">
-                                <img
-                                  src={
-                                    poi.image_url ||
-                                    'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80'
-                                  }
+                                <PoiImage
+                                  src={poi.image_url}
                                   alt={poi.name}
+                                  poiId={poi.id}
+                                  poiName={poi.name}
+                                  category={normalizeCategory(poi.category)}
+                                  city={normalizeCity(poi.city)}
                                   className="w-full h-full object-cover"
                                 />
                                 <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-950/85 text-emerald-200 text-xs font-semibold inline-flex items-center gap-1">

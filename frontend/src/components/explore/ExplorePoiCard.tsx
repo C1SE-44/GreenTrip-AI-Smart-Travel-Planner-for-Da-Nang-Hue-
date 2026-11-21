@@ -2,6 +2,7 @@ import { Leaf } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { getGalleryImages, SUB_CATEGORY_LABELS, type Poi } from '@/data/pois';
 import { CATEGORY_META } from '@/components/explore/exploreUtils';
+import PoiImage from '@/components/ui/PoiImage';
 
 export interface ExplorePoiCardProps {
   poi: Poi;
@@ -61,9 +62,14 @@ export default function ExplorePoiCard({
       <div
         className={`relative w-full aspect-[1.05/1] rounded-[20px] overflow-hidden bg-gray-100 shadow-sm transition-all duration-200 isolate ${active ? 'ring-2 ring-black' : ''}`}
       >
-        <img
+        <PoiImage
           src={gallery[imgIdx] || poi.image}
           alt={poi.name}
+          poiId={poi.id}
+          poiName={poi.name}
+          category={poi.category}
+          city={poi.city}
+          fallbackSeed={`${poi.id}_${imgIdx}`}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
 

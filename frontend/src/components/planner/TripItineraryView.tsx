@@ -102,6 +102,7 @@ import ItineraryAddPlacesModal from './ItineraryAddPlacesModal';
 import TripDayEditorModal from './TripDayEditorModal';
 import ExpiredTripBanner from './ExpiredTripBanner';
 import { dateAt, vietnamNow } from '@/utils/tripDates';
+import PoiImage from '@/components/ui/PoiImage';
 
 export interface TripItineraryViewProps {
   trip: UserTrip;
@@ -2285,11 +2286,14 @@ export default function TripItineraryView({
                                       </div>
                                     ) : (
                                       <div className="w-[84px] h-[84px] rounded-[14px] overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-                                        <img
+                                        <PoiImage
                                           src={getPoiImage(matchedPoi)}
                                           alt={stop.title}
+                                          poiId={stop.poi_id || stop.stop_id}
+                                          poiName={stop.title}
+                                          category={matchedPoi?.category}
+                                          city={matchedPoi?.city}
                                           className="w-full h-full object-cover pointer-events-none"
-                                          loading="lazy"
                                         />
                                       </div>
                                     )}

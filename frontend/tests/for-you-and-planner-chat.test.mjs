@@ -68,7 +68,10 @@ test('PB14 Copilot: Integrated seamlessly into Left-Column Chat of TripOverviewV
   const content = fs.readFileSync(plannerViewPath, 'utf8');
 
   // 1. Integration with copilotService
-  assert.ok(content.includes('sendCopilotChat'), 'Must import and use sendCopilotChat');
+  assert.ok(
+    content.includes('streamCopilotChat') || content.includes('sendCopilotChat'),
+    'Must import and use streamCopilotChat or sendCopilotChat'
+  );
   assert.ok(content.includes('CopilotSuggestedPoi'), 'Must handle CopilotSuggestedPoi type');
 
   // 2. State & handling

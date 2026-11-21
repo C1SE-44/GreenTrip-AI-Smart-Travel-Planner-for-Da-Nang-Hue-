@@ -65,3 +65,24 @@
 10. Tôi phải học hỏi quá nhiều thứ trước khi có thể bắt đầu sử dụng hệ thống này.
 
 *(Công thức tính điểm SUS: Với câu lẻ 1,3,5,7,9 lấy `điểm - 1`; với câu chẵn 2,4,6,8,10 lấy `5 - điểm`; cộng cả 10 câu rồi nhân `2.5` để quy ra thang `0–100`.)*
+
+---
+
+## 5. Bảng Đối Chiếu Cải Tiến Trước Kiểm Thử Vòng 2 (Phases 0–4)
+
+> Các hạng mục kỹ thuật đã hoàn tất và nghiệm thu bằng kiểm thử tự động + trình duyệt Chrome thật, sẵn sàng để thực hiện **Kiểm thử Vòng 2** với 5 người dùng thực tế theo kịch bản ở Mục 2.
+
+| Tiêu chí trải nghiệm người dùng | Trước nâng cấp (Baseline) | Sau nâng cấp (Phases 0–4) |
+| :--- | :--- | :--- |
+| **Lỗi lưu lịch trình trên PostgreSQL (`PUT /itinerary`)** | Có thể gặp lỗi 503 / mất đồng bộ | Đã vá & kiểm chứng ổn định |
+| **Tình trạng ảnh 482 địa điểm (`Explore`, `Detail`, `Planner`)** | 13 đường dẫn lỗi/chặn, tải toàn bộ cùng lúc | **0/482** đường dẫn lỗi; `<PoiImage />` tải mượt & chống vỡ khung 100% |
+| **Chất lượng hiểu tiếng Việt & chống bịa địa điểm AI Copilot** | Dựa vào regex cố định, chưa có bộ đo tự động | Kiến trúc lai (Gemini JSON + Regex) + hậu kiểm DB; **45/45 (100%) Golden Eval, 0 địa điểm bịa** |
+| **Phản hồi khi trò chuyện với AI (`Copilot`)** | Chờ toàn bộ câu trả lời mới hiện | **SSE Streaming (`/trips/copilot/chat/stream`)** hiện chữ dần theo từng cụm từ + báo trạng thái |
+| **Xử lý khi chỉnh lịch chuyến mẫu có ngày quá khứ** | Lỗi promise không bắt được trong `handleSendChatMessage` | Bắt lỗi gọn và hiện hướng dẫn bấm **"Dời sang hôm nay"** bằng tiếng Việt |
+
+### Checklist chuẩn bị buổi Kiểm thử Vòng 2 (Dành cho người điều phối)
+- [ ] Chuẩn bị trình duyệt Chrome sạch (xóa `localStorage` hoặc mở cửa sổ mới) trỏ về bản deploy hoặc server cục bộ mới nhất.
+- [ ] Bấm giờ cho từng người dùng (U01–U05) ở cả **Nhiệm vụ A** và **Nhiệm vụ B** (mục tiêu trung bình `< 180 giây` tới lịch 3 ngày đầu tiên).
+- [ ] Điền đầy đủ bảng **Metrics Sheet** (Mục 3) và **10 câu hỏi SUS** (Mục 4) ngay sau mỗi phiên thử nghiệm (không tự điền điểm thay người thử).
+- [ ] Tổng hợp ảnh chụp / ghi chú điểm kẹt còn lại (nếu có) để đưa vào phụ lục báo cáo đồ án tốt nghiệp.
+

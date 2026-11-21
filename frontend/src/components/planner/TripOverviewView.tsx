@@ -48,7 +48,7 @@ import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import ExplanationModal from '@/components/poi/ExplanationModal';
 import TripItineraryView from './TripItineraryView';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
-import { sendCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
+import { streamCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
 import {
   createEmptyItinerary,
   getTripItinerary,
@@ -162,6 +162,8 @@ export default function TripOverviewView({
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
   const [activeConstraints, setActiveConstraints] = useState<string[]>([]);
   const [tripMemory, setTripMemory] = useState<Record<string, string>>({});
   const [quickPrompts, setQuickPrompts] = useState<string[]>(() => {
@@ -860,29 +862,37 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
     setChatMessages((prev) => [...prev, newUserMsg]);
     setChatInput('');
+    setStreamingText('');
+    setStreamingStatus(null);
     setIsAiThinking(true);
 
     try {
-      const res = await sendCopilotChat({
-        message: promptToSend,
-        trip_context: {
-          destination: trip.destination || 'Đà Nẵng & Huế',
-          days_count: trip.daysCount || 4,
-          current_day: dayTargetForAdd || 1,
-          traveler_name: currentUser?.full_name?.trim() || undefined,
-          saved_ideas: tripIdeas,
-          total_budget: trip.totalBudget && trip.totalBudget > 0 ? trip.totalBudget : undefined,
-          num_people: trip.peopleCount || 2,
-          budget_tier:
-            trip.budgetTier === 'budget' || trip.budgetTier === 'standard' || trip.budgetTier === 'luxury'
-              ? trip.budgetTier
-              : undefined,
-          active_constraints: activeConstraints,
-          trip_memory: tripMemory,
-          conversation_history: historyForRequest,
-          current_itinerary_state: itineraryPlan.days as unknown as Array<Record<string, unknown>>,
+      const res = await streamCopilotChat(
+        {
+          message: promptToSend,
+          trip_context: {
+            destination: trip.destination || 'Đà Nẵng & Huế',
+            days_count: trip.daysCount || 4,
+            current_day: dayTargetForAdd || 1,
+            traveler_name: currentUser?.full_name?.trim() || undefined,
+            saved_ideas: tripIdeas,
+            total_budget: trip.totalBudget && trip.totalBudget > 0 ? trip.totalBudget : undefined,
+            num_people: trip.peopleCount || 2,
+            budget_tier:
+              trip.budgetTier === 'budget' || trip.budgetTier === 'standard' || trip.budgetTier === 'luxury'
+                ? trip.budgetTier
+                : undefined,
+            active_constraints: activeConstraints,
+            trip_memory: tripMemory,
+            conversation_history: historyForRequest,
+            current_itinerary_state: itineraryPlan.days as unknown as Array<Record<string, unknown>>,
+          },
         },
-      });
+        {
+          onStatus: (statusMsg) => setStreamingStatus(statusMsg),
+          onDelta: (chunk) => setStreamingText((prev) => prev + chunk),
+        }
+      );
 
       // 1. Đồng bộ Multi-turn Session Memory & Active Constraints (MVP #3)
       if (res.detected_constraints) {
@@ -1008,7 +1018,15 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           days: nextDays,
         };
         setItineraryPlan(nextPlan);
-        saveTripItinerary(nextPlan);
+        void saveTripItinerary(nextPlan).catch((saveErr: unknown) => {
+          const errMsg = saveErr instanceof Error ? saveErr.message : '';
+          setToastMessage(
+            errMsg.includes('quá khứ')
+              ? 'Lịch trình đang ở ngày quá khứ — hãy bấm "Dời sang hôm nay" để lưu thay đổi.'
+              : 'Không thể lưu tự động lịch trình lúc này.'
+          );
+          setTimeout(() => setToastMessage(null), 4500);
+        });
       }
 
       if (res.updated_days_count || res.updated_destination) {
@@ -1162,6 +1180,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         },
       ]);
     } finally {
+      setStreamingText('');
+      setStreamingStatus(null);
       setIsAiThinking(false);
     }
   };
@@ -1690,14 +1710,34 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             ))}
 
             {isAiThinking && (
-              <div className="p-3.5 rounded-2xl bg-white border border-emerald-200/90 text-neutral-700 text-[13px] mr-auto max-w-[92%] shadow-2xs space-y-1">
-                <div className="flex items-center gap-2 font-semibold text-emerald-900">
-                  <Sparkles size={15} className="text-emerald-700 animate-spin shrink-0" />
-                  <span>Trợ lý GreenTrip AI đang suy nghĩ &amp; cập nhật lịch trình...</span>
-                </div>
-                <p className="text-xs text-neutral-600 pl-6">
-                  Đang truy vấn Neo4j Knowledge Graph · Kiểm chứng địa lý &amp; phương tiện xanh
-                </p>
+              <div
+                aria-live="polite"
+                className="p-3.5 rounded-2xl bg-white border border-emerald-200/90 text-gray-800 text-[13px] leading-relaxed w-full shadow-2xs space-y-2"
+              >
+                {streamingText ? (
+                  <div className="space-y-1">
+                    <FormattedCopilotMessage
+                      text={streamingText}
+                      entityLookup={chatEntityLookup}
+                      onHoverPoi={handleDebouncedHover}
+                      onSelectPoi={(poiId) => setSelectedMapPoiId(poiId)}
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="inline-block w-1.5 h-4 align-middle bg-emerald-600 rounded-xs animate-pulse"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 font-semibold text-emerald-900">
+                      <Sparkles size={15} className="text-emerald-700 animate-spin shrink-0" />
+                      <span>{streamingStatus || 'Trợ lý GreenTrip AI đang suy nghĩ & cập nhật lịch trình...'}</span>
+                    </div>
+                    <p className="text-xs text-neutral-600 pl-6">
+                      Đang truy vấn Neo4j Knowledge Graph · Kiểm chứng địa lý &amp; phương tiện xanh
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

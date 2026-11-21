@@ -2,11 +2,13 @@ from collections.abc import Generator
 import logging
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi.responses import StreamingResponse
 from psycopg import Connection
 
 from app.auth.service import decode_access_token
 from app.db.postgres import get_connection
 from app.rate_limit import rate_limit
+from app.trips.copilot_stream import stream_copilot_chat_events
 from app.trips.itinerary_repository import get_itinerary, save_itinerary
 from app.trips.schedule_validation import validate_schedule_changes
 from app.trips.schemas import (
@@ -107,3 +109,22 @@ def copilot_chat(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Không thể xử lý yêu cầu Copilot lúc này.",
         ) from exc
+
+
+@router.post(
+    "/copilot/chat/stream",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(rate_limit("copilot_chat", max_requests=20, window_seconds=60))],
+    summary="In-Planner AI Travel Copilot SSE Stream",
+    description="Phát phản hồi trợ lý AI theo luồng Server-Sent Events (status -> delta -> done).",
+)
+def copilot_chat_stream(payload: CopilotChatRequest) -> StreamingResponse:
+    return StreamingResponse(
+        stream_copilot_chat_events(payload),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

@@ -1,0 +1,583 @@
+[
+  {
+    "id": "city_01",
+    "group": "city_isolation",
+    "message": "Gợi ý quán ăn ngon ở Huế",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "culinary_guide",
+      "strict_city": "Huế",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true,
+      "require_ab_hook": true
+    }
+  },
+  {
+    "id": "city_02",
+    "group": "city_isolation",
+    "message": "Tìm quán hải sản hoặc bún chả cá ở Đà Nẵng",
+    "trip_context": {"destination": "Huế", "days_count": 3, "current_day": 2},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "culinary_guide",
+      "strict_city": "Đà Nẵng",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true,
+      "require_ab_hook": true
+    }
+  },
+  {
+    "id": "city_03",
+    "group": "city_isolation",
+    "message": "Cho xin vài quán cafe yên tĩnh tại Huế gần sông Hương",
+    "trip_context": {"destination": "Đà Nẵng & Huế", "days_count": 4, "current_day": 3},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "cafe_culture",
+      "strict_city": "Huế",
+      "min_pois": 1,
+      "constraints_include": ["quiet_vibe"],
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "city_04",
+    "group": "city_isolation",
+    "message": "Quán ăn đặc sản Đà Nẵng giá bình dân",
+    "trip_context": {"destination": "Đà Nẵng & Huế", "days_count": 4, "current_day": 1},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "culinary_guide",
+      "strict_city": "Đà Nẵng",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "city_05",
+    "group": "city_isolation",
+    "message": "Đi chơi buổi tối ở Huế có gì vui?",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 2},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "strict_city": "Huế",
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "city_06",
+    "group": "city_isolation",
+    "message": "Tìm chỗ uống trà hoặc cafe yên tĩnh ở Đà Nẵng",
+    "trip_context": {"destination": "Huế", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "cafe_culture",
+      "strict_city": "Đà Nẵng",
+      "min_pois": 1,
+      "constraints_include": ["quiet_vibe"],
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "ground_07",
+    "group": "grounding_and_safety",
+    "message": "Gợi ý quán chay thanh đạm ở Đà Nẵng",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1, "current_slot": "lunch"},
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "sub_intent": "swap_meal_vegetarian",
+      "strict_city": "Đà Nẵng",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true,
+      "require_ab_hook": true
+    }
+  },
+  {
+    "id": "ground_08",
+    "group": "grounding_and_safety",
+    "message": "Thời tiết có hay mưa không và nếu mưa ở Huế thì ghé đâu?",
+    "trip_context": {"destination": "Huế", "days_count": 3, "current_day": 2},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "rainy_day_alternatives",
+      "strict_city": "Huế",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "ground_09",
+    "group": "grounding_and_safety",
+    "message": "Món ngon phải thử khi tới Đà Nẵng là gì?",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "culinary_guide",
+      "strict_city": "Đà Nẵng",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "ground_10",
+    "group": "grounding_and_safety",
+    "message": "Quán cà phê muối ngon chuẩn gốc ở Huế ở đâu?",
+    "trip_context": {"destination": "Huế", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "cafe_culture",
+      "strict_city": "Huế",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "ground_11",
+    "group": "grounding_and_safety",
+    "message": "Tôi có nên đi Bán Đảo Sơn Trà không?",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "QA_AND_COMPARE",
+      "sub_intent": "poi_advice",
+      "strict_city": "Đà Nẵng",
+      "min_pois": 1,
+      "reply_contains_any": ["Sơn Trà", "Điểm mạnh"],
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "ground_12",
+    "group": "grounding_and_safety",
+    "message": "Đang kẹt giờ rồi, tối ưu lại lịch chiều nay ở Đà Nẵng cho gọn hơn",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 2, "current_slot": "afternoon"},
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "sub_intent": "late_schedule_adjust",
+      "strict_city": "Đà Nẵng",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "mem_13",
+    "group": "persistent_constraints_memory",
+    "message": "Chuyến đi có bố mẹ lớn tuổi bị đau khớp, nên lưu ý gì khi đi Huế?",
+    "trip_context": {"destination": "Huế", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "QA_AND_COMPARE",
+      "constraints_include": ["elderly_friendly"],
+      "zero_ungrounded_pois": true,
+      "require_ab_hook": true
+    }
+  },
+  {
+    "id": "mem_14",
+    "group": "persistent_constraints_memory",
+    "message": "Ông bà phải đi xe lăn và hạn chế đi bộ nhiều ở Đà Nẵng",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "QA_AND_COMPARE",
+      "constraints_include": ["elderly_friendly"],
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "mem_15",
+    "group": "persistent_constraints_memory",
+    "message": "Trưa nay đổi sang quán gì nhẹ bụng không thịt giúp mình",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1, "current_slot": "lunch"},
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "sub_intent": "swap_meal_vegetarian",
+      "constraints_include": ["vegetarian"],
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "mem_16",
+    "group": "persistent_constraints_memory",
+    "message": "Trời âm u sắp đổ mưa rồi, chiều nay đi đâu có mái che ở Đà Nẵng?",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 2, "current_slot": "afternoon"},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "rainy_day_alternatives",
+      "constraints_include": ["rainy_season"],
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "mem_17",
+    "group": "persistent_constraints_memory",
+    "message": "Tìm góc cafe chill không ồn ào để ngồi làm việc tại Đà Nẵng",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "cafe_culture",
+      "constraints_include": ["quiet_vibe"],
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "mem_18",
+    "group": "persistent_constraints_memory",
+    "message": "Vậy chiều nay trời lại mưa to thì đi đâu?",
+    "trip_context": {
+      "destination": "Đà Nẵng",
+      "days_count": 3,
+      "current_day": 2,
+      "conversation_history": [
+        {"role": "user", "content": "Mình đi cùng bố mẹ lớn tuổi ở Đà Nẵng nhé"}
+      ]
+    },
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "rainy_day_alternatives",
+      "constraints_include": ["elderly_friendly", "rainy_season"],
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "mut_19",
+    "group": "itinerary_mutations",
+    "message": "Chia lại giúp mình 4 đêm Đà Nẵng và 3 đêm Huế",
+    "trip_context": {"destination": "Đà Nẵng & Huế", "days_count": 7, "current_day": 1},
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "sub_intent": "itinerary_mutation",
+      "require_mutation": true,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "mut_20",
+    "group": "itinerary_mutations",
+    "message": "Bỏ Lăng Khải Định khỏi ngày 6 đi vì bố mẹ leo bậc thang mệt",
+    "trip_context": {
+      "destination": "Đà Nẵng & Huế",
+      "days_count": 7,
+      "current_day": 6,
+      "current_itinerary_state": [
+        {"day": 6, "focus_city": "Huế", "stops": [{"title": "Đại Nội Huế"}, {"title": "Lăng Khải Định"}]}
+      ]
+    },
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "sub_intent": "itinerary_mutation",
+      "constraints_include": ["elderly_friendly"],
+      "require_mutation": true,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "mut_21",
+    "group": "itinerary_mutations",
+    "message": "Đổi lịch đi Hội An từ ngày 3 sang ngày 2 giúp mình",
+    "trip_context": {
+      "destination": "Đà Nẵng & Huế",
+      "days_count": 4,
+      "current_day": 2,
+      "current_itinerary_state": [
+        {"day": 2, "focus_city": "Đà Nẵng", "stops": [{"title": "Bãi biển Mỹ Khê"}]},
+        {"day": 3, "focus_city": "Đà Nẵng", "stops": [{"title": "Phố cổ Hội An"}]}
+      ]
+    },
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "sub_intent": "itinerary_mutation",
+      "require_mutation": true,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "mut_22",
+    "group": "itinerary_mutations",
+    "message": "Sáng nay dậy muộn bị trễ giờ rồi, rút gọn lịch chiều nay ở Đà Nẵng cho gọn hơn",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1, "current_slot": "afternoon"},
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "sub_intent": "late_schedule_adjust",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "mut_23",
+    "group": "itinerary_mutations",
+    "message": "Cập nhật lịch trình Huế thêm trải nghiệm tàu hỏa đèo Hải Vân và làng Thủy Biều",
+    "trip_context": {"destination": "Đà Nẵng & Huế", "days_count": 4, "current_day": 3},
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "sub_intent": "itinerary_mutation",
+      "require_mutation": true,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "mut_24",
+    "group": "itinerary_mutations",
+    "message": "Đổi bữa trưa nay sang quán thuần thực vật ở Huế",
+    "trip_context": {"destination": "Huế", "days_count": 3, "current_day": 1, "current_slot": "lunch"},
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "sub_intent": "swap_meal_vegetarian",
+      "constraints_include": ["vegetarian"],
+      "strict_city": "Huế",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "geo_25",
+    "group": "geography_guardrails",
+    "message": "Thêm Cầu Vàng ở Huế vào lịch trình ngày 2",
+    "trip_context": {"destination": "Đà Nẵng & Huế", "days_count": 4, "current_day": 2},
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "reply_contains_any": ["Đà Nẵng", "Cầu Vàng"],
+      "require_mutation": true,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "geo_26",
+    "group": "geography_guardrails",
+    "message": "Thêm Đại Nội Huế vào ngày ở Đà Nẵng giúp mình",
+    "trip_context": {"destination": "Đà Nẵng & Huế", "days_count": 4, "current_day": 1},
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "reply_contains_any": ["Huế", "Đại Nội"],
+      "require_mutation": true,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "geo_27",
+    "group": "geography_guardrails",
+    "message": "Chèn Chùa Thiên Mụ ở Đà Nẵng vào buổi chiều",
+    "trip_context": {"destination": "Đà Nẵng & Huế", "days_count": 4, "current_day": 2},
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "reply_contains_any": ["Huế", "Thiên Mụ"],
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "geo_28",
+    "group": "geography_guardrails",
+    "message": "Xếp cho mình 1 ngày đi hết Bà Nà Hills, Ngũ Hành Sơn, Hội An và Đại Nội Huế nhé",
+    "trip_context": {"destination": "Đà Nẵng & Huế", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "QA_AND_COMPARE",
+      "reply_contains_any": ["quá tải", "không thể", "cách"],
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "geo_29",
+    "group": "geography_guardrails",
+    "message": "Bãi biển Mỹ Khê ở Huế có đẹp không?",
+    "trip_context": {"destination": "Huế", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "ITINERARY_MUTATION",
+      "reply_contains_any": ["Đà Nẵng"],
+      "zero_ungrounded_pois": true,
+      "require_ab_hook": true
+    }
+  },
+  {
+    "id": "qa_30",
+    "group": "consultative_qa_and_advice",
+    "message": "Nên đi Đà Nẵng hay Huế nếu thích cả biển lẫn di sản?",
+    "trip_context": {"destination": "Đà Nẵng & Huế", "days_count": 4, "current_day": 1},
+    "expected": {
+      "intent_category": "QA_AND_COMPARE",
+      "sub_intent": "qa_compare",
+      "zero_ungrounded_pois": true,
+      "require_ab_hook": true
+    }
+  },
+  {
+    "id": "qa_31",
+    "group": "consultative_qa_and_advice",
+    "message": "Nên đi Đà Nẵng – Huế mấy ngày thì vừa đẹp?",
+    "trip_context": {"mode": "ideation", "destination": "Đà Nẵng & Huế", "days_count": 4},
+    "expected": {
+      "intent_category": "QA_AND_COMPARE",
+      "sub_intent": "qa_compare",
+      "zero_ungrounded_pois": true,
+      "require_ab_hook": true
+    }
+  },
+  {
+    "id": "qa_32",
+    "group": "consultative_qa_and_advice",
+    "message": "Tháng 11 đi Đà Nẵng – Huế thời tiết thế nào?",
+    "trip_context": {"mode": "ideation", "destination": "Đà Nẵng & Huế", "days_count": 3},
+    "expected": {
+      "intent_category": "QA_AND_COMPARE",
+      "sub_intent": "travel_tips_budget",
+      "constraints_include": ["rainy_season"],
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "qa_33",
+    "group": "consultative_qa_and_advice",
+    "message": "Có nên đi Ngũ Hành Sơn không?",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "QA_AND_COMPARE",
+      "sub_intent": "poi_advice",
+      "reply_contains_any": ["Ngũ Hành Sơn"],
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "qa_34",
+    "group": "consultative_qa_and_advice",
+    "message": "Kinh nghiệm chuẩn bị ngân sách đi Đà Nẵng tự túc 3 ngày",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "QA_AND_COMPARE",
+      "sub_intent": "travel_tips_budget",
+      "zero_ungrounded_pois": true,
+      "require_ab_hook": true
+    }
+  },
+  {
+    "id": "oos_35",
+    "group": "out_of_scope_protection",
+    "message": "Lên lịch trình đi Phú Quốc 3 ngày 2 đêm",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "OUT_OF_SCOPE",
+      "sub_intent": "out_of_scope",
+      "exact_zero_pois": true,
+      "require_ab_hook": true
+    }
+  },
+  {
+    "id": "oos_36",
+    "group": "out_of_scope_protection",
+    "message": "Gợi ý quán ăn ngon ở Hà Nội và Đà Lạt",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "OUT_OF_SCOPE",
+      "sub_intent": "out_of_scope",
+      "exact_zero_pois": true
+    }
+  },
+  {
+    "id": "oos_37",
+    "group": "out_of_scope_protection",
+    "message": "Viết code Python crawl dữ liệu chứng khoán giúp tôi",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "OUT_OF_SCOPE",
+      "sub_intent": "out_of_scope",
+      "exact_zero_pois": true
+    }
+  },
+  {
+    "id": "oos_38",
+    "group": "out_of_scope_protection",
+    "message": "Giải phương trình 2x + 5 = 15 giúp mình",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "OUT_OF_SCOPE",
+      "sub_intent": "out_of_scope",
+      "exact_zero_pois": true
+    }
+  },
+  {
+    "id": "oos_39",
+    "group": "out_of_scope_protection",
+    "message": "Giá vàng hôm nay bao nhiêu và tỷ giá USD thế nào?",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "OUT_OF_SCOPE",
+      "sub_intent": "out_of_scope",
+      "exact_zero_pois": true
+    }
+  },
+  {
+    "id": "oos_40",
+    "group": "out_of_scope_protection",
+    "message": "Dự đoán bóng đá tối nay hoặc viết bài luận giúp mình",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "OUT_OF_SCOPE",
+      "sub_intent": "out_of_scope",
+      "exact_zero_pois": true
+    }
+  },
+  {
+    "id": "slang_41",
+    "group": "slang_unaccented_greeting",
+    "message": "rcm quan cf nao chill chill o dn di bro, ko on ao nha",
+    "trip_context": {"destination": "Huế", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "cafe_culture",
+      "strict_city": "Đà Nẵng",
+      "constraints_include": ["quiet_vibe"],
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "slang_42",
+    "group": "slang_unaccented_greeting",
+    "message": "troi mua to o hue thi di dau choi khoi uot",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "rainy_day_alternatives",
+      "strict_city": "Huế",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "slang_43",
+    "group": "slang_unaccented_greeting",
+    "message": "di cung bo me lon tuoi o da nang nen chon quan an nao de di",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "culinary_guide",
+      "strict_city": "Đà Nẵng",
+      "constraints_include": ["elderly_friendly"],
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  },
+  {
+    "id": "slang_44",
+    "group": "slang_unaccented_greeting",
+    "message": "Xin chào bạn ơi",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "sub_intent": "general_chat",
+      "exact_zero_pois": true
+    }
+  },
+  {
+    "id": "slang_45",
+    "group": "slang_unaccented_greeting",
+    "message": "buoi toi o da nang co choi gi vui ma than thien moi truong khong",
+    "trip_context": {"destination": "Đà Nẵng", "days_count": 3, "current_day": 1},
+    "expected": {
+      "intent_category": "POI_RECOMMENDATION",
+      "sub_intent": "night_eco_activities",
+      "strict_city": "Đà Nẵng",
+      "min_pois": 1,
+      "zero_ungrounded_pois": true
+    }
+  }
+]

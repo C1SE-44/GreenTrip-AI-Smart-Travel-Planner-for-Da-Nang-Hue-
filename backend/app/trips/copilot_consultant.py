@@ -24,6 +24,7 @@ from app.trips.copilot_enrichment import (
     format_three_layer_poi_bullet,
     resolve_poi_coordinates,
 )
+from app.trips.copilot_grounding import verify_and_ground_reply_text
 from app.trips.copilot_intent import (
     CONSTRAINT_PATTERNS,
     LANDMARK_CITY_KB,
@@ -74,6 +75,7 @@ Phong cách giao tiếp của bạn: Thân thiện như một người bạn b�
 4. Tư duy Đồ thị Tri thức & Lồng ghép Tiêu chí Xanh (KG Reasoning + Eco-Integration): Áp dụng công thức 3 lớp cho mỗi POI: **[Tên địa điểm]** — *(Lý do khớp trực tiếp từ kg_explanation)* + 🌱 *(Green Score & Điểm cộng bền vững / Mẹo di chuyển xanh)*.
 5. Bảo vệ Phạm vi Hệ thống (Strict Out-of-Scope Handling): Từ chối ngắn gọn, vui vẻ các câu hỏi ngoài phạm vi du lịch miền Trung và không trả về thẻ POI.
 6. Chiến thuật "Câu hỏi chốt hạ A/B" (Conversational Follow-up Hook): 100% câu trả lời kết thúc bằng 1 câu hỏi gợi mở đưa ra 2 lựa chọn cụ thể (A hoặc B) bám sát bước tiếp theo.
+7. Trung thực tuyệt đối với dữ liệu (Zero Hallucination Grounding): TUYỆT ĐỐI CHỈ nhắc tên địa điểm/quán ăn có trong RETRIEVED_POIS hoặc REFERENCE_DRAFT, cấm tự bịa thêm tên quán/địa điểm ngoài cơ sở dữ liệu; nếu REFERENCE_DRAFT có mục Điểm mạnh / Cần cân nhắc thì giữ nguyên cấu trúc đánh giá đó.
 """
 
 
@@ -669,7 +671,7 @@ def upgrade_handler_response_to_mindtrip_standard(
     rec_ids = [p.id for p in filtered_pois]
     reasoning_trace = raw_response.reasoning_trace or reasoning_trace
 
-    # 5. Optional Gemini API synthesis when GEMINI_API_KEY is configured
+    # 5. Optional Gemini API synthesis with Corrective Grounding
     settings = get_settings()
     if settings.gemini_configured:
         gemini_reply = _try_gemini_synthesis(
@@ -682,7 +684,26 @@ def upgrade_handler_response_to_mindtrip_standard(
             settings=settings,
         )
         if gemini_reply:
-            reply_text = ensure_closing_ab_hook(gemini_reply, ab_hook)
+            candidate_reply = ensure_closing_ab_hook(gemini_reply, ab_hook)
+            verified_reply, ungrounded_mentions = verify_and_ground_reply_text(
+                candidate_reply=candidate_reply,
+                fallback_reply=reply_text,
+                suggested_pois=filtered_pois,
+                trip_context=request.trip_context,
+                connection=connection,
+            )
+            reply_text = verified_reply
+            if ungrounded_mentions:
+                reasoning_trace = (
+                    f"{reasoning_trace}\n"
+                    f"5. Corrective Grounding: Chặn {len(ungrounded_mentions)} tên ngoài DB "
+                    f"({', '.join(ungrounded_mentions)}), giữ nguyên bản thảo xác thực."
+                )
+            else:
+                reasoning_trace = (
+                    f"{reasoning_trace}\n"
+                    "5. Corrective Grounding: Đã xác thực toàn bộ địa điểm trong câu trả lời khớp DB."
+                )
 
     raw_response.reply_text = reply_text
     raw_response.intent_category = intent_category
@@ -768,6 +789,7 @@ def _try_gemini_synthesis(
             f"active_constraints={constraints}\n"
             f"RECENT_HISTORY: {json.dumps(history_snippet, ensure_ascii=False)}\n"
             f"RETRIEVED_POIS & KG_PATHS: {json.dumps(pois_context, ensure_ascii=False)}\n"
+            f"STRICT_GROUNDING: Tuyệt đối chỉ nhắc tên địa điểm có trong RETRIEVED_POIS & KG_PATHS hoặc REFERENCE_DRAFT; cấm tự bịa thêm địa điểm mới. Nếu REFERENCE_DRAFT có mục Điểm mạnh / Cần cân nhắc thì giữ nguyên cấu trúc đó.\n"
             f"REFERENCE_DRAFT (giữ nguyên các dữ kiện thực tế và tên địa điểm): {fallback_reply}\n"
             f"USER_MESSAGE: {user_message}"
         )

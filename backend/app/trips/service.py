@@ -545,7 +545,6 @@ from app.trips.handlers.travel_tips_handler import handle_travel_tips
 from app.trips.handlers.smart_concierge_handler import handle_smart_concierge
 from app.trips.copilot_consultant import (
     classify_copilot_request,
-    extract_persistent_constraints,
     handle_city_comparison_consultative,
     handle_city_mismatch_and_mutation,
     handle_elderly_constraints_consultation,
@@ -556,6 +555,7 @@ from app.trips.copilot_consultant import (
     normalize_vietnamese_query,
     upgrade_handler_response_to_mindtrip_standard,
 )
+from app.trips.copilot_hybrid_nlu import classify_copilot_request_hybrid
 
 
 def detect_copilot_intent(message: str, trip_context: TripContextPayload | None = None) -> str:
@@ -564,25 +564,40 @@ def detect_copilot_intent(message: str, trip_context: TripContextPayload | None 
     return sub_intent
 
 
-def process_copilot_chat(
+def _attach_nlu_trace(response: CopilotChatResponse, nlu_meta: dict[str, Any]) -> CopilotChatResponse:
+    existing = (response.reasoning_trace or "").strip()
+    if not existing:
+        return response
+    trace_line = (
+        f"NLU Router: {nlu_meta.get('source', 'regex')} "
+        f"(conf={float(nlu_meta.get('confidence', 0.0)):.2f}, "
+        f"action={nlu_meta.get('mutation_action', 'none')})"
+    )
+    response.reasoning_trace = f"{existing}\n{trace_line}"
+    return response
+
+
+def _dispatch_copilot_intent(
     request: CopilotChatRequest,
+    effective_ctx: TripContextPayload,
+    intent_category: str,
+    intent: str,
+    fact_check: dict[str, Any] | None,
+    constraints: list[str],
     connection: Connection,
 ) -> CopilotChatResponse:
-    """
-    Main entrypoint for In-Planner Copilot Chat (PB14 - MindTrip-grade Eco-Travel Consultant).
-    Enforces the 6 Core Rules across 4 canonical intent branches:
-    QA_AND_COMPARE, POI_RECOMMENDATION, ITINERARY_MUTATION, OUT_OF_SCOPE.
-    """
-    ctx = request.trip_context
-    constraints = extract_persistent_constraints(request.message, ctx)
-    intent_category, intent, fact_check = classify_copilot_request(request.message, ctx)
+    effective_req = (
+        request.model_copy(update={"trip_context": effective_ctx})
+        if effective_ctx is not request.trip_context
+        else request
+    )
 
     # 1. OUT_OF_SCOPE branch (Rule 5)
     if intent_category == "OUT_OF_SCOPE":
         oos_target = fact_check.get("oos_target") if fact_check else None
         return finalize_copilot_response(
-            handle_out_of_scope_request(request.message, oos_target, ctx, constraints),
-            ctx,
+            handle_out_of_scope_request(request.message, oos_target, effective_ctx, constraints),
+            effective_ctx,
             constraints,
             connection=connection,
         )
@@ -591,17 +606,17 @@ def process_copilot_chat(
     if fact_check:
         if fact_check.get("type") == "over_scheduling":
             return finalize_copilot_response(
-                handle_over_scheduling_guardrail(request.message, fact_check, ctx, constraints),
-                ctx,
+                handle_over_scheduling_guardrail(request.message, fact_check, effective_ctx, constraints),
+                effective_ctx,
                 constraints,
                 connection=connection,
             )
         if fact_check.get("type") == "city_mismatch":
             return finalize_copilot_response(
                 handle_city_mismatch_and_mutation(
-                    request.message, fact_check, ctx, connection, constraints
+                    request.message, fact_check, effective_ctx, connection, constraints
                 ),
-                ctx,
+                effective_ctx,
                 constraints,
                 connection=connection,
                 protected_keywords=[
@@ -613,29 +628,29 @@ def process_copilot_chat(
     # 3. Consultative City Comparison ('Đà Nẵng hay Huế?') (Rule 1, 2, 4, 6)
     if intent == "qa_compare":
         return finalize_copilot_response(
-            handle_city_comparison_consultative(request.message, ctx, connection, constraints),
-            ctx,
+            handle_city_comparison_consultative(request.message, effective_ctx, connection, constraints),
+            effective_ctx,
             constraints,
             connection=connection,
         )
 
-    # 4. Direct Itinerary State Mutation ('Chia 4 đêm Đà Nẵng, 3 đêm Huế', 'Bỏ Lăng Khải Định ngày 6', 'Đổi lịch đi Hội An từ ngày 3 sang ngày 2')
+    # 4. Direct Itinerary State Mutation
     if intent == "itinerary_mutation":
         return finalize_copilot_response(
-            handle_itinerary_mutation_request(request.message, ctx, connection, constraints),
-            ctx,
+            handle_itinerary_mutation_request(request.message, effective_ctx, connection, constraints),
+            effective_ctx,
             constraints,
             connection=connection,
         )
 
-    # 5. Elderly / Senior Family Persistent Constraint Consultation ('Đi cùng bố mẹ lớn tuổi...')
+    # 5. Elderly / Senior Family Persistent Constraint Consultation
     norm_msg = normalize_vietnamese_query(request.message)
     if intent == "travel_tips_budget" and any(
         k in norm_msg for k in ["bố mẹ", "ba mẹ", "người lớn tuổi", "người già", "ông bà"]
     ):
         return finalize_copilot_response(
-            handle_elderly_constraints_consultation(request.message, ctx, connection, constraints),
-            ctx,
+            handle_elderly_constraints_consultation(request.message, effective_ctx, connection, constraints),
+            effective_ctx,
             constraints,
             connection=connection,
         )
@@ -657,11 +672,11 @@ def process_copilot_chat(
             avoid_notice,
             green_impact,
             budget_impact,
-        ) = handler_fn(request.message, ctx, connection)
+        ) = handler_fn(request.message, effective_ctx, connection)
         raw_resp = CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
-            target_slot=ctx.current_slot or default_slot,
+            target_slot=effective_ctx.current_slot or default_slot,
             suggested_pois=suggested_pois,
             action_type=action_type,
             next_suggested_prompts=next_prompts,
@@ -669,14 +684,16 @@ def process_copilot_chat(
             green_impact_summary=green_impact,
             budget_impact_summary=budget_impact,
         )
-        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)
+        return upgrade_handler_response_to_mindtrip_standard(
+            effective_req, raw_resp, intent_category, constraints, connection=connection
+        )
 
     if intent == "late_schedule_adjust":
-        reply_text, suggested_pois = handle_late_adjust(ctx, connection)
+        reply_text, suggested_pois = handle_late_adjust(effective_ctx, connection)
         raw_resp = CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
-            target_slot=ctx.current_slot or "afternoon",
+            target_slot=effective_ctx.current_slot or "afternoon",
             suggested_pois=suggested_pois,
             action_type="replace_stop",
             next_suggested_prompts=[
@@ -687,14 +704,16 @@ def process_copilot_chat(
             budget_impact_summary="Lựa chọn điểm dừng gần trung tâm giúp tiết kiệm chi phí taxi ~50.000 ₫ và tránh kẹt xe giờ cao điểm.",
             green_impact_summary="Giảm khoảng cách di chuyển giúp giảm phát thải phương tiện, khuyến khích tản bộ thư thái.",
         )
-        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)
+        return upgrade_handler_response_to_mindtrip_standard(
+            effective_req, raw_resp, intent_category, constraints, connection=connection
+        )
 
     if intent == "swap_meal_vegetarian":
-        reply_text, suggested_pois = handle_swap_meal(ctx, connection)
+        reply_text, suggested_pois = handle_swap_meal(effective_ctx, connection)
         raw_resp = CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
-            target_slot=ctx.current_slot or "lunch",
+            target_slot=effective_ctx.current_slot or "lunch",
             suggested_pois=suggested_pois,
             action_type="replace_stop",
             next_suggested_prompts=[
@@ -705,14 +724,16 @@ def process_copilot_chat(
             budget_impact_summary="Bữa ăn thanh đạm tại quán địa phương tiết kiệm ~35.000 ₫/người so với nhà hàng thông thường.",
             green_impact_summary="Bữa ăn thuần chay giúp giảm ~60% lượng phát thải carbon so với bữa ăn thông thường, bảo vệ nguồn nước và sức khỏe.",
         )
-        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)
+        return upgrade_handler_response_to_mindtrip_standard(
+            effective_req, raw_resp, intent_category, constraints, connection=connection
+        )
 
     if intent == "rainy_day_alternatives":
-        reply_text, suggested_pois = handle_rainy_day(ctx, connection)
+        reply_text, suggested_pois = handle_rainy_day(effective_ctx, connection)
         raw_resp = CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
-            target_slot=ctx.current_slot or "afternoon",
+            target_slot=effective_ctx.current_slot or "afternoon",
             suggested_pois=suggested_pois,
             action_type="replace_stop",
             avoid_notice="Lưu ý an toàn: Tạm hoãn tham quan Bãi biển Mỹ Khê, Bán đảo Sơn Trà và Đèo Hải Vân khi trời mưa to do nguy cơ trơn trượt và hạn chế tầm nhìn.",
@@ -722,10 +743,12 @@ def process_copilot_chat(
                 "Thời gian mở cửa và giá vé của các điểm này?",
             ],
         )
-        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)
+        return upgrade_handler_response_to_mindtrip_standard(
+            effective_req, raw_resp, intent_category, constraints, connection=connection
+        )
 
     if intent == "night_eco_activities":
-        reply_text, suggested_pois = handle_night_eco(ctx, connection)
+        reply_text, suggested_pois = handle_night_eco(effective_ctx, connection)
         raw_resp = CopilotChatResponse(
             reply_text=reply_text,
             intent=intent,
@@ -739,7 +762,9 @@ def process_copilot_chat(
             ],
             green_impact_summary="Khám phá phố đi bộ và phương tiện công cộng về đêm giúp giảm phát thải, tận hưởng không khí trong lành của thành phố.",
         )
-        return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)
+        return upgrade_handler_response_to_mindtrip_standard(
+            effective_req, raw_resp, intent_category, constraints, connection=connection
+        )
 
     # Universal Smart Concierge
     (
@@ -750,7 +775,7 @@ def process_copilot_chat(
         avoid_notice,
         green_impact,
         budget_impact,
-    ) = handle_smart_concierge(request.message, ctx, connection)
+    ) = handle_smart_concierge(request.message, effective_ctx, connection)
 
     raw_resp = CopilotChatResponse(
         reply_text=reply_text,
@@ -763,4 +788,29 @@ def process_copilot_chat(
         green_impact_summary=green_impact,
         budget_impact_summary=budget_impact,
     )
-    return upgrade_handler_response_to_mindtrip_standard(request, raw_resp, intent_category, constraints, connection=connection)
+    return upgrade_handler_response_to_mindtrip_standard(
+        effective_req, raw_resp, intent_category, constraints, connection=connection
+    )
+
+
+def process_copilot_chat(
+    request: CopilotChatRequest,
+    connection: Connection,
+) -> CopilotChatResponse:
+    """
+    Main entrypoint for In-Planner Copilot Chat (PB14 - MindTrip-grade Eco-Travel Consultant).
+    Uses Hybrid NLU (Gemini Structured JSON + Regex Fallback) and Corrective Grounding.
+    """
+    intent_category, intent, fact_check, constraints, effective_ctx, nlu_meta = (
+        classify_copilot_request_hybrid(request.message, request.trip_context)
+    )
+    response = _dispatch_copilot_intent(
+        request=request,
+        effective_ctx=effective_ctx,
+        intent_category=intent_category,
+        intent=intent,
+        fact_check=fact_check,
+        constraints=constraints,
+        connection=connection,
+    )
+    return _attach_nlu_trace(response, nlu_meta)

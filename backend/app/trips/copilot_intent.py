@@ -57,6 +57,7 @@ CONSTRAINT_PATTERNS: dict[str, list[str]] = {
     "elderly_friendly": [
         "bố mẹ", "ba mẹ", "người lớn tuổi", "người già", "ông bà", "cao tuổi",
         "đau chân", "khó đi bộ", "ít leo trèo", "phụ huynh",
+        "đau khớp", "đi xe lăn", "không leo dốc", "hạn chế đi bộ",
     ],
     "kid_friendly": [
         "trẻ nhỏ", "em bé", "trẻ em", "con nhỏ", "gia đình có bé",
@@ -64,6 +65,7 @@ CONSTRAINT_PATTERNS: dict[str, list[str]] = {
     "rainy_season": [
         "tháng 10", "tháng 11", "tháng 12", "mùa mưa", "trời mưa", "phương án mưa",
         "trú mưa", "mưa to", "có mái che", "trong nhà",
+        "âm u", "sắp mưa", "đổ mưa", "dính mưa",
     ],
     "quiet_vibe": [
         "yên tĩnh", "không ồn ào", "chill", "trong hẻm", "tách biệt", "ít người",
@@ -71,6 +73,7 @@ CONSTRAINT_PATTERNS: dict[str, list[str]] = {
     ],
     "vegetarian": [
         "ăn chay", "quán chay", "đồ chay", "thực dưỡng", "thuần chay", "thanh đạm", "vegan",
+        "không thịt", "không ăn thịt", "thuần thực vật",
     ],
     "beach_lover": [
         "thích biển", "tắm biển", "gần biển", "view biển", "biển đẹp",
@@ -85,6 +88,7 @@ UNACCENTED_CONSTRAINT_PATTERNS: dict[str, list[str]] = {
     "elderly_friendly": [
         "bo me", "ba me", "nguoi lon tuoi", "nguoi gia", "ong ba", "cao tuoi",
         "dau chan", "kho di bo", "it leo treo", "phu huynh",
+        "dau khop", "di xe lan", "khong leo doc", "han che di bo",
     ],
     "kid_friendly": [
         "tre nho", "em be", "tre em", "con nho", "gia dinh co be",
@@ -92,6 +96,7 @@ UNACCENTED_CONSTRAINT_PATTERNS: dict[str, list[str]] = {
     "rainy_season": [
         "thang 10", "thang 11", "thang 12", "mua mua", "troi mua", "phuong an mua",
         "tru mua", "mua to", "co mai che", "trong nha",
+        "am u", "sap mua", "do mua", "dinh mua",
     ],
     "quiet_vibe": [
         "yen tinh", "khong on ao", "chill", "trong hem", "tach biet", "it nguoi",
@@ -99,6 +104,7 @@ UNACCENTED_CONSTRAINT_PATTERNS: dict[str, list[str]] = {
     ],
     "vegetarian": [
         "an chay", "quan chay", "do chay", "thuc duong", "thuan chay", "thanh dam", "vegan",
+        "khong thit", "khong an thit", "thuan thuc vat",
     ],
     "beach_lover": [
         "thich bien", "tam bien", "gan bien", "view bien", "bien dep",
@@ -325,6 +331,7 @@ OUT_OF_SCOPE_TOPICS = [
     "giải phương trình", "giai phuong trinh", "giải toán", "giai toan",
     "chứng khoán", "chung khoan", "bitcoin", "crypto",
     "viết văn mẫu", "viet van mau", "dịch sang tiếng", "dich sang tieng",
+    "giá vàng", "gia vang", "bài luận", "bai luan", "tỷ giá", "ty gia", "bóng đá", "bong da",
 ]
 
 _MATH_ARITHMETIC_RE = re.compile(r"\b\d+(?:[.,]\d+)?\s*[+*×÷/^=]\s*\d+")
@@ -495,11 +502,13 @@ def classify_copilot_request(
         "quán chay", "ăn chay", "cơm chay", "thực dưỡng", "vegan",
         "vegetarian", "đồ chay", "món chay", "thanh đạm", "thanh tịnh",
         "đổi quán chay", "đổi sang quán chay",
+        "không thịt", "không ăn thịt", "thuần thực vật",
     ]
     veg_unaccented = [
         "quan chay", "an chay", "com chay", "thuc duong", "vegan",
         "vegetarian", "do chay", "mon chay", "thanh dam", "thanh tinh",
         "doi quan chay", "doi sang quan chay",
+        "khong thit", "khong an thit", "thuan thuc vat",
     ]
     if contains_any_phrase(norm_msg, folded_msg, veg_keywords, veg_unaccented):
         return "ITINERARY_MUTATION", "swap_meal_vegetarian", None
@@ -558,8 +567,8 @@ def classify_copilot_request(
     if contains_any_phrase(norm_msg, folded_msg, ["thời tiết"], ["thoi tiet"]) and not contains_any_phrase(
         norm_msg,
         folded_msg,
-        ["đi đâu", "tránh mưa", "khỏi ướt", "trong nhà"],
-        ["di dau", "tranh mua", "khoi uot", "trong nha"],
+        ["đi đâu", "ghé đâu", "chơi đâu", "nên đi đâu", "chỗ nào", "tránh mưa", "khỏi ướt", "trong nhà"],
+        ["di dau", "ghe dau", "choi dau", "nen di dau", "cho nao", "tranh mua", "khoi uot", "trong nha"],
     ):
         return "QA_AND_COMPARE", "travel_tips_budget", None
 
@@ -567,11 +576,13 @@ def classify_copilot_request(
     rain_keywords = [
         "mưa", "trời mưa", "mưa to", "mưa bão", "thời tiết xấu",
         "trong nhà", "có mái che", "ướt", "bảo tàng", "rain", "rainy",
+        "âm u", "sắp mưa", "đổ mưa", "dính mưa", "trú mưa",
     ]
     rain_unaccented = [
         "troi mua", "mua to", "mua bao", "mua lon", "mua rao", "mua dam",
         "thoi tiet xau", "trong nha", "co mai che", "tranh mua", "khoi uot",
         "bao tang", "rain", "rainy",
+        "am u", "sap mua", "do mua", "dinh mua", "tru mua",
     ]
     if contains_any_phrase(norm_msg, folded_msg, rain_keywords, rain_unaccented):
         return "POI_RECOMMENDATION", "rainy_day_alternatives", None

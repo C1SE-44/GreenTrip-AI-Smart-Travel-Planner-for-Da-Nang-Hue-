@@ -259,10 +259,22 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
         PRIMARY KEY (collection_id, poi_id)
     );
     """)
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS admin_audit_logs (
+        audit_id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+        admin_user_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        target_table TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        changes_json TEXT NOT NULL DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_pois_city_active ON pois(city_id, is_active);")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_email_otps_lookup ON email_otps(email, created_at);")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_place_collections_user ON saved_place_collections(user_id, is_default, created_at);")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_place_collection_items_user_poi ON saved_place_collection_items(user_id, poi_id);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_admin_created ON admin_audit_logs(admin_user_id, created_at);")
 
     cur = conn.cursor()
     cur.execute("SELECT count(*) FROM cities")

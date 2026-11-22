@@ -2,7 +2,7 @@
 
 Danh sách và thứ tự chạy tuần tự các SQL migration cho PostgreSQL / Supabase của **GreenTrip AI**.
 
-## Thứ tự chạy chuẩn (`001` → `016`)
+## Thứ tự chạy chuẩn (`001` → `018`)
 
 Chạy lần lượt theo đúng số thứ tự tăng dần:
 
@@ -24,6 +24,8 @@ Chạy lần lượt theo đúng số thứ tự tăng dần:
 | 014 | `014_unify_itinerary_schema_and_indexes.sql` | Hợp nhất cột giữa schema `008` và `012`, đồng thời bổ sung secondary indexes |
 | 015 | `015_add_itinerary_day_note.sql` | Bổ sung cột `note` cho `public.itinerary_days` (chạy sau `014`) |
 | 016 | `016_add_user_avatar_path.sql` | Bổ sung cột `avatar_path` cho `public.users` |
+| 017 | `017_create_poi_images_bucket.sql` | Tạo bucket công khai `poi-images` (5MB, JPEG/PNG/WebP) trên Supabase Storage |
+| 018 | `018_db_3nf_fk_indexes_and_audit.sql` | Bật `pg_trgm`, đánh GIN/Composite Index, ràng buộc `CHECK`, khóa ngoại `owner_user_id`/`poi_uuid`, tạo bảng `admin_audit_logs` |
 
 ## Thư mục `manual/` (Chạy thủ công khi cần, không thuộc chuỗi migrate tự động)
 

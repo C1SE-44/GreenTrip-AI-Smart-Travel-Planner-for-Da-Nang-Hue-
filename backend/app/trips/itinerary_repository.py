@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+import uuid
 
 from fastapi import HTTPException
 
@@ -15,6 +16,24 @@ from app.trips.schemas import (
 )
 
 
+_UUID_TARGET_TABLES = {
+    ("users", "user_id"),
+    ("pois", "poi_id"),
+}
+
+
+def _resolve_existing_uuid(cursor: Any, table: str, id_column: str, raw_value: str | None) -> str | None:
+    """Validate UUID syntax and verify existence in the parent table before setting a strict FK column."""
+    if not raw_value or (table, id_column) not in _UUID_TARGET_TABLES:
+        return None
+    try:
+        parsed = str(uuid.UUID(str(raw_value).strip()))
+    except (ValueError, TypeError, AttributeError):
+        return None
+    cursor.execute(f"SELECT 1 FROM public.{table} WHERE {id_column} = %s", (parsed,))
+    return parsed if cursor.fetchone() else None
+
+
 def _ensure_local_tables(connection: Any, cursor: Any) -> None:
     # PostgreSQL schema is managed by backend/migrations; only bootstrap the SQLite fallback.
     if not isinstance(connection, SQLiteConnectionWrapper):
@@ -24,6 +43,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         CREATE TABLE IF NOT EXISTS public.itineraries (
             trip_id TEXT PRIMARY KEY,
             user_id TEXT,
+            owner_user_id TEXT,
             title TEXT NOT NULL,
             destination TEXT NOT NULL,
             start_date DATE,
@@ -51,6 +71,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
             stop_id TEXT PRIMARY KEY,
             day_id TEXT NOT NULL REFERENCES public.itinerary_days(day_id) ON DELETE CASCADE,
             poi_id TEXT,
+            poi_uuid TEXT,
             title TEXT NOT NULL,
             city TEXT,
             address TEXT,
@@ -73,6 +94,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
     for col, col_type in [
         ("stop_id", "TEXT"),
         ("day_id", "TEXT"),
+        ("poi_uuid", "TEXT"),
         ("itinerary_stop_id", "TEXT"),
         ("itinerary_day_id", "TEXT"),
         ("title", "TEXT DEFAULT ''"),
@@ -110,7 +132,8 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         ("itinerary_id", "TEXT"),
         ("start_date", "DATE"),
         ("days_count", "INTEGER"),
-        ("total_days", "INTEGER"),
+        ("total_days", "smallint"),
+        ("owner_user_id", "TEXT"),
         ("status", "TEXT DEFAULT 'DRAFT'"),
         ("created_at", "TIMESTAMP"),
     ]:
@@ -122,6 +145,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
             cursor.execute("UPDATE itineraries SET days_count = total_days WHERE days_count IS NULL")
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itineraries_trip_id ON itineraries(trip_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_itineraries_user_id ON itineraries(user_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_itineraries_owner_user_id ON itineraries(owner_user_id)")
 
     cursor.execute("PRAGMA table_info(itinerary_days)")
     day_columns = {row[1] for row in cursor.fetchall()}
@@ -150,6 +174,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
     for col, col_type in [
         ("stop_id", "TEXT"),
         ("day_id", "TEXT"),
+        ("poi_uuid", "TEXT"),
         ("itinerary_stop_id", "TEXT"),
         ("itinerary_day_id", "TEXT"),
         ("sequence_no", "INTEGER DEFAULT 0"),
@@ -173,6 +198,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_stops_stop_id ON itinerary_stops(stop_id)")
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_itinerary_stops_day_seq ON itinerary_stops(day_id, sequence)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_itinerary_stops_poi_id ON itinerary_stops(poi_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_itinerary_stops_poi_uuid ON itinerary_stops(poi_uuid)")
 
 
 def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> TripItineraryResponse:
@@ -188,13 +214,17 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                 if not is_sample and owner_id and owner_id != user_id:
                     raise HTTPException(status_code=404, detail="Không tìm thấy lịch trình.")
 
+                owner_user_uuid = _resolve_existing_uuid(cursor, "users", "user_id", effective_user_id)
                 cursor.execute(
                     """
-                    INSERT INTO public.itineraries (trip_id, user_id, title, destination, start_date, days_count, updated_at, itinerary_id, total_days)
-                    VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s)
+                    INSERT INTO public.itineraries (
+                        trip_id, user_id, owner_user_id, title, destination, start_date, days_count, updated_at, itinerary_id, total_days
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s)
                     ON CONFLICT (trip_id) DO UPDATE SET
                         -- ponytail: keep original ownership so anonymous trips cannot be claimed by another user
                         user_id = CASE WHEN SUBSTR(itineraries.trip_id, 1, 7) = 'sample-' THEN NULL ELSE itineraries.user_id END,
+                        owner_user_id = CASE WHEN SUBSTR(itineraries.trip_id, 1, 7) = 'sample-' THEN NULL ELSE COALESCE(itineraries.owner_user_id, EXCLUDED.owner_user_id) END,
                         title = EXCLUDED.title,
                         destination = EXCLUDED.destination,
                         start_date = EXCLUDED.start_date,
@@ -203,7 +233,17 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                         total_days = EXCLUDED.days_count,
                         updated_at = CURRENT_TIMESTAMP
                     """,
-                    (payload.trip_id, effective_user_id, payload.title, payload.destination, payload.start_date, payload.days_count, payload.trip_id, payload.days_count),
+                    (
+                        payload.trip_id,
+                        effective_user_id,
+                        owner_user_uuid,
+                        payload.title,
+                        payload.destination,
+                        payload.start_date,
+                        payload.days_count,
+                        payload.trip_id,
+                        payload.days_count,
+                    ),
                 )
                 cursor.execute(
                     "DELETE FROM public.itinerary_stops WHERE day_id IN (SELECT day_id FROM public.itinerary_days WHERE trip_id = %s)",
@@ -216,16 +256,17 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
                         (day.day_id, payload.trip_id, day.day_number, day.date, day.title, day.note, payload.trip_id, day.day_id),
                     )
                     for stop in day.stops:
+                        stop_poi_uuid = _resolve_existing_uuid(cursor, "pois", "poi_id", stop.poi_id)
                         cursor.execute(
                             """
                             INSERT INTO public.itinerary_stops (
-                                stop_id, day_id, poi_id, title, city, address, category, stop_type, source,
+                                stop_id, day_id, poi_id, poi_uuid, title, city, address, category, stop_type, source,
                                 sequence, duration_minutes, start_time, end_time, comment, latitude, longitude,
                                 itinerary_stop_id, itinerary_day_id, sequence_no
-                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             """,
                             (
-                                stop.stop_id, day.day_id, stop.poi_id, stop.title, stop.city, stop.address, stop.category,
+                                stop.stop_id, day.day_id, stop.poi_id, stop_poi_uuid, stop.title, stop.city, stop.address, stop.category,
                                 stop.stop_type, stop.source, stop.sequence, stop.duration_minutes,
                                 stop.start_time, stop.end_time, stop.comment, stop.latitude, stop.longitude,
                                 stop.stop_id, day.day_id, stop.sequence,

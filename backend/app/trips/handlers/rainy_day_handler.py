@@ -82,12 +82,24 @@ def handle_rainy_day(
         WHERE p.is_active IS NOT FALSE
           AND (ci.name ILIKE %s OR %s = TRUE)
           {remote_exclusion}
+          AND COALESCE(p.ai_metadata->>'rainy_day_friendly', '') <> 'false'
           AND (
             (p.ai_metadata->>'rainy_day_friendly') = 'true'
             OR p.sub_category = ANY(%s)
           )
           AND (p.sub_category IS NULL OR NOT (p.sub_category = ANY(%s)))
-        ORDER BY p.satisfaction_score DESC NULLS LAST, p.green_score DESC NULLS LAST
+        ORDER BY
+          CASE
+            WHEN p.sub_category IN ('museum', 'museums_galleries', 'art_space', 'tea_herbal', 'royal_herbal_tea', 'market') THEN 0
+            WHEN p.sub_category IN ('performance', 'performing_arts_heritage', 'workspace_study_cafe', 'specialty_roastery', 'historic_zen_temples', 'cathedrals_heritage_churches', 'wellness') THEN 1
+            ELSE 2
+          END,
+          (
+            COALESCE(p.satisfaction_score, 4.0) * 0.5
+            + COALESCE(p.popularity_score, 0) * 0.5
+            + COALESCE(p.green_score, 0.5)
+          ) DESC,
+          p.satisfaction_score DESC NULLS LAST
         LIMIT 3;
     """
 

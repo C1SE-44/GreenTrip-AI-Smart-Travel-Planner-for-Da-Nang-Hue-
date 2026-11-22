@@ -85,11 +85,13 @@ test('updateDateRangeWithDays: Đúng ví dụ người dùng 1-5 thêm 1 ngày 
   assert.equal(updateDateRangeWithDays('16 - 19 thg 11 (4 ngày)', 5), '16 – 20 thg 11 (5 ngày)');
 });
 
-test('itineraryService: Khai báo đầy đủ updateDateRangeWithDays và parseStartDateFromTrip', () => {
+test('itineraryService: Khai báo đầy đủ updateDateRangeWithDays, parseStartDateFromTrip và isClientDraftTripId', () => {
   const serviceContent = fs.readFileSync(itineraryServicePath, 'utf8');
   assert.ok(serviceContent.includes('export function updateDateRangeWithDays'), 'Must export updateDateRangeWithDays');
   assert.ok(serviceContent.includes('export function parseStartDateFromTrip'), 'Must export parseStartDateFromTrip');
   assert.ok(serviceContent.includes('export function alignItineraryToTrip'), 'Must export alignItineraryToTrip');
+  assert.ok(serviceContent.includes('export function isClientDraftTripId'), 'Must export isClientDraftTripId');
+  assert.ok(serviceContent.includes("tripId.startsWith('trip-quick-')"), 'Draft guard must handle trip-quick-* locally without 404 GET');
 });
 
 test('TripItineraryView: Tích hợp đồng bộ ngày & ý tưởng', () => {

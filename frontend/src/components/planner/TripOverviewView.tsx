@@ -217,7 +217,9 @@ export default function TripOverviewView({
         setItineraryPlan(p);
       }
     }).catch((err) => {
-      console.warn('Could not load trip itinerary:', err);
+      if ((err as { status?: number })?.status !== 404) {
+        console.warn('Could not load trip itinerary:', err);
+      }
     });
     return () => {
       active = false;
@@ -238,7 +240,9 @@ export default function TripOverviewView({
     });
     const nextPlan = { ...itineraryPlan, days: updatedDays };
     setItineraryPlan(nextPlan);
-    saveTripItinerary(nextPlan);
+    saveTripItinerary(nextPlan).catch((err) => {
+      setToastMessage(err instanceof Error ? err.message : 'Chưa thể lưu lịch trình.');
+    });
     setToastMessage(`Đã thêm "${poi.name}" vào Ngày ${dayNum}`);
   };
 
@@ -254,7 +258,9 @@ export default function TripOverviewView({
     });
     const nextPlan = { ...itineraryPlan, days: updatedDays };
     setItineraryPlan(nextPlan);
-    saveTripItinerary(nextPlan);
+    saveTripItinerary(nextPlan).catch((err) => {
+      setToastMessage(err instanceof Error ? err.message : 'Chưa thể lưu lịch trình.');
+    });
   };
 
   // Tự động cuộn xuống khi có tin nhắn mới hoặc AI đang suy nghĩ
@@ -769,7 +775,6 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         ideas: nextIdeas,
       });
     }
-    setSelectedMapPoiId(poi.id);
     setHoveredMapPoiId(poi.id);
     setToastMessage(`Đã thêm "${poi.name}" vào danh sách Ý tưởng!`);
     setTimeout(() => setToastMessage(null), 3000);

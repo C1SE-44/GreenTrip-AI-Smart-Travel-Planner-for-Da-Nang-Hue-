@@ -12,6 +12,7 @@ from scripts.audit_and_migrate_poi_images import (  # noqa: E402
     build_public_storage_url,
     build_storage_headers,
     clean_poi_media,
+    normalize_supabase_url,
     optimize_image_to_webp,
     select_replacement_url,
 )
@@ -28,7 +29,8 @@ def test_optimize_image_to_webp_resizes_large_image() -> None:
 
 
 def test_build_public_storage_url_and_headers() -> None:
-    url = build_public_storage_url("https://demo.supabase.co/", "poi-images", "/abc.webp")
+    assert normalize_supabase_url("https://db.demo.supabase.co/") == "https://demo.supabase.co"
+    url = build_public_storage_url("https://db.demo.supabase.co/", "poi-images", "/abc.webp")
     assert url == "https://demo.supabase.co/storage/v1/object/public/poi-images/abc.webp"
 
     new_key_headers = build_storage_headers("sb_secret_test_key")

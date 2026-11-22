@@ -32,7 +32,8 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 | :--- | :--- | :--- |
 | **Guest (Khách vãng lai)** | Người dùng chưa đăng nhập tài khoản. | - Xem Landing Page (`/`), Trang chủ (`/home`), Khám phá & Bản đồ xanh (`/explore`), xem chi tiết POI & giải thích Knowledge Graph.<br>- Trải nghiệm không gian Planner (`/planner`, `/trips`, `/chat`) và lưu nháp tạm trên trình duyệt.<br>- **Giới hạn:** Không lưu vĩnh viễn chuyến đi/bộ sưu tập vào Database tài khoản; không sử dụng các endpoint yêu cầu JWT (`/saved-places/*`, `/my-trips/*`, `/auth/me`). |
 | **Authenticated User (Du khách đã đăng nhập)** | Đăng ký/đăng nhập bằng **Email + Mật khẩu + xác thực OTP** (`/verify-email`) hoặc **Google OAuth 2.0**. | - Toàn quyền của Guest.<br>- Quản lý hồ sơ cá nhân, đổi mật khẩu, cập nhật ảnh đại diện (`/profile`).<br>- Tạo/sửa/xóa bộ sưu tập và lưu địa điểm yêu thích (`/saved`).<br>- Tạo, sửa, xóa, đồng bộ nhiều chuyến đi cá nhân (`/my-trips`) và lịch trình từng ngày lên Database.<br>- Xuất lịch trình ngoại tuyến (`.ics`, `.pdf`) và chat AI Copilot gắn ngữ cảnh chuyến đi. |
-| **Engineering / Maintainer (Nhóm phát triển)** | Thành viên kỹ thuật vận hành dữ liệu & hạ tầng. | - Quản trị dữ liệu POI, migration SQL (`backend/migrations/`), dữ liệu đồ thị Neo4j (`backend/neo4j/`), giám sát CI/CD qua repository và scripts kỹ thuật (chưa có giao diện Admin Portal riêng trong v1.0). |
+| **Engineering / Maintainer (Nhóm phát triển)** | Thành viên kỹ thuật vận hành dữ liệu & hạ tầng. | - Quản trị dữ liệu POI, migration SQL (`backend/migrations/`), dữ liệu đồ thị Neo4j (`backend/neo4j/`), giám sát CI/CD qua repository và scripts kỹ thuật. |
+| **Administrator (`ADMIN`)** | Quản trị viên được phân quyền `role = 'ADMIN'` trong cơ sở dữ liệu. | - Toàn quyền của Authenticated User.<br>- Truy cập Cổng quản trị (`/admin`) và các API quản trị (`/admin/*`) để kiểm tra KPI hệ thống, bật/tắt địa điểm, điều chỉnh giá tham khảo/điểm xanh và xem nhật ký kiểm toán (`admin_audit_logs`).<br>- Mọi người dùng `USER` thông thường hoặc khách chưa đăng nhập cố truy cập `/admin` đều bị chặn bởi **RBAC 2 lớp** (`401` / `403 Forbidden`). |
 
 ---
 
@@ -52,13 +53,13 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
   * **Ứng phó thời tiết 1 chạm (Rainy Day Switch):** Đổi nhanh hoạt động ngoài trời sang điểm trong nhà phù hợp kèm hoàn tác (Undo) và gợi ý điểm thay thế lân cận.
 * **F-07 — Trợ lý AI Travel Copilot & Cẩm nang Bản địa Xanh (`PB14`):** Chat trực tiếp trong không gian chuyến đi (`TripOverviewView`, `/chat`) qua `POST /trips/copilot/chat` để nhận tư vấn, highlight địa điểm lên bản đồ, thêm vào Ý tưởng hoặc cập nhật lịch trình; tích hợp ngăn **Cẩm nang Bản địa Xanh** (phong thủy Cố đô, trang phục di sản, di chuyển cho người lớn tuổi, dự phòng mùa mưa).
 * **F-08 — Xuất dữ liệu ngoại tuyến (Offline Export):** Xuất lịch trình ra `.ics` (tương thích Google/Apple Calendar), xuất `.pdf` (Backend ReportLab / in PDF) và checklist hành trang du lịch xanh.
+* **F-09 — Phân quyền RBAC 2 lớp & Cổng quản trị dữ liệu POI (`/admin`):** Kiểm tra vai trò `ADMIN` và trạng thái `ACTIVE` trực tiếp từ cơ sở dữ liệu (`401`/`403`), cung cấp màn hình quản trị `/admin` bảo vệ 2 lớp cho phép thống kê tổng quan, ẩn/hiện địa điểm, chỉnh sửa giá vé/điểm xanh kèm lưu vết kiểm toán ACID (`admin_audit_logs`).
 
 ### 3.2. Ngoài phạm vi MVP / Kế hoạch giai đoạn sau (Out-of-Scope & Planned v1.1)
 * **Không làm trong v1.0:**
   * Không tích hợp cổng thanh toán trực tiếp (In-app Payment / VNPay / MoMo) cho vé máy bay, khách sạn hay vé tham quan.
   * Không xây dựng mạng xã hội chia sẻ ảnh hoặc tính năng nhắn tin trực tiếp giữa người dùng với nhau.
 * **Kế hoạch mở rộng (`Planned / v1.1` — chưa triển khai trong code v1.0):**
-  * Giao diện quản trị riêng (**System Admin Portal**) quản lý Master POI Data & dashboard giám sát quota API.
   * Chia sẻ liên kết chuyến đi có tương tác nhóm (**Share link bình chọn / voting**).
   * Chèn **mã QR bản đồ & danh bạ khẩn cấp** tự động trong file `.pdf` xuất từ Backend.
   * Giới hạn số lượt xuất file theo ngày riêng cho Guest (ví dụ 2 lần/ngày) và cơ chế tự động retry LLM 2 lần có cấu hình timeout 15 giây tập trung.
@@ -102,6 +103,7 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 | `/saved-places/*` | Bắt buộc JWT (`get_current_user_id`) | Bộ sưu tập và địa điểm lưu gắn chặt `user_id`; không truy cập dữ liệu user khác. |
 | `/my-trips/*` | Bắt buộc JWT (`get_current_user_id`) | Chỉ chủ sở hữu `trip` mới được xem, sửa, xóa, xuất PDF; sai chủ sở hữu trả `403`/`404`. |
 | `/trips/{trip_id}/itinerary`, `POST /trips/copilot/chat` | JWT (hỗ trợ ngữ cảnh chuyến đi + Rate Limit cho Copilot) | Copilot áp dụng rate limit chống spam token AI; chuyến đi gắn tài khoản phải xác thực quyền sở hữu trước khi ghi đè. |
+| `/admin/overview`, `/admin/pois`, `PATCH /admin/pois/{poi_id}` | Bắt buộc JWT + RBAC (`require_admin`) | Thiếu/sai token trả `401`; tài khoản `USER` thường hoặc `status != 'ACTIVE'` trả `403 Forbidden`; chỉ `ADMIN` đang hoạt động mới truy cập và ghi `admin_audit_logs`. |
 
 ### 5.2. Quy tắc nghiệp vụ cốt lõi (Business Rules & Constraints)
 * **Kiểm soát ngân sách (`C_total` vs `B_max`):** Hệ thống tính chi phí dự kiến theo số khách và danh mục. Khi tổng chi phí vượt trần ngân sách `B_max`, giao diện bắt buộc hiển thị cảnh báo vượt mức rõ ràng để người dùng điều chỉnh hoặc đổi điểm miễn phí/phù hợp hơn.

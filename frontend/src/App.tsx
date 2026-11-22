@@ -3,6 +3,8 @@ import Navbar from '@/components/layout/Navbar';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import ExplorePage from '@/pages/ExplorePage';
 import LandingPage from '@/pages/LandingPage';
+import AdminDashboardPage from '@/pages/AdminDashboardPage';
+import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { SavedPlacesProvider } from '@/context/SavedPlacesContext';
 
 function App() {
@@ -61,6 +63,16 @@ function App() {
         <Route path="/planner" element={<ExplorePage initialView="trips" />} />
         <Route path="/my-trips" element={<ExplorePage initialView="trips" />} />
         <Route path="/trips" element={<ExplorePage initialView="trips" />} />
+
+        {/* Protected RBAC Admin Portal */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRouteGuard>
+              {(adminUser) => <AdminDashboardPage adminUser={adminUser} />}
+            </AdminRouteGuard>
+          }
+        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

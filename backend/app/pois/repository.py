@@ -192,7 +192,7 @@ def list_pois(
                     COALESCE(saved_counts.saved_count, 0) AS saved_count
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id
-                JOIN public.cities ci ON p.city_id = ci.city_id
+                JOIN public.cities ci ON p.city_id = ci.city_id AND (p.is_active IS NULL OR p.is_active = TRUE)
                 LEFT JOIN (
                     SELECT
                         i.poi_id,
@@ -215,7 +215,7 @@ def list_pois(
                 SELECT COUNT(*)
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id
-                JOIN public.cities ci ON p.city_id = ci.city_id
+                JOIN public.cities ci ON p.city_id = ci.city_id AND (p.is_active IS NULL OR p.is_active = TRUE)
                 {where_sql}
             """
             cursor.execute(count_query, tuple(params))

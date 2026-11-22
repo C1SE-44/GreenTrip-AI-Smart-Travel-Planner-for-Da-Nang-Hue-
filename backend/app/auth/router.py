@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
 from psycopg.errors import UniqueViolation
 
 from app.rate_limit import rate_limit
@@ -398,13 +398,27 @@ def _as_utc_datetime(value: datetime | str) -> datetime:
     return value.astimezone(timezone.utc)
 
 
+def _dispatch_verification_email(email: str, full_name: str, token: str) -> None:
+    try:
+        send_verification_email(email, full_name, token)
+    except Exception:
+        pass
+
+
+def _dispatch_otp_email(email: str, full_name: str, otp_code: str) -> None:
+    try:
+        send_otp_email(email, full_name, otp_code)
+    except Exception:
+        pass
+
+
 @router.post(
     "/signup",
     status_code=status.HTTP_201_CREATED,
     response_model=SignupResponse,
     dependencies=[Depends(rate_limit("auth_signup", max_requests=5, window_seconds=60))],
 )
-def signup(request: SignupRequest) -> dict:
+def signup(request: SignupRequest, background_tasks: BackgroundTasks) -> dict:
     email = request.email.strip().lower()
     password_hash = hash_password(request.password)
 
@@ -462,10 +476,10 @@ def signup(request: SignupRequest) -> dict:
                     connection.commit()
 
                     access_token = create_access_token(str(user[0]))
-                    # Dispatch verification email (for notification & verification)
+                    # Queue verification email off the HTTP response critical path
                     try:
                         token = create_verification_token(email)
-                        send_verification_email(email, request.full_name, token)
+                        background_tasks.add_task(_dispatch_verification_email, email, request.full_name, token)
                     except Exception:
                         pass
 
@@ -574,7 +588,7 @@ def verify_email(request: VerifyEmailRequest) -> VerifyEmailResponse:
     response_model=VerifyEmailResponse,
     dependencies=[Depends(rate_limit("auth_resend_verification", max_requests=5, window_seconds=60))],
 )
-def resend_verification(request: ResendVerificationRequest) -> VerifyEmailResponse:
+def resend_verification(request: ResendVerificationRequest, background_tasks: BackgroundTasks) -> VerifyEmailResponse:
     email = request.email.strip().lower()
     try:
         with get_connection() as connection:
@@ -603,7 +617,7 @@ def resend_verification(request: ResendVerificationRequest) -> VerifyEmailRespon
                     )
 
                 token = create_verification_token(request.email)
-                send_verification_email(request.email, full_name, token)
+                background_tasks.add_task(_dispatch_verification_email, request.email, full_name, token)
 
                 return VerifyEmailResponse(
                     message="Email xác nhận mới đã được gửi tới hộp thư của bạn.",
@@ -826,7 +840,7 @@ def verify_otp(request: VerifyOtpRequest) -> TokenResponse:
     response_model=ResendOtpResponse,
     dependencies=[Depends(rate_limit("auth_resend_otp", max_requests=5, window_seconds=60))],
 )
-def resend_otp(request: ResendOtpRequest) -> ResendOtpResponse:
+def resend_otp(request: ResendOtpRequest, background_tasks: BackgroundTasks) -> ResendOtpResponse:
     session = verify_otp_session_token(request.otp_session_token)
     if not session or session["email"].lower() != request.email.lower():
         raise HTTPException(
@@ -888,10 +902,7 @@ def resend_otp(request: ResendOtpRequest) -> ResendOtpResponse:
                 )
                 connection.commit()
 
-        try:
-            send_otp_email(request.email.lower(), full_name, otp_code)
-        except Exception:
-            pass
+        background_tasks.add_task(_dispatch_otp_email, request.email.lower(), full_name, otp_code)
 
         return ResendOtpResponse(
             message="Mã OTP mới gồm 6 chữ số đã được gửi tới email của bạn.",

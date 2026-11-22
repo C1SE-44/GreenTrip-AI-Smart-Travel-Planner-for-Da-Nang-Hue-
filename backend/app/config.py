@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"
+    REDIS_URL: str = ""
+    POI_CACHE_TTL_SECONDS: int = Field(default=300, ge=10, le=3600)
 
     @model_validator(mode="after")
     def validate_security_settings(self) -> "Settings":

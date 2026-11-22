@@ -216,3 +216,35 @@ def test_corrective_grounding_keeps_verified_gemini_synthesis(monkeypatch: pytes
     assert "Chùa Linh Ứng" in data["reply_text"]
     assert "Điểm mạnh" in data["reply_text"]
     assert "Đã xác thực toàn bộ địa điểm" in (data.get("reasoning_trace") or "")
+
+
+def test_hybrid_nlu_sanitizes_unknown_gemini_constraint_tags(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    get_settings.cache_clear()
+
+    nlu_json = json.dumps(
+        {
+            "intent_category": "QA_AND_COMPARE",
+            "sub_intent": "travel_tips_budget",
+            "target_city": "Đà Nẵng",
+            "target_slot": "unknown_slot",
+            "mutation_action": "unknown_action",
+            "constraints": ["elderly_friendly", "travel_tips_budget", "bad_tag"],
+            "confidence": 0.91,
+        }
+    )
+    ctx = TripContextPayload(destination="Đà Nẵng", days_count=3, current_day=1)
+
+    with patch("app.trips.copilot_hybrid_nlu.httpx.post", return_value=_mock_gemini_response(nlu_json)):
+        category, intent, _, constraints, _, meta = classify_copilot_request_hybrid(
+            "Đi Đà Nẵng 3 ngày với bố mẹ hết khoảng bao nhiêu tiền?",
+            ctx,
+        )
+
+    assert category == "QA_AND_COMPARE"
+    assert intent == "travel_tips_budget"
+    assert "elderly_friendly" in constraints
+    assert "travel_tips_budget" not in constraints
+    assert "bad_tag" not in constraints
+    assert meta["source"] == "gemini"
+    assert meta["mutation_action"] == "none"

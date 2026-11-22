@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+import re
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,6 +9,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 _DEV_JWT_SECRET = "greentrip-dev-secret-jwt-key-2026-very-secure"
 _INSECURE_JWT_DEFAULTS = frozenset({_DEV_JWT_SECRET, "change-me", ""})
 _DEPLOYED_ENVS = frozenset({"production", "prod", "staging"})
+_SUPABASE_DB_HOST_RE = re.compile(r"^(https?://)db\.([a-z0-9-]+\.supabase\.co)", re.IGNORECASE)
 
 
 class Settings(BaseSettings):
@@ -46,6 +48,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_security_settings(self) -> "Settings":
+        if self.SUPABASE_URL:
+            self.SUPABASE_URL = _SUPABASE_DB_HOST_RE.sub(r"\1\2", self.SUPABASE_URL.strip()).rstrip("/")
         normalized_env = self.APP_ENV.strip().lower() or "development"
         self.APP_ENV = normalized_env
         if normalized_env in _DEPLOYED_ENVS:

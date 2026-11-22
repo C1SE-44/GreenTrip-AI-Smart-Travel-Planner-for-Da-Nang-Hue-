@@ -79,6 +79,15 @@ Quy tắc phân loại:
 
 _CODE_FENCE_RE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$")
 
+_ALLOWED_CONSTRAINTS = frozenset(
+    {"elderly_friendly", "kid_friendly", "rainy_season", "quiet_vibe", "vegetarian", "beach_lover", "food_lover"}
+)
+_ALLOWED_TARGET_CITIES = frozenset({"Đà Nẵng", "Huế", "Đà Nẵng & Huế"})
+_ALLOWED_SLOTS = frozenset({"morning", "lunch", "afternoon", "dinner"})
+_ALLOWED_MUTATIONS = frozenset(
+    {"none", "add_stop", "remove_stop", "replace_stop", "swap_day", "split_nights", "adjust_late"}
+)
+
 
 class StructuredIntentResult(BaseModel):
     """Validated JSON intent representation extracted by Gemini NLU or regex fallback."""
@@ -102,8 +111,17 @@ def _extract_json_payload(raw_text: str) -> dict[str, Any]:
     for nullable_key in ("target_city", "target_day", "target_slot"):
         if parsed.get(nullable_key) in ("", "null", "None"):
             parsed[nullable_key] = None
-    if not parsed.get("mutation_action"):
+    if parsed.get("target_city") not in _ALLOWED_TARGET_CITIES:
+        parsed["target_city"] = None
+    if parsed.get("target_slot") not in _ALLOWED_SLOTS:
+        parsed["target_slot"] = None
+    if parsed.get("mutation_action") not in _ALLOWED_MUTATIONS:
         parsed["mutation_action"] = "none"
+    raw_constraints = parsed.get("constraints")
+    if isinstance(raw_constraints, list):
+        parsed["constraints"] = [c for c in raw_constraints if isinstance(c, str) and c in _ALLOWED_CONSTRAINTS]
+    else:
+        parsed["constraints"] = []
     return parsed
 
 

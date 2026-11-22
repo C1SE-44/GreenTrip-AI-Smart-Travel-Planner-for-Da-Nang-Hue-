@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import csv
 import io
 import json
 from pathlib import Path
+import re
 import sys
 from typing import Any
 
@@ -31,6 +32,15 @@ CURATED_REPLACEMENTS: dict[str, str] = {
 }
 
 
+_SUPABASE_DB_HOST_RE = re.compile(r"^(https?://)db\.([a-z0-9-]+\.supabase\.co)", re.IGNORECASE)
+
+
+def normalize_supabase_url(supabase_url: str) -> str:
+    """Strip accidental Postgres `db.` subdomain prefix from Supabase project URL."""
+    cleaned = supabase_url.strip().rstrip("/")
+    return _SUPABASE_DB_HOST_RE.sub(r"\1\2", cleaned)
+
+
 def build_storage_headers(api_key: str) -> dict[str, str]:
     key = api_key.strip()
     headers = {"apikey": key}
@@ -40,7 +50,7 @@ def build_storage_headers(api_key: str) -> dict[str, str]:
 
 
 def build_public_storage_url(supabase_url: str, bucket: str, object_path: str) -> str:
-    base = supabase_url.strip().rstrip("/")
+    base = normalize_supabase_url(supabase_url)
     clean_bucket = bucket.strip().strip("/")
     clean_path = object_path.strip().lstrip("/")
     return f"{base}/storage/v1/object/public/{clean_bucket}/{clean_path}"
@@ -227,7 +237,7 @@ def main() -> int:
 
         if args.migrate_supabase:
             settings = get_settings()
-            supabase_url = settings.SUPABASE_URL.strip().rstrip("/")
+            supabase_url = normalize_supabase_url(settings.SUPABASE_URL)
             api_key = settings.SUPABASE_SECRET_KEY.strip() or settings.SUPABASE_SERVICE_ROLE_KEY.strip()
             if not supabase_url or not api_key:
                 print(
@@ -237,45 +247,91 @@ def main() -> int:
                 return 2
 
             headers = build_storage_headers(api_key)
+            bucket_prefix = f"/storage/v1/object/public/{args.bucket}/"
+            pending = [
+                (pid, name, cat, img, gal)
+                for pid, name, cat, img, gal in rows
+                if str(img or "").strip() and bucket_prefix not in str(img or "")
+            ]
+            if args.limit:
+                pending = pending[: args.limit]
+
+            def _download_convert_upload(
+                item: tuple[Any, str, str | None, str | None, list[str] | None],
+                dl_client: httpx.Client,
+                up_client: httpx.Client,
+            ) -> tuple[Any, str, list[str], str]:
+                pid, name, cat, img, gal = item
+                src_url = str(img or "").strip()
+                fallback_url = select_replacement_url(name, cat)
+                if not url_status.get(src_url, False):
+                    src_url = fallback_url
+
+                raw_bytes: bytes | None = None
+                try:
+                    resp = dl_client.get(src_url)
+                    resp.raise_for_status()
+                    webp_bytes = optimize_image_to_webp(resp.content)
+                    raw_bytes = webp_bytes
+                except Exception:
+                    if src_url != fallback_url:
+                        resp = dl_client.get(fallback_url)
+                        resp.raise_for_status()
+                        raw_bytes = optimize_image_to_webp(resp.content)
+                        src_url = fallback_url
+                    else:
+                        raise
+
+                obj_path = f"{pid}.webp"
+                public_url = build_public_storage_url(supabase_url, args.bucket, obj_path)
+                if not args.dry_run:
+                    upload_url = f"{supabase_url}/storage/v1/object/{args.bucket}/{obj_path}"
+                    up_headers = {**headers, "Content-Type": "image/webp", "x-upsert": "true"}
+                    up_resp = up_client.post(upload_url, headers=up_headers, content=raw_bytes)
+                    up_resp.raise_for_status()
+
+                new_gal = [public_url] + [
+                    u for u in (gal or []) if u and u != src_url and url_status.get(u, False)
+                ]
+                return pid, public_url, new_gal[:5], name
+
             migrated = 0
-            with httpx.Client(
-                timeout=15.0,
-                follow_redirects=True,
-                headers={"User-Agent": "Mozilla/5.0 (GreenTripImageMigrate/1.0)"},
-            ) as dl_client:
-                with conn.cursor() as cur:
-                    for pid, name, cat, img, gal in rows:
-                        if args.limit and migrated >= args.limit:
-                            break
-                        src_url = str(img or "").strip()
-                        if not src_url or f"/storage/v1/object/public/{args.bucket}/" in src_url:
-                            continue
-                        if not url_status.get(src_url, False):
-                            src_url = select_replacement_url(name, cat)
-                        try:
-                            resp = dl_client.get(src_url)
-                            resp.raise_for_status()
-                            webp_bytes = optimize_image_to_webp(resp.content)
-                            obj_path = f"{pid}.webp"
-                            upload_url = f"{supabase_url}/storage/v1/object/{args.bucket}/{obj_path}"
-                            up_headers = {**headers, "Content-Type": "image/webp", "x-upsert": "true"}
-                            if not args.dry_run:
-                                up_resp = httpx.post(upload_url, headers=up_headers, content=webp_bytes, timeout=20.0)
-                                up_resp.raise_for_status()
-                                public_url = build_public_storage_url(supabase_url, args.bucket, obj_path)
-                                new_gal = [public_url] + [
-                                    u for u in (gal or []) if u and u != src_url and url_status.get(u, False)
-                                ]
-                                cur.execute(
-                                    "UPDATE public.pois SET image_url = %s, gallery_urls = %s WHERE poi_id = %s",
-                                    (public_url, new_gal[:5], pid),
-                                )
-                            migrated += 1
-                        except Exception as exc:
-                            print(f"  WARN_SKIP: {pid} | {name} | {exc}")
-            if not args.dry_run:
-                conn.commit()
-            print(f"MIGRATED_TO_SUPABASE={migrated} DRY_RUN={args.dry_run}")
+            failed = 0
+            limits = httpx.Limits(max_connections=16, max_keepalive_connections=16)
+            with (
+                httpx.Client(
+                    timeout=15.0,
+                    follow_redirects=True,
+                    limits=limits,
+                    headers={"User-Agent": "Mozilla/5.0 (GreenTripImageMigrate/1.0)"},
+                ) as dl_client,
+                httpx.Client(timeout=20.0, limits=limits) as up_client,
+                ThreadPoolExecutor(max_workers=8) as pool,
+                conn.cursor() as cur,
+            ):
+                future_map = {
+                    pool.submit(_download_convert_upload, item, dl_client, up_client): item
+                    for item in pending
+                }
+                for fut in as_completed(future_map):
+                    pid, name, _, _, _ = future_map[fut]
+                    try:
+                        done_pid, public_url, new_gal, _ = fut.result()
+                        if not args.dry_run:
+                            cur.execute(
+                                "UPDATE public.pois SET image_url = %s, gallery_urls = %s WHERE poi_id = %s",
+                                (public_url, new_gal, done_pid),
+                            )
+                        migrated += 1
+                        if not args.dry_run and migrated % 25 == 0:
+                            conn.commit()
+                            print(f"MIGRATE_PROGRESS={migrated}/{len(pending)}")
+                    except Exception as exc:
+                        failed += 1
+                        print(f"  WARN_SKIP: {pid} | {name} | {exc}")
+                if not args.dry_run:
+                    conn.commit()
+            print(f"MIGRATED_TO_SUPABASE={migrated} FAILED={failed} DRY_RUN={args.dry_run}")
 
     return 0
 

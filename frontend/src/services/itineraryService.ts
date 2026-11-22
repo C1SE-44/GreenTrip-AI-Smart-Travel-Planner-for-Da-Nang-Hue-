@@ -641,6 +641,10 @@ export function stopFromPoi(poi: Poi, source: 'idea' | 'manual' | 'assistant' = 
 const itineraryWrites = new Map<string, Promise<TripItinerary>>();
 const itineraryReads = new Map<string, Promise<TripItinerary>>();
 
+export function isClientDraftTripId(tripId: string): boolean {
+  return tripId.startsWith('trip-quick-');
+}
+
 export async function getTripItinerary(tripId: string): Promise<TripItinerary> {
   const existingRead = itineraryReads.get(tripId);
   if (existingRead) return existingRead;
@@ -649,6 +653,16 @@ export async function getTripItinerary(tripId: string): Promise<TripItinerary> {
     await itineraryWrites.get(tripId)?.catch(() => undefined);
     const key = `greentrip_itinerary_${tripId}`;
     const cacheBeforeRead = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+    if (isClientDraftTripId(tripId)) {
+      if (cacheBeforeRead) {
+        try {
+          return JSON.parse(cacheBeforeRead) as TripItinerary;
+        } catch (e) {
+          console.warn('Failed to parse localStorage draft itinerary', e);
+        }
+      }
+      throw Object.assign(new Error('Chưa có lịch trình được lưu.'), { status: 404 });
+    }
     try {
       const remote = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(tripId)}/itinerary`);
       if (remote && remote.trip_id) {
@@ -743,7 +757,7 @@ export async function saveTripItinerary(itinerary: TripItinerary): Promise<TripI
     } catch {
       previous = null;
     }
-    if (!previous) {
+    if (!previous && !isClientDraftTripId(itinerary.trip_id)) {
       try {
         previous = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(itinerary.trip_id)}/itinerary`);
       } catch {

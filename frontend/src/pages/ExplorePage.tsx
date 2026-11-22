@@ -162,6 +162,37 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   );
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [mobileExplorePane, setMobileExplorePane] = useState<'list' | 'map'>('list');
+  const [isDesktopViewport, setIsDesktopViewport] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1024px)');
+    const syncViewport = () => setIsDesktopViewport(media.matches);
+    syncViewport();
+    media.addEventListener('change', syncViewport);
+    return () => media.removeEventListener('change', syncViewport);
+  }, []);
+
+  useEffect(() => {
+    if (viewMode !== 'explore') {
+      setMobileExplorePane('list');
+    }
+  }, [viewMode]);
+
+  const handleOpenTripsView = () => {
+    setViewMode('trips');
+    setSelectedTripForDetails(null);
+    if (userTrips.length > 0) {
+      setActiveOverviewTrip(userTrips[0]);
+      setActiveTripSubTab('ideas');
+    } else {
+      setActiveOverviewTrip(null);
+      setIsCreateTripModalOpen(true);
+    }
+    navigate('/planner');
+  };
 
   useEffect(() => {
     if (initialView !== 'saved' && initialView !== 'profile') return;
@@ -878,12 +909,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilter;
 
   return (
-    <div className="flex h-screen overflow-hidden font-sans bg-white select-none print-scroll-unlock">
+    <div className="flex h-screen h-[100dvh] w-full max-w-full overflow-hidden font-sans bg-white select-none print-scroll-unlock">
       {/* 1. LEFT SIDEBAR: Padding px-4 cố định, các icon giữ nguyên tọa độ 100%, không bị dịch chuyển */}
       <aside 
         className={`${
           isSidebarCollapsed ? "w-[68px]" : "w-[218px]"
-        } px-2.5 shrink-0 h-full border-r border-gray-100/90 flex flex-col justify-between pt-2.5 pb-6 bg-white z-20 select-none transition-[width] duration-300 ease-in-out group/sidebar relative`} 
+        } px-2.5 shrink-0 h-full border-r border-gray-100/90 hidden md:flex flex-col justify-between pt-2.5 pb-6 bg-white z-20 select-none transition-[width] duration-300 ease-in-out group/sidebar relative`}
         data-purpose="sidebar"
       >
         <div className="flex flex-col">
@@ -978,19 +1009,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 badge: savedIds.size > 0 ? String(savedIds.size) : undefined
               },
                             { 
-                key: 'trips', 
-                onClick: () => { 
-                  setViewMode('trips'); 
-                  setSelectedTripForDetails(null);
-                  if (userTrips.length > 0) {
-                    setActiveOverviewTrip(userTrips[0]);
-                    setActiveTripSubTab('ideas');
-                  } else {
-                    setActiveOverviewTrip(null);
-                    setIsCreateTripModalOpen(true);
-                  }
-                  navigate('/planner'); 
-                }, 
+                key: 'trips',
+                onClick: handleOpenTripsView,
                 icon: viewMode === 'trips' ? 'ph-fill ph-calendar-plus' : 'ph ph-calendar-plus', 
                 label: 'Lịch trình', 
                 active: viewMode === 'trips',
@@ -1312,15 +1332,15 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         /* ─── MINDTRIP TRIPS VIEW ─── */
         <main className="flex-1 h-full bg-white overflow-y-auto auto-hide-scrollbar select-none animate-fadeIn">
           {/* Section 1: Lề & khung nội dung - Lề trái 115px (pl-[64px]), lề phải 134px (pr-[74px]), tâm tiêu đề cách mép trên 160px (pt-[74px]) */}
-          <div className="w-full pl-6 sm:pl-10 lg:pl-[64px] pr-6 sm:pr-10 lg:pr-[74px] pt-[74px] pb-24">
+          <div className="w-full px-4 sm:px-10 lg:pl-[64px] lg:pr-[74px] pt-6 md:pt-[74px] pb-28 md:pb-24">
             {/* Section 2.1: Tiêu đề & nút Chuyến đi mới - Tiêu đề 52px (text-[28px] sm:text-[32px] lg:text-[34px], -5%); nút cao 71px (h-[40px]), mb-[38px] đến hàng tab (120px) */}
-            <div className="flex items-center justify-between mb-[38px]">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 md:mb-[38px]">
               <h1 className="text-[28px] sm:text-[32px] lg:text-[34px] font-bold text-gray-950 tracking-tight leading-none">
                 Lịch trình của bạn
               </h1>
               <button
                 onClick={() => setIsCreateTripModalOpen(true)}
-                className="ml-auto w-auto whitespace-nowrap bg-black text-white hover:bg-neutral-800 h-[40px] px-[36px] rounded-full text-[13.5px] font-semibold flex items-center gap-[14px] transition active:scale-95 shadow-xs cursor-pointer shrink-0"
+                className="ml-auto w-auto whitespace-nowrap bg-black text-white hover:bg-neutral-800 min-h-[44px] h-[44px] sm:h-[40px] px-5 sm:px-[36px] rounded-full text-[13.5px] font-semibold flex items-center gap-[14px] transition active:scale-95 shadow-xs cursor-pointer shrink-0"
               >
                 <i className="ph ph-plus font-bold text-sm"></i>
                 <span>Chuyến đi mới</span>
@@ -1571,10 +1591,10 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         className={`${
           isMapExpanded 
             ? "hidden" 
-            : isSidebarCollapsed 
-              ? "w-[750px] shrink-0" 
-              : "w-[650px] shrink-0"
-        } h-full relative bg-white flex flex-col select-none transition-[width] duration-300 ease-in-out`}
+            : `${mobileExplorePane === 'map' ? 'hidden lg:flex' : 'flex'} w-full lg:shrink-0 ${
+                isSidebarCollapsed ? "lg:w-[750px]" : "lg:w-[650px]"
+              }`
+        } h-full relative bg-white flex-col select-none transition-[width] duration-300 ease-in-out`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         data-purpose="content-list-stream"
@@ -1586,7 +1606,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           className="w-full h-full overflow-y-auto no-scrollbar scroll-smooth"
         >
         {/* Top Bar: Title & Search (di chuyển theo toàn bộ luồng cuộn như landing page) */}
-        <header className="w-full bg-white pl-[36px] pr-[70px] pt-8 pb-0 space-y-3.5">
+        <header className="w-full bg-white px-4 pt-4 lg:pl-[36px] lg:pr-[70px] lg:pt-8 pb-0 space-y-3.5">
           {/* Location Title Dropdown */}
           <div className="relative">
             <div 
@@ -1627,13 +1647,13 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           </div>
 
           {/* Search Box & Filter (+25% height, scaled text & icons) */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 relative flex items-center">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex-1 min-w-0 relative flex items-center">
               <i className="ph ph-magnifying-glass text-gray-400 absolute left-4 text-xl"></i>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-12 pr-4 h-[50px] bg-[#F3F4F6] text-[15px] placeholder-gray-400 text-gray-900 rounded-full border-none focus:outline-none focus:ring-1 focus:ring-gray-300 transition"
+                className="w-full pl-12 pr-4 h-[46px] sm:h-[50px] bg-[#F3F4F6] text-[14px] sm:text-[15px] placeholder-gray-400 text-gray-900 rounded-full border-none focus:outline-none focus:ring-1 focus:ring-gray-300 transition"
                 placeholder="Tìm kiếm địa điểm, di tích..."
                 type="text"
               />
@@ -1649,7 +1669,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
 
             <button 
               onClick={() => setIsFilterPopoverOpen(true)}
-              className={`flex items-center gap-2 px-5 h-[50px] rounded-full border transition text-[15px] font-medium cursor-pointer ${
+              className={`shrink-0 flex items-center gap-2 px-3.5 sm:px-5 h-[46px] sm:h-[50px] rounded-full border transition text-[14px] sm:text-[15px] font-medium cursor-pointer ${
                 activeFilterCount > 0 || isFilterPopoverOpen
                   ? 'bg-black text-white border-black shadow-sm'
                   : 'border-gray-200 hover:bg-gray-50 text-gray-800'
@@ -1690,7 +1710,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         </header>
 
         {/* Cards Scrollable Area: chip→thẻ đầu x0.24 (pt-[48px]), lề trái pl-[36px], cách map pr-[70px] */}
-        <div className="pl-[36px] pr-[70px] pt-[48px]">
+        <div className="px-4 pt-5 lg:pl-[36px] lg:pr-[70px] lg:pt-[48px]">
           {/* Active Filter Chips Bar (nếu có lọc kích hoạt) */}
           {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || filterValues.subCategories.length > 0 || (filterValues.features && filterValues.features.length > 0) || filterValues.timeOfDay.length > 0) && (
             <div className="flex items-center gap-2 flex-wrap mb-5 animate-fadeIn">
@@ -1749,16 +1769,16 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
 
           {/* Grid danh sách thẻ: Khoảng cách giữa các thẻ x1.5 (gap-[32px]) */}
           {loading ? (
-            <div className="grid grid-cols-2 gap-[32px] pb-16">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 lg:gap-[32px] pb-28 md:pb-16">
               {Array.from({ length: 6 }).map((_, i) => <PoiCardSkeleton key={i} />)}
             </div>
           ) : filteredPois.length === 0 ? (
-            <div className="py-20 text-center text-gray-500 pb-16">
+            <div className="py-20 text-center text-gray-500 pb-28 md:pb-16">
               <i className="ph ph-magnifying-glass text-3xl mb-2 text-gray-400"></i>
               <p className="text-sm font-medium">Không tìm thấy địa điểm phù hợp</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-[32px] pb-16">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 lg:gap-[32px] pb-28 md:pb-16">
               {filteredPois.map((poi, idx) => (
                 <div key={poi.id} data-poi-id={poi.id}>
                   <ExplorePoiCard
@@ -1806,41 +1826,62 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         )}
       </main>
 
+      {/* Floating mobile/tablet Map <-> List toggle */}
+      {!fullDetailPoi && (
+        <button
+          type="button"
+          onClick={() => {
+            setMobileExplorePane((prev) => (prev === 'list' ? 'map' : 'list'));
+            window.setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
+          }}
+          className="lg:hidden fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-30 min-h-[44px] px-5 py-2.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-semibold shadow-lg flex items-center gap-2 cursor-pointer active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 no-print"
+        >
+          <i className={`ph ${mobileExplorePane === 'list' ? 'ph-map-trifold' : 'ph-list-bullets'} text-base`} aria-hidden="true"></i>
+          <span>{mobileExplorePane === 'list' ? 'Xem bản đồ' : 'Xem danh sách'}</span>
+        </button>
+      )}
+
       {/* 3. RIGHT SECTION: Map giữ khoảng cách p-6 bo góc 22px. Khi xem chi tiết: Card trượt từ bên phải qua, bo cong 24px mép trái chuẩn Mindtrip, đổ bóng mờ khuếch tán sang trái */}
       <section 
-        className={`flex-1 h-full relative bg-white ${fullDetailPoi ? 'overflow-visible z-30' : 'overflow-hidden'}`} 
+        className={
+          fullDetailPoi
+            ? 'fixed inset-0 z-50 lg:static lg:inset-auto lg:flex-1 lg:z-30 h-full bg-white overflow-visible'
+            : `${mobileExplorePane === 'map' ? 'flex-1 block pb-16 md:pb-0' : 'hidden lg:block lg:flex-1'} h-full relative bg-white overflow-hidden`
+        }
         data-purpose="right-panel-container"
       >
         {/* Interactive Map: Luôn hiển thị trừ khi người dùng chủ động mở bảng chi tiết sâu */}
-        <div className={`w-full h-full pl-3 pr-[36px] py-6 ${fullDetailPoi ? "invisible pointer-events-none" : "visible"}`}>
+        <div className={`w-full h-full p-3 lg:pl-3 lg:pr-[36px] lg:py-6 ${fullDetailPoi ? "invisible pointer-events-none" : "visible"}`}>
           <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
-            <PoiMap
-              pois={displayedMapPois}
-              selectedPoiId={selectedMapPoiId}
-              hoveredPoiId={hoveredPoiId}
-              onSelectPoi={handleSelectPoi}
-              onHoverPoi={setHoveredPoiId}
-              onOpenDetails={handleOpenFullDetail}
-              isExpanded={isMapExpanded}
-              onToggleExpand={() => {
-                setIsMapExpanded((prev) => !prev);
-                setTimeout(() => {
-                  window.dispatchEvent(new Event("resize"));
-                }, 200);
-              }}
-              favorites={savedIds}
-              pendingFavorites={pendingIds}
-              onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
-              addedTrips={addedTrips}
-              onToggleAddTrip={toggleAddTrip}
-            />
+            {(isDesktopViewport || mobileExplorePane === 'map') && (
+              <PoiMap
+                pois={displayedMapPois}
+                selectedPoiId={selectedMapPoiId}
+                hoveredPoiId={hoveredPoiId}
+                onSelectPoi={handleSelectPoi}
+                onHoverPoi={setHoveredPoiId}
+                onOpenDetails={handleOpenFullDetail}
+                isExpanded={isMapExpanded}
+                onToggleExpand={() => {
+                  setIsMapExpanded((prev) => !prev);
+                  setTimeout(() => {
+                    window.dispatchEvent(new Event("resize"));
+                  }, 200);
+                }}
+                favorites={savedIds}
+                pendingFavorites={pendingIds}
+                onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
+                addedTrips={addedTrips}
+                onToggleAddTrip={toggleAddTrip}
+              />
+            )}
           </div>
         </div>
 
         {/* Right Detail Section: Card trượt từ bên phải qua khi bấm "Chi tiết ->" */}
         {fullDetailPoi && (
           <div 
-            className="absolute inset-y-0 right-0 w-full z-40 bg-white rounded-l-[24px] border-l border-t border-b border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.08),-4px_0_12px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden animate-slideInRight"
+            className="absolute inset-y-0 right-0 w-full z-40 bg-white rounded-none lg:rounded-l-[24px] border-l border-t border-b border-gray-200/90 shadow-[-16px_0_40px_rgba(0,0,0,0.08),-4px_0_12px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden animate-slideInRight"
           >
             <PoiDetailSection
               poi={fullDetailPoi}
@@ -1848,13 +1889,94 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               isFavoritePending={pendingIds.has(fullDetailPoi.id)}
               onClose={() => setFullDetailPoiId(null)}
               onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
-              onViewOnMap={() => setFullDetailPoiId(null)}
+              onViewOnMap={() => {
+                setFullDetailPoiId(null);
+                if (!isDesktopViewport) setMobileExplorePane('map');
+              }}
             />
           </div>
         )}
       </section>
         </>
       )}
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav
+        aria-label="Điều hướng di động"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 h-16 bg-white/95 backdrop-blur-md border-t border-neutral-200 px-1.5 flex items-center justify-around shadow-[0_-4px_16px_rgba(43,38,34,0.06)] no-print"
+      >
+        {(
+          [
+            {
+              key: 'explore',
+              label: 'Khám phá',
+              icon: viewMode === 'explore' ? 'ph-fill ph-compass' : 'ph ph-compass',
+              active: viewMode === 'explore',
+              onClick: () => {
+                setViewMode('explore');
+                navigate('/explore');
+              },
+            },
+            {
+              key: 'trips',
+              label: 'Lịch trình',
+              icon: viewMode === 'trips' ? 'ph-fill ph-calendar-plus' : 'ph ph-calendar-plus',
+              active: viewMode === 'trips',
+              onClick: handleOpenTripsView,
+            },
+            {
+              key: 'chat',
+              label: 'AI Chat',
+              icon: viewMode === 'chat' ? 'ph-fill ph-chat-circle-dots' : 'ph ph-chat-circle-dots',
+              active: viewMode === 'chat',
+              onClick: () => {
+                setViewMode('chat');
+                navigate('/chat');
+              },
+            },
+            {
+              key: 'saved',
+              label: 'Đã lưu',
+              icon: viewMode === 'saved' ? 'ph-fill ph-heart text-rose-600' : 'ph ph-heart',
+              active: viewMode === 'saved',
+              badge: savedIds.size > 0 ? savedIds.size : undefined,
+              onClick: () => {
+                setViewMode('saved');
+                navigate('/saved');
+              },
+            },
+            {
+              key: 'profile',
+              label: 'Tài khoản',
+              icon: viewMode === 'profile' ? 'ph-fill ph-user-circle' : 'ph ph-user-circle',
+              active: viewMode === 'profile',
+              onClick: () => {
+                setViewMode('profile');
+                navigate('/profile');
+              },
+            },
+          ] as const
+        ).map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={item.onClick}
+            className={`relative flex-1 min-w-0 min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1 text-[12px] leading-tight transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+              item.active ? 'font-bold text-neutral-950 bg-neutral-100' : 'font-medium text-neutral-600 hover:text-neutral-950'
+            }`}
+          >
+            <span className="relative inline-flex items-center justify-center">
+              <i className={`${item.icon} text-[20px]`} aria-hidden="true"></i>
+              {'badge' in item && item.badge !== undefined && (
+                <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-[16px] px-1 rounded-full bg-neutral-900 text-white text-[12px] leading-[16px] font-bold text-center">
+                  {item.badge}
+                </span>
+              )}
+            </span>
+            <span className="whitespace-nowrap truncate max-w-full">{item.label}</span>
+          </button>
+        ))}
+      </nav>
 
       {/* 4. Explore Filter Modal (Đa Tab chuẩn Quiet Luxury & Mindtrip) */}
       <ExploreFilterModal

@@ -4,6 +4,7 @@ import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import ExplorePage from '@/pages/ExplorePage';
 import LandingPage from '@/pages/LandingPage';
 import AdminDashboardPage from '@/pages/AdminDashboardPage';
+import DemoQrPage from '@/pages/DemoQrPage';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { SavedPlacesProvider } from '@/context/SavedPlacesContext';
 
@@ -73,6 +74,9 @@ function App() {
             </AdminRouteGuard>
           }
         />
+
+        {/* Committee Live Demo QR Code Page */}
+        <Route path="/demo-qr" element={<DemoQrPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

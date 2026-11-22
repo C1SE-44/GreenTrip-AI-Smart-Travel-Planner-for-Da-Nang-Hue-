@@ -162,6 +162,17 @@ export default function TripOverviewView({
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [isPlannerDesktopViewport, setIsPlannerDesktopViewport] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 768px)');
+    const syncViewport = () => setIsPlannerDesktopViewport(media.matches);
+    syncViewport();
+    media.addEventListener('change', syncViewport);
+    return () => media.removeEventListener('change', syncViewport);
+  }, []);
   const [streamingText, setStreamingText] = useState('');
   const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
   const [activeConstraints, setActiveConstraints] = useState<string[]>([]);
@@ -1192,11 +1203,11 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   };
 
   return (
-    <div className="flex-1 h-full bg-white overflow-hidden select-none animate-fadeIn flex flex-col">
+    <div className="flex-1 min-w-0 w-full h-full bg-white overflow-hidden select-none animate-fadeIn flex flex-col">
       {/* ─── THANH TRẠNG THÁI 1 HÀNG DUY NHẤT CHUẨN 100% MINDTRIP ─── */}
-      <div className="h-[60px] flex items-center justify-between shrink-0 px-6 lg:px-[36px] bg-white border-b border-gray-200/90 gap-2 overflow-x-auto no-scrollbar z-30">
+      <div className="h-[60px] flex items-center justify-between shrink-0 px-3 sm:px-6 lg:px-[36px] bg-white border-b border-gray-200/90 gap-2 overflow-x-auto no-scrollbar z-30">
         {/* BÊN TRÁI: NÚT QUAY LẠI + THUMBNAIL + TÊN CHUYẾN ĐI (DROPDOWN) */}
-        <div className="flex items-center gap-2.5 shrink-0 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-initial sm:shrink-0">
           <button
             onClick={onBack}
             className="w-8 h-8 rounded-full border border-gray-200/90 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shrink-0 shadow-2xs"
@@ -1206,7 +1217,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           </button>
 
           {/* Thumbnail ảnh đại diện + Tiêu đề & phụ đề */}
-          <div className="flex items-center gap-2.5 cursor-pointer group">
+          <div className="flex items-center gap-2.5 cursor-pointer group min-w-0">
             <img
               src={trip.image || (trip.destination === 'Huế' 
                 ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=200&auto=format&fit=crop&q=80'
@@ -1337,13 +1348,13 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       />
 
       {/* ─── NỘI DUNG CHÍNH: BỐ CỤC CHUẨN TRANG EXPLORE (CỘT GIỮA + BẢN ĐỒ FLEX-1) ─── */}
-      <div className="flex-1 min-h-0 flex items-stretch overflow-hidden">
+      <div className="flex-1 min-w-0 w-full min-h-0 flex items-stretch overflow-hidden">
         
         {/* ────── CỘT GIỮA: AI COPILOT CHAT WORKSPACE (CHIỀU RỘNG CHUẨN EXPLORE) ────── */}
         <div 
           className={`${
-            isMapExpanded ? 'hidden' : 'w-[560px] lg:w-[620px] xl:w-[660px] shrink-0'
-          } h-full bg-white flex flex-col justify-between pl-6 lg:pl-[36px] pr-5 pt-3.5 pb-5 border-r border-gray-100 select-none transition-[width] duration-300 ease-in-out`}
+            isMapExpanded ? 'hidden' : 'w-full min-w-0 md:w-[560px] lg:w-[620px] xl:w-[660px] shrink-0'
+          } h-full bg-white flex flex-col justify-between px-4 md:pl-6 lg:pl-[36px] md:pr-5 pt-3.5 pb-20 md:pb-5 border-r border-gray-100 select-none transition-[width] duration-300 ease-in-out`}
         >
           {/* Header Chat: Chats 1 chuẩn Mindtrip */}
           <div className="flex items-center justify-between mb-1.5 shrink-0">
@@ -1828,34 +1839,36 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         </div>
 
         {/* ────── CỘT PHẢI: MAP SECTION CHUẨN TRANG EXPLORE (FLEX-1, PADDING & BORDER KHỚP 100%) ────── */}
-        <section 
-          className="flex-1 h-full relative bg-white overflow-hidden" 
+        <section
+          className="hidden md:block flex-1 h-full relative bg-white overflow-hidden"
           data-purpose="right-panel-container"
         >
           <div className="w-full h-full pl-3 pr-6 lg:pr-[36px] py-4 pb-6">
             <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
-              <PoiMap
-                pois={relevantPois}
-                selectedPoiId={selectedMapPoiId}
-                hoveredPoiId={hoveredMapPoiId}
-                onSelectPoi={setSelectedMapPoiId}
-                onHoverPoi={setHoveredMapPoiId}
-                showMapLoader={false}
-                isExpanded={isMapExpanded}
-                onToggleExpand={() => {
-                  setIsMapExpanded((prev) => !prev);
-                  setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                  }, 200);
-                }}
-                favorites={savedIds}
-                pendingFavorites={pendingIds}
-                onToggleFavorite={handleOpenSavedCollections}
-                addedTrips={new Set(tripIdeas)}
-                onToggleAddTrip={handleToggleIdea}
-                routeCoordinates={copilotRouteCoordinates.length >= 2 ? copilotRouteCoordinates : undefined}
-                numberedOrderMap={copilotNumberedOrderMap.size > 0 ? copilotNumberedOrderMap : undefined}
-              />
+              {isPlannerDesktopViewport && (
+                <PoiMap
+                  pois={relevantPois}
+                  selectedPoiId={selectedMapPoiId}
+                  hoveredPoiId={hoveredMapPoiId}
+                  onSelectPoi={setSelectedMapPoiId}
+                  onHoverPoi={setHoveredMapPoiId}
+                  showMapLoader={false}
+                  isExpanded={isMapExpanded}
+                  onToggleExpand={() => {
+                    setIsMapExpanded((prev) => !prev);
+                    setTimeout(() => {
+                      window.dispatchEvent(new Event('resize'));
+                    }, 200);
+                  }}
+                  favorites={savedIds}
+                  pendingFavorites={pendingIds}
+                  onToggleFavorite={handleOpenSavedCollections}
+                  addedTrips={new Set(tripIdeas)}
+                  onToggleAddTrip={handleToggleIdea}
+                  routeCoordinates={copilotRouteCoordinates.length >= 2 ? copilotRouteCoordinates : undefined}
+                  numberedOrderMap={copilotNumberedOrderMap.size > 0 ? copilotNumberedOrderMap : undefined}
+                />
+              )}
             </div>
           </div>
         </section>

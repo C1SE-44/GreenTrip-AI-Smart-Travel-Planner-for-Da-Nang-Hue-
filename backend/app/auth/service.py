@@ -52,7 +52,7 @@ def authenticate_user(email: str, password: str) -> str | None:
 
 
 
-def create_access_token(subject: str) -> str:
+def create_access_token(subject: str, role: str | None = None) -> str:
     settings = get_settings()
     if not settings.JWT_SECRET_KEY:
         raise AuthServiceUnavailable
@@ -60,9 +60,12 @@ def create_access_token(subject: str) -> str:
     expires_at = datetime.now(timezone.utc) + timedelta(
         minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
     )
+    claims: dict[str, object] = {"sub": subject, "exp": expires_at, "type": "access"}
+    if role:
+        claims["role"] = role.strip().upper()
     try:
         return jwt.encode(
-            {"sub": subject, "exp": expires_at, "type": "access"},
+            claims,
             settings.JWT_SECRET_KEY,
             algorithm=settings.JWT_ALGORITHM,
         )
@@ -203,4 +206,4 @@ def verify_otp_session_token(token: str) -> dict | None:
         }
     except (jwt.PyJWTError, ValueError, TypeError):
         return None
-
+

@@ -1,4 +1,11 @@
 import { API_BASE_URL } from '../lib/api';
+import {
+  type AuthenticatedUserProfile,
+  type UserRole,
+  normalizeUserRole,
+} from '../types/auth';
+
+export type { UserRole };
 export class ApiError extends Error {
   status: number;
   detail?: string;
@@ -277,17 +284,28 @@ export async function resendOtp(payload: ResendOtpPayload): Promise<ResendOtpRes
   return response.json();
 }
 
-export interface UserProfile {
-  user_id: string;
-  full_name: string;
-  email: string;
-  phone?: string | null;
-  role: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  avatar_url?: string | null;
-  has_password?: boolean | null;
+export type UserProfile = AuthenticatedUserProfile;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function parseUserProfile(raw: unknown): UserProfile {
+  if (!isRecord(raw) || typeof raw['user_id'] !== 'string' || typeof raw['email'] !== 'string') {
+    throw new Error('Dữ liệu hồ sơ người dùng không hợp lệ.');
+  }
+  return {
+    user_id: raw['user_id'],
+    full_name: typeof raw['full_name'] === 'string' ? raw['full_name'] : raw['email'],
+    email: raw['email'],
+    phone: typeof raw['phone'] === 'string' ? raw['phone'] : null,
+    role: normalizeUserRole(raw['role']),
+    status: typeof raw['status'] === 'string' ? raw['status'] : 'ACTIVE',
+    created_at: typeof raw['created_at'] === 'string' ? raw['created_at'] : '',
+    updated_at: typeof raw['updated_at'] === 'string' ? raw['updated_at'] : '',
+    avatar_url: typeof raw['avatar_url'] === 'string' ? raw['avatar_url'] : null,
+    has_password: typeof raw['has_password'] === 'boolean' ? raw['has_password'] : null,
+  };
 }
 
 export function getAccessToken(): string | null {
@@ -323,7 +341,8 @@ export async function getMe(): Promise<UserProfile> {
     throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
   }
 
-  return response.json();
+  const payload: unknown = await response.json();
+  return parseUserProfile(payload);
 }
 
 

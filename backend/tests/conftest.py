@@ -8,15 +8,18 @@ BACKEND_DIR = str(Path(__file__).resolve().parents[1])
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
+from app.cache import poi_cache
 from app.rate_limit import rate_limiter
 
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter_state():
-    """Keep sliding-window rate limits isolated across test cases."""
+    """Keep sliding-window rate limits and POI caches isolated across test cases."""
     rate_limiter.reset()
+    poi_cache.reset()
     yield
     rate_limiter.reset()
+    poi_cache.reset()
 
 
 @pytest.fixture(autouse=True)

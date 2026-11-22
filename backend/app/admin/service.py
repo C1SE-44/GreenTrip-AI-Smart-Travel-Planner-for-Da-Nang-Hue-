@@ -12,6 +12,7 @@ from app.admin.schemas import (
     AdminPoiPatchRequest,
     AdminPoiPatchResponse,
 )
+from app.cache import poi_cache
 
 
 class AdminServiceUnavailable(Exception):
@@ -73,6 +74,7 @@ def patch_admin_poi(
     if result is None:
         return None
     poi, audit_id = result
+    poi_cache.invalidate_pois()
     return AdminPoiPatchResponse(
         poi=poi,
         audit_id=audit_id,

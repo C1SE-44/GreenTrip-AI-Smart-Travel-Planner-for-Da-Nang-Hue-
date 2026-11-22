@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
+from app.cache import poi_cache
+from app.config import get_settings
 from app.pois.explanation_service import (
     ExplanationServiceUnavailable,
     get_poi_explanation_facts,
@@ -22,6 +24,7 @@ def get_parsed_weights(
 
 @router.get("", response_model=PaginatedPOIResponse)
 def get_pois(
+    response: Response,
     page: int = Query(default=1, ge=1, description="1-based page number"),
     limit: int = Query(default=10, ge=1, le=100, description="Items per page (maximum 100)"),
     category: str | None = Query(default=None, description="Filter by category name"),
@@ -31,8 +34,31 @@ def get_pois(
     budget_tier: str | None = Query(default=None, description="Filter by budget tier ($, $$, $$$, free)"),
     weights: ParsedSliderWeights = Depends(parse_slider_weights),
 ) -> PaginatedPOIResponse:
+    cache_key = poi_cache.build_pois_cache_key(
+        "list",
+        {
+            "page": page,
+            "limit": limit,
+            "category": category,
+            "city": city,
+            "sub_category": sub_category,
+            "cuisine": cuisine,
+            "budget_tier": budget_tier,
+            "weights": weights.model_dump(mode="json"),
+        },
+    )
+    cached_payload = poi_cache.get_json(cache_key)
+    if cached_payload is not None:
+        try:
+            cached_model = PaginatedPOIResponse.model_validate(cached_payload)
+            response.headers["X-Cache"] = "HIT"
+            response.headers["Cache-Control"] = "public, max-age=60"
+            return cached_model
+        except Exception:
+            pass
+
     try:
-        return get_poi_page(
+        result = get_poi_page(
             page=page,
             limit=limit,
             category=category,
@@ -48,6 +74,15 @@ def get_pois(
             detail="Unable to fetch POIs.",
         ) from exc
 
+    poi_cache.set_json(
+        cache_key,
+        result.model_dump(mode="json"),
+        ttl_seconds=get_settings().POI_CACHE_TTL_SECONDS,
+    )
+    response.headers["X-Cache"] = "MISS"
+    response.headers["Cache-Control"] = "public, max-age=60"
+    return result
+
 
 @router.get(
     "/{poi_id}/explanation-facts",
@@ -55,19 +90,37 @@ def get_pois(
     summary="Return POI explanation facts",
     description="Return Knowledge Graph facts supporting a Why-this-place explanation.",
 )
-def get_explanation_facts(poi_id: str) -> POIExplanationFactsResponse:
+def get_explanation_facts(poi_id: str, response: Response) -> POIExplanationFactsResponse:
+    cache_key = poi_cache.build_pois_cache_key("explain", {"poi_id": poi_id})
+    cached_payload = poi_cache.get_json(cache_key)
+    if cached_payload is not None:
+        try:
+            cached_model = POIExplanationFactsResponse.model_validate(cached_payload)
+            response.headers["X-Cache"] = "HIT"
+            response.headers["Cache-Control"] = "public, max-age=120"
+            return cached_model
+        except Exception:
+            pass
+
     try:
-        response = get_poi_explanation_facts(poi_id)
+        result = get_poi_explanation_facts(poi_id)
     except ExplanationServiceUnavailable as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Knowledge Graph service is unavailable",
         ) from exc
 
-    if response is None:
+    if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="POI not found",
         )
 
-    return response
+    poi_cache.set_json(
+        cache_key,
+        result.model_dump(mode="json"),
+        ttl_seconds=get_settings().POI_CACHE_TTL_SECONDS,
+    )
+    response.headers["X-Cache"] = "MISS"
+    response.headers["Cache-Control"] = "public, max-age=120"
+    return result

@@ -104,7 +104,8 @@ export default function Navbar() {
 
   const handleRegisterSuccess = () => {
     setAuthModal((prev) => ({ ...prev, isOpen: false }));
-    setIsOnboardingOpen(true);
+    localStorage.setItem('greentrip_onboarding_completed', 'true');
+    navigate(getReturnTo());
   };
 
   const handleCloseOnboarding = () => {

@@ -2028,48 +2028,33 @@ export default function TripItineraryView({
               className="mb-3"
             />
 
-            {/* Trợ lý sắp xếp lịch trình & nhịp độ */}
-            <section className="mb-4 rounded-2xl border border-gray-200 bg-gray-50/80 p-3.5" aria-label="Trợ lý sắp xếp lịch trình">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-bold text-gray-950">Chọn nhịp chuyến đi</h3>
-                  <p className="mt-1 text-sm leading-5 text-gray-700" id="smart-schedule-help">
-                    Mỗi lựa chọn sẽ sắp xếp lại số điểm/ngày và thời gian tham quan. Ý tưởng của bạn được ưu tiên; địa điểm chưa có dữ liệu giá sẽ được báo rõ.
-                  </p>
+            {/* Trợ lý sắp xếp lịch trình & nhịp độ — Gọn 1 hàng để ưu tiên hiển thị lịch theo ngày */}
+            <section className="mb-3 rounded-2xl border border-gray-200 bg-gray-50/70 px-3.5 py-2.5" aria-label="Trợ lý sắp xếp lịch trình">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-xs font-bold text-gray-800">Nhịp chuyến đi</h3>
+                <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Chọn nhịp chuyến đi">
+                  {([
+                    ['Relaxed', '🌿 Thong thả', '~2 điểm'],
+                    ['Balanced', '⚖️ Cân bằng', '~3 điểm'],
+                    ['Fast', '⚡ Dày đặc', '≤5 điểm'],
+                  ] as const).map(([level, label, target]) => (
+                    <button
+                      key={level}
+                      type="button"
+                      aria-pressed={pacingLevel === level}
+                      disabled={isLoading || isSaving || isScheduleRecommendationsLoading || (!ideaPois.length && !scheduleRecommendations.length && !plan.days.some((day) => day.stops.length))}
+                      onClick={() => runSmartSchedule(level)}
+                      className={`min-h-9 rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 ${pacingLevel === level ? 'border-emerald-800 bg-emerald-100 text-emerald-950' : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-100'}`}
+                    >
+                      <span>{label}</span>
+                      <span className="ml-1 font-normal text-gray-600">({target})</span>
+                    </button>
+                  ))}
                 </div>
-                <p className="text-xs font-medium text-gray-700">Đề xuất ban đầu: {pacingForTrip(trip) === 'Relaxed' ? 'Thong thả' : pacingForTrip(trip) === 'Fast' ? 'Dày đặc' : 'Cân bằng'}</p>
               </div>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label="Chọn nhịp chuyến đi">
-                {([
-                  ['Relaxed', '🌿 Thong thả', 'Khoảng 2 điểm/ngày'],
-                  ['Balanced', '⚖️ Cân bằng', 'Khoảng 3 điểm/ngày'],
-                  ['Fast', '⚡ Dày đặc', 'Tối đa 5 điểm/ngày'],
-                ] as const).map(([level, label, target]) => (
-                  <button
-                    key={level}
-                    type="button"
-                    aria-pressed={pacingLevel === level}
-                    disabled={isLoading || isSaving || isScheduleRecommendationsLoading || (!ideaPois.length && !scheduleRecommendations.length && !plan.days.some((day) => day.stops.length))}
-                    onClick={() => runSmartSchedule(level)}
-                    className={`min-h-11 rounded-xl border px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 ${pacingLevel === level ? 'border-emerald-800 bg-emerald-100 text-emerald-950' : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-100'}`}
-                  >
-                    <span className="block">{label}</span>
-                    <span className="mt-0.5 block font-normal">{target}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 text-sm leading-5 text-gray-700">
-                {pacingLevel === 'Relaxed'
-                  ? 'Khoảng 3,5 giờ tham quan/ngày để có thời gian nghỉ.'
-                  : pacingLevel === 'Balanced'
-                    ? 'Khoảng 4,5 giờ tham quan/ngày để cân bằng khám phá và nghỉ.'
-                    : 'Khoảng 5,5 giờ tham quan/ngày; xếp thêm điểm theo khung giờ ưu tiên và thời lượng cho phép.'}
-                {' '}Chọn nhịp sẽ áp dụng ngay. Bạn có thể sửa lịch thủ công sau đó.
-              </p>
-              {isScheduleRecommendationsLoading && <p className="mt-2 text-sm text-gray-700" role="status">Trợ lý đang lấy gợi ý theo điểm đến và ý tưởng, đồng thời kiểm tra dữ liệu ngân sách hiện có.</p>}
-              {!isScheduleRecommendationsLoading && recommendationFetchError && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="status"><span>Chưa kết nối được danh sách gợi ý AI; GreenTrip đang dùng địa điểm sẵn có ở điểm đến.</span><button type="button" onClick={() => setRecommendationRetryKey((value) => value + 1)} className="min-h-10 rounded-full px-3 font-semibold text-amber-950 underline underline-offset-2 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800">Thử lại</button></div>}
-              {!isScheduleRecommendationsLoading && !scheduleRecommendations.length && !ideaPois.length && <p className="mt-2 text-sm text-gray-700">Chưa có địa điểm để sắp xếp. Hãy thêm một địa điểm vào Ý tưởng trước.</p>}
-              {assistantInsight && <p className="mt-3 rounded-xl bg-emerald-50 px-3.5 py-3 text-sm leading-5 text-emerald-950" aria-live="polite"><strong>Vì sao GreenTrip xếp như vậy?</strong> {assistantInsight}</p>}
+              {isScheduleRecommendationsLoading && <p className="mt-2 text-xs text-gray-700" role="status">Đang tối ưu lịch trình...</p>}
+              {!isScheduleRecommendationsLoading && recommendationFetchError && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-950" role="status"><span>Đang dùng danh sách địa điểm sẵn có tại điểm đến.</span><button type="button" onClick={() => setRecommendationRetryKey((value) => value + 1)} className="min-h-8 rounded-full px-2.5 font-semibold text-amber-950 underline underline-offset-2 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800">Thử lại</button></div>}
+              {assistantInsight && <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-950" aria-live="polite"><strong>Vì sao GreenTrip xếp như vậy?</strong> {assistantInsight}</p>}
             </section>
 
             {/* Bảng Tối ưu Lộ trình & Ước tính Carbon (Phần 1) */}

@@ -65,12 +65,13 @@ test('LoginModal and Navbar enforce Mindtrip/Wanderlog Auth UX without fake mock
 
   assert.ok(!loginModalSrc.includes('MOCK_USERS'), 'LoginModal must not contain MOCK_USERS');
   assert.ok(!loginModalSrc.includes('mock-user-token'), 'LoginModal must never write fake mock-user-token');
+  assert.ok(!loginModalSrc.includes('confirmPassword'), 'LoginModal must not force redundant confirm-password input');
   assert.ok(loginModalSrc.includes('password.length >= 8'), 'LoginModal must enforce 8+ character password rule');
   assert.ok(loginModalSrc.includes('greentrip-auth-fullname'), 'LoginModal must include display name input on registration');
   assert.ok(loginModalSrc.includes('saveAuthSession'), 'LoginModal must persist session consistently via saveAuthSession');
   assert.ok(loginModalSrc.includes('aria-modal="true"'), 'LoginModal must declare aria-modal="true"');
   assert.ok(
     navbarSrc.includes("localStorage.setItem('greentrip_onboarding_completed', 'true')"),
-    'Navbar handleLoginSuccess should mark onboarding completed for returning users'
+    'Navbar handleLoginSuccess/handleRegisterSuccess should take users straight into the app without mandatory 7-step survey'
   );
 });

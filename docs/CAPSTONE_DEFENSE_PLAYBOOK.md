@@ -1,194 +1,187 @@
-# Cẩm Nang Bảo Vệ Đồ Án Tốt Nghiệp — GreenTrip AI (`C1SE-44`)
+# Cẩm nang bảo vệ đồ án GreenTrip AI (C1SE-44)
 
-Tài liệu tác chiến toàn diện phục vụ buổi **Bảo vệ Đồ án Tốt nghiệp** cho nền tảng **GreenTrip AI (Smart Eco-Friendly Travel Planner for Da Nang & Hue)** — tổng hợp từ kiến trúc thật, mã nguồn thật, số liệu kiểm thử thực tế trên Supabase PostgreSQL + Neo4j Aura + Redis + Google Chrome, giúp nhóm trình diễn thuyết phục trước Hội đồng mà không phụ thuộc vào suy đoán hay localhost cơ bản.
+GreenTrip AI giúp du khách tự túc lập lịch trình đi Đà Nẵng và Huế gọn trong vài phút, kiểm soát được tiền ăn ở, tránh chạy ngược đường và có phương án dự phòng ngay khi trời đổ mưa. Tài liệu này chuẩn bị sẵn kịch bản chạy thử trực tiếp cùng Hội đồng và phần giải đáp 24 câu hỏi phản biện dựa trên mã nguồn và số liệu đo thật của hệ thống.
 
----
+## Phần 1: Bài toán của du khách và điểm khác biệt
 
-## Phần 1 — Định Vị Sản Phẩm, Nỗi Đau Thật (10.000 Người Dùng) & So Sánh Đối Thủ
+### 1.1. Bốn khó khăn thật của khách đi Đà Nẵng và Huế (theo [PRD.md](../PRD.md))
 
-### 1.1. Bốn nỗi đau thực tế tại tuyến Đà Nẵng – Huế (trích [PRD.md](../PRD.md))
+1. Tự tìm quán ăn và điểm chơi rời rạc trên mạng mất nhiều ngày, dễ xếp lịch chạy ngược từ Sơn Trà sang Ngũ Hành Sơn rồi vòng về Hải Vân hoặc Kinh thành Huế, vừa mệt vừa tốn chi phí di chuyển.
+2. Khó kiểm soát tổng chi phí theo từng người và từng khoản (ăn uống, lưu trú, vé tham quan) nên rất dễ lố ngân sách đặt ra (`B_max`).
+3. Thời tiết miền Trung thay đổi nhanh (mưa dầm ở Huế, gió mạnh ven biển Đà Nẵng), khiến du khách bị động khi hoạt động ngoài trời bị hủy giữa chừng.
+4. Các chatbot phổ biến thường gợi ý dồn vào vài điểm quá tải, đôi khi nêu tên quán đã đóng cửa hoặc nhầm địa bàn, mà người dùng lại không biết vì sao địa điểm đó hợp với mình.
 
-Khách du lịch tự túc tại hành lang Đà Nẵng – Thừa Thiên Huế hiện đối mặt 4 vấn đề cụ thể:
+### 1.2. So sánh dưới góc nhìn người đi du lịch
 
-1. **Lãng phí thời gian & di chuyển zíc-zắc kiệt sức:** Phải đọc review rời rạc trên mạng xã hội, dẫn tới xếp điểm tham quan ngược đường giữa các quận/khu vực (Sơn Trà ↔ Ngũ Hành Sơn ↔ Hải Vân ↔ Kinh thành Huế), tốn kém chi phí và thời gian di chuyển.
-2. **Dễ vượt ngân sách (`B_max`):** Chưa có công cụ theo dõi tổng chi phí thực tế theo số người và theo từng nhóm chi tiêu (Ăn uống, Lưu trú, Hoạt động) ngay trong lúc chỉnh lịch.
-3. **Bị động trước thời tiết miền Trung:** Mưa dầm bất chợt ở Huế hoặc biển động tại Đà Nẵng làm gãy kế hoạch ngoài trời, du khách lúng túng không tìm được điểm thay thế trong nhà tương đương về vị trí và gu.
-4. **Áp lực quá tải du lịch (Overtourism) & thiếu minh bạch gợi ý AI:** Chatbot AI thông thường hay gợi ý dồn vào vài điểm đông đúc, dễ bịa địa chỉ/quán đóng cửa và không giải thích rõ *vì sao địa điểm đó phù hợp*.
-
-### 1.2. Đối chiếu công tâm với Mindtrip AI, Wanderlog và Layla AI
-
-| Tiêu chí thực chiến | Mindtrip AI / Layla AI | Wanderlog | GreenTrip AI (`C1SE-44`) |
+| Nhu cầu của du khách | Mindtrip AI / Layla AI | Wanderlog | GreenTrip AI (C1SE-44) |
 | :--- | :--- | :--- | :--- |
-| **Dữ liệu địa phương Đà Nẵng – Huế** | Dữ liệu toàn cầu chung, thiếu độ sâu ngách bản địa (chay, làng nghề, di sản nhỏ) | Phụ thuộc người dùng tự nhập hoặc Google Places thô | Kho địa điểm Đà Nẵng – Huế đã kiểm định & chuẩn hóa (ảnh WebP riêng trên Supabase bucket `poi-images`) |
-| **Chống AI bịa tên địa điểm (Hallucination)** | Trả lời LLM thuần, có rủi ro bịa quán đã đóng cửa hoặc nhầm thành phố | Không phải AI Planner chủ đạo | Lọc **Corrective Grounding** ([`copilot_grounding.py`](../backend/app/trips/copilot_grounding.py)): đối chiếu thực thể với DB, CSV chuẩn và `LANDMARK_CITY_KB`, chặn rò rỉ điểm giữa Đà Nẵng và Huế |
-| **Ràng buộc ngân sách & giờ mở cửa** | Chỉ gợi ý ước lượng | Theo dõi chi tiêu thủ công | Bộ giải định lượng ([`itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py)): kiểm tra `C_total <= B_max`, đối chiếu giờ mở cửa (`poi_contacts_cache.json`) & khung nghỉ trưa |
-| **Tối ưu đường đi & dấu chân Carbon (CO₂)** | Sắp xếp tương đối | Sắp xếp đường đi cơ bản | Gom cụm **Nearest-Neighbor + 2-opt** + ước tính CO₂ theo 4 phương tiện (`Ô tô 171g`, `Xe máy 72g`, `Buýt xanh 40g`, `Đi bộ 0g/km`) |
-| **Ứng phó thời tiết xấu** | Hỏi lại từ đầu bằng text | Phải xóa tay từng chặng | Nút **Chế độ ngày mưa** 1 chạm ([`rainy_day_handler.py`](../backend/app/trips/handlers/rainy_day_handler.py)) thay điểm ngoài trời bằng điểm trong nhà + **Hoàn tác (Undo)** |
-| **Minh bạch lý do gợi ý** | Đưa kết quả hộp đen | Không có | **Neo4j Knowledge Graph** (`GET /pois/{poi_id}/explanation-facts`) giải thích quan hệ điểm đến |
-| **Quét QR trải nghiệm & vận hành 10.000 user** | Cần tải app / hạ tầng thương mại đóng | App đóng | `/demo-qr` quét trực tiếp HTTPS qua Caddy + Redis Cache (`X-Cache: HIT/MISS`) + RBAC `/admin` có Audit Log |
+| Tìm quán địa phương đúng thông tin, không chết ảnh | Dữ liệu toàn cầu rộng nhưng thiếu chiều sâu ngách bản địa | Phụ thuộc người dùng tự nhập hoặc Google Places thô | Kho 482 địa điểm Đà Nẵng và Huế đã kiểm tra tọa độ, giá, giờ mở cửa; ảnh WebP lưu riêng trên Supabase `poi-images` |
+| Hỏi AI mà không bị gợi ý nhầm thành phố hay quán ảo | Trả lời LLM thuần nên vẫn có rủi ro nhầm địa bàn | Không chuyên lập lịch bằng hội thoại | Bộ lọc Corrective Grounding ([`copilot_grounding.py`](../backend/app/trips/copilot_grounding.py)) đối chiếu tên quán với DB, CSV chuẩn và `LANDMARK_CITY_KB` |
+| Giữ tổng chi phí không vượt ngân sách và đúng giờ mở cửa | Gợi ý ước lượng | Ghi chép thu chi thủ công | Bộ giải [`itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py) kiểm tra `C_total <= B_max`, đối chiếu giờ mở cửa (`poi_contacts_cache.json`) và chừa giờ nghỉ trưa |
+| Giảm đi vòng và biết mức phát thải CO2 | Sắp xếp tương đối | Sắp xếp điểm dừng cơ bản | Gom cụm đường đi theo Nearest-Neighbor + 2-opt và tính CO2 theo 4 phương tiện (ô tô 171g, xe máy 72g, buýt xanh 40g, đi bộ 0g/km) |
+| Trở tay nhanh khi trời đột ngột đổ mưa | Phải gõ mô tả lại cho AI | Tự xóa và tìm từng điểm thay thế | Nút Chế độ ngày mưa 1 chạm ([`rainy_day_handler.py`](../backend/app/trips/handlers/rainy_day_handler.py)) đổi điểm ngoài trời sang điểm có mái che cùng khu vực, có Hoàn tác (Undo) |
+| Hiểu vì sao ứng dụng chọn địa điểm này cho mình | Trả kết quả hộp đen | Không giải thích | Truy vấn đồ thị Neo4j (`GET /pois/{poi_id}/explanation-facts`) chỉ ra các mối liên kết phù hợp với sở thích của khách |
+| Trải nghiệm ngay trên điện thoại và chịu tải lớn | Cần tải app hoặc tài khoản thương mại | App đóng | Quét QR tại `/demo-qr` mở trực tiếp qua HTTPS Caddy, có Redis Cache (`X-Cache: HIT/MISS`) và trang `/admin` phân quyền 2 lớp |
 
----
+## Phần 2: Kịch bản demo 7 phút cùng Hội đồng
 
-## Phần 2 — Kịch Bản Live Demo 7 Phút Bất Bại Trước Hội Đồng
+Mở ứng dụng từ tên miền HTTPS thật trên VPS (hoặc preview HTTPS) tại `/demo-qr` thay vì `localhost`, để giảng viên dùng chính camera điện thoại cá nhân bấm thử song song với màn hình trình chiếu.
 
-> **Nguyên tắc vàng:** Không chạy `localhost` trước Hội đồng — mở trang `/demo-qr` từ tên miền HTTPS thật (hoặc preview HTTPS) để Hội đồng tự quét mã và bấm trực tiếp trên điện thoại cá nhân song song màn hình máy chiếu.
+### 2.1. Dòng thời gian trình diễn (0:00 đến 7:00)
 
-### 2.1. Dòng thời gian chi tiết (0:00 → 7:00)
-
-| Mốc thời gian | Màn hình / Công cụ | Hành động trình diễn & Thông điệp chốt với Hội đồng |
+| Khung giờ | Màn hình hoặc công cụ | Người dùng làm gì và Hội đồng kiểm chứng được gì |
 | :--- | :--- | :--- |
-| **`0:00 – 1:00`** | **`/demo-qr`** | Bấm **Chế độ Trình chiếu** toàn màn hình. Chỉ trạng thái **`API Live · HTTPS TLS`**, mời Quý Thầy/Cô dùng camera điện thoại quét mã QR để trải nghiệm song song trên giao diện mobile `375px` mượt mà. |
-| **`1:00 – 2:30`** | **`/explore`** | Chọn khu vực Đà Nẵng / Huế, kéo thanh lọc ưu tiên **Xanh vs Chi phí**, bấm xem 1 POI và mở *"Vì sao nơi này phù hợp?"* (Neo4j Knowledge Graph `GET /pois/{id}/explanation-facts`). Chỉ nhanh tab Network thấy header **`X-Cache: HIT`** & **`Cache-Control: public, max-age=60`**. |
-| **`2:30 – 4:30`** | **`/planner`** | Tạo lịch 3 ngày Đà Nẵng – Huế. Mở **AI Copilot Chat** gõ yêu cầu (ví dụ: *"Ưu tiên quán chay ở Huế và tránh điểm ngoài trời chiều mai"*), chỉ stream SSE thời gian thực. Chuyển sang lịch chi tiết, bấm **Tối ưu đường đi**, đổi phương tiện sang Buýt xanh để thấy CO₂ giảm, bấm **Chế độ ngày mưa** (và **Hoàn tác**), xuất file **`.ics` / `.pdf`**. |
-| **`4:30 – 5:45`** | **`/admin` & Postman/cURL** | Từ một tab ẩn danh / điện thoại Hội đồng thử vào `/admin` → chứng minh lớp bảo vệ **`HTTP 401` / `403`** chặn tuyệt đối người dùng thường. Đăng nhập tài khoản **`ADMIN`**, sửa giá/điểm xanh 1 địa điểm → cho xem bản ghi vết mới tinh ở **`admin_audit_logs`** và giải thích cơ chế `poi_cache.invalidate_pois()` làm mới cache ngay lập tức. |
-| **`5:45 – 7:00`** | **Terminal + [`docker-compose.prod.yml`](../docker-compose.prod.yml)** | Chạy `backend/scripts/benchmark_load.py` chứng minh tốc độ khi 20 luồng đồng thời (`X-Cache: HIT`, `0` lỗi), mở sơ đồ 4 container production cô lập mạng (`Caddy Auto-HTTPS` → `Nginx` + `FastAPI` + `Redis`). |
+| `0:00 - 1:00` | `/demo-qr` | Bật Chế độ Trình chiếu toàn màn hình, chỉ trạng thái `API Live` và HTTPS TLS, rồi mời Hội đồng quét mã QR bằng điện thoại để xem giao diện mobile `375px`. |
+| `1:00 - 2:30` | `/explore` | Chọn Đà Nẵng hoặc Huế, kéo thanh ưu tiên Xanh và Chi phí, mở chi tiết 1 địa điểm và bấm xem giải thích "Vì sao nơi này phù hợp?" từ Neo4j. Mở nhanh tab Network cho thấy `X-Cache: HIT` và `Cache-Control: public, max-age=60`. |
+| `2:30 - 4:30` | `/planner` | Tạo chuyến đi 3 ngày Đà Nẵng và Huế. Nhắn cho AI Copilot yêu cầu ưu tiên quán chay ở Huế và tránh điểm ngoài trời chiều mai để thấy câu trả lời stream SSE theo thời gian thực. Vào lịch chi tiết, bấm Tối ưu đường đi, đổi phương tiện sang Buýt xanh xem lượng CO2 giảm, bấm Chế độ ngày mưa rồi Hoàn tác, và xuất file `.ics` hoặc `.pdf`. |
+| `4:30 - 5:45` | `/admin` và terminal | Từ trình duyệt chưa đăng nhập (hoặc điện thoại khách) truy cập `/admin` để thấy HTTP `401` / `403` chặn lại. Đăng nhập tài khoản `ADMIN`, sửa giá vé hoặc điểm xanh một địa điểm, cho xem vết log vừa ghi vào `admin_audit_logs` và xem cache tự làm mới nhờ `poi_cache.invalidate_pois()`. |
+| `5:45 - 7:00` | Terminal và [`docker-compose.prod.yml`](../docker-compose.prod.yml) | Chạy `backend/scripts/benchmark_load.py` với 20 luồng song song để chứng minh tỷ lệ HIT cao và không lỗi, sau đó giới thiệu sơ đồ 4 container chạy production (Caddy, Frontend Nginx, FastAPI, Redis). |
 
-### 2.2. Checklist chuẩn bị trước giờ G & Plan B
+### 2.2. Chuẩn bị trước buổi bảo vệ và phương án dự phòng
 
-**Trước `T-24 giờ`:**
-- [ ] Kiểm tra tên miền HTTPS trỏ đúng IP VPS, chứng chỉ TLS tự động qua Caddy xanh (`curl -I https://<domain>/health`).
-- [ ] Nạp sẵn dữ liệu mẫu vào PostgreSQL/Supabase, Neo4j Aura và kiểm tra Redis container `healthy`.
-- [ ] Chuẩn bị sẵn 2 tài khoản test: 1 tài khoản `USER` bình thường (chứng minh bị chặn `403` ở `/admin`) và 1 tài khoản `ADMIN` (tạo bằng [`backend/scripts/promote_admin.py`](../backend/scripts/promote_admin.py)).
-- [ ] Tải sẵn file PNG mã QR từ nút **Tải mã QR (PNG)** ở `/demo-qr` chèn vào slide mở đầu và slide kết thúc.
+Trước 24 giờ, nhóm kiểm tra chứng chỉ HTTPS đã xanh (`curl -I https://<domain>/health`), dữ liệu trên Supabase PostgreSQL, Neo4j Aura và Redis đều sẵn sàng, tạo sẵn một tài khoản `USER` thường (test bị chặn `403`) và một tài khoản `ADMIN` bằng [`backend/scripts/promote_admin.py`](../backend/scripts/promote_admin.py), đồng thời tải ảnh PNG từ `/demo-qr` gắn vào slide. Trước giờ trình bày 15 phút, mở sẵn 3 tab: `/demo-qr`, `/explore` (bật sẵn DevTools Network lọc chữ `pois`), `/admin`, và một cửa sổ Terminal ở thư mục gốc của dự án.
 
-**Trước `T-15 phút`:**
-- [ ] Mở sẵn 3 tab: Tab 1 (`/demo-qr` full-screen), Tab 2 (`/explore` + DevTools tab Network lọc sẵn `pois`), Tab 3 (`/admin`).
-- [ ] Mở sẵn 1 cửa sổ Terminal tại thư mục gốc để chạy lệnh benchmark hoặc `curl -I` nếu Hội đồng hỏi kỹ thuật.
+Nếu Wi-Fi hội trường chập chờn, bật ngay 4G hotspot dự phòng; giao diện vẫn giữ nguyên bố cục vì ảnh POI tải webP lazy-load và [`PoiImage.tsx`](../frontend/src/components/ui/PoiImage.tsx) tự chèn ảnh dự phòng SVG khi mạng rớt. Nếu Gemini API chậm hoặc hết hạn mức trong lúc demo, luồng hội thoại ở [`backend/app/trips/`](../backend/app/trips/) tự chuyển sang bộ xử lý quy tắc kết hợp truy vấn SQL thực địa nên người dùng vẫn nhận được gợi ý có thật. Nếu Redis tạm gián đoạn, [`CacheBackend`](../backend/app/cache.py) và [`SlidingWindowRateLimiter`](../backend/app/rate_limit.py) tự chuyển về bộ nhớ RAM nội bộ sau timeout `0.5s` (thử kết nối lại sau `30s`), ứng dụng vẫn hoạt động bình thường.
 
-**Plan B (Xử lý sự cố tức thì nếu mạng hội trường yếu hoặc Gemini quota chạm ngưỡng):**
-- Nếu **Wi-Fi hội trường chập chờn**: dùng ngay 4G phát hotspot từ điện thoại dự phòng; toàn bộ ảnh POI đã dùng lazy-load WebP trên Supabase Storage + [`PoiImage.tsx`](../frontend/src/components/ui/PoiImage.tsx) có SVG an toàn khi ảnh lỗi nên giao diện không vỡ.
-- Nếu **Gemini API chậm hoặc hết quota**: Hệ thống đã cài fallback tuyến tính theo ngữ cảnh & tri thức bản địa ngay trong [`backend/app/trips/`](../backend/app/trips/) (không văng lỗi 500 trước mặt Hội đồng).
-- Nếu **Redis tạm gián đoạn**: [`CacheBackend`](../backend/app/cache.py) và [`SlidingWindowRateLimiter`](../backend/app/rate_limit.py) tự chuyển sang RAM nội bộ sau timeout `0.5s` (cooldown `30s`), ứng dụng vẫn chạy liên tục.
+## Phần 3: 24 câu hỏi Hội đồng thường gặp và cách trả lời
 
----
+Mỗi câu dưới đây bắt đầu bằng câu trả lời ngắn gọn đúng góc nhìn người dùng, tiếp theo là cơ chế kỹ thuật bên dưới để trả lời khi giảng viên hỏi sâu vào mã nguồn.
 
-## Phần 3 — 24 Câu Hỏi Phản Biện Khó Nhất & Lời Trả Lời Phòng Thủ Tối Thượng
+### Nhóm 1: Trải nghiệm du khách và bài toán sản phẩm (Q1 - Q4)
 
-> **Mẹo trả lời Hội đồng:** Luôn nói **30 giây đầu tiên đúng trọng tâm**, sau đó mới dẫn **tên file / số liệu đo thật** trong codebase để giảng viên thấy nhóm tự làm chủ từng dòng code.
+#### Q1. Người dùng hỏi ChatGPT hoặc xem Google Maps là được, GreenTrip AI giải quyết thêm được gì?
+Với ChatGPT, khách nhận về một đoạn chữ dễ lẫn quán đã đóng cửa và tự phải dò lại bản đồ xem hai điểm cách nhau bao xa hay tổng tiền có lố ví không. GreenTrip AI giúp du khách làm trọn trong một màn hình: xếp điểm đi theo cụm gần nhau để đỡ mệt, tự cộng tổng tiền so với trần ngân sách theo số người, đổi điểm ngoài trời sang điểm trong nhà khi trời mưa chỉ bằng một nút bấm, và giải thích rõ vì sao quán đó hợp với người đi.
 
----
+Tham khảo mã nguồn: [`backend/app/trips/copilot_grounding.py`](../backend/app/trips/copilot_grounding.py), [`backend/app/trips/itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py), [`backend/app/trips/handlers/rainy_day_handler.py`](../backend/app/trips/handlers/rainy_day_handler.py).
 
-### Nhóm A — Nghiệp Vụ & Sản Phẩm (Q1 – Q4)
+#### Q2. Tại sao chỉ tập trung vào Đà Nẵng và Huế, liệu có mở rộng cho du khách đi các tỉnh khác không?
+Nhóm chọn đi sâu vào tuyến Đà Nẵng và Huế vì đây là hành lang du lịch có đủ biển, núi bán đảo, di sản UNESCO và đèo Hải Vân, cho phép nhóm kiểm tra tận tay 482 địa điểm thay vì gom dữ liệu thô khắp cả nước khiến thông tin sai lệch. Về kỹ thuật, cơ sở dữ liệu chuẩn 3NF đã tách riêng bảng `cities` (`city_id`) và `poi_categories` (`category_id`), nên khi thêm Hội An, Nha Trang hay Đà Lạt chỉ cần nạp dữ liệu mới bằng script sẵn có mà giữ nguyên toàn bộ API và giao diện.
 
-#### Q1. Sinh viên dùng ChatGPT hoặc mở Google Maps cũng hỏi được lịch trình, GreenTrip AI sinh ra để giải quyết vấn đề gì khác biệt?
-- **Trả lời nhanh 30 giây:** ChatGPT chỉ sinh văn bản tĩnh, rất hay bịa quán đã đóng cửa và không kiểm soát được tọa độ đường đi hay trần ngân sách. GreenTrip AI giải 4 nỗi đau thật của khách tự túc Đà Nẵng – Huế: **không đi zíc-zắc** (gom cụm lộ trình + CO₂), **không cháy túi** (bộ giải `C_total <= B_max` theo 3 nhóm chi), **không đứng hình khi trời mưa** (đổi điểm trong nhà 1 chạm), và **không mù mờ thông tin** (Neo4j giải thích lý do đề xuất).
-- **Bằng chứng mã nguồn:** Bộ kiểm chứng thực thể [`backend/app/trips/copilot_grounding.py`](../backend/app/trips/copilot_grounding.py), bộ giải ràng buộc [`backend/app/trips/itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py) và bộ xử lý ngày mưa [`backend/app/trips/handlers/rainy_day_handler.py`](../backend/app/trips/handlers/rainy_day_handler.py).
+Tham khảo mã nguồn: [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md), [`backend/scripts/safe_import_pois.py`](../backend/scripts/safe_import_pois.py).
 
-#### Q2. Tại sao phạm vi chỉ làm Đà Nẵng – Huế? Có mở rộng toàn quốc cho 10.000 người dùng được không?
-- **Trả lời nhanh 30 giây:** Nhóm cố ý chọn chiều sâu dữ liệu ở hành lang du lịch Đà Nẵng – Huế (kết nối nhiều đặc thù: biển – bán đảo – di sản UNESCO – đèo Hải Vân) để kiểm định thủ công 100% tọa độ, giá vé, giờ mở cửa và nhãn xanh thay vì cào rác toàn quốc. Kiến trúc DB chuẩn 3NF đã tách bảng tham chiếu `cities` (`city_id`) và `poi_categories` (`category_id`), nên mở thêm Hội An, Nha Trang hay Đà Lạt chỉ cần chạy pipeline nạp dữ liệu mà không phải sửa schema hay viết lại API.
-- **Bằng chứng mã nguồn:** Tài liệu 3NF [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md) và script import an toàn [`backend/scripts/safe_import_pois.py`](../backend/scripts/safe_import_pois.py).
+#### Q3. Lượng CO2 và điểm Xanh (Eco Score) hiển thị cho du khách tính dựa trên cơ sở nào?
+Để khách thấy tác động thật khi chọn phương tiện đi lại, hệ thống tính quãng đường giữa các điểm dừng trong ngày rồi nhân với hệ số phát thải hành khách theo từng loại xe: đi ô tô 171g, xe máy 72g, buýt xanh 40g và đi bộ 0g CO2e trên mỗi km. Riêng Eco Score của từng địa điểm phản ánh mức độ thân thiện môi trường qua các tiêu chí thực tế như quán chay, thực phẩm hữu cơ, điểm di sản văn hóa, sinh thái hoặc thuận tiện giao thông xanh.
 
-#### Q3. Chỉ số Eco Score và lượng phát thải CO₂ trong app là bịa số cho đẹp hay tính có cơ sở?
-- **Trả lời nhanh 30 giây:** Hai lớp này tách bạch rõ ràng: **lượng CO₂ di chuyển** được tính theo quãng đường thực tế giữa các điểm nhân hệ số phát thải chuẩn giao thông đô thị (`g CO₂e/km`), còn **Eco Score** đánh giá mức độ bền vững của từng địa điểm theo tiêu chí ẩm thực chay/hữu cơ, giao thông xanh và di sản/sinh thái bản địa.
-- **Bằng chứng mã nguồn:** Hệ số trong [`backend/app/trips/itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py) (`TRANSPORT_EMISSION_FACTORS_G_PER_KM`: `driving: 171`, `motorcycle: 72`, `transit: 40`, `walking: 0` g CO₂e/km) và hàm chuẩn hóa điểm xanh trong [`backend/scripts/enrich_poi_scores.py`](../backend/scripts/enrich_poi_scores.py).
+Tham khảo mã nguồn: `TRANSPORT_EMISSION_FACTORS_G_PER_KM` trong [`backend/app/trips/itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py), [`backend/scripts/enrich_poi_scores.py`](../backend/scripts/enrich_poi_scores.py).
 
-#### Q4. Nếu có 10.000 người dùng thật ngoài xã hội, chi phí server & AI có làm nhóm phá sản không? Mô hình duy trì thế nào?
-- **Trả lời nhanh 30 giây:** Nhờ 3 kỹ thuật kiểm soát tải — **Redis Cache** giữ 100% truy vấn danh sách POI lặp lại không chạm DB, **bộ phân loại intent cục bộ** giảm gọi Gemini vô ích cho các thao tác lọc/cẩm nang, và **Rate Limit** theo IP — một VPS phổ thông kèm Redis và Gemini Flash đủ gánh mức đọc cao. Về doanh thu bền vững (B2B2C), nền tảng có thể thu phí gắn nhãn kiểm định xanh cho quán ăn/homestay sinh thái bản địa, gói trải nghiệm Must-Try và API tư vấn tuyến xanh cho đơn vị lữ hành địa phương.
-- **Bằng chứng mã nguồn:** [`backend/app/cache.py`](../backend/app/cache.py), [`backend/app/rate_limit.py`](../backend/app/rate_limit.py), [`docs/VPS_DEPLOYMENT_GUIDE.md`](./VPS_DEPLOYMENT_GUIDE.md).
+#### Q4. Nếu có 10.000 người dùng thật, chi phí server và AI có tăng vọt không?
+Phần lớn thao tác của du khách là xem danh sách địa điểm, lọc sở thích và đọc hướng dẫn bản địa, những lượt đọc này được Redis Cache giữ lại để không tốn truy vấn database. Các câu hỏi đơn giản hoặc cẩm nang được phân loại ngay tại backend trước khi cần tới Gemini Flash, kết hợp giới hạn tần suất theo IP nên một máy chủ VPS phổ thông đủ sức gánh tải ổn định. Nếu thương mại hóa, nguồn thu đến từ việc hợp tác gắn nhãn xanh kiểm định cho cơ sở lưu trú, quán ăn sinh thái địa phương và bán gói lịch trình chọn sẵn cho đơn vị lữ hành nhỏ.
 
----
+Tham khảo mã nguồn: [`backend/app/cache.py`](../backend/app/cache.py), [`backend/app/rate_limit.py`](../backend/app/rate_limit.py), [`docs/VPS_DEPLOYMENT_GUIDE.md`](./VPS_DEPLOYMENT_GUIDE.md).
 
-### Nhóm B — AI Thực Chiến, Knowledge Graph & Thuật Toán (Q5 – Q10)
+### Nhóm 2: Trợ lý AI, bản đồ và tối ưu lịch trình (Q5 - Q10)
 
-#### Q5. Làm sao ngăn Gemini "nói hươu nói vượn" hoặc gợi ý quán ở Đà Nẵng cho lịch trình đang ở Huế?
-- **Trả lời nhanh 30 giây:** GreenTrip không thả nổi câu trả lời thô của LLM ra màn hình mà cho đi qua tầng **Corrective Grounding**. Mọi địa danh in đậm hoặc thẻ POI AI nhắc đến đều được chuẩn hóa tiếng Việt không dấu, đối chiếu với kho địa điểm đã kiểm định (`all_pois_cleaned.csv` + `LANDMARK_CITY_KB` + PostgreSQL) và lọc nghiêm theo thành phố mục tiêu.
-- **Bằng chứng mã nguồn:** Hàm `normalize_entity_text`, `_load_static_poi_names`, `LANDMARK_CITY_KB` trong [`backend/app/trips/copilot_grounding.py`](../backend/app/trips/copilot_grounding.py) và [`backend/app/trips/copilot_hybrid_nlu.py`](../backend/app/trips/copilot_hybrid_nlu.py), cùng bộ đánh giá AI [`backend/scripts/run_copilot_eval.py`](../backend/scripts/run_copilot_eval.py).
+#### Q5. Làm sao để trợ lý AI không gợi ý nhầm quán ở Đà Nẵng cho người đang lập lịch ở Huế, hoặc tự bịa tên quán?
+Câu trả lời từ Gemini đi qua tầng kiểm tra Corrective Grounding trước khi hiện trên màn hình. Mọi tên địa điểm được nhắc tới đều được chuẩn hóa tiếng Việt không dấu, đối chiếu chéo với kho địa điểm đã kiểm định (`all_pois_cleaned.csv`, `LANDMARK_CITY_KB` và PostgreSQL), rồi lọc đúng thành phố du khách đang chọn.
 
-#### Q6. Khi API Gemini mất kết nối hoặc vượt hạn mức thì AI Copilot của hệ thống có bị lỗi sập trang không?
-- **Trả lời nhanh 30 giây:** Không. Kiến trúc Hybrid NLU của nhóm phân loại ý định và trích xuất ràng buộc định lượng ngay tại backend trước khi gọi LLM; khi Gemini timeout hoặc chưa cấu hình API key, hệ thống tự động fallback sang bộ xử lý quy tắc + truy vấn SQL thực địa để vẫn trả lời đúng địa điểm có thật và không làm sập luồng chat SSE.
-- **Bằng chứng mã nguồn:** [`backend/app/trips/copilot_hybrid_nlu.py`](../backend/app/trips/copilot_hybrid_nlu.py), [`backend/app/trips/copilot_stream.py`](../backend/app/trips/copilot_stream.py) và suite test [`backend/tests/test_copilot_stream.py`](../backend/tests/test_copilot_stream.py).
+Tham khảo mã nguồn: `normalize_entity_text`, `_load_static_poi_names`, `LANDMARK_CITY_KB` trong [`backend/app/trips/copilot_grounding.py`](../backend/app/trips/copilot_grounding.py), [`backend/app/trips/copilot_hybrid_nlu.py`](../backend/app/trips/copilot_hybrid_nlu.py), [`backend/scripts/run_copilot_eval.py`](../backend/scripts/run_copilot_eval.py).
 
-#### Q7. Tại sao dùng Neo4j song song với PostgreSQL? Có bị thừa công nghệ không, và Neo4j sập thì web có chết theo không?
-- **Trả lời nhanh 30 giây:** PostgreSQL + PostGIS mạnh về lưu trữ giao dịch 3NF, lọc quan hệ và truy vấn tọa độ phẳng; còn Neo4j biểu diễn tự nhiên đồ thị liên kết *"Địa điểm → Đặc trưng xanh / Phong cách / Khu vực lân cận"* để trả lời câu hỏi *"Vì sao gợi ý nơi này?"* chỉ bằng một lần duyệt đồ thị. Và để an toàn, mọi kết nối Neo4j đều có lớp cô lập lỗi: nếu Neo4j Aura tạm nghỉ, `get_poi_explanation_facts` ném `ExplanationServiceUnavailable` có kiểm soát để UI hiện thông báo thân thiện + nút thử lại, hoàn toàn không ảnh hưởng `/explore` hay `/planner`.
-- **Bằng chứng mã nguồn:** [`backend/app/pois/explanation_service.py`](../backend/app/pois/explanation_service.py), [`docs/NEO4J_KNOWLEDGE_GRAPH.md`](./NEO4J_KNOWLEDGE_GRAPH.md) và [`docs/NEO4J_AURA_SETUP.md`](./NEO4J_AURA_SETUP.md).
+#### Q6. Khi API Gemini bị chậm hoặc hết hạn mức miễn phí, người dùng có bị lỗi trắng màn hình khi chat không?
+Không, người dùng vẫn nhận được câu trả lời có ích cùng danh sách địa điểm thật. Kiến trúc Hybrid NLU nhận diện ý định và ràng buộc ngay tại backend trước khi gọi LLM, nên khi Gemini quá tải hoặc chưa có API key, hệ thống tự chuyển sang bộ quy tắc kết hợp truy vấn SQL trên dữ liệu địa điểm sẵn có và giữ nguyên luồng phản hồi SSE mượt mà.
 
-#### Q8. Thuật toán "tối ưu lộ trình" và kiểm tra ngân sách của nhóm chạy như thế nào?
-- **Trả lời nhanh 30 giây:** Ở backend ([`itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py)), hệ thống giải 3 ràng buộc đồng thời: (1) tính tổng chi phí thực tế theo số người và so với trần `B_max` (dùng `parse_vnd_amount` và tự đề xuất điểm thay thế rẻ hơn nếu vượt trần), (2) kiểm tra khung giờ mở cửa từng thứ trong tuần (`check_opening_hours` đối chiếu `poi_contacts_cache.json`), và (3) sắp xếp thứ tự điểm dừng bằng thuật toán **Nearest-Neighbor + 2-opt** nhưng giữ cố định khung giờ nghỉ trưa để không đi zíc-zắc.
-- **Bằng chứng mã nguồn:** [`backend/app/trips/itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py) và [`backend/tests/test_copilot_part2_constraints.py`](../backend/tests/test_copilot_part2_constraints.py).
+Tham khảo mã nguồn: [`backend/app/trips/copilot_hybrid_nlu.py`](../backend/app/trips/copilot_hybrid_nlu.py), [`backend/app/trips/copilot_stream.py`](../backend/app/trips/copilot_stream.py), [`backend/tests/test_copilot_stream.py`](../backend/tests/test_copilot_stream.py).
 
-#### Q9. Tính năng "Chế độ ngày mưa" hoạt động ra sao để không thay đại bằng một điểm xa tít?
-- **Trả lời nhanh 30 giây:** Bộ xử lý ngày mưa xác định các chặng ngoài trời (`OUTDOOR_EXCLUSIONS` như bãi biển, thác nước, bán đảo, đèo), loại trừ vùng xa cách biệt nếu đang ở nội đô, và truy vấn các địa điểm thuộc nhóm trong nhà/mái che (`INDOOR_SUB_CATEGORIES` như bảo tàng, không gian nghệ thuật, quán cafe yên tĩnh, lăng tẩm/chùa chiền có mái) cùng thành phố. Trên UI còn lưu lịch sử trước khi đổi để người dùng bấm **Hoàn tác (Undo)** 1 chạm.
-- **Bằng chứng mã nguồn:** [`backend/app/trips/handlers/rainy_day_handler.py`](../backend/app/trips/handlers/rainy_day_handler.py) và [`frontend/src/components/planner/TripItineraryView.tsx`](../frontend/src/components/planner/TripItineraryView.tsx).
+#### Q7. Vì sao dùng thêm Neo4j bên cạnh PostgreSQL? Nếu Neo4j mất kết nối thì trang web có bị treo theo không?
+PostgreSQL và PostGIS lo toàn bộ phần dữ liệu tài khoản, lịch trình và lọc tọa độ chính xác, còn Neo4j lưu quan hệ giữa địa điểm với phong cách, tiện ích xanh và cụm lân cận để trả lời tự nhiên câu hỏi "Vì sao nơi này hợp với bạn?" ngay khi khách bấm xem chi tiết. Nếu Neo4j Aura gặp sự cố tạm thời, `get_poi_explanation_facts` bắt lỗi riêng qua `ExplanationServiceUnavailable` để chỉ riêng khung giải thích hiện nút thử lại, còn việc xem bản đồ và lập lịch của du khách vẫn chạy bình thường.
 
-#### Q10. Kho 482 địa điểm và ảnh hiển thị được thu thập, xử lý ra sao để không gặp ảnh gãy hay link chết?
-- **Trả lời nhanh 30 giây:** Toàn bộ dữ liệu qua pipeline chuẩn hóa địa chỉ, phân loại taxonomy, khử số điện thoại giả (`clean_and_verify_all_pois.py`), chuyển toàn bộ ảnh địa điểm sang định dạng WebP nhẹ lưu trên **Supabase Storage bucket riêng `poi-images`** thay vì dựa vào URL ngoài dễ chết 404. Trên Frontend, component `PoiImage` bắt buộc `loading="lazy"`, `referrerPolicy="no-referrer"`, fallback theo danh mục và SVG nội tuyến cuối cùng để không bao giờ vỡ layout.
-- **Bằng chứng mã nguồn:** [`backend/scripts/audit_and_migrate_poi_images.py`](../backend/scripts/audit_and_migrate_poi_images.py), [`backend/migrations/017_create_poi_images_bucket.sql`](../backend/migrations/017_create_poi_images_bucket.sql) và [`frontend/src/components/ui/PoiImage.tsx`](../frontend/src/components/ui/PoiImage.tsx).
+Tham khảo mã nguồn: [`backend/app/pois/explanation_service.py`](../backend/app/pois/explanation_service.py), [`docs/NEO4J_KNOWLEDGE_GRAPH.md`](./NEO4J_KNOWLEDGE_GRAPH.md), [`docs/NEO4J_AURA_SETUP.md`](./NEO4J_AURA_SETUP.md).
 
----
+#### Q8. Khi du khách bấm "Tối ưu đường đi" và đặt ngân sách, hệ thống tính toán như thế nào?
+Bộ giải ở [`itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py) xử lý đồng thời 3 việc cho du khách: quy đổi giá vé và chi phí ước tính theo số người (`parse_vnd_amount`) để cảnh báo hoặc gợi ý đổi điểm rẻ hơn nếu vượt `B_max`, kiểm tra giờ mở cửa từng ngày trong tuần qua `check_opening_hours` (`poi_contacts_cache.json`) để không dẫn khách tới quán đóng cửa, và sắp xếp lại thứ tự điểm dừng bằng thuật toán Nearest-Neighbor kết hợp 2-opt trong khi vẫn giữ nguyên khung nghỉ trưa.
 
-### Nhóm C — Cơ Sở Dữ Liệu 3NF, Khóa Ngoại & Chỉ Mục (Q11 – Q14)
+Tham khảo mã nguồn: [`backend/app/trips/itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py), [`backend/tests/test_copilot_part2_constraints.py`](../backend/tests/test_copilot_part2_constraints.py).
 
-#### Q11. Cơ sở dữ liệu có thực sự đạt chuẩn 3NF và có ràng buộc Khóa ngoại chặt chẽ không hay chỉ nói suông?
-- **Trả lời nhanh 30 giây:** Có đầy đủ trên **PostgreSQL 15 + PostGIS (Supabase)** sau Migration `018`. Hệ thống có **13 bảng `public.*`**, **11 ràng buộc Khóa ngoại (`FOREIGN KEY`)** phân loại rõ hành vi `ON DELETE CASCADE`, `SET NULL` và `RESTRICT`, cùng **6 ràng buộc miền `CHECK`** (ví dụ `green_score` `0..1`, `role` chỉ nhận `USER`/`ADMIN`). Nhóm đã thử ghi `green_score = 1.5` và `role = 'SUPERHACKER'` vào DB thật và PostgreSQL chặn cứng bằng lỗi `CheckViolation`.
-- **Bằng chứng mã nguồn:** [`backend/migrations/018_db_3nf_fk_indexes_and_audit.sql`](../backend/migrations/018_db_3nf_fk_indexes_and_audit.sql) và báo cáo kiểm chứng [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md).
+#### Q9. Du khách bật "Chế độ ngày mưa" thì ứng dụng chọn điểm thay thế bằng cách nào?
+Hệ thống nhận diện các chặng ngoài trời dễ bị ảnh hưởng thời tiết (`OUTDOOR_EXCLUSIONS` như bãi biển, thác nước, bán đảo, đèo), tránh gợi ý các khu vực quá xa nếu khách đang ở trung tâm, và tìm điểm có mái che thuộc cùng thành phố (`INDOOR_SUB_CATEGORIES` như bảo tàng, không gian nghệ thuật, quán cafe yên tĩnh, điểm văn hóa). Nếu đổi xong mà du khách muốn giữ lại lịch cũ, chỉ cần bấm Hoàn tác (Undo) để khôi phục ngay trạng thái trước đó.
 
-#### Q12. Tại sao trên bảng `pois` vẫn dùng `JSONB` / `TEXT[]`, và bảng `itineraries` giữ cả `user_id TEXT` lẫn `owner_user_id UUID`? Có vi phạm 3NF không?
-- **Trả lời nhanh 30 giây:** Đây là **phi chuẩn hóa có kiểm soát (Controlled Denormalization)**: các mảng thuộc tính ít đổi như `eco_features` hoặc `opening_hours` lưu dạng `TEXT[]`/`JSONB` kèm **GIN Index** để tránh `JOIN` thêm 4–5 bảng con mỗi lần nạp toàn bộ bản đồ, giúp tăng tốc độ đọc mà vẫn giữ 3NF cho mọi thực thể nghiệp vụ (`cities`, `poi_categories`, `itinerary_days`, `itinerary_stops`). Riêng `owner_user_id UUID` trên `itineraries` và `poi_uuid UUID` trên `itinerary_stops` giúp giữ chặt khóa ngoại cho dữ liệu tài khoản thật trong khi vẫn tương thích chuyến đi mẫu/Guest.
-- **Bằng chứng mã nguồn:** [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md) (Mục 1.2) và [`backend/tests/test_db_3nf_migration.py`](../backend/tests/test_db_3nf_migration.py).
+Tham khảo mã nguồn: [`backend/app/trips/handlers/rainy_day_handler.py`](../backend/app/trips/handlers/rainy_day_handler.py), [`frontend/src/components/planner/TripItineraryView.tsx`](../frontend/src/components/planner/TripItineraryView.tsx).
 
-#### Q13. Chứng minh hiệu năng truy vấn Index trên bảng `pois` chứ không phải chỉ "tạo index cho có"?
-- **Trả lời nhanh 30 giây:** Nhóm đã chạy `EXPLAIN ANALYZE` trực tiếp trên Supabase PostgreSQL thật: truy vấn tìm kiếm gần đúng tiếng Việt `ILIKE '%Chăm%'` đi qua GIN `pg_trgm` (`idx_pois_name_trgm`) chỉ mất **2.532 ms** (`Bitmap Index Scan`), còn truy vấn lọc ghép Thành phố + Danh mục + Trạng thái đi qua B-Tree composite (`idx_pois_city_category_active`) chỉ mất **0.207 ms** (`Index Scan`). Ngoài ra cột `geom` có Spatial Index **GiST** cho truy vấn khoảng cách địa lý.
-- **Bằng chứng mã nguồn:** Số liệu `EXPLAIN ANALYZE` trích nguyên văn tại [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md) (Phần 3, Mục 2).
+#### Q10. Làm sao để ảnh của 482 địa điểm tải nhanh trên điện thoại và không bao giờ bị lỗi vỡ hình?
+Dữ liệu 482 địa điểm được làm sạch số điện thoại giả, chuẩn hóa địa chỉ và phân loại trước khi nạp DB (`clean_and_verify_all_pois.py`), sau đó chuyển toàn bộ ảnh sang định dạng WebP nhẹ đưa vào bucket `poi-images` trên Supabase Storage thay vì trỏ ra link ngoài dễ chết 404. Phía giao diện, component `PoiImage` bật `loading="lazy"` để tiết kiệm 4G cho khách, đặt `referrerPolicy="no-referrer"` và sẵn lớp ảnh dự phòng SVG nên thẻ địa điểm không bao giờ bị vỡ khung.
 
-#### Q14. Nếu Admin sửa nhầm hoặc xóa tài khoản Admin từng sửa dữ liệu POI thì hệ thống có giữ được bằng chứng không?
-- **Trả lời nhanh 30 giây:** Có. Mọi thao tác `PATCH /admin/pois/{poi_id}` được thực hiện trong **cùng một transaction ACID** tại [`update_poi_with_audit`](../backend/app/admin/repository.py): cập nhật bảng `pois` và chèn bản ghi diff `{before, after}` dưới dạng JSONB vào `admin_audit_logs` trước khi `connection.commit()`. Khóa ngoại `admin_user_id` tới `users(user_id)` gắn **`ON DELETE RESTRICT`** nên PostgreSQL không cho xóa vật lý tài khoản Admin đã từng ghi vết kiểm toán.
-- **Bằng chứng mã nguồn:** [`backend/app/admin/repository.py`](../backend/app/admin/repository.py) (dòng 210–281) và [`backend/tests/test_admin_rbac.py`](../backend/tests/test_admin_rbac.py).
+Tham khảo mã nguồn: [`backend/scripts/audit_and_migrate_poi_images.py`](../backend/scripts/audit_and_migrate_poi_images.py), [`backend/migrations/017_create_poi_images_bucket.sql`](../backend/migrations/017_create_poi_images_bucket.sql), [`frontend/src/components/ui/PoiImage.tsx`](../frontend/src/components/ui/PoiImage.tsx).
 
----
+### Nhóm 3: Dữ liệu địa điểm và cơ sở dữ liệu (Q11 - Q14)
 
-### Nhóm D — Bảo Mật, Xác Thực & RBAC (Q15 – Q19)
+#### Q11. Cơ sở dữ liệu có đạt chuẩn 3NF và có khóa ngoại bảo vệ dữ liệu thật không?
+Sau Migration `018`, schema trên PostgreSQL 15 + PostGIS gồm 13 bảng `public.*`, 11 khóa ngoại (`FOREIGN KEY`) quy định rõ `ON DELETE CASCADE`, `SET NULL` hoặc `RESTRICT`, và 6 ràng buộc miền `CHECK` (như `green_score` chỉ nhận `0..1`, `role` chỉ nhận `USER` hoặc `ADMIN`). Nhóm đã thử chèn giá trị sai `green_score = 1.5` và `role = 'SUPERHACKER'` trực tiếp vào database và PostgreSQL tự động từ chối bằng lỗi `CheckViolation`, đảm bảo dữ liệu hiển thị cho người dùng luôn sạch.
 
-#### Q15. Nếu người dùng rành kỹ thuật sửa biến trong `localStorage` hoặc tự sửa URL `/admin` trên trình duyệt thì có lọt vào trang quản trị không?
-- **Trả lời nhanh 30 giây:** Tuyệt đối không. Nhóm triển khai **RBAC 2 lớp độc lập**: Frontend (`AdminRouteGuard`) luôn gọi lại `GET /auth/me` để kiểm tra phiên hiện hành trước khi render, và quan trọng hơn, ở **Backend** mọi endpoint `/admin/*` đều đi qua `Depends(require_admin)` → giải mã chữ ký JWT bằng `JWT_SECRET_KEY`, sau đó **truy vấn thẳng `SELECT role, status FROM public.users WHERE user_id = %s` từ PostgreSQL** ở mỗi request. Nếu chưa đăng nhập trả `401`, nếu `status != 'ACTIVE'` hoặc `role != 'ADMIN'` trả `403 Forbidden`.
-- **Bằng chứng mã nguồn:** [`frontend/src/components/admin/AdminRouteGuard.tsx`](../frontend/src/components/admin/AdminRouteGuard.tsx), [`backend/app/auth/dependencies.py`](../backend/app/auth/dependencies.py) (`get_current_user`, `require_roles`), và [`backend/app/admin/router.py`](../backend/app/admin/router.py).
+Tham khảo mã nguồn: [`backend/migrations/018_db_3nf_fk_indexes_and_audit.sql`](../backend/migrations/018_db_3nf_fk_indexes_and_audit.sql), [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md).
 
-#### Q16. Hệ thống băm mật khẩu và bảo vệ JWT, OTP như thế nào?
-- **Trả lời nhanh 30 giây:** Mật khẩu băm bằng **Argon2** qua `pwdlib` (không dùng MD5/SHA256 thô), token JWT ký `HS256` kèm kiểm tra an toàn lúc khởi động: khi `APP_ENV` là `production` hoặc `staging`, `Settings.validate_security_settings` bắt buộc `JWT_SECRET_KEY` phải khác chuỗi mặc định và dài tối thiểu **32 ký tự**, nếu không ứng dụng từ chối khởi động. Mã OTP gửi email lưu trong bảng `email_otps` có thời hạn `expires_at`, cờ `is_used` và giới hạn số lần nhập sai `attempts`.
-- **Bằng chứng mã nguồn:** [`backend/app/config.py`](../backend/app/config.py), [`backend/app/auth/password.py`](../backend/app/auth/password.py), [`backend/app/auth/router.py`](../backend/app/auth/router.py) và [`backend/tests/test_dot1_security_and_bugfixes.py`](../backend/tests/test_dot1_security_and_bugfixes.py).
+#### Q12. Tại sao vẫn dùng `JSONB` / `TEXT[]` trên bảng `pois`, và giữ cả `user_id TEXT` lẫn `owner_user_id UUID` trên bảng `itineraries`?
+Đây là cách cân bằng có chủ đích giữa chuẩn mực 3NF và tốc độ tải bản đồ cho du khách: các thông tin phụ ít sửa như danh sách tiện ích xanh (`eco_features`) hay giờ mở cửa (`opening_hours`) được lưu dạng `TEXT[]` / `JSONB` có đánh chỉ mục GIN để trang `/explore` không phải nối thêm 4 đến 5 bảng con khi nạp 482 địa điểm. Còn cột `owner_user_id UUID` và `poi_uuid UUID` giữ ràng buộc khóa ngoại chặt cho người dùng đã đăng nhập mà vẫn tương thích với lịch trình mẫu công khai dành cho khách chưa tạo tài khoản.
 
-#### Q17. Nếu kẻ xấu spam liên tục 1.000 request/giây vào API đăng nhập hoặc AI Copilot để đốt tiền Gemini thì xử lý thế nào?
-- **Trả lời nhanh 30 giây:** Các route nhạy cảm (auth, gửi lại OTP, AI Copilot) đều được bọc dependency **`rate_limit(bucket, max_requests, window_seconds)`** sử dụng thuật toán **Sliding Window trên Redis Sorted Set** (`ZREMRANGEBYSCORE`, `ZCARD`, `ZRANGE`, `ZADD`, `EXPIRE`). Khi vượt ngưỡng, backend ngắt ngay ở tầng FastAPI với **`HTTP 429 Too Many Requests`** và trả header **`Retry-After`** theo chuẩn HTTP trước khi chạm tới DB hay Gemini API, đồng thời tự tách IP thật từ `X-Forwarded-For` sau proxy Caddy.
-- **Bằng chứng mã nguồn:** [`backend/app/rate_limit.py`](../backend/app/rate_limit.py) và [`backend/tests/test_redis_cache_and_ratelimit.py`](../backend/tests/test_redis_cache_and_ratelimit.py).
+Tham khảo mã nguồn: [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md) (Mục 1.2), [`backend/tests/test_db_3nf_migration.py`](../backend/tests/test_db_3nf_migration.py).
 
-#### Q18. Làm sao nhóm đảm bảo không vô tình đẩy API Key (Gemini, Supabase, DB password) lên GitHub hay Docker image?
-- **Trả lời nhanh 30 giây:** Mọi khóa bí mật chỉ đọc từ biến môi trường / `.env` qua `pydantic-settings` ([`backend/app/config.py`](../backend/app/config.py)); file `.env` bị chặn cả ở `.gitignore` (Git) lẫn `.dockerignore` và `frontend/.dockerignore` (Docker build context). Trong multi-stage Docker build, image runtime cuối cùng chỉ nhận bản `.env` gắn lúc chạy (`env_file`), không chứa `.env` hay file lịch sử test nào bên trong image.
-- **Bằng chứng mã nguồn:** [`.dockerignore`](../.dockerignore), [`frontend/.dockerignore`](../frontend/.dockerignore), [`.env.example`](../.env.example).
+#### Q13. Khi nhiều người cùng tìm kiếm và lọc địa điểm, truy vấn database có chậm không?
+Trên Supabase PostgreSQL thật, nhóm đã đo bằng `EXPLAIN ANALYZE` để kiểm chứng chỉ mục hoạt động đúng: câu tìm kiếm tên tiếng Việt gần đúng `ILIKE '%Chăm%'` chạy qua chỉ mục GIN `pg_trgm` (`idx_pois_name_trgm`) mất `2.532 ms` (`Bitmap Index Scan`), còn câu lọc ghép thành phố, danh mục và trạng thái qua B-Tree composite (`idx_pois_city_category_active`) chỉ mất `0.207 ms` (`Index Scan`), kết hợp cùng chỉ mục không gian PostGIS `GiST` trên cột tọa độ `geom`.
 
-#### Q19. Kiến trúc mạng VPS có lộ thẳng cổng Backend hay Redis ra Internet không?
-- **Trả lời nhanh 30 giây:** Không. Trong [`docker-compose.prod.yml`](../docker-compose.prod.yml), Redis (`6379`), Backend (`8000`) và Frontend (`8080`) chỉ dùng `expose` trong mạng cầu nội bộ `greentrip_net` (`ports` chỉ khai báo duy nhất ở container `caddy` với cổng `80`/`443`). Thêm tường lửa **UFW** trên Ubuntu chỉ mở `22`, `80`, `443`, nên hacker ngoài Internet không thể kết nối trực tiếp vào Redis hay cổng nội bộ Uvicorn.
-- **Bằng chứng mã nguồn:** [`docker-compose.prod.yml`](../docker-compose.prod.yml), [`deploy/Caddyfile`](../deploy/Caddyfile) và [`docs/VPS_DEPLOYMENT_GUIDE.md`](./VPS_DEPLOYMENT_GUIDE.md).
+Tham khảo mã nguồn: Kết quả `EXPLAIN ANALYZE` ghi lại tại [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md) (Phần 3, Mục 2).
 
----
+#### Q14. Nếu quản trị viên sửa nhầm giá vé hoặc trạng thái hiển thị của một địa điểm thì làm sao truy vết lại?
+Mỗi lần sửa qua `PATCH /admin/pois/{poi_id}`, hàm `update_poi_with_audit` thực hiện cập nhật bảng `pois` và ghi bản lưu `{before, after}` dưới dạng JSONB vào bảng `admin_audit_logs` trong cùng một transaction ACID. Ngoài ra khóa ngoại `admin_user_id` gắn `ON DELETE RESTRICT` để ngăn xóa nhầm tài khoản quản trị từng thao tác, giữ nguyên lịch sử đối chiếu lâu dài.
 
-### Nhóm E — Chịu Tải 10.000 Người Dùng, Cache, Bất Đồng Bộ & DevOps (Q20 – Q24)
+Tham khảo mã nguồn: [`backend/app/admin/repository.py`](../backend/app/admin/repository.py) (dòng 210 đến 281), [`backend/tests/test_admin_rbac.py`](../backend/tests/test_admin_rbac.py).
 
-#### Q20. Nhóm nói hệ thống sẵn sàng phục vụ 10.000 người dùng với Redis Cache — có số đo thực tế chứng minh trước Hội đồng không?
-- **Trả lời nhanh 30 giây:** Có, nhóm tự viết công cụ đo tải đồng thời (`httpx` async) bắn thẳng vào backend đang nối Supabase Postgres live:
-  - Trên endpoint nặng **`GET /pois?page=1&limit=100`** (`120` request, `20` luồng song song): lần lạnh đầu (`X-Cache: MISS`) mất **`5.315,50 ms`**; sang trạng thái ấm đạt **`120/120 (100%) X-Cache: HIT`**, **`0` lỗi**, độ trễ trung vị **`p50 = 275,25 ms`**, `p95 = 341,22 ms`, `p99 = 366,13 ms`, đạt **`67,3 req/s`**.
-  - Trên trang nhỏ **`GET /pois?page=1&limit=10`** (`50` request, `10` luồng): từ **`1.486,13 ms`** (`MISS`) xuống **`p50 = 19,47 ms`**, `p95 = 29,11 ms`, **`461,1 req/s`** (`0` lỗi).
-- **Bằng chứng mã nguồn:** [`backend/app/cache.py`](../backend/app/cache.py), [`backend/app/pois/router.py`](../backend/app/pois/router.py) và [`backend/scripts/benchmark_load.py`](../backend/scripts/benchmark_load.py).
+### Nhóm 4: An toàn tài khoản và phân quyền quản trị (Q15 - Q19)
 
-#### Q21. Dùng Cache rồi mà Admin vừa cập nhật giá vé hoặc ẩn địa điểm ở `/admin` thì người dùng có bị xem dữ liệu cũ (Stale Cache) 5 phút không?
-- **Trả lời nhanh 30 giây:** Không. Nhóm dùng chiến lược **Versioned Cache Namespace** (`greentrip:pois:v{version}:...`): ngay sau khi `update_poi_with_audit` ở [`patch_admin_poi`](../backend/app/admin/service.py) commit xong, hệ thống gọi `poi_cache.invalidate_pois()` để chạy lệnh **`INCR greentrip:pois:version` trong độ phức tạp O(1)** (tuyệt đối không dùng `KEYS *` gây đứng Redis). Mọi request đọc tiếp theo tự động nhận key version mới (`X-Cache: MISS`) và nạp dữ liệu mới nhất ngay lập tức.
-- **Bằng chứng mã nguồn:** [`backend/app/cache.py`](../backend/app/cache.py) (`invalidate_pois`, `build_pois_cache_key`) và [`backend/app/admin/service.py`](../backend/app/admin/service.py) (dòng 77).
+#### Q15. Nếu một người dùng cố tình sửa dữ liệu trong trình duyệt hoặc tự gõ `/admin`, họ có vào được cổng quản trị không?
+Không. Cả giao diện và máy chủ đều kiểm tra lại quyền tài khoản từ đầu ở mỗi lần truy cập: trên trình duyệt, `AdminRouteGuard` gọi `GET /auth/me` xác minh phiên làm việc; còn ở phía backend, toàn bộ API `/admin/*` gắn `Depends(require_admin)` để giải mã chữ ký JWT rồi đọc trực tiếp `role` và `status` mới nhất từ bảng `public.users` trong database, trả về `401 Unauthorized` nếu chưa đăng nhập hoặc `403 Forbidden` nếu tài khoản bị khóa hay chỉ có quyền `USER`.
 
-#### Q22. Khi hàng loạt người dùng đăng ký nhận email OTP cùng lúc, việc kết nối SMTP chậm có làm treo luồng API không? Tại sao chọn `BackgroundTasks` thay vì dựng luôn Kafka/RabbitMQ?
-- **Trả lời nhanh 30 giây:** Nhóm đẩy toàn bộ việc gửi email xác thực và OTP (`signup`, `resend_verification`, `resend_otp`) sang **`BackgroundTasks`** qua hai hàm bọc `_dispatch_verification_email` và `_dispatch_otp_email`, giúp request trả `200`/`201` về trình duyệt ngay mà không chờ bắt tay SMTP Gmail. Với quy mô 10.000 người dùng đồ án, `BackgroundTasks` giúp giữ chi phí VPS gọn ở mức tối thiểu (tránh over-engineering); nếu mở rộng lên trăm nghìn user cần bảo đảm retry bền vững khi worker khởi động lại, có thể chuyển thẳng 2 hàm dispatch đó sang worker queue (ARQ/Celery trên chính Redis đang chạy) mà không đổi API.
-- **Bằng chứng mã nguồn:** [`backend/app/auth/router.py`](../backend/app/auth/router.py) (dòng 401, 408, 421, 591, 843).
+Tham khảo mã nguồn: [`frontend/src/components/admin/AdminRouteGuard.tsx`](../frontend/src/components/admin/AdminRouteGuard.tsx), [`backend/app/auth/dependencies.py`](../backend/app/auth/dependencies.py) (`get_current_user`, `require_roles`), [`backend/app/admin/router.py`](../backend/app/admin/router.py).
 
-#### Q23. Tại sao phải tách riêng `Dockerfile.prod` multi-stage và đưa `Caddy` vào thay vì lấy luôn `docker-compose.yml` dev đẩy lên VPS?
-- **Trả lời nhanh 30 giây:** File dev chạy `vite dev` và `uvicorn --reload`, chiếm nhiều RAM, giữ toàn bộ dev dependencies/mã nguồn thô và chạy quyền `root`. Ngược lại, bộ production dùng **Multi-stage build** (`backend/Dockerfile.prod` + `frontend/Dockerfile.prod`): loại bỏ toàn bộ Node build tools khỏi runtime image, chạy web tĩnh qua `nginx-unprivileged` (**`USER 101`**), chạy API bằng user **`appuser`** không có quyền root với **`UVICORN_WORKERS=2`** (không `--reload`), kèm `HEALTHCHECK` tự phục hồi và **Caddy** tự xin/gia hạn chứng chỉ SSL Let's Encrypt cho tên miền thật.
-- **Bằng chứng mã nguồn:** [`backend/Dockerfile.prod`](../backend/Dockerfile.prod), [`frontend/Dockerfile.prod`](../frontend/Dockerfile.prod), [`deploy/Caddyfile`](../deploy/Caddyfile) và [`frontend/tests/demo-qr-and-deploy.test.mjs`](../frontend/tests/demo-qr-and-deploy.test.mjs).
+#### Q16. Mật khẩu người dùng, token đăng nhập và mã xác thực OTP được bảo vệ ra sao?
+Mật khẩu được băm một chiều bằng Argon2 qua thư viện `pwdlib`, còn mã OTP gửi qua email được lưu kèm thời hạn `expires_at`, cờ `is_used` và số lần thử `attempts` để khóa nếu nhập sai nhiều lần. Token JWT ký bằng `HS256`, và khi chạy ở môi trường `staging` hoặc `production`, hàm `validate_security_settings` từ chối khởi động server nếu `JWT_SECRET_KEY` còn để giá trị mặc định hoặc ngắn hơn 32 ký tự.
 
-#### Q24. Sản phẩm hiện còn điểm hạn chế nào nếu triển khai thực tế lớn hơn và hướng phát triển tiếp theo là gì?
-- **Trả lời nhanh 30 giây:** Nhóm nhìn thẳng 3 điểm chưa làm ở MVP v1.0 (đã ghi rõ trong [PRD.md](../PRD.md)): (1) gửi email nền đang dùng `BackgroundTasks` theo worker tiến trình, chưa có persistent dead-letter queue khi container restart giữa chừng; (2) chưa tích hợp thanh toán đặt vé trực tiếp VNPay/MoMo và chia sẻ link bình chọn nhóm thời gian thực; (3) phạm vi dữ liệu tập trung Đà Nẵng – Huế. Lộ trình v1.1 gồm persistent Redis task queue (ARQ/Celery), chia sẻ lịch nhóm có voting, tự chèn QR bản đồ vào file PDF xuất từ Backend và mở rộng sang Hội An – Quy Nhơn.
-- **Bằng chứng tài liệu:** Mục 3.2 trong [`PRD.md`](../PRD.md).
+Tham khảo mã nguồn: [`backend/app/config.py`](../backend/app/config.py), [`backend/app/auth/password.py`](../backend/app/auth/password.py), [`backend/app/auth/router.py`](../backend/app/auth/router.py), [`backend/tests/test_dot1_security_and_bugfixes.py`](../backend/tests/test_dot1_security_and_bugfixes.py).
 
----
+#### Q17. Làm thế nào để ngăn kẻ xấu gửi liên tục hàng nghìn yêu cầu đăng nhập hoặc hỏi AI làm nghẽn người dùng thật?
+Các nhóm API nhạy cảm như xác thực, gửi lại OTP và AI Copilot được gắn bộ giới hạn tần suất `rate_limit` dùng cửa sổ trượt Redis Sorted Set (`ZREMRANGEBYSCORE`, `ZCARD`, `ZRANGE`, `ZADD`, `EXPIRE`). Khi một địa chỉ IP vượt ngưỡng, hệ thống chặn ngay ở đầu cổng FastAPI với mã `HTTP 429 Too Many Requests` kèm header `Retry-After` trước khi chạm tới database hay Gemini, đồng thời lấy đúng IP thật của khách từ header `X-Forwarded-For` sau proxy Caddy.
 
-## Phần 4 — Bảng Lệnh Chứng Minh Trực Tiếp (Live Proof Cheat-Sheet)
+Tham khảo mã nguồn: [`backend/app/rate_limit.py`](../backend/app/rate_limit.py), [`backend/tests/test_redis_cache_and_ratelimit.py`](../backend/tests/test_redis_cache_and_ratelimit.py).
 
-Chạy ngay trên máy trình chiếu / SSH VPS khi Hội đồng yêu cầu kiểm chứng số liệu thật:
+#### Q18. Nhóm quản lý thế nào để tránh lộ mật khẩu database hoặc khóa API Gemini lên GitHub và Docker image?
+Toàn bộ khóa bí mật được nạp từ biến môi trường thông qua `pydantic-settings`, còn file `.env` được liệt kê trong cả `.gitignore` lẫn `.dockerignore` và `frontend/.dockerignore`. Khi đóng gói production multi-stage, container runtime chỉ gắn cấu hình khi chạy qua `env_file`, hoàn toàn không chứa file `.env` hay file kiểm thử bên trong image.
+
+Tham khảo mã nguồn: [`.dockerignore`](../.dockerignore), [`frontend/.dockerignore`](../frontend/.dockerignore), [`.env.example`](../.env.example).
+
+#### Q19. Khi đưa lên VPS, cổng Redis hoặc cổng Backend có bị hở ra Internet không?
+Không. Trong [`docker-compose.prod.yml`](../docker-compose.prod.yml), Redis (cổng `6379`), Backend (`8000`) và Frontend (`8080`) chỉ mở giao tiếp nội bộ (`expose`) bên trong mạng Docker `greentrip_net`. Duy nhất container `caddy` mở cổng `80` và `443` ra ngoài kết hợp tường lửa UFW trên Ubuntu khóa các cổng còn lại, giúp tách biệt hoàn toàn tầng dữ liệu khỏi truy cập trực tiếp từ Internet.
+
+Tham khảo mã nguồn: [`docker-compose.prod.yml`](../docker-compose.prod.yml), [`deploy/Caddyfile`](../deploy/Caddyfile), [`docs/VPS_DEPLOYMENT_GUIDE.md`](./VPS_DEPLOYMENT_GUIDE.md).
+
+### Nhóm 5: Khả năng phục vụ 10.000 người dùng và vận hành thực tế (Q20 - Q24)
+
+#### Q20. Khi đông người vào xem trang Khám phá cùng lúc, tốc độ phản hồi đo được thực tế ra sao?
+Nhóm chạy script đo tải đồng thời (`httpx` async) trực tiếp vào backend đang kết nối Supabase Postgres live:
+- Với API tải 100 địa điểm một trang (`GET /pois?page=1&limit=100`, 120 request trên 20 luồng đồng thời): lượt lạnh đầu (`X-Cache: MISS`) mất `5.315,50 ms`, sau khi vào cache đạt `120/120` lượt `X-Cache: HIT`, 0 lỗi, độ trễ trung vị `p50 = 275,25 ms`, `p95 = 341,22 ms`, `p99 = 366,13 ms`, đạt `67,3 req/s`.
+- Với API tải 10 địa điểm (`GET /pois?page=1&limit=10`, 50 request trên 10 luồng): lượt lạnh `1.486,13 ms` giảm xuống `p50 = 19,47 ms`, `p95 = 29,11 ms`, đạt `461,1 req/s` và 0 lỗi.
+
+Tham khảo mã nguồn: [`backend/app/cache.py`](../backend/app/cache.py), [`backend/app/pois/router.py`](../backend/app/pois/router.py), [`backend/scripts/benchmark_load.py`](../backend/scripts/benchmark_load.py).
+
+#### Q21. Nếu dùng Redis Cache mà Admin vừa cập nhật giá vé hoặc ẩn địa điểm, người dùng có phải đợi hết 5 phút mới thấy dữ liệu mới không?
+Không, người dùng thấy dữ liệu mới ngay ở lần tải kế tiếp. Nhóm đánh số phiên bản cho key cache (`greentrip:pois:v{version}:...`); khi Admin lưu sửa đổi trong `patch_admin_poi`, hệ thống gọi `poi_cache.invalidate_pois()` để tăng biến đếm bằng lệnh `INCR greentrip:pois:version` trong độ phức tạp O(1) mà không dùng `KEYS *` gây nghẽn Redis, khiến mọi truy vấn mới tự động nạp dữ liệu vừa cập nhật (`X-Cache: MISS`).
+
+Tham khảo mã nguồn: [`backend/app/cache.py`](../backend/app/cache.py), [`backend/app/admin/service.py`](../backend/app/admin/service.py) (dòng 77).
+
+#### Q22. Khi nhiều người đăng ký tài khoản cùng lúc, việc gửi email OTP có làm khách phải đợi màn hình xoay vòng lâu không?
+Khách nhận phản hồi đăng ký ngay lập tức vì việc kết nối máy chủ gửi mail SMTP được đưa sang `BackgroundTasks` qua hai hàm `_dispatch_verification_email` và `_dispatch_otp_email`. Giải pháp này giữ kiến trúc VPS gọn nhẹ cho giai đoạn 10.000 người dùng; khi mở rộng lên quy mô hàng trăm nghìn lượt cần bảo đảm gửi lại bền vững ngay cả lúc server khởi động lại, nhóm chỉ cần trỏ hai hàm này sang worker queue (Celery hoặc ARQ dùng chính Redis hiện có) mà giữ nguyên toàn bộ giao diện và API.
+
+Tham khảo mã nguồn: [`backend/app/auth/router.py`](../backend/app/auth/router.py) (dòng 401, 408, 421, 591, 843).
+
+#### Q23. Bộ cài đặt trên VPS khác gì so với môi trường lập trình trên máy cá nhân?
+Môi trường dev chạy hot-reload (`vite dev` và `uvicorn --reload`) nên nặng RAM và chạy dưới quyền root. Trên VPS, nhóm tách riêng bộ build Multi-stage: `frontend/Dockerfile.prod` biên dịch sẵn file tĩnh rồi chạy bằng `nginxinc/nginx-unprivileged` ở quyền non-root `USER 101`, `backend/Dockerfile.prod` chạy API bằng user `appuser` với `UVICORN_WORKERS=2` không `--reload` kèm `HEALTHCHECK`, và đặt proxy Caddy đứng trước để tự cấp chứng chỉ HTTPS Let's Encrypt cũng như giữ luồng SSE streaming mượt cho AI Copilot (`flush_interval -1`).
+
+Tham khảo mã nguồn: [`backend/Dockerfile.prod`](../backend/Dockerfile.prod), [`frontend/Dockerfile.prod`](../frontend/Dockerfile.prod), [`deploy/Caddyfile`](../deploy/Caddyfile), [`frontend/tests/demo-qr-and-deploy.test.mjs`](../frontend/tests/demo-qr-and-deploy.test.mjs).
+
+#### Q24. Sản phẩm hiện tại còn giới hạn gì và hướng phát triển tiếp theo cho du khách là gì?
+Nhóm xác định rõ 3 phần chưa đưa vào phiên bản MVP v1.0 (được ghi tại Mục 3.2 của [`PRD.md`](../PRD.md)): việc gửi email nền dùng `BackgroundTasks` theo tiến trình nên chưa có hàng đợi lưu vết bền vững qua lần khởi động lại container; chưa tích hợp thanh toán đặt vé trực tiếp VNPay/MoMo và bình chọn nhóm theo thời gian thực; dữ liệu mới tập trung tại Đà Nẵng và Huế. Ở phiên bản v1.1, nhóm dự kiến bổ sung hàng đợi Redis (ARQ/Celery), chia sẻ link lịch trình để nhóm bạn cùng bình chọn điểm đến, tự gắn mã QR bản đồ vào file PDF và mở rộng dữ liệu ra Hội An, Quy Nhơn.
+
+Tham khảo tài liệu: Mục 3.2 trong [`PRD.md`](../PRD.md).
+
+## Phần 4: Các lệnh kiểm chứng trực tiếp trước Hội đồng
+
+Chạy các lệnh sau từ máy trình chiếu hoặc VPS nếu cần đối chiếu thông số trực tiếp:
 
 ```bash
 # 1. Xác minh chứng chỉ HTTPS + endpoint sức khỏe hệ thống
@@ -209,16 +202,14 @@ docker compose -f docker-compose.prod.yml config --quiet
 cd frontend && npm run lint:ci && npm run typecheck && npm run test:unit && npm run build
 ```
 
----
+## Phần 5: Danh mục tài liệu dự án
 
-## Phần 5 — Bản Đồ Tài Liệu & Chuỗi Triển Khai Hoàn Chỉnh (Phase 5 → Phase 9)
-
-| Tài liệu / Artifact | Nội dung cốt lõi | Phase hoàn thiện |
+| Tài liệu hoặc thành phần | Nội dung chính | Mốc triển khai |
 | :--- | :--- | :--- |
-| [`PRD.md`](../PRD.md) | Bài toán 4 nỗi đau, phân vai 4 role, phạm vi v1.0 & v1.1, ma trận RBAC | Nền tảng + đồng bộ |
-| [`ARCHITECTURE.md`](../ARCHITECTURE.md) · [`API_SPEC.md`](../API_SPEC.md) | Kiến trúc hệ thống & hợp đồng HTTP/JSON API giữa FE và BE | Nền tảng |
-| [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md) | Chuẩn hóa 3NF, Mermaid ERD 13 bảng, 11 FK, 6 CHECK, `EXPLAIN ANALYZE` Index | **Phase 5 (`#PB19`, PR #54)** |
-| [`backend/app/auth/dependencies.py`](../backend/app/auth/dependencies.py) · `/admin` | Phân quyền RBAC 2 lớp (`401`/`403`), trang quản trị POI & `admin_audit_logs` | **Phase 6 (`#PB20`, PR #55)** |
-| [`backend/app/cache.py`](../backend/app/cache.py) · [`rate_limit.py`](../backend/app/rate_limit.py) | Redis Cache (`X-Cache`), O(1) versioned invalidation, Rate Limit phân tán, Email nền, `benchmark_load.py` | **Phase 7 (`#PB21`, PR #56)** |
-| [`docs/VPS_DEPLOYMENT_GUIDE.md`](./VPS_DEPLOYMENT_GUIDE.md) · `/demo-qr` | Docker Multi-stage `.prod`, Caddy Auto-HTTPS, Mobile `375px`/`320px`, trang QR live | **Phase 8 (`#PB22`, PR #57)** |
-| [`docs/CAPSTONE_DEFENSE_PLAYBOOK.md`](./CAPSTONE_DEFENSE_PLAYBOOK.md) | Kịch bản Live Demo 7 phút, 24 câu hỏi phản biện & lệnh chứng minh | **Phase 9 (`#PB23`)** |
+| [`PRD.md`](../PRD.md) | 4 nỗi đau của du khách, phân quyền 4 vai trò, phạm vi v1.0 và v1.1 | Nền tảng |
+| [`ARCHITECTURE.md`](../ARCHITECTURE.md) và [`API_SPEC.md`](../API_SPEC.md) | Kiến trúc hệ thống và hợp đồng HTTP/JSON API | Nền tảng |
+| [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md) | Kiểm chứng 3NF, sơ đồ ERD 13 bảng, 11 khóa ngoại, 6 CHECK, kết quả `EXPLAIN ANALYZE` | Phase 5 (`#PB19`, PR #54) |
+| [`backend/app/auth/dependencies.py`](../backend/app/auth/dependencies.py) và `/admin` | Bảo vệ RBAC 2 lớp (`401`/`403`), cổng quản trị POI và `admin_audit_logs` | Phase 6 (`#PB20`, PR #55) |
+| [`backend/app/cache.py`](../backend/app/cache.py) và [`rate_limit.py`](../backend/app/rate_limit.py) | Redis Cache (`X-Cache`), xóa cache O(1), Rate Limit phân tán, gửi email nền, `benchmark_load.py` | Phase 7 (`#PB21`, PR #56) |
+| [`docs/VPS_DEPLOYMENT_GUIDE.md`](./VPS_DEPLOYMENT_GUIDE.md) và `/demo-qr` | Docker Multi-stage `.prod`, Caddy Auto-HTTPS, tối ưu di động `375px`/`320px`, trang QR | Phase 8 (`#PB22`, PR #57) |
+| [`docs/CAPSTONE_DEFENSE_PLAYBOOK.md`](./CAPSTONE_DEFENSE_PLAYBOOK.md) | Kịch bản demo 7 phút, 24 câu hỏi Hội đồng và các lệnh chứng minh | Phase 9 (`#PB23`, PR #58) |

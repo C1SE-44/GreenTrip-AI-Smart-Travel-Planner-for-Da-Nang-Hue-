@@ -22,7 +22,7 @@ Nền tảng lập kế hoạch du lịch bền vững thông minh dành cho **�
 .
 ├── backend/
 │   ├── app/                # FastAPI modules (auth, pois, recommendations, saved_places, trips, itineraries)
-│   ├── migrations/         # SQL migrations (001 → 016) & hướng dẫn trong backend/migrations/README.md
+│   ├── migrations/         # SQL migrations (001 → 018) & hướng dẫn trong backend/migrations/README.md
 │   ├── neo4j/              # Schema, sample graph và Cypher queries
 │   ├── scripts/            # Scripts xử lý, kiểm định & nạp dữ liệu POI
 │   └── tests/              # Bộ test pytest cho API & data pipeline
@@ -34,6 +34,7 @@ Nền tảng lập kế hoạch du lịch bền vững thông minh dành cho **�
 ├── docs/                   # Đặc tả API, UI/UX Master Spec, ERD (.drawio), Postman collection
 ├── specs/                  # Spec-Driven Development specs theo từng feature
 ├── docker-compose.yml      # Chạy đồng bộ Backend + Frontend (+ optional local PostGIS)
+├── docker-compose.prod.yml # Chạy Production VPS (Caddy Auto-HTTPS + Redis + Frontend + Backend)
 ├── PRD.md                  # Đặc tả sản phẩm: đối tượng dùng, tính năng, user flows, phân quyền
 ├── ARCHITECTURE.md         # Kiến trúc hệ thống, phân lớp BE/FE, sơ đồ DB & luồng dữ liệu
 ├── API_SPEC.md             # Hợp đồng HTTP/JSON API giữa Frontend và Backend
@@ -118,3 +119,6 @@ npm run build
 - **Thiết kế UI/UX**: [docs/UI_UX_MASTER_SPEC.md](docs/UI_UX_MASTER_SPEC.md)
 - **Thiết lập Neo4j Aura**: [docs/NEO4J_AURA_SETUP.md](docs/NEO4J_AURA_SETUP.md)
 - **Security Review (Sprint 1)**: [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md)
+- **Kiểm toán CSDL 3NF, Khóa ngoại & Index**: [docs/DATABASE_3NF_AUDIT_AND_ERD.md](docs/DATABASE_3NF_AUDIT_AND_ERD.md)
+- **Triển khai VPS & Auto-HTTPS (Production)**: [docs/VPS_DEPLOYMENT_GUIDE.md](docs/VPS_DEPLOYMENT_GUIDE.md)
+- **Cẩm nang Bảo vệ Đồ án (Live Demo & 24 Câu Phản Biện)**: [docs/CAPSTONE_DEFENSE_PLAYBOOK.md](docs/CAPSTONE_DEFENSE_PLAYBOOK.md)

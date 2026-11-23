@@ -34,6 +34,19 @@ export interface BuildTripFromCollectionModalProps {
   onConfirmBuild: (payload: BuildTripFromCollectionResultPayload) => Promise<void> | void;
 }
 
+function getVietnamTodayIso(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
 export default function BuildTripFromCollectionModal({
   isOpen,
   allPois,
@@ -54,7 +67,7 @@ export default function BuildTripFromCollectionModal({
   const [reloadKey, setReloadKey] = useState(0);
 
   const [title, setTitle] = useState('');
-  const [startDate, setStartDate] = useState('2026-11-15');
+  const [startDate, setStartDate] = useState<string>(() => getVietnamTodayIso());
   const [daysCount, setDaysCount] = useState(2);
   const [daysTouched, setDaysTouched] = useState(false);
   const [peopleCount, setPeopleCount] = useState(2);

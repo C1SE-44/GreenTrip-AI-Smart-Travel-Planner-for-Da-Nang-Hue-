@@ -415,13 +415,13 @@ export default function HomeDashboardView({
       {/* ─── 5. FLOATING CHATBOT "ASK GREENTRIP" BAR (CHUẨN 1:1 MINDTRIP Ở ẢNH) ─── */}
       <div className="fixed bottom-6 inset-x-0 z-40 flex flex-col items-center pointer-events-none px-4">
         {/* Quick prompt suggestions chips (gợi ý khi chưa biết đi đâu) */}
-        <div className="mb-2.5 flex items-center gap-2 overflow-x-auto max-w-2xl w-full justify-center pointer-events-auto no-scrollbar">
+        <div className="mb-2.5 flex items-center gap-2 overflow-x-auto max-w-2xl w-full justify-start md:justify-center pointer-events-auto no-scrollbar">
           {SUGGESTED_PROMPTS.map((prompt, idx) => (
             <button
               key={idx}
               type="button"
               onClick={() => handleSendPrompt(prompt)}
-              className="whitespace-nowrap px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-gray-200/90 hover:border-black text-[11.5px] font-medium text-gray-700 hover:text-black transition shadow-2xs cursor-pointer active:scale-95"
+              className="whitespace-nowrap shrink-0 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-gray-200/90 hover:border-black text-xs font-medium text-gray-700 hover:text-black transition shadow-2xs cursor-pointer active:scale-95"
             >
               💡 {prompt}
             </button>

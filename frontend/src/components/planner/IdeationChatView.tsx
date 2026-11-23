@@ -3,11 +3,14 @@ import {
   ArrowUp,
   Check,
   Compass,
+  Image as ImageIcon,
   Leaf,
+  Link2,
   Loader2,
   Luggage,
   Map as MapIcon,
   Plus,
+  ReceiptText,
   RotateCcw,
   Sparkles,
   Star,
@@ -18,7 +21,8 @@ import PoiImage from '@/components/ui/PoiImage';
 import PoiMap from '@/components/poi/PoiMap';
 import { streamCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
 import { extractTripIntentFromPrompt } from '@/utils/vietnamesePromptExtractor';
-import { FormattedCopilotMessage } from './TripOverviewView';
+import { FormattedCopilotMessage, type CopilotAttachmentSummary } from './TripOverviewView';
+import MindtripAttachmentMenu, { type ReadyAttachment } from './MindtripAttachmentMenu';
 import type { CopilotTripMessage } from './copilotTripData';
 
 interface IdeationMessage {
@@ -26,6 +30,7 @@ interface IdeationMessage {
   sender: 'user' | 'assistant';
   text: string;
   timestamp: string;
+  attachment?: CopilotAttachmentSummary;
   suggestedPois?: CopilotSuggestedPoi[];
   nextSuggestedPrompts?: string[];
   avoidNotice?: string | null;
@@ -35,6 +40,9 @@ interface IdeationMessage {
 
 export interface IdeationChatViewProps {
   allPois: Poi[];
+  currentUserName?: string | null;
+  initialPrompt?: string | null;
+  onConsumedInitialPrompt?: () => void;
   onCreateTripFromIdea: (payload: {
     initialPrompt: string;
     selectedPoiIds: string[];
@@ -85,7 +93,13 @@ function mapSuggestedToPoi(s: CopilotSuggestedPoi, allPois: Poi[]): Poi | null {
   };
 }
 
-export default function IdeationChatView({ allPois, onCreateTripFromIdea }: IdeationChatViewProps) {
+export default function IdeationChatView({
+  allPois,
+  currentUserName,
+  initialPrompt,
+  onConsumedInitialPrompt,
+  onCreateTripFromIdea,
+}: IdeationChatViewProps) {
   const [messages, setMessages] = useState<IdeationMessage[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -121,6 +135,7 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
   const [tripMemory, setTripMemory] = useState<Record<string, string>>({});
   const [activeConstraints, setActiveConstraints] = useState<string[]>([]);
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
 
@@ -138,6 +153,15 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isSending]);
+
+  useEffect(() => {
+    if (initialPrompt && initialPrompt.trim() && !isSending) {
+      const promptToRun = initialPrompt.trim();
+      onConsumedInitialPrompt?.();
+      void handleSend(promptToRun);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrompt]);
 
   const combinedUserText = useMemo(
     () => messages.filter((m) => m.sender === 'user').map((m) => m.text).join('. '),
@@ -185,15 +209,32 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
     setActiveConstraints([]);
   };
 
-  const handleSend = async (rawText?: string) => {
-    const text = (rawText ?? input).trim();
-    if (!text || isSending) return;
+  const handleSend = async (rawText?: string, readyAttachment?: ReadyAttachment) => {
+    const typedText = (rawText ?? input).trim();
+    const defaultAttachmentMessage = readyAttachment
+      ? readyAttachment.payload.type === 'link'
+        ? `Phân tích đường dẫn ${readyAttachment.subtitle} này và gợi ý địa điểm xanh cho chuyến đi`
+        : readyAttachment.payload.type === 'receipt'
+          ? `Đọc vé / xác nhận đặt chỗ "${readyAttachment.displayTitle}" và đồng bộ gợi ý chuyến đi`
+          : `Phân tích tệp "${readyAttachment.displayTitle}" và nhận diện các điểm đến xanh phù hợp`
+      : '';
+    const text = typedText || defaultAttachmentMessage;
+    if ((!text && !readyAttachment) || isSending) return;
 
     const userMsg: IdeationMessage = {
       id: `idea-u-${Date.now()}`,
       sender: 'user',
       text,
       timestamp: nowHHMM(),
+      attachment: readyAttachment
+        ? {
+            type: readyAttachment.payload.type,
+            displayTitle: readyAttachment.displayTitle,
+            subtitle: readyAttachment.subtitle,
+            previewUrl: readyAttachment.previewUrl,
+            url: readyAttachment.payload.url,
+          }
+        : undefined,
     };
 
     const nextMessages = [...messages, userMsg];
@@ -211,6 +252,7 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
       const res = await streamCopilotChat(
         {
           message: text,
+          attachment: readyAttachment?.payload,
           trip_context: {
             mode: 'ideation',
             destination: parsed.destination || 'Đà Nẵng & Huế',
@@ -404,12 +446,14 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
               <div className="w-16 h-16 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md mb-5">
                 <Compass size={30} />
               </div>
-              <h2 className="text-2xl sm:text-[28px] font-bold text-neutral-950 tracking-tight mb-2.5">
-                Hỏi vu vơ trước chuyến đi
+              <h2 className="text-2xl sm:text-[32px] font-bold text-neutral-950 tracking-tight mb-2.5">
+                {currentUserName?.trim()
+                  ? `Hôm nay bạn muốn đi đâu, ${currentUserName.trim()}?`
+                  : 'Hôm nay bạn muốn đi đâu?'}
               </h2>
               <p className="text-sm sm:text-[15px] text-neutral-600 max-w-lg leading-relaxed mb-8">
-                Cứ hỏi thoải mái về thời tiết theo tháng, đặc sản địa phương, hay nên đi Đà Nẵng – Huế mấy ngày.
-                Khi đã ưng ý tưởng, bấm <strong className="text-neutral-900">Tạo lịch trình từ ý tưởng này</strong> ở góc trên.
+                Mình ở đây để giúp bạn lên kế hoạch trải nghiệm xanh tại Đà Nẵng – Huế.
+                Hỏi bất cứ điều gì, hoặc bấm dấu <strong className="text-neutral-900">+</strong> để tải ảnh, dán link TikTok/YouTube hay vé đặt chỗ.
               </p>
 
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
@@ -438,8 +482,39 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
                 className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
               >
                 {msg.sender === 'user' ? (
-                  <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-br-sm bg-neutral-900 text-white px-4 py-3 text-[14px] leading-relaxed shadow-xs">
-                    {msg.text}
+                  <div className="max-w-[85%] sm:max-w-[75%] space-y-2 flex flex-col items-end">
+                    {msg.attachment && (
+                      <div className="rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-2xs flex items-center gap-3 max-w-full">
+                        {msg.attachment.previewUrl ? (
+                          <img
+                            src={msg.attachment.previewUrl}
+                            alt={msg.attachment.displayTitle}
+                            className="w-12 h-12 rounded-xl object-cover border border-neutral-200 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
+                            {msg.attachment.type === 'link' ? (
+                              <Link2 size={17} />
+                            ) : msg.attachment.type === 'receipt' ? (
+                              <ReceiptText size={17} />
+                            ) : (
+                              <ImageIcon size={17} />
+                            )}
+                          </div>
+                        )}
+                        <div className="min-w-0 text-left">
+                          <p className="text-xs font-bold text-neutral-950 truncate max-w-[260px]">
+                            {msg.attachment.displayTitle}
+                          </p>
+                          <p className="text-xs text-neutral-600 truncate">
+                            {msg.attachment.subtitle}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="rounded-2xl rounded-br-sm bg-neutral-900 text-white px-4 py-3 text-[14px] leading-relaxed shadow-xs">
+                      {msg.text}
+                    </div>
                   </div>
                 ) : (
                   <div className="w-full space-y-3">
@@ -616,10 +691,18 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
         </div>
       </div>
 
-      {/* Bottom Floating Input Bar chuẩn MindTripAI */}
+      {/* Bottom Floating Input Bar chuẩn MindTripAI (+ Multimodal Attach Menu) */}
       <footer className="shrink-0 px-4 sm:px-8 pb-4 pt-2 bg-gradient-to-t from-[#FCFAF5] via-[#FCFAF5] to-transparent">
-        <div className="max-w-[780px] mx-auto">
-          <div className="flex items-end gap-2 rounded-3xl border border-neutral-300 bg-white px-4 py-2.5 shadow-md focus-within:border-neutral-900 focus-within:ring-1 focus-within:ring-neutral-900 transition">
+        <div className="max-w-[744px] mx-auto relative">
+          <MindtripAttachmentMenu
+            isOpen={isAttachMenuOpen}
+            onClose={() => setIsAttachMenuOpen(false)}
+            onSelectAttachment={(ready) => {
+              void handleSend(undefined, ready);
+            }}
+          />
+
+          <div className="rounded-[28px] border border-neutral-300/90 bg-white px-4 pt-3 pb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.06)] focus-within:border-neutral-900 focus-within:ring-1 focus-within:ring-neutral-900/15 transition">
             <textarea
               ref={textareaRef}
               rows={1}
@@ -628,37 +711,48 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSend();
+                  void handleSend();
                 }
               }}
-              placeholder="Hỏi về thời tiết, đặc sản, nên đi mấy ngày..."
+              placeholder="Hỏi GreenTrip AI về Đà Nẵng – Huế, hoặc bấm + để tải ảnh, dán link, vé đặt chỗ..."
               aria-label="Nhập câu hỏi khởi tạo ý tưởng chuyến đi"
-              className="flex-1 resize-none overflow-y-auto bg-transparent py-2 text-[14px] text-neutral-900 placeholder:text-neutral-500 focus:outline-none max-h-36 leading-relaxed"
+              className="w-full resize-none overflow-y-auto bg-transparent text-[14.5px] text-neutral-900 placeholder:text-neutral-500 focus:outline-none max-h-36 leading-relaxed"
             />
-            <button
-              type="button"
-              onClick={() => handleSend()}
-              disabled={!input.trim() || isSending}
-              aria-label="Gửi tin nhắn"
-              className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
-                input.trim() && !isSending
-                  ? 'bg-neutral-900 hover:bg-neutral-800 text-white cursor-pointer active:scale-95'
-                  : 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
-              }`}
-            >
-              {isSending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={18} />}
-            </button>
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                onClick={() => setIsAttachMenuOpen((prev) => !prev)}
+                aria-label="Đính kèm ảnh, đường dẫn hoặc vé đặt chỗ"
+                aria-expanded={isAttachMenuOpen}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                  isAttachMenuOpen
+                    ? 'bg-neutral-900 text-white rotate-45'
+                    : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-900'
+                }`}
+                title="Đính kèm tệp, đường dẫn hoặc hóa đơn"
+              >
+                <Plus size={18} strokeWidth={2.2} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleSend()}
+                disabled={!input.trim() || isSending}
+                aria-label="Gửi tin nhắn"
+                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                  input.trim() && !isSending
+                    ? 'bg-neutral-950 hover:bg-neutral-800 text-white cursor-pointer active:scale-95'
+                    : 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
+                }`}
+              >
+                {isSending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={17} />}
+              </button>
+            </div>
           </div>
-          <p className="mt-2 text-center text-xs text-neutral-600">
-            GreenTrip AI gợi ý tham khảo trước chuyến đi — bấm{' '}
-            <button
-              type="button"
-              onClick={handleCreateTripClick}
-              className="font-semibold text-emerald-800 hover:underline cursor-pointer"
-            >
-              Tạo lịch trình từ ý tưởng này
-            </button>{' '}
-            bất cứ lúc nào bạn muốn chốt kế hoạch.
+
+          <p className="mt-2 text-center text-xs text-neutral-500">
+            GreenTrip AI có thể nhầm lẫn. Hãy kiểm tra lại thông tin quan trọng.
           </p>
         </div>
       </footer>

@@ -61,9 +61,19 @@ export interface CopilotSuggestedPoi {
   open_range_label?: string | null;
 }
 
+export interface CopilotAttachmentPayload {
+  type: 'file' | 'link' | 'receipt';
+  url?: string;
+  file_name?: string;
+  mime_type?: string;
+  content_base64?: string;
+  extracted_text?: string;
+}
+
 export interface CopilotChatRequest {
   message: string;
   trip_context: TripContextPayload;
+  attachment?: CopilotAttachmentPayload;
 }
 
 export interface CopilotChatResponse {

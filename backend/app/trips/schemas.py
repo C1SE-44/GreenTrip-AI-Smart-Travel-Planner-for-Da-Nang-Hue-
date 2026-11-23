@@ -477,12 +477,59 @@ class TripContextPayload(BaseModel):
     )
 
 
+class CopilotAttachmentPayload(BaseModel):
+    """Multimodal attachment sent from the Mindtrip-style '+' menu (file, link, or receipt)."""
+
+    type: Literal["file", "link", "receipt"] = Field(
+        ...,
+        description="Loại đính kèm: 'file' (ảnh/screenshot/PDF), 'link' (URL mạng xã hội/bài viết), hoặc 'receipt' (vé/xác nhận đặt chỗ)",
+    )
+    url: str | None = Field(default=None, max_length=2000, description="Đường dẫn URL khi type='link'")
+    file_name: str | None = Field(default=None, max_length=255, description="Tên tệp khi type='file' hoặc 'receipt'")
+    mime_type: str | None = Field(default=None, max_length=100, description="MIME type (image/jpeg, image/png, application/pdf, text/plain)")
+    content_base64: str | None = Field(
+        default=None,
+        max_length=6_000_000,
+        description="Nội dung file mã hóa base64 (tối đa ~4MB nhị phân)",
+    )
+    extracted_text: str | None = Field(
+        default=None,
+        max_length=8000,
+        description="Văn bản trích xuất sẵn từ tệp text/ghi chú (nếu có)",
+    )
+
+    @model_validator(mode="after")
+    def validate_attachment_fields(self) -> "CopilotAttachmentPayload":
+        if self.type == "link":
+            if not (self.url or "").strip():
+                raise ValueError("Vui lòng nhập đường dẫn URL hợp lệ.")
+            cleaned = self.url.strip()
+            if not (cleaned.startswith("http://") or cleaned.startswith("https://")):
+                cleaned = f"https://{cleaned}"
+            self.url = cleaned
+        else:
+            has_content = bool((self.content_base64 or "").strip() or (self.extracted_text or "").strip() or (self.file_name or "").strip())
+            if not has_content:
+                raise ValueError("Vui lòng chọn tệp ảnh, PDF hoặc hóa đơn hợp lệ.")
+        return self
+
+
 class CopilotChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=1000, description="Nội dung người dùng gửi cho Copilot")
+    message: str = Field(default="", max_length=1000, description="Nội dung người dùng gửi cho Copilot")
     trip_context: TripContextPayload = Field(
         default_factory=TripContextPayload,
         description="Ngữ cảnh chuyến đi hiện tại (thành phố, ngày, điểm dừng)",
     )
+    attachment: CopilotAttachmentPayload | None = Field(
+        default=None,
+        description="Tệp ảnh, đường dẫn bài viết/video, hoặc hóa đơn đặt chỗ đính kèm từ menu '+'",
+    )
+
+    @model_validator(mode="after")
+    def validate_message_or_attachment(self) -> "CopilotChatRequest":
+        if not (self.message or "").strip() and self.attachment is None:
+            raise ValueError("Vui lòng nhập câu hỏi hoặc đính kèm tệp/đường dẫn.")
+        return self
 
 
 class CopilotSuggestedPoiItem(BaseModel):

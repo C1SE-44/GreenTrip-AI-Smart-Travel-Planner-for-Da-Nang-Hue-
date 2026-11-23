@@ -26,6 +26,9 @@ import {
   Star,
   ChevronDown,
   MessageSquare,
+  Image as ImageIcon,
+  Link2,
+  ReceiptText,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import type { UserProfile } from '@/services/auth';
@@ -60,7 +63,8 @@ import {
   type ItineraryDay,
   type ItineraryStop,
 } from '@/services/itineraryService';
-import { FormattedCopilotMessage, type CopilotChatMessageItem } from './copilotMessageMarkdown';
+import { FormattedCopilotMessage, type CopilotAttachmentSummary, type CopilotChatMessageItem } from './copilotMessageMarkdown';
+import MindtripAttachmentMenu, { type ReadyAttachment } from './MindtripAttachmentMenu';
 import {
   MODAL_CATEGORY_TABS,
   parseCategoryBudgets,
@@ -74,7 +78,7 @@ import ExpiredTripBanner from './ExpiredTripBanner';
 import TripHeader from './TripHeader';
 import PoiImage from '@/components/ui/PoiImage';
 
-export { FormattedCopilotMessage, type CopilotChatMessageItem };
+export { FormattedCopilotMessage, type CopilotAttachmentSummary, type CopilotChatMessageItem };
 export { parseCategoryBudgets, type CategoryBudgets };
 
 export interface TripOverviewViewProps {
@@ -168,6 +172,7 @@ export default function TripOverviewView({
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isPlannerDesktopViewport, setIsPlannerDesktopViewport] = useState<boolean>(() =>
     typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true,
   );
@@ -866,10 +871,18 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     return { copilotRouteCoordinates: coords, copilotNumberedOrderMap: orderMap };
   }, [chatMessages, relevantPois]);
 
-  // Xử lý gửi tin nhắn trò chuyện với Trợ lý AI Copilot (PB14 - 6 Core Mindtrip MVPs)
-  const handleSendChatMessage = async (overridePrompt?: string) => {
-    const promptToSend = (overridePrompt ?? chatInput).trim();
-    if (!promptToSend || isAiThinking) return;
+  // Xử lý gửi tin nhắn trò chuyện với Trợ lý AI Copilot (PB14 - 6 Core Mindtrip MVPs + Multimodal Attachments)
+  const handleSendChatMessage = async (overridePrompt?: string, readyAttachment?: ReadyAttachment) => {
+    const typedPrompt = (overridePrompt ?? chatInput).trim();
+    const defaultAttachmentPrompt = readyAttachment
+      ? readyAttachment.payload.type === 'link'
+        ? `Phân tích đường dẫn ${readyAttachment.subtitle} này và gợi ý địa điểm xanh cho chuyến đi`
+        : readyAttachment.payload.type === 'receipt'
+          ? `Đọc vé / xác nhận đặt chỗ "${readyAttachment.displayTitle}" và đồng bộ vào lịch trình`
+          : `Phân tích tệp "${readyAttachment.displayTitle}" và nhận diện địa điểm xanh phù hợp`
+      : '';
+    const promptToSend = typedPrompt || defaultAttachmentPrompt;
+    if ((!promptToSend && !readyAttachment) || isAiThinking) return;
 
     const userMsgId = `user-${Date.now()}`;
     const newUserMsg: CopilotChatMessageItem = {
@@ -877,6 +890,15 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       sender: 'user',
       text: promptToSend,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      attachment: readyAttachment
+        ? {
+            type: readyAttachment.payload.type,
+            displayTitle: readyAttachment.displayTitle,
+            subtitle: readyAttachment.subtitle,
+            previewUrl: readyAttachment.previewUrl,
+            url: readyAttachment.payload.url,
+          }
+        : undefined,
     };
 
     const historyForRequest = chatMessages.slice(-8).map((m) => ({
@@ -894,6 +916,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       const res = await streamCopilotChat(
         {
           message: promptToSend,
+          attachment: readyAttachment?.payload,
           trip_context: {
             destination: trip.destination || 'Đà Nẵng & Huế',
             days_count: trip.daysCount || 4,
@@ -1465,7 +1488,36 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 }`}
               >
                 {msg.sender === 'user' ? (
-                  <div className="whitespace-pre-line">{msg.text}</div>
+                  <div className="space-y-2">
+                    {msg.attachment && (
+                      <div className="rounded-xl bg-white/15 border border-white/20 p-2 flex items-center gap-2.5">
+                        {msg.attachment.previewUrl ? (
+                          <img
+                            src={msg.attachment.previewUrl}
+                            alt={msg.attachment.displayTitle}
+                            className="w-10 h-10 rounded-lg object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+                            {msg.attachment.type === 'link' ? (
+                              <Link2 size={14} />
+                            ) : msg.attachment.type === 'receipt' ? (
+                              <ReceiptText size={14} />
+                            ) : (
+                              <ImageIcon size={14} />
+                            )}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white truncate max-w-[220px]">
+                            {msg.attachment.displayTitle}
+                          </p>
+                          <p className="text-[11px] text-white/75 truncate">{msg.attachment.subtitle}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="whitespace-pre-line">{msg.text}</div>
+                  </div>
                 ) : (
                   <>
                     {msg.reasoningTrace && (
@@ -1716,8 +1768,16 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             ))}
           </div>
 
-          {/* Ô nhập tin nhắn floating ghim đáy */}
-          <div className="w-full shrink-0">
+          {/* Ô nhập tin nhắn floating ghim đáy (+ Pop-up Đính kèm Đa phương thức chuẩn Mindtrip AI) */}
+          <div className="w-full shrink-0 relative">
+            <MindtripAttachmentMenu
+              isOpen={isAttachMenuOpen}
+              onClose={() => setIsAttachMenuOpen(false)}
+              onSelectAttachment={(ready) => {
+                void handleSendChatMessage(undefined, ready);
+              }}
+            />
+
             <div className="w-full rounded-[24px] border border-gray-200/90 p-3 shadow-sm bg-white hover:border-gray-300 focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all flex flex-col justify-between">
               <input
                 ref={chatInputRef}
@@ -1726,7 +1786,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSendChatMessage();
+                  if (e.key === 'Enter') void handleSendChatMessage();
                 }}
                 className="w-full text-[13.5px] text-gray-900 placeholder:text-gray-400 focus:outline-none bg-transparent pt-0.5"
               />
@@ -1734,9 +1794,15 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               <div className="flex items-center justify-between pt-2.5 border-t border-gray-100/70 mt-2.5">
                 <button
                   type="button"
-                  onClick={() => setShowAddIdeasModal(true)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                  title="Thêm địa điểm vào ý tưởng chuyến đi"
+                  onClick={() => setIsAttachMenuOpen((prev) => !prev)}
+                  aria-label="Đính kèm ảnh, đường dẫn hoặc vé đặt chỗ"
+                  aria-expanded={isAttachMenuOpen}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer ${
+                    isAttachMenuOpen
+                      ? 'bg-neutral-900 text-white rotate-45'
+                      : 'text-gray-600 hover:text-black hover:bg-gray-100'
+                  }`}
+                  title="Tải ảnh/tệp, thêm đường dẫn hoặc vé đặt chỗ"
                 >
                   <Plus size={18} />
                 </button>

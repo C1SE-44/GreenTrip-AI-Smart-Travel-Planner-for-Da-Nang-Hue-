@@ -1,11 +1,20 @@
 import { MapPin } from 'lucide-react';
 import type { CopilotSuggestedPoi } from '@/services/copilotService';
 
+export interface CopilotAttachmentSummary {
+  type: 'file' | 'link' | 'receipt';
+  displayTitle: string;
+  subtitle: string;
+  previewUrl?: string;
+  url?: string;
+}
+
 export interface CopilotChatMessageItem {
   id: string;
   sender: 'user' | 'ai';
   text: string;
   timestamp?: string;
+  attachment?: CopilotAttachmentSummary;
   suggestedPois?: CopilotSuggestedPoi[];
   avoidNotice?: string | null;
   greenImpact?: string | null;

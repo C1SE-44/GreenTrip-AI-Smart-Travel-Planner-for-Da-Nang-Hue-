@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendRoot = path.resolve(__dirname, '..');
+
+test('MindtripAttachmentMenu implements all 3 views (menu, link, receipt) matching Mindtrip AI 1:1', async () => {
+  const [menuSrc, ideationSrc, overviewSrc, copilotSvcSrc] = await Promise.all([
+    fs.readFile(path.join(frontendRoot, 'src/components/planner/MindtripAttachmentMenu.tsx'), 'utf8'),
+    fs.readFile(path.join(frontendRoot, 'src/components/planner/IdeationChatView.tsx'), 'utf8'),
+    fs.readFile(path.join(frontendRoot, 'src/components/planner/TripOverviewView.tsx'), 'utf8'),
+    fs.readFile(path.join(frontendRoot, 'src/services/copilotService.ts'), 'utf8'),
+  ]);
+
+  // 1. Popover Menu 3 rows & Mindtrip details
+  assert.ok(menuSrc.includes('Tải ảnh hoặc tệp lên'), 'Must include Upload a file row');
+  assert.ok(menuSrc.includes('ảnh chụp màn hình'), 'Must include interactive screenshot preview trigger');
+  assert.ok(menuSrc.includes('border-dotted'), 'Screenshot trigger must use Mindtrip dotted underline');
+  assert.ok(menuSrc.includes('Thêm đường dẫn'), 'Must include Add a link row & sub-view');
+  assert.ok(menuSrc.includes('YouTube, TikTok, Instagram, Facebook, Pinterest'), 'Must match social link placeholder');
+  assert.ok(menuSrc.includes('Thêm vé / Hóa đơn'), 'Must include Add a receipt row & sub-view');
+  assert.ok(menuSrc.includes('onDrop='), 'Receipt view must support drag & drop upload');
+  assert.ok(menuSrc.includes('MAX_FILE_BYTES'), 'Must enforce file size guard');
+
+  // 2. API payload support
+  assert.ok(copilotSvcSrc.includes('CopilotAttachmentPayload'), 'copilotService must export CopilotAttachmentPayload');
+  assert.ok(copilotSvcSrc.includes('attachment?: CopilotAttachmentPayload'), 'CopilotChatRequest must accept attachment');
+
+  // 3. Wired into both /chat and /planner
+  assert.ok(ideationSrc.includes('<MindtripAttachmentMenu'), 'IdeationChatView (/chat) must render MindtripAttachmentMenu');
+  assert.ok(overviewSrc.includes('<MindtripAttachmentMenu'), 'TripOverviewView (/planner) must render MindtripAttachmentMenu');
+});

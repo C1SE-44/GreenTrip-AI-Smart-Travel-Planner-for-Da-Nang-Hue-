@@ -24,9 +24,12 @@ let cached:Promise<PlaceCatalogItem[]>|undefined;
 let cachedAt = 0;
 export function loadLandingCatalogue(){
  if(cached && Date.now()-cachedAt>60_000) cached=undefined;
- if(!cached){cachedAt=Date.now();cached=Promise.all(['Đà Nẵng','Huế'].map(city=>getPois({city,sort:'curated',view:'summary',limit:100},AbortSignal.timeout(12000)))).then(pages=>{const items=convert(pages.flatMap(p=>p.items));if(!items.length)cached=undefined;return items;});void cached.catch(()=>{cached=undefined;});}
+ if(!cached){cachedAt=Date.now();cached=Promise.all(['Đà Nẵng','Huế'].map(city=>getPois({city,limit:100}))).then(pages=>{const items=convert(pages.flatMap(p=>p.items));if(!items.length)cached=undefined;return items;});void cached.catch(()=>{cached=undefined;});}
  return cached;
 }
-export async function searchLandingCatalogue(q:string,city?:string,signal?:AbortSignal){
- const response=await getPois({q,city,sort:'curated',view:'summary',limit:60},signal);return convert(response.items);
+export async function searchLandingCatalogue(q:string,city?:string,_signal?:AbortSignal){
+ const response=await getPois({city,limit:100});
+ const needle=q.trim().toLowerCase();
+ const items=convert(response.items);
+ return needle?items.filter(p=>p.name.toLowerCase().includes(needle)||p.shortDesc.toLowerCase().includes(needle)||p.address.toLowerCase().includes(needle)):items;
 }

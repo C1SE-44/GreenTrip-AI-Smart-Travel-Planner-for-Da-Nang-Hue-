@@ -95,7 +95,6 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     initialPrompt: string;
     chatHistory: CopilotTripMessage[];
   } | null>(null);
-  const [pendingChatPrompt, setPendingChatPrompt] = useState<string | null>(null);
   const [addToTripSelection, setAddToTripSelection] = useState<AddToTripSelection | null>(null);
   const [pendingAddToTripPoiIds, setPendingAddToTripPoiIds] = useState<string[] | null>(null);
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
@@ -1689,9 +1688,6 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
       ) : viewMode === 'chat' ? (
         <IdeationChatView
           allPois={allPois}
-          currentUserName={currentUser?.full_name}
-          initialPrompt={pendingChatPrompt}
-          onConsumedInitialPrompt={() => setPendingChatPrompt(null)}
           onCreateTripFromIdea={({ initialPrompt, selectedPoiIds, chatHistory }) => {
             setIdeationDraft({ initialPrompt, chatHistory });
             setPendingAddToTripPoiIds(selectedPoiIds.length > 0 ? selectedPoiIds : null);

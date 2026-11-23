@@ -1,6 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Leaf, X, MapPin, ChevronLeft, Minus, Plus, Calendar } from 'lucide-react';
+import { DanangMiniMapCard } from '@/components/landing/studio/DanangMiniMapCard';
+import { DaNangHueFoodCard } from '@/components/landing/studio/DaNangHueFoodCard';
+import { TripPlannerCard } from '@/components/landing/studio/TripPlannerCard';
+import '@/components/landing/studio/studio-cards.css';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -41,6 +45,18 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
+    }
+  }, [step]);
+
+  const [activeStudioCard, setActiveStudioCard] = useState<'nature' | 'food' | 'route'>('nature');
+
+  useEffect(() => {
+    if (step === 1 || step === 2) {
+      setActiveStudioCard('nature');
+    } else if (step === 3 || step === 4) {
+      setActiveStudioCard('route');
+    } else if (step === 5) {
+      setActiveStudioCard('food');
     }
   }, [step]);
   const [personality, setPersonality] = useState('binh_thuong');
@@ -165,14 +181,14 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex bg-white animate-fadeIn h-screen w-screen overflow-hidden">
-      {/* Left Column (Content) */}
-      <div className="relative flex w-full lg:w-1/2 flex-col h-full bg-white">
+    <div className="fixed inset-0 z-[100] flex bg-[#FAF8F5] animate-fadeIn h-screen w-screen overflow-hidden">
+      {/* Left Column (Content) - Restored to original 50% centered position */}
+      <div className="relative flex w-full lg:w-1/2 flex-col h-full bg-[#FAF8F5]">
         {/* Top Header: Close & Skip Button */}
-        <div className="absolute top-6 left-6 right-6 z-10 flex items-center justify-between">
+        <div className="absolute top-6 left-6 right-6 z-20 flex items-center justify-between">
           <button
             onClick={handleSkip}
-            className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-black cursor-pointer"
+            className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 transition-colors text-black cursor-pointer"
             title="Đóng"
           >
             <X size={20} strokeWidth={2} />
@@ -180,19 +196,21 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
 
           <button
             onClick={handleSkip}
-            className="text-[13px] font-semibold text-gray-500 hover:text-black px-4 py-1.5 rounded-full hover:bg-gray-100 transition-all cursor-pointer"
+            className="text-[13px] font-semibold text-gray-500 hover:text-black px-4 py-1.5 rounded-full hover:bg-black/5 transition-all cursor-pointer"
           >
             Bỏ qua bước này
           </button>
         </div>
 
-        {/* Content Area - Natural Scroll */}
-        <div ref={scrollRef} className="flex-1 flex flex-col px-10 lg:px-24 w-full max-w-2xl mx-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] overflow-y-auto">
-          
-          <div className="max-w-[420px] w-full pt-20 pb-16">
-            {/* Logo / Icon */}
-            <div className="mb-6 flex h-10 w-10 items-center justify-center rounded-full bg-black">
-              <Leaf size={20} strokeWidth={2.5} className="text-white" />
+        {/* Content Area - Fixed top baseline synchronized with Step 2, so the Leaf icon NEVER jumps or gets stuck "trên trời" */}
+        <div
+          ref={scrollRef}
+          className="flex-1 flex flex-col px-8 lg:px-16 w-full max-w-2xl mx-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] overflow-y-auto pt-[140px] pb-28"
+        >
+          <div className="max-w-[480px] w-full mx-auto">
+            {/* Logo / Icon - Anchored at exact synchronized baseline */}
+            <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-full bg-black shadow-xs">
+              <Leaf size={18} strokeWidth={2.5} className="text-white" />
             </div>
 
             {step === 1 && (
@@ -755,32 +773,52 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                 </div>
               </div>
             )}
-
           </div>
         </div>
       </div>
 
-      {/* Right Column (Image) - Hidden on mobile */}
-      <div className="hidden lg:block lg:w-1/2 p-4 pl-0">
-        <div className="h-full w-full overflow-hidden rounded-[32px] bg-gray-100">
-          <img
-            key={step} 
-            src={step === 1 
-              ? "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80" 
-              : step === 2 
-                ? "https://images.unsplash.com/photo-1498623116890-37e912163d5d?auto=format&fit=crop&q=80"
-                : step === 3
-                  ? "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&q=80"
-                  : step === 4
-                    ? "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80"
-                    : step === 5
-                      ? "https://images.unsplash.com/photo-1498623116890-37e912163d5d?auto=format&fit=crop&q=80"
-                      : step === 6
-                        ? "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&q=80"
-                        : "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80"}
-            alt="Travel inspiration"
-            className="h-full w-full object-cover animate-fadeIn"
-          />
+      {/* Right Column (Visual Studio Card) - Sticks to 3 edges (Top, Right, Bottom) with soft fade on left edge towards inputs */}
+      <div className="hidden lg:flex flex-1 relative h-full overflow-hidden select-none bg-[#FAF8F5]">
+        {/* Soft fading gradient towards the left input area ("giao thoa") */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 w-28 lg:w-36 bg-gradient-to-r from-[#FAF8F5] via-[#FAF8F5]/60 to-transparent z-30"
+        />
+
+        {/* Card Content Container - Embedded cards flush to 3 edges without extra borders or padding */}
+        <div className="h-full w-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {activeStudioCard === 'nature' && (
+            <div className="h-full w-full animate-fadeIn">
+              <DanangMiniMapCard
+                embedded
+                onOpenDanangItinerary={() => {
+                  setCity('Đà Nẵng');
+                }}
+              />
+            </div>
+          )}
+          {activeStudioCard === 'food' && (
+            <div className="h-full w-full animate-fadeIn">
+              <DaNangHueFoodCard
+                embedded
+                onFindDish={(dish) => {
+                  if (!restaurants.includes(dish)) {
+                    setRestaurants((prev) => [...prev, dish]);
+                  }
+                }}
+              />
+            </div>
+          )}
+          {activeStudioCard === 'route' && (
+            <div className="h-full w-full animate-fadeIn">
+              <TripPlannerCard
+                embedded
+                onStartPlanning={() => {
+                  setHasPlan(true);
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
 

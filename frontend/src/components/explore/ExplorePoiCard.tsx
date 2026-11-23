@@ -1,6 +1,6 @@
 import { Leaf } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { getGalleryImages, SUB_CATEGORY_LABELS, type Poi } from '@/data/pois';
+import { evaluateLocalAuthentic, getGalleryImages, SUB_CATEGORY_LABELS, type Poi } from '@/data/pois';
 import { CATEGORY_META } from '@/components/explore/exploreUtils';
 import PoiImage from '@/components/ui/PoiImage';
 
@@ -15,6 +15,7 @@ export interface ExplorePoiCardProps {
   onHover: (id: string | null) => void;
   onToggleFavorite: (id: string, poi?: Poi) => void;
   onToggleAddTrip?: (id: string) => void;
+  showLocalAuthenticBadge?: boolean;
 }
 
 export default function ExplorePoiCard({
@@ -27,6 +28,7 @@ export default function ExplorePoiCard({
   onHover,
   onToggleFavorite,
   onToggleAddTrip,
+  showLocalAuthenticBadge = false,
 }: ExplorePoiCardProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [isCardHovered, setIsCardHovered] = useState(false);
@@ -178,6 +180,15 @@ export default function ExplorePoiCard({
         <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-normal">
           <i className={`ph ${resolvedCategoryIcon} text-gray-400 text-[14px] shrink-0`}></i>
           <span className="truncate">{resolvedCategoryLabel}</span>
+          {(() => {
+            const auth = evaluateLocalAuthentic(poi);
+            if (!auth.badgeLabel || (!showLocalAuthenticBadge && !auth.isCraftVillage)) return null;
+            return (
+              <span className="ml-auto shrink-0 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                {auth.badgeLabel}
+              </span>
+            );
+          })()}
         </div>
 
         <div className="text-[12.5px] text-gray-400 font-normal truncate">

@@ -45,6 +45,10 @@ BUDGET_SCORE_CAP: float = 1_000_000.0
 DEFAULT_MISSING_GREEN_SCORE: float = 0.5
 DEFAULT_MISSING_BUDGET_SCORE: float = 0.5
 ECO_CERTIFIED_MIN_SCORE: float = 75.0
+HAN_RIVER_WEST_MAX_LNG: float = 108.224
+LOCAL_AUTHENTIC_MAX_POPULARITY: float = 3.65
+CROWDED_POI_MIN_POPULARITY: float = 3.85
+LOCAL_AUTHENTIC_CRAFT_TYPES: tuple[str, ...] = ("craft_workshop", "eco_lodge", "homestay")
 
 BUDGET_TIER_SCORE_FALLBACK: dict[str, float] = {
     "free": 1.0,
@@ -91,6 +95,7 @@ class ParsedSliderWeights(BaseModel):
     max_budget: float | None = None
     eco_certified_only: bool = False
     green_transit_only: bool = False
+    local_authentic_only: bool = False
     is_ranking_active: bool = False
     is_filtering_active: bool = False
     zero_weights_fallback: bool = False
@@ -189,6 +194,50 @@ def is_poi_green_transit(poi: POI) -> bool:
     return False
 
 
+def is_poi_west_of_han_river(poi: POI) -> bool:
+    """Kiểm tra điểm đến tại Đà Nẵng nằm phía Tây sông Hàn (Hải Châu / Thanh Khê / Cẩm Lệ / Hòa Vang)."""
+    city_lower = str(poi.city or "").strip().lower()
+    if not any(tok in city_lower for tok in ("đà nẵng", "da nang", "danang")):
+        return False
+    if poi.longitude is None:
+        return False
+    try:
+        return float(poi.longitude) < HAN_RIVER_WEST_MAX_LNG
+    except (TypeError, ValueError):
+        return False
+
+
+def is_poi_local_authentic(poi: POI, neo4j_local_ids: set[str] | None = None) -> bool:
+    """Kiểm tra POI chuẩn bản địa ít đông (tránh bẫy du lịch & khu quá tải)."""
+    if not bool(poi.is_local_business):
+        return False
+
+    btype = str(poi.local_business_type or "").strip().lower()
+    eco_100 = resolve_eco_score_100(poi.green_score)
+    in_neo4j = bool(neo4j_local_ids and str(poi.id) in neo4j_local_ids)
+    has_quality_signal = (
+        (eco_100 is not None and eco_100 >= 70.0)
+        or btype in LOCAL_AUTHENTIC_CRAFT_TYPES
+        or in_neo4j
+    )
+    if not has_quality_signal:
+        return False
+
+    pop = float(poi.popularity_score) if poi.popularity_score is not None else 3.0
+    cat_lower = str(poi.category or "").strip().lower()
+    city_lower = str(poi.city or "").strip().lower()
+    is_danang = any(tok in city_lower for tok in ("đà nẵng", "da nang", "danang"))
+    is_food_or_cafe = any(
+        tok in cat_lower
+        for tok in ("ẩm thực", "quán ăn", "cafe", "giải khát", "quan-an")
+    )
+
+    if is_danang and is_food_or_cafe:
+        return is_poi_west_of_han_river(poi) and pop <= LOCAL_AUTHENTIC_MAX_POPULARITY
+
+    return btype == "craft_workshop" or pop <= LOCAL_AUTHENTIC_MAX_POPULARITY
+
+
 def matches_slider_filters(poi: POI, weights: ParsedSliderWeights) -> bool:
     """Kiểm tra các điều kiện lọc cứng của PB08 (độc lập với trọng số xếp hạng)."""
     if weights.min_eco_score > 0:
@@ -212,6 +261,9 @@ def matches_slider_filters(poi: POI, weights: ParsedSliderWeights) -> bool:
         return False
 
     if weights.green_transit_only and not is_poi_green_transit(poi):
+        return False
+
+    if weights.local_authentic_only and not is_poi_local_authentic(poi):
         return False
 
     return True
@@ -258,6 +310,12 @@ def parse_slider_weights(
             description="Chỉ hiển thị địa điểm có phương tiện xanh kết nối (Green Transit)",
         ),
     ] = False,
+    local_authentic_only: Annotated[
+        bool,
+        Query(
+            description="Chỉ hiển thị điểm bản địa ít đông (Tây sông Hàn Đà Nẵng, làng nghề & điểm xanh ít quá tải)",
+        ),
+    ] = False,
 ) -> ParsedSliderWeights:
     # 1. Tách ngưỡng lọc cứng (min_eco_score chỉ đến từ eco_priority) khỏi trọng số xếp hạng (green_weight)
     min_eco = ECO_SCORE_MAP.get(eco_priority, 0) if eco_priority is not None else 0
@@ -291,6 +349,7 @@ def parse_slider_weights(
         or max_budget is not None
         or eco_certified_only
         or green_transit_only
+        or local_authentic_only
     )
 
     return ParsedSliderWeights(
@@ -302,6 +361,7 @@ def parse_slider_weights(
         max_budget=max_budget,
         eco_certified_only=eco_certified_only,
         green_transit_only=green_transit_only,
+        local_authentic_only=local_authentic_only,
         is_ranking_active=is_ranking_active,
         is_filtering_active=is_filtering_active,
         zero_weights_fallback=zero_weights_fallback,

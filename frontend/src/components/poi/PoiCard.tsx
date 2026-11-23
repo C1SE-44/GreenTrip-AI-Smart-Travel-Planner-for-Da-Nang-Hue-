@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Heart } from 'lucide-react';
 import type { Poi, PoiCategory } from '@/data/pois';
-import { getGalleryImages, SUB_CATEGORY_LABELS, categoryLabels } from '@/data/pois';
+import { evaluateLocalAuthentic, getGalleryImages, SUB_CATEGORY_LABELS, categoryLabels } from '@/data/pois';
 import ExplanationModal from '@/components/poi/ExplanationModal';
 import PoiImage from '@/components/ui/PoiImage';
 
@@ -313,9 +313,19 @@ export default function PoiCard({
         </div>
 
         {/* Dòng 2: Loại hình kèm icon */}
-        <div className={`flex items-center gap-1.5 ${compact ? 'text-xs' : 'text-[13px]'} text-neutral-500 font-medium truncate`}>
+        <div className={`flex items-center gap-1.5 ${compact ? 'text-xs' : 'text-[13px]'} text-neutral-500 font-medium min-w-0`}>
           <i className={`ph ${categoryIcon} text-neutral-500 text-[14px] shrink-0`} aria-hidden="true"></i>
           <span className="truncate">{categoryLabel}</span>
+          {(() => {
+            const auth = evaluateLocalAuthentic(poi);
+            if (!auth.isCraftVillage && !auth.isWestOfHanRiver) return null;
+            if (!auth.badgeLabel || auth.isCrowded) return null;
+            return (
+              <span className="ml-auto shrink-0 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                {auth.badgeLabel}
+              </span>
+            );
+          })()}
         </div>
 
         {/* Dòng 3: Khu vực ngắn (rút gọn 2 đoạn cuối địa chỉ) */}

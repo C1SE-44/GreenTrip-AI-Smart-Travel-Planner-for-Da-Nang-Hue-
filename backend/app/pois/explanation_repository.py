@@ -4,6 +4,7 @@ from typing import Any
 
 from neo4j import READ_ACCESS
 
+from app.cache import poi_cache
 from app.config import get_settings
 from app.db.neo4j import get_driver
 from app.db.postgres import get_connection
@@ -16,10 +17,20 @@ QUERY_PATH = (
     / "queries"
     / "get_poi_explanation_facts.cypher"
 )
+LOCAL_AUTHENTIC_QUERY_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "neo4j"
+    / "queries"
+    / "get_local_authentic_pois.cypher"
+)
 try:
     EXPLANATION_QUERY = QUERY_PATH.read_text(encoding="utf-8")
 except Exception:
     EXPLANATION_QUERY = ""
+try:
+    LOCAL_AUTHENTIC_QUERY = LOCAL_AUTHENTIC_QUERY_PATH.read_text(encoding="utf-8")
+except Exception:
+    LOCAL_AUTHENTIC_QUERY = ""
 
 
 def _fetch_from_relational_db(poi_id: str) -> dict[str, Any] | None:
@@ -32,7 +43,8 @@ def _fetch_from_relational_db(poi_id: str) -> dict[str, Any] | None:
             cur.execute("""
                 SELECT p.poi_id, p.name, p.is_local_business, p.local_business_type,
                        pc.name as category_name, c.name as city_name, c.code as city_code,
-                       p.sub_category, p.green_score
+                       p.sub_category, p.green_score,
+                       ST_X(p.geom::geometry) as lng, p.popularity_score::float as popularity_score
                 FROM public.pois p
                 LEFT JOIN public.poi_categories pc ON pc.category_id = p.category_id
                 LEFT JOIN public.cities c ON c.city_id = p.city_id
@@ -55,7 +67,7 @@ def _fetch_from_relational_db(poi_id: str) -> dict[str, Any] | None:
             conn.close()
 
         if row:
-            db_poi_id, name, is_local, btype, cat_name, city_name, city_code, sub_cat, green = row
+            db_poi_id, name, is_local, btype, cat_name, city_name, city_code, sub_cat, green, lng, popularity = row
             return _build_facts_payload(
                 poi_id=str(db_poi_id or clean_id),
                 name=name,
@@ -65,6 +77,8 @@ def _fetch_from_relational_db(poi_id: str) -> dict[str, Any] | None:
                 city_name=city_name,
                 city_code=city_code,
                 green=green,
+                longitude=float(lng) if lng is not None else None,
+                popularity_score=float(popularity) if popularity is not None else None,
             )
     except Exception as exc:
         logger.warning("Relational database explanation lookup failed: %s", exc)
@@ -110,6 +124,8 @@ def _build_facts_payload(
     city_name: Any,
     city_code: Any,
     green: Any,
+    longitude: float | None = None,
+    popularity_score: float | None = None,
 ) -> dict[str, Any]:
     cat_display = str(cat_name or "Điểm tham quan")
     cat_lower = cat_display.lower()
@@ -200,6 +216,27 @@ def _build_facts_payload(
             "target_key": "local_business",
             "target_name": "Doanh nghiệp & cơ sở bản địa",
         })
+    if str(btype or "").strip().lower() == "craft_workshop":
+        facts.append({
+            "relationship": "HAS_FEATURE",
+            "target_type": "Feature",
+            "target_key": "craft_workshop",
+            "target_name": "Làng nghề & xưởng thủ công bản địa",
+        })
+    if loc_key == "DANANG" and longitude is not None and float(longitude) < 108.224:
+        facts.append({
+            "relationship": "HAS_FEATURE",
+            "target_type": "Feature",
+            "target_key": "west_han_river",
+            "target_name": "Khu vực bản địa phía Tây sông Hàn",
+        })
+    if popularity_score is not None and float(popularity_score) <= 3.65:
+        facts.append({
+            "relationship": "HAS_FEATURE",
+            "target_type": "Feature",
+            "target_key": "low_crowd_authentic",
+            "target_name": "Điểm đến ít đông, tránh quá tải",
+        })
 
     return {
         "poi": {
@@ -211,6 +248,32 @@ def _build_facts_payload(
         },
         "facts": facts,
     }
+
+
+def fetch_local_authentic_poi_ids() -> set[str]:
+    """Lấy danh sách POI bản địa từ Neo4j Knowledge Graph (tự fallback set rỗng khi offline)."""
+    cache_key = "pois:neo4j:local_authentic_ids"
+    cached = poi_cache.get_json(cache_key)
+    if isinstance(cached, list):
+        return {str(item) for item in cached if item is not None}
+
+    driver = get_driver()
+    if driver is None or not LOCAL_AUTHENTIC_QUERY:
+        return set()
+
+    try:
+        settings = get_settings()
+        with driver.session(
+            database=settings.NEO4J_DATABASE,
+            default_access_mode=READ_ACCESS,
+        ) as session:
+            records = session.run(LOCAL_AUTHENTIC_QUERY)
+            poi_ids = {str(rec["id"]) for rec in records if rec.get("id") is not None}
+        poi_cache.set_json(cache_key, sorted(poi_ids), ttl_seconds=300)
+        return poi_ids
+    except Exception as exc:
+        logger.warning("Neo4j local authentic lookup failed, using SQL criteria: %s", exc)
+        return set()
 
 
 def fetch_poi_explanation_facts(poi_id: str) -> dict[str, Any] | None:

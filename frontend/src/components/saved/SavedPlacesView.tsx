@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CalendarPlus, Check, Heart, Loader2, Map as MapIcon, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, Check, Heart, Loader2, Map as MapIcon, MoreHorizontal, Pencil, Plus, Search, Sparkles, Trash2, X } from 'lucide-react';
 import type { Poi, PoiCategory } from '@/data/pois';
 import { categoryLabels, normalizePoi, normalizePois, pois } from '@/data/pois';
 
@@ -108,10 +108,12 @@ export default function SavedPlacesView({
   addedTrips,
   onToggleAddTrip,
   onAddAlbumToTrip,
+  onBuildTripFromCollection,
 }: {
   addedTrips?: Set<string>;
   onToggleAddTrip?: (poiId: string) => void;
   onAddAlbumToTrip?: (poiIds: string[], albumName: string) => void;
+  onBuildTripFromCollection?: (collectionId: string, collectionName: string, places: Poi[]) => void;
 }) {
   const {
     places,
@@ -398,7 +400,7 @@ export default function SavedPlacesView({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={openAddPlaceDialog}
@@ -407,6 +409,24 @@ export default function SavedPlacesView({
                   <Plus size={15} aria-hidden="true" />
                   <span>Thêm địa điểm</span>
                 </button>
+                {onBuildTripFromCollection && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onBuildTripFromCollection(
+                        selectedCollection!.collection_id,
+                        selectedCollection?.name ?? 'Bộ sưu tập',
+                        normalizedCollectionPlaces
+                      )
+                    }
+                    disabled={collectionLoading || normalizedCollectionPlaces.length === 0}
+                    title="Tự động xếp lịch theo cụm đúng các địa điểm trong bộ sưu tập này"
+                    className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-emerald-800 px-3.5 text-xs font-semibold text-white hover:bg-emerald-900 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs cursor-pointer"
+                  >
+                    <Sparkles size={14} aria-hidden="true" />
+                    <span>Xếp lịch từ bộ sưu tập</span>
+                  </button>
+                )}
                 {onAddAlbumToTrip && (
                   <button
                     type="button"

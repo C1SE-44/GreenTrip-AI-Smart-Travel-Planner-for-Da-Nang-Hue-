@@ -7,6 +7,7 @@ import {
   Eye,
   EyeOff,
   Pencil,
+  QrCode,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -190,6 +191,13 @@ export default function AdminDashboardPage({ adminUser }: AdminDashboardPageProp
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               Làm mới
             </button>
+            <Link
+              to="/demo-qr"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            >
+              <QrCode className="h-4 w-4" aria-hidden="true" />
+              Mã QR Demo
+            </Link>
             <Link
               to="/explore"
               className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"

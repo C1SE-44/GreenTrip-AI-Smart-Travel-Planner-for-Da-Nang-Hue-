@@ -152,7 +152,7 @@ export default function LandingPage() {
       img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80",
       widgets: (
         <>
-          <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
+          <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] max-w-[calc(100%-2rem)] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center gap-3">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
@@ -160,13 +160,13 @@ export default function LandingPage() {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
               </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-gray-800 sm:whitespace-nowrap">
                 Địa điểm ăn uống ngon, nhưng thân thiện với trẻ em.
               </p>
             </div>
           </div>
           <div
-            className="absolute top-[40%] right-4 lg:right-0 -translate-y-1/2 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
+            className="absolute top-[40%] right-4 lg:right-0 -translate-y-1/2 rounded-[24px] max-w-[calc(100%-2rem)] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
             style={{ animationDelay: "150ms" }}
           >
             <div className="flex flex-col gap-2.5">
@@ -176,13 +176,13 @@ export default function LandingPage() {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
               </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-gray-800 sm:whitespace-nowrap">
                 Thức ăn đường phố hơn là nhà hàng sang trọng
               </p>
             </div>
           </div>
           <div
-            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
+            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] max-w-[calc(100%-2rem)] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
             style={{ animationDelay: "300ms" }}
           >
             <div className="flex flex-col gap-2.5">
@@ -192,7 +192,7 @@ export default function LandingPage() {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
               </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-gray-800 sm:whitespace-nowrap">
                 Chỉ những viên ngọc quý địa phương
               </p>
             </div>
@@ -235,7 +235,7 @@ export default function LandingPage() {
       img: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80",
       widgets: (
         <>
-          <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
+          <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] max-w-[calc(100%-2rem)] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center gap-3">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
@@ -243,13 +243,13 @@ export default function LandingPage() {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
               </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-gray-800 sm:whitespace-nowrap">
                 Lộ trình ngắn nhất: Tiết kiệm 15km.
               </p>
             </div>
           </div>
           <div
-            className="absolute top-[40%] right-4 lg:right-0 -translate-y-1/2 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
+            className="absolute top-[40%] right-4 lg:right-0 -translate-y-1/2 rounded-[24px] max-w-[calc(100%-2rem)] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
             style={{ animationDelay: "150ms" }}
           >
             <div className="flex flex-col gap-2.5">
@@ -259,13 +259,13 @@ export default function LandingPage() {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
               </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-gray-800 sm:whitespace-nowrap">
                 Đã né tuyến đường đang thi công.
               </p>
             </div>
           </div>
           <div
-            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
+            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] max-w-[calc(100%-2rem)] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
             style={{ animationDelay: "300ms" }}
           >
             <div className="flex flex-col gap-2.5">
@@ -275,7 +275,7 @@ export default function LandingPage() {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
               </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-gray-800 sm:whitespace-nowrap">
                 Thời gian tham quan đã được tối ưu.
               </p>
             </div>
@@ -318,7 +318,7 @@ export default function LandingPage() {
       img: "https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&q=80",
       widgets: (
         <>
-          <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
+          <div className="absolute top-12 left-4 lg:-left-12 rounded-[24px] max-w-[calc(100%-2rem)] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10">
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center gap-3">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-black">
@@ -326,13 +326,13 @@ export default function LandingPage() {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
               </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-gray-800 sm:whitespace-nowrap">
                 Eco Score 90: Quán sử dụng 100% hữu cơ.
               </p>
             </div>
           </div>
           <div
-            className="absolute top-[40%] right-4 lg:right-0 -translate-y-1/2 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
+            className="absolute top-[40%] right-4 lg:right-0 -translate-y-1/2 rounded-[24px] max-w-[calc(100%-2rem)] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
             style={{ animationDelay: "150ms" }}
           >
             <div className="flex flex-col gap-2.5">
@@ -342,13 +342,13 @@ export default function LandingPage() {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
               </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-gray-800 sm:whitespace-nowrap">
                 Có mưa rào ở Lăng Cô chiều nay.
               </p>
             </div>
           </div>
           <div
-            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
+            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] max-w-[calc(100%-2rem)] border border-white/60 bg-white/90 p-4 backdrop-blur-3xl shadow-2xl animate-slideUp z-10"
             style={{ animationDelay: "300ms" }}
           >
             <div className="flex flex-col gap-2.5">
@@ -358,7 +358,7 @@ export default function LandingPage() {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-gray-200"></div>
               </div>
-              <p className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-gray-800 sm:whitespace-nowrap">
                 Đã tự động gợi ý điểm đến trong nhà.
               </p>
             </div>
@@ -386,7 +386,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-white overflow-x-clip">
       {/* 1. HERO SECTION */}
       <section className="relative flex min-h-screen flex-col items-center justify-end overflow-hidden pb-12 text-center bg-white">
         <div className="absolute top-0 left-0 right-0 h-[80vh] z-0">
@@ -587,7 +587,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-14 md:gap-10 lg:gap-6">
               {/* Card 1: Tiết kiệm */}
               <div className="relative flex flex-col overflow-visible rounded-[40px] bg-white p-8 shadow-sm hover:shadow-lg transition-shadow aspect-square w-full min-h-[300px]">
                 <div className="mb-4 text-black">
@@ -795,7 +795,7 @@ export default function LandingPage() {
             giúp bạn tìm ra con đường riêng của mình — xanh hơn, thú vị hơn.
           </p>
 
-          <div className="flex gap-4">
+          <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory no-scrollbar lg:overflow-visible">
             {[
               {
                 title: "Cầu Rồng phun lửa",
@@ -833,7 +833,7 @@ title: 'Bà Nà Hills & Cầu Vàng',
                 count: "5 điểm",
               },
             ].map((item, i) => (
-              <div key={i} className="flex-1 group cursor-pointer min-w-0">
+              <div key={i} className="w-[220px] sm:w-[240px] shrink-0 snap-start lg:w-auto lg:flex-1 lg:min-w-0 group cursor-pointer">
                 <div className="relative h-[260px] overflow-hidden rounded-[18px] mb-3">
                   <img
                     src={item.img}
@@ -876,7 +876,7 @@ title: 'Bà Nà Hills & Cầu Vàng',
 
       {/* 6. FINAL CTA */}
       <section className="px-4 py-24 md:px-8 bg-white">
-        <div className="relative mx-auto max-w-[1260px] overflow-hidden rounded-[40px] text-white text-center flex flex-col justify-center min-h-[680px] p-12 md:p-20 shadow-2xl">
+        <div className="relative mx-auto max-w-[1260px] overflow-hidden rounded-[40px] text-white text-center flex flex-col justify-center min-h-[480px] sm:min-h-[680px] p-6 sm:p-12 md:p-20 shadow-2xl">
           <div className="absolute inset-0 z-0">
             <img
               src="https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&q=80"
@@ -887,12 +887,12 @@ title: 'Bà Nà Hills & Cầu Vàng',
           </div>
 
           <div className="relative z-10 mx-auto max-w-3xl">
-            <h2 className="font-heading text-5xl font-extrabold leading-tight tracking-tight lg:text-[5.5rem] drop-shadow-lg">
+            <h2 className="font-heading text-3xl sm:text-5xl font-extrabold leading-tight tracking-tight lg:text-[5.5rem] drop-shadow-lg">
               Mỗi chuyến đi,
               <br />
               nhiều bản sắc hơn.
             </h2>
-            <div className="mt-20">
+            <div className="mt-10 sm:mt-20">
               <p className="mx-auto max-w-3xl text-[18px] font-light text-white drop-shadow-md leading-relaxed">
                 Trả lời vài câu hỏi để giúp GreenTrip hiểu hơn về phong cách của
                 bạn. Trợ lý du lịch sẽ học hỏi những điều bạn quan tâm và giúp
@@ -1017,6 +1017,11 @@ title: 'Bà Nà Hills & Cầu Vàng',
                 <a href="#" className="hover:text-forest-600">
                   Liên hệ
                 </a>
+              </li>
+              <li>
+                <Link to="/demo-qr" className="hover:text-forest-600">
+                  Mã QR Demo hội đồng
+                </Link>
               </li>
             </ul>
           </div>

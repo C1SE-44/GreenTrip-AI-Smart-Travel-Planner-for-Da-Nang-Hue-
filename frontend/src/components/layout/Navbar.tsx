@@ -98,12 +98,8 @@ export default function Navbar() {
 
   const handleLoginSuccess = () => {
     setAuthModal((prev) => ({ ...prev, isOpen: false }));
-    const hasCompleted = localStorage.getItem('greentrip_onboarding_completed') === 'true';
-    if (!hasCompleted) {
-      setIsOnboardingOpen(true);
-    } else {
-      navigate(getReturnTo());
-    }
+    localStorage.setItem('greentrip_onboarding_completed', 'true');
+    navigate(getReturnTo());
   };
 
   const handleRegisterSuccess = () => {

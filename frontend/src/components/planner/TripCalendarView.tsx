@@ -1,3 +1,4 @@
+import {calendarStopSlot, calendarHoursFor} from '@/utils/calendarSlots';
 import { vietnamNow, tripStartDate, dateAt } from '@/utils/tripDates';
 import ExpiredTripBanner from './ExpiredTripBanner';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -56,27 +57,8 @@ export interface TripCalendarViewProps {
   onOpenWhen?: () => void;
 }
 
-const CALENDAR_HOURS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
-
 function formatCalendarHour(h: number) {
   return `${String(h).padStart(2, '0')}:00`;
-}
-
-function getStopSlot(stop: ItineraryStop, idx: number) {
-  if (stop.start_time) {
-    const parts = stop.start_time.split(':');
-    const h = parseInt(parts[0], 10);
-    const m = parseInt(parts[1] || '0', 10);
-    return { hour: isNaN(h) ? 8 + idx * 2 : h, minute: isNaN(m) ? 0 : m, duration: stop.duration_minutes || 90 };
-  }
-  const defaultSlots = [
-    { hour: 8, minute: 30, duration: 90 },
-    { hour: 11, minute: 30, duration: 75 },
-    { hour: 14, minute: 30, duration: 90 },
-    { hour: 18, minute: 30, duration: 90 },
-    { hour: 20, minute: 30, duration: 60 },
-  ];
-  return defaultSlots[idx % defaultSlots.length];
 }
 
 function getStopCategoryTheme(category: string | null) {
@@ -355,6 +337,16 @@ export default function TripCalendarView({
             </div>
           )}
 
+          {!isLoading && calendarDaysMeta.filter(day => day.day_number === selectedCalendarDay).map(day => {
+            const unscheduled = day.stops.filter(stop => !calendarStopSlot(stop));
+            return unscheduled.length ? <section key={day.day_number} data-calendar-unscheduled className="mx-4 mb-4 rounded-xl border border-neutral-200 p-3 text-sm text-neutral-700">
+              <p className="font-semibold">Chưa xếp giờ · {unscheduled.length} điểm</p>
+              <p className="mt-1 text-xs">Các điểm vẫn ở đúng ngày bạn chọn. Sang Lịch trình để đặt giờ.</p>
+              <ul className="mt-2 space-y-1">{unscheduled.map(stop => <li key={stop.stop_id}>{stop.title}</li>)}</ul>
+              <button className="mt-2 min-h-11 font-semibold underline" onClick={() => onNavigateToTab ? onNavigateToTab('itinerary') : onNavigateToItinerary?.()}>Xếp giờ trong Lịch trình</button>
+            </section> : null;
+          })}
+
           {/* Lưới thời gian cuộn */}
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative auto-hide-scrollbar">
             {/* Header cột các ngày */}
@@ -405,9 +397,9 @@ export default function TripCalendarView({
               </div>
             </div>
 
-            {/* Các hàng giờ (7:00 sáng đến 10:00 tối) */}
+            {/* Các hàng giờ, mở rộng theo hoạt động đã lưu */}
             <div className="relative">
-              {CALENDAR_HOURS.map((hour) => (
+              {calendarHoursFor(calendarDaysMeta.flatMap(day => day.stops)).map((hour) => (
                 <div key={hour} data-calendar-hour={hour} className="h-16 flex items-stretch border-b border-gray-100/70 relative group/row">
                   <div className="w-14 shrink-0 text-right pr-2 pt-1 text-[12px] text-neutral-600 font-medium select-none border-r border-gray-100">
                     {formatCalendarHour(hour)}
@@ -415,9 +407,9 @@ export default function TripCalendarView({
 
                   <div className="flex-1 grid grid-flow-col auto-cols-fr divide-x divide-gray-100 relative">
                     {calendarDaysMeta.map((day) => {
-                      const matchingStops = day.stops.filter((stop, idx) => {
-                        const slot = getStopSlot(stop, idx);
-                        return slot.hour === hour;
+                      const matchingStops = day.stops.filter((stop) => {
+                        const slot = calendarStopSlot(stop);
+                        return slot?.hour === hour;
                       });
 
                       return (
@@ -432,7 +424,8 @@ export default function TripCalendarView({
                             <div data-current-time={now.minutes} aria-label="Giờ hiện tại" className="absolute inset-x-0 z-20 border-t border-red-500 pointer-events-none" style={{ top: `${(now.minutes % 60) / 60 * 64}px` }} />
                           )}
                           {matchingStops.map((stop) => {
-                            const slot = getStopSlot(stop, day.stops.indexOf(stop));
+                            const slot = calendarStopSlot(stop);
+                            if (!slot) return null;
                             const themeClass = getStopCategoryTheme(stop.category);
                             return (
                               <div
@@ -466,7 +459,7 @@ export default function TripCalendarView({
                                   </button>
                                 </div>
                                 <div className="text-[12px] font-semibold opacity-80 mt-0.5">
-                                  {stop.start_time || formatCalendarHour(hour)} · {slot.duration} phút
+                                  {stop.start_time} · {slot.duration} phút
                                 </div>
                               </div>
                             );

@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const envDir=await mkdtemp(path.join(tmpdir(),'greentrip-ui-env-'));
 const server=await createServer({
-  configFile:false,root,envDir,
+  configFile:false,root,envDir,cacheDir:path.join(root,'node_modules','.vite-test-'+path.basename(envDir)),
   define:{'import.meta.env.VITE_API_URL':JSON.stringify(process.env.QA_API_TARGET || 'http://127.0.0.1:8017')},
   plugins:[react(),{name:'assistant-ui-demo',configureServer(vite){
     vite.middlewares.use('/__assistant-ui',async (_req,res)=>{

@@ -18,15 +18,48 @@
       onload="this.media='all'"
     />
     <link rel="preload" as="image" href="/images/landing/danang-1400.webp" imagesrcset="/images/landing/danang-640.webp 640w, /images/landing/danang-1400.webp 1400w" imagesizes="100vw" fetchpriority="high" />
-    <style>
-      body{margin:0}.app-shell{box-sizing:border-box;min-height:790px;height:94svh;max-height:1050px;background:#e0e8e9 url('/images/landing/danang-1400.webp') center 57%/cover;color:#111;font-family:Arial,sans-serif;position:relative;isolation:isolate}
-      .app-shell:before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#fff9 0%,#fff9 37%,#fff0 62%,#fff0 75%,#fff 100%);z-index:-1}
-      .app-shell header{height:80px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;padding:0 32px}.app-shell a{color:inherit;text-decoration:none;min-height:44px;display:inline-flex;align-items:center}.app-shell strong{font-size:27px;letter-spacing:-1.5px}.app-shell main{text-align:center;padding:45px 24px 0}.app-shell h1{font-size:clamp(52px,6.2vw,88px);letter-spacing:-4.5px;line-height:1.15;margin:0}.app-shell p{font-size:16px;line-height:1.7;color:#494949;margin:20px 0 26px}.app-shell .boot-action{background:#000;color:white;padding:5px 24px;border-radius:40px;font-size:14px}.app-shell .boot-status{font-size:12px;margin:14px 0}.app-shell.app-loading{min-height:100svh;height:auto;background:#fcfaf5}.app-shell.app-loading main{padding-top:100px}.app-shell.app-loading h1{font-size:28px;letter-spacing:-1px}
-      @media(max-width:600px){.app-shell header{padding:0 20px}.app-shell main{padding-top:65px}.app-shell h1{font-size:44px;letter-spacing:-2px}}
-    </style>
+    <link rel="stylesheet" href="/app-shell.css" />
   </head>
   <body>
-    <div id="root"><div class="app-shell" aria-busy="true"><header><a href="/" aria-label="GreenTrip — Trang chủ"><strong>greentrip</strong></a><a href="/planner">Lập lịch trình</a></header><main><h1>Khám phá Đà Nẵng, Huế.</h1><p>Chọn nơi muốn đến, xem gợi ý theo ngày.<br/>Chuyến đi bắt đầu từ đây.</p><a class="boot-action" href="/explore">Khám phá địa điểm</a><p class="boot-status" role="status">Đang mở GreenTrip…</p></main></div></div>
+    <div id="root">
+      <div class="app-shell" aria-busy="true">
+        <header>
+          <a href="/" class="brand" aria-label="GreenTrip">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+            greentrip
+          </a>
+          <nav class="nav-center">
+            <a href="/explore" class="nav-link">Khám Phá</a>
+            <a href="/planner" class="nav-link">Lập Lịch Trình</a>
+            <a href="/my-trips" class="nav-link">Chuyến Đi Của Tôi</a>
+          </nav>
+          <div class="nav-right">
+            <a href="/login" class="nav-btn">Đăng nhập</a>
+            <a href="/register" class="nav-btn">Đăng ký</a>
+          </div>
+        </header>
+        <main>
+          <h1>Đi Đà Nẵng, Huế?<br/>Có lịch để bắt đầu.</h1>
+          <p class="sub">Chọn thành phố và số ngày. Xem lịch theo buổi, bỏ bớt điểm,<br/>rồi mang theo lịch phù hợp với bạn.</p>
+          <div class="pill-skeleton">
+            <div class="pill-col">
+              <span class="pill-label">📍 Bạn muốn đi đâu?</span>
+              <div class="pill-val"><span>Đà Nẵng</span> <span class="pill-caret">▼</span></div>
+            </div>
+            <div class="pill-col">
+              <span class="pill-label">🕒 Bạn có bao lâu?</span>
+              <div class="pill-val"><span>1 ngày</span> <span class="pill-caret">▼</span></div>
+            </div>
+            <a href="/planner" class="pill-btn">Thử lịch mẫu →</a>
+          </div>
+          <p class="pill-note">Lịch mẫu có sẵn · Xem ngay, không cần tài khoản</p>
+          <div class="caption-skeleton">
+            <span class="caption-tag">📍 ĐÀ NẴNG · CẦU RỒNG</span>
+            <div class="caption-text">Một khởi đầu bên dòng sông Hàn.</div>
+          </div>
+        </main>
+      </div>
+    </div>
     <script>
       if (!['/','/login','/register','/onboarding'].includes(location.pathname)) {
         document.querySelector('.app-shell').classList.add('app-loading');

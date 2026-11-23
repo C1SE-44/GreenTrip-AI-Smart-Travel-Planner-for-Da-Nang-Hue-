@@ -1,0 +1,198 @@
+{
+  "environment": "isolated local QA 8019; production routers + strict varchar64 fixture",
+  "online_writes": false,
+  "trips": [
+    {
+      "trip_id": "1040b4a0-f2e3-4c20-8dfd-937e9e5f4a15",
+      "occurrences": 1,
+      "metadata": {
+        "startDate": "2026-11-24",
+        "peopleCount": 3,
+        "totalBudget": 3000000,
+        "needsTripSetup": false
+      },
+      "itinerary": {
+        "trip_id": "1040b4a0-f2e3-4c20-8dfd-937e9e5f4a15",
+        "title": "Đà Nẵng · 1 ngày",
+        "destination": "Đà Nẵng",
+        "start_date": "2026-11-24",
+        "days_count": 1,
+        "days": [
+          {
+            "day_id": "1040b4a0-f2e3-4c20-8dfd-937e9e5f4a15-day-1",
+            "day_number": 1,
+            "date": "2026-11-24",
+            "title": "Ngày 1 · Đà Nẵng",
+            "stops": [
+              {
+                "stop_id": "1040b4a0-f2e3-4c20-8dfd-937e9e5f4a15-1-e54d76d9-2b62-4d38-a6b5-dc158212910c",
+                "poi_id": "e54d76d9-2b62-4d38-a6b5-dc158212910c",
+                "title": "Bảo Tàng Điêu Khắc Chăm Đà Nẵng",
+                "city": "Đà Nẵng",
+                "address": "02 Đường 2 Tháng 9, Bình Hiên, Hải Châu, Đà Nẵng",
+                "category": "di-tich",
+                "stop_type": "poi",
+                "source": "idea",
+                "sequence": 0,
+                "duration_minutes": null,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "comment": "Giờ tham khảo; cần kiểm tra trước khi đi.",
+                "latitude": 16.060123,
+                "longitude": 108.223456
+              },
+              {
+                "stop_id": "1040b4a0-f2e3-4c20-8dfd-937e9e5f4a15-1-1a499cb8-37fd-4dfe-9260-e467b8e49494",
+                "poi_id": "1a499cb8-37fd-4dfe-9260-e467b8e49494",
+                "title": "The Local Beans - Phan Châu Trinh",
+                "city": "Đà Nẵng",
+                "address": "186 Phan Châu Trinh, Phước Ninh, Hải Châu, Đà Nẵng",
+                "category": "quan-an",
+                "stop_type": "poi",
+                "source": "idea",
+                "sequence": 1,
+                "duration_minutes": null,
+                "start_time": "11:30",
+                "end_time": "12:30",
+                "comment": "Giờ tham khảo; cần kiểm tra trước khi đi.",
+                "latitude": 16.062345,
+                "longitude": 108.219876
+              },
+              {
+                "stop_id": "1040b4a0-f2e3-4c20-8dfd-937e9e5f4a15-1-46f2acf9-512b-4f31-8904-a3330c6e204e",
+                "poi_id": "46f2acf9-512b-4f31-8904-a3330c6e204e",
+                "title": "Omandala Vietnam - Sound Healing",
+                "city": "Đà Nẵng",
+                "address": "Khu An Thượng, Mỹ An, Ngũ Hành Sơn, Đà Nẵng",
+                "category": "chua",
+                "stop_type": "poi",
+                "source": "idea",
+                "sequence": 2,
+                "duration_minutes": null,
+                "start_time": "14:30",
+                "end_time": "15:30",
+                "comment": "Giờ tham khảo; cần kiểm tra trước khi đi.",
+                "latitude": 16.052,
+                "longitude": 108.244
+              },
+              {
+                "stop_id": "1040b4a0-f2e3-4c20-8dfd-937e9e5f4a15-1-93f9fa97-d463-4f8c-8081-61a20a542587",
+                "poi_id": "93f9fa97-d463-4f8c-8081-61a20a542587",
+                "title": "Cầu Rồng",
+                "city": "Đà Nẵng",
+                "address": "Đường Nguyễn Văn Linh - Võ Văn Kiệt, Hải Châu / Sơn Trà, Đà Nẵng",
+                "category": "canh-quan",
+                "stop_type": "poi",
+                "source": "idea",
+                "sequence": 3,
+                "duration_minutes": null,
+                "start_time": "17:00",
+                "end_time": "18:00",
+                "comment": "Giờ tham khảo; cần kiểm tra trước khi đi.",
+                "latitude": 16.061234,
+                "longitude": 108.227891
+              }
+            ]
+          }
+        ],
+        "updated_at": "2026-11-18T13:08:02.921840"
+      }
+    },
+    {
+      "trip_id": "0bde621d-4661-4817-8d7d-839e375f8b5c",
+      "occurrences": 1,
+      "metadata": {
+        "startDate": "2026-11-18",
+        "peopleCount": 2,
+        "totalBudget": null,
+        "needsTripSetup": false
+      },
+      "itinerary": {
+        "trip_id": "0bde621d-4661-4817-8d7d-839e375f8b5c",
+        "title": "Đà Nẵng · 1 ngày",
+        "destination": "Đà Nẵng",
+        "start_date": "2026-11-18",
+        "days_count": 1,
+        "days": [
+          {
+            "day_id": "0bde621d-4661-4817-8d7d-839e375f8b5c-day-1",
+            "day_number": 1,
+            "date": "2026-11-18",
+            "title": "Ngày 1 · Đà Nẵng",
+            "stops": [
+              {
+                "stop_id": "0bde621d-4661-4817-8d7d-839e375f8b5c-1-1a499cb8-37fd-4dfe-9260-e467b8e49494",
+                "poi_id": "1a499cb8-37fd-4dfe-9260-e467b8e49494",
+                "title": "The Local Beans - Phan Châu Trinh",
+                "city": "Đà Nẵng",
+                "address": "186 Phan Châu Trinh, Phước Ninh, Hải Châu, Đà Nẵng",
+                "category": "quan-an",
+                "stop_type": "poi",
+                "source": "idea",
+                "sequence": 0,
+                "duration_minutes": null,
+                "start_time": null,
+                "end_time": null,
+                "comment": "Giờ tham khảo; cần kiểm tra trước khi đi.",
+                "latitude": 16.062345,
+                "longitude": 108.219876
+              },
+              {
+                "stop_id": "0bde621d-4661-4817-8d7d-839e375f8b5c-1-e54d76d9-2b62-4d38-a6b5-dc158212910c",
+                "poi_id": "e54d76d9-2b62-4d38-a6b5-dc158212910c",
+                "title": "Bảo Tàng Điêu Khắc Chăm Đà Nẵng",
+                "city": "Đà Nẵng",
+                "address": "02 Đường 2 Tháng 9, Bình Hiên, Hải Châu, Đà Nẵng",
+                "category": "di-tich",
+                "stop_type": "poi",
+                "source": "idea",
+                "sequence": 1,
+                "duration_minutes": null,
+                "start_time": null,
+                "end_time": null,
+                "comment": "Giờ tham khảo; cần kiểm tra trước khi đi.",
+                "latitude": 16.060123,
+                "longitude": 108.223456
+              },
+              {
+                "stop_id": "0bde621d-4661-4817-8d7d-839e375f8b5c-1-46f2acf9-512b-4f31-8904-a3330c6e204e",
+                "poi_id": "46f2acf9-512b-4f31-8904-a3330c6e204e",
+                "title": "Omandala Vietnam - Sound Healing",
+                "city": "Đà Nẵng",
+                "address": "Khu An Thượng, Mỹ An, Ngũ Hành Sơn, Đà Nẵng",
+                "category": "chua",
+                "stop_type": "poi",
+                "source": "idea",
+                "sequence": 2,
+                "duration_minutes": null,
+                "start_time": null,
+                "end_time": null,
+                "comment": "Giờ tham khảo; cần kiểm tra trước khi đi.",
+                "latitude": 16.052,
+                "longitude": 108.244
+              },
+              {
+                "stop_id": "0bde621d-4661-4817-8d7d-839e375f8b5c-1-93f9fa97-d463-4f8c-8081-61a20a542587",
+                "poi_id": "93f9fa97-d463-4f8c-8081-61a20a542587",
+                "title": "Cầu Rồng",
+                "city": "Đà Nẵng",
+                "address": "Đường Nguyễn Văn Linh - Võ Văn Kiệt, Hải Châu / Sơn Trà, Đà Nẵng",
+                "category": "canh-quan",
+                "stop_type": "poi",
+                "source": "idea",
+                "sequence": 3,
+                "duration_minutes": null,
+                "start_time": null,
+                "end_time": null,
+                "comment": "Giờ tham khảo; cần kiểm tra trước khi đi.",
+                "latitude": 16.061234,
+                "longitude": 108.227891
+              }
+            ]
+          }
+        ],
+        "updated_at": "2026-11-18T13:10:20.359549"
+      }
+    }
+  ]
+}

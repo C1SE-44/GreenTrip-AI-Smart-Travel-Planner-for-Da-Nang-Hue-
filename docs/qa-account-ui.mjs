@@ -1,0 +1,68 @@
+import {createRequire} from 'node:module';
+import {readFile,writeFile} from 'node:fs/promises';
+const require=createRequire(import.meta.url);
+const {chromium}=require('C:/Users/ngoho/Documents/Codex/2026-11-13/b-y/work/qa-runtime/node_modules/playwright');
+const credentials=JSON.parse(await readFile(0,'utf8').catch(async()=>{let s='';for await(const chunk of process.stdin)s+=chunk;return s;}));
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+await page.route('**/assistant/apply',r=>r.abort());
+await page.goto('http://localhost:5173/login');
+await page.getByPlaceholder('Email của bạn',{exact:true}).fill(credentials.email);
+await page.getByRole('button',{name:'Tiếp tục',exact:true}).click();
+await page.locator('input[type=password]').waitFor();
+await page.locator('input[type=password]').fill(credentials.password);
+
+await page.getByRole('button',{name:'Đăng nhập',exact:true}).click();
+await page.waitForTimeout(2500);
+const trip=JSON.parse(await readFile('D:/ĐỒ ÁN/repo/docs/qa-account-trip.json','utf8'));
+const profile=await page.evaluate(async()=>{
+ const token=localStorage.getItem('access_token');
+ const r=await fetch('http://127.0.0.1:8000/auth/me',{headers:{Authorization:'Bearer '+token}});
+ return r.json();
+});
+if(!profile.user_id)throw new Error('UI login did not establish account session');
+await page.evaluate(({trip,user})=>localStorage.setItem('greentrip_user_trips:'+user,JSON.stringify([trip])),{trip,user:profile.user_id});
+await page.route('**/*',async route=>{
+ const req=route.request();
+ if(!['GET','HEAD','OPTIONS'].includes(req.method())&&!new URL(req.url()).pathname.endsWith('/assistant/chat'))return route.abort();
+ return route.continue();
+});
+await page.goto('http://localhost:5173/my-trips');
+await page.waitForTimeout(4000);
+console.log('PAGE_STATE',page.url(),(await page.locator('body').innerText()).slice(-2200));
+await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/real-account-route.png'});
+await page.getByText('Xem lịch trình',{exact:true}).first().click();
+await page.getByRole('button',{name:'Hỏi trợ lý AI',exact:true}).click();
+const input=page.getByRole('textbox',{name:'Tin nhắn cho trợ lý'});
+await input.waitFor();
+await page.waitForTimeout(800);
+const traces=[];
+async function send(text){
+ await input.fill(text);
+ const responsePromise=page.waitForResponse(r=>new URL(r.url()).pathname==='/assistant/chat'&&r.request().method()==='POST',{timeout:60000});
+ await page.getByRole('button',{name:'Gửi tin nhắn',exact:true}).click();
+ const r=await responsePromise;
+ const body=await r.json();
+ const request=r.request().postDataJSON();
+ traces.push({message:text,trip_id:request.trip_id,idea_ids:request.context.idea_ids,status:r.status(),text:body.text,trace:body.trace,pois:(body.pois||[]).map(p=>p.id),days:body.draft?.itinerary?.days.map(d=>({day:d.day_number,ids:d.stops.filter(s=>s.poi_id).map(s=>s.poi_id)}))});
+ await page.waitForTimeout(600);
+ return body;
+}
+const green=await send('địa điểm green là gì');
+await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/real-account-green.png'});
+const examples=await send('Cho mình 2 ví dụ ở Huế');
+if(examples.pois.length!==2)throw new Error('Expected two Hue examples');
+const plan=await send('bạn có lên lịch trình 4 ngày cho 5 địa điểm ở ý tưởng được không');
+await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/real-account-five-ideas.png'});
+const assert=(await import('node:assert/strict')).default;
+assert.equal(green.pois.length,0);
+assert.equal(green.trace.reason,'explain_green');
+assert.deepEqual([...plan.draft.itinerary.days.flatMap(d=>d.stops.filter(s=>s.poi_id).map(s=>s.poi_id))].sort(),[...trip.ideas].sort());
+const clarify=await send('Ngày 2 nhẹ hơn, đừng đổi ngày khác');
+assert.equal(clarify.outcome.status,'needs_clarification');
+const edited=await send(clarify.prompts[0].message);
+assert.deepEqual(edited.draft.itinerary.days.filter(d=>d.day_number!==2),plan.draft.itinerary.days.filter(d=>d.day_number!==2));
+await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/real-account-scoped-edit.png'});
+await writeFile('D:/ĐỒ ÁN/repo/docs/REAL_ACCOUNT_RECHECK.json'  ,JSON.stringify(traces,null,2));
+console.log('ACTUAL_ACCOUNT_UI',JSON.stringify(traces,null,2));
+await browser.close();

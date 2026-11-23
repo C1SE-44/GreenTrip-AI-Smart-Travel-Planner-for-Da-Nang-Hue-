@@ -20,7 +20,7 @@ test('GreenTrip planner flows in a real Chromium browser', { timeout: 180000 }, 
   assert.ok(browserPath, 'Set CHROME_PATH to a local Chromium executable');
   const profile = await mkdtemp(path.join(tmpdir(), 'greentrip-explanation-'));
   const server = await createServer({
-    configFile: false, root, envDir: profile, plugins: [react(), {
+    configFile: false, cacheDir: path.join(root, 'node_modules', '.vite-test-'+path.basename(profile)), root, envDir: profile, plugins: [react(), {
       name: 'explanation-test-page',
       configureServer(vite) {
         vite.middlewares.use('/__explanation-test', async (_req, res) => {

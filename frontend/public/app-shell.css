@@ -1,0 +1,198 @@
+body {
+  margin: 0;
+}
+.app-shell {
+  box-sizing: border-box;
+  min-height: 790px;
+  height: 94svh;
+  max-height: 1050px;
+  background: #e0e8e9 url('/images/landing/danang-1400.webp') center 57%/cover;
+  color: #111;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  position: relative;
+  isolation: isolate;
+}
+.app-shell:before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.6) 37%, rgba(255,255,255,0) 62%, rgba(255,255,255,0) 75%, #fff 100%);
+  z-index: -1;
+}
+.app-shell header {
+  height: 60px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.app-shell a {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.app-shell .brand {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  color: #000;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.app-shell .nav-center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.app-shell .nav-link {
+  font-size: 14px;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  color: #111;
+}
+.app-shell .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.app-shell .nav-btn {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  border: 1px solid rgba(0,0,0,0.2);
+  color: #000;
+}
+.app-shell main {
+  text-align: center;
+  padding: 65px 24px 0;
+}
+.app-shell h1 {
+  font-size: clamp(42px, 5.3vw, 74px);
+  letter-spacing: -3px;
+  line-height: 1.13;
+  margin: 0;
+  font-weight: 800;
+}
+.app-shell p.sub {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #494949;
+  margin: 20px 0 26px;
+}
+.app-shell .pill-skeleton {
+  margin: 0 auto;
+  max-width: 720px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 35px rgba(21, 43, 59, 0.08);
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  text-align: left;
+}
+.app-shell .pill-col {
+  flex: 1;
+  padding: 6px 20px;
+}
+.app-shell .pill-col + .pill-col {
+  border-left: 1px solid #e5e7eb;
+}
+.app-shell .pill-label {
+  font-size: 12px;
+  color: #6b7280;
+  display: block;
+}
+.app-shell .pill-val {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.app-shell .pill-caret {
+  font-size: 12px;
+  color: #9ca3af;
+}
+.app-shell .pill-btn {
+  background: #000;
+  color: #fff;
+  border-radius: 9999px;
+  padding: 14px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.app-shell .pill-note {
+  font-size: 12px;
+  color: #595959;
+  margin-top: 14px;
+  display: inline-block;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 20px;
+}
+.app-shell .caption-skeleton {
+  position: absolute;
+  left: 52px;
+  bottom: 96px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 18px;
+  padding: 14px 18px;
+  text-align: left;
+}
+.app-shell .caption-tag {
+  font-size: 12px;
+  letter-spacing: 1px;
+  font-weight: 600;
+  color: #374151;
+}
+.app-shell .caption-text {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 6px;
+  color: #111;
+}
+.app-shell.app-loading {
+  min-height: 100svh;
+  height: auto;
+  background: #fcfaf5;
+}
+.app-shell.app-loading main {
+  padding-top: 100px;
+}
+.app-shell.app-loading h1 {
+  font-size: 28px;
+  letter-spacing: -1px;
+}
+@media (max-width: 768px) {
+  .app-shell .nav-center,
+  .app-shell .nav-right {
+    display: none;
+  }
+  .app-shell .pill-skeleton {
+    flex-direction: column;
+    border-radius: 24px;
+    padding: 16px;
+    gap: 12px;
+  }
+  .app-shell .pill-col + .pill-col {
+    border-left: none;
+    border-top: 1px solid #e5e7eb;
+  }
+  .app-shell .pill-btn {
+    width: 100%;
+    text-align: center;
+  }
+  .app-shell .caption-skeleton {
+    display: none;
+  }
+}

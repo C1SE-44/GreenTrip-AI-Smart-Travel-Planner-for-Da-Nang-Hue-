@@ -58,7 +58,7 @@ def list_pois(
     sort: str = "name",
 ) -> tuple[list[POI], int]:
     with get_connection() as connection:
-        where_clauses: list[str] = []
+        where_clauses: list[str] = ["p.is_active = TRUE"]
         params: list[Any] = []
 
         if ids is not None:

@@ -1,0 +1,81 @@
+[
+  {
+    "message": "xin chào",
+    "text": "Chào bạn! Bạn muốn tìm địa điểm hay lên lịch cho chuyến đi?",
+    "ids": [],
+    "prompts": [
+      "Tìm cà phê ở Đà Nẵng & Huế",
+      "Gợi ý điểm thiên nhiên ở Đà Nẵng & Huế",
+      "Tìm bảo tàng ở Đà Nẵng & Huế"
+    ],
+    "trace": {
+      "route": "rules",
+      "reason": "greeting",
+      "changes": {},
+      "elapsed_ms": 11.26,
+      "model_calls": 0
+    }
+  },
+  {
+    "message": "tìm 3 điểm ở Đà Nẵng, 1 điểm là chùa",
+    "text": "Mình gợi ý 3 điểm ở Đà Nẵng. Trong đó có 1 chùa và 2 điểm thuộc loại khác.\n**Chùa A Demo** — Địa điểm giả lập phục vụ kiểm thử giao diện..\n**Công viên Đà Nẵng Demo** — Địa điểm giả lập phục vụ kiểm thử giao diện..\n**Cà phê Sông Demo** — Địa điểm giả lập phục vụ kiểm thử giao diện..",
+    "ids": [
+      "dn-temple-a",
+      "dn-park",
+      "dn-cafe"
+    ],
+    "prompts": [
+      {
+        "label": "Thêm một chùa",
+        "message": "Gợi ý thêm 1 chùa nữa ở Đà Nẵng"
+      }
+    ],
+    "trace": {
+      "route": "rules",
+      "reason": "ai_disabled",
+      "changes": {},
+      "elapsed_ms": 1271.11,
+      "model_calls": 0
+    }
+  },
+  {
+    "message": "thêm 1 chùa nữa",
+    "text": "Mình gợi ý thêm 1 điểm ở Đà Nẵng. Các điểm trước vẫn được giữ trong hội thoại.\n**Chùa B Demo** — Địa điểm giả lập phục vụ kiểm thử giao diện..",
+    "ids": [
+      "dn-temple-b"
+    ],
+    "prompts": [
+      {
+        "label": "Thêm một chùa",
+        "message": "Gợi ý thêm 1 chùa nữa ở Đà Nẵng"
+      }
+    ],
+    "trace": {
+      "route": "rules",
+      "reason": "ai_disabled",
+      "changes": {},
+      "elapsed_ms": 7.92,
+      "model_calls": 0
+    }
+  },
+  {
+    "message": "tôi muốn ăn mì Quảng",
+    "text": "Mình tìm quán có thông tin xác nhận món mi quang ở Đà Nẵng. Dữ liệu hiện chỉ xác nhận được 1 điểm khớp yêu cầu.\n**Quán Mì Demo** — Thực đơn giả lập kiểm thử: mì Quảng gà..",
+    "ids": [
+      "dn-food"
+    ],
+    "prompts": [
+      {
+        "label": "Tìm quán khác",
+        "message": "Tìm quán có mi quang khác ở Đà Nẵng"
+      }
+    ],
+    "trace": {
+      "route": "rules",
+      "reason": "ai_disabled",
+      "changes": {},
+      "elapsed_ms": 7.22,
+      "model_calls": 0
+    }
+  }
+]

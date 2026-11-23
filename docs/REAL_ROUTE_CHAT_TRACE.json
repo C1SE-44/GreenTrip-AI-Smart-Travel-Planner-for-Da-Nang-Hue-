@@ -1,0 +1,428 @@
+[
+  {
+    "request": {
+      "message": "tôi muốn 1 quán cà phê ngon đánh giá cao ở Đà Nẵng",
+      "mode": "planner",
+      "trip_id": "ui-real-route-trip",
+      "context": {
+        "destination": "Đà Nẵng & Huế",
+        "days_count": 4,
+        "start_date": "2026-12-20",
+        "title": "Demo UI 4 ngày",
+        "people_count": 2,
+        "preferences": [],
+        "idea_ids": [
+          "cafe-garden",
+          "museum",
+          "park"
+        ]
+      },
+      "conversation_id": 1
+    },
+    "response": {
+      "text": "Mình gợi ý 1 điểm ở Đà Nẵng.\n**Đi Lạc Coffee – Specialty Coffee Roastery** — Địa điểm giả lập phục vụ kiểm thử giao diện; dữ liệu ghi 4.9/5 với 18623 lượt đánh giá.",
+      "pois": [
+        {
+          "id": "d58fe815-4aa1-45b2-831a-11b97e130918",
+          "name": "Đi Lạc Coffee – Specialty Coffee Roastery",
+          "city": "Đà Nẵng",
+          "category": "Quán cafe giải khát",
+          "image_url": "http://127.0.0.1:8018/qa/poi.svg",
+          "latitude": 16.0576932,
+          "longitude": 108.2,
+          "estimated_cost": 40000,
+          "budget_tier": "$",
+          "distance_km": null,
+          "description": "Địa điểm giả lập phục vụ kiểm thử giao diện.",
+          "price_label": "45.000₫ – 95.000₫ / ly",
+          "duration_minutes": 60,
+          "evidence": {
+            "quiet": false,
+            "local": true,
+            "conversation": false
+          }
+        }
+      ],
+      "unknown_price_pois": [],
+      "prompts": [],
+      "draft": null,
+      "engine": "database",
+      "idea_ids": [
+        "cafe-garden",
+        "museum",
+        "park"
+      ],
+      "active_draft_id": null,
+      "trace": {
+        "route": "rules",
+        "reason": "ai_disabled",
+        "changes": {},
+        "elapsed_ms": 1322.56,
+        "model_calls": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "message": "Lưu chỗ thứ 1 vào Ý tưởng",
+      "mode": "planner",
+      "trip_id": "ui-real-route-trip",
+      "context": {
+        "destination": "Đà Nẵng & Huế",
+        "days_count": 4,
+        "start_date": "2026-12-20",
+        "title": "Demo UI 4 ngày",
+        "people_count": 2,
+        "preferences": [],
+        "idea_ids": [
+          "cafe-garden",
+          "museum",
+          "park"
+        ]
+      },
+      "selected_poi_id": "d58fe815-4aa1-45b2-831a-11b97e130918",
+      "conversation_id": 1
+    },
+    "response": {
+      "text": "Đã lưu **Đi Lạc Coffee – Specialty Coffee Roastery** vào Ý tưởng của chuyến **Demo UI 4 ngày**.",
+      "pois": [],
+      "unknown_price_pois": [],
+      "prompts": [],
+      "draft": null,
+      "engine": "database",
+      "idea_ids": [
+        "cafe-garden",
+        "museum",
+        "park",
+        "d58fe815-4aa1-45b2-831a-11b97e130918"
+      ],
+      "action": "ideas_saved",
+      "active_draft_id": null,
+      "trace": {
+        "route": "rules",
+        "reason": "card_action",
+        "changes": {},
+        "elapsed_ms": 9.78,
+        "model_calls": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "message": "xếp 2 điểm mỗi ngày",
+      "mode": "planner",
+      "trip_id": "ui-real-route-trip",
+      "context": {
+        "destination": "Đà Nẵng & Huế",
+        "days_count": 4,
+        "start_date": "2026-12-20",
+        "title": "Demo UI 4 ngày",
+        "people_count": 2,
+        "preferences": [],
+        "idea_ids": [
+          "cafe-garden",
+          "museum",
+          "park",
+          "d58fe815-4aa1-45b2-831a-11b97e130918"
+        ]
+      },
+      "conversation_id": 1
+    },
+    "response": {
+      "text": "Chuyến này có 4 điểm đã lưu đủ điều kiện. Bạn muốn mình giữ các điểm đó và chọn thêm 4 điểm để đủ 4 ngày, mỗi ngày 2 điểm không?",
+      "pois": [],
+      "unknown_price_pois": [],
+      "prompts": [
+        {
+          "label": "Tự chọn thêm điểm",
+          "message": "Bạn tự chọn thêm và lên lịch cho tôi đi"
+        }
+      ],
+      "draft": null,
+      "engine": "database",
+      "idea_ids": [
+        "cafe-garden",
+        "museum",
+        "park",
+        "d58fe815-4aa1-45b2-831a-11b97e130918"
+      ],
+      "active_draft_id": null,
+      "trace": {
+        "route": "rules",
+        "reason": "ai_disabled",
+        "changes": {},
+        "elapsed_ms": 17.94,
+        "model_calls": 0
+      }
+    }
+  },
+  {
+    "request": {
+      "message": "Bạn tự chọn thêm và lên lịch cho tôi đi",
+      "mode": "planner",
+      "trip_id": "ui-real-route-trip",
+      "context": {
+        "destination": "Đà Nẵng & Huế",
+        "days_count": 4,
+        "start_date": "2026-12-20",
+        "title": "Demo UI 4 ngày",
+        "people_count": 2,
+        "preferences": [],
+        "idea_ids": [
+          "cafe-garden",
+          "museum",
+          "park",
+          "d58fe815-4aa1-45b2-831a-11b97e130918"
+        ]
+      },
+      "conversation_id": 1
+    },
+    "response": {
+      "text": "Mình tạo bản xem trước 4 ngày với 8 điểm: 4 điểm đã lưu, 4 điểm đề xuất thêm. Chưa thay đổi Ý tưởng hoặc lịch đã lưu.",
+      "pois": [],
+      "unknown_price_pois": [],
+      "prompts": [],
+      "draft": {
+        "id": "2fdbb8f9-5be7-458f-8386-e65a887fbc94",
+        "kind": "itinerary",
+        "before_digest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+        "itinerary": {
+          "trip_id": "ui-real-route-trip",
+          "title": "Demo UI 4 ngày",
+          "destination": "Đà Nẵng & Huế",
+          "start_date": "2026-12-20",
+          "days_count": 4,
+          "days": [
+            {
+              "day_id": "ui-real-route-trip-day-1",
+              "day_number": 1,
+              "date": "2026-12-20",
+              "title": "Ngày 1",
+              "stops": [
+                {
+                  "stop_id": "be9b09f5-1151-4342-b515-2e4a76778b31",
+                  "poi_id": "d58fe815-4aa1-45b2-831a-11b97e130918",
+                  "title": "Đi Lạc Coffee – Specialty Coffee Roastery",
+                  "city": "Da Nang",
+                  "address": null,
+                  "category": "Quán cafe giải khát",
+                  "stop_type": "poi",
+                  "source": "assistant",
+                  "sequence": 0,
+                  "duration_minutes": 60,
+                  "start_time": "09:00",
+                  "end_time": "10:00",
+                  "latitude": 16.0576932,
+                  "longitude": 108.2,
+                  "comment": "Đã lưu trong Ý tưởng. Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+                },
+                {
+                  "stop_id": "8e3f016d-3dd9-465f-9a1b-30491f9441ba",
+                  "poi_id": "dn-park",
+                  "title": "Công viên Đà Nẵng Demo",
+                  "city": "Da Nang",
+                  "address": null,
+                  "category": "Cảnh quan thiên nhiên",
+                  "stop_type": "poi",
+                  "source": "assistant",
+                  "sequence": 1,
+                  "duration_minutes": 60,
+                  "start_time": "10:31",
+                  "end_time": "11:31",
+                  "latitude": 16.08,
+                  "longitude": 108.2,
+                  "comment": "Đề xuất thêm; chưa lưu vào Ý tưởng. Di chuyển ước tính 16 phút (đã đệm ×1,5); chưa phải ETA đường đi. Cần kiểm tra giờ mở cửa."
+                },
+                {
+                  "stop_id": "011f32fd-cb78-47f1-81cb-c28cb92621c2",
+                  "title": "Ăn trưa và nghỉ",
+                  "stop_type": "rest",
+                  "source": "assistant",
+                  "sequence": 2,
+                  "duration_minutes": 60,
+                  "start_time": "12:00",
+                  "end_time": "13:00"
+                }
+              ]
+            },
+            {
+              "day_id": "ui-real-route-trip-day-2",
+              "day_number": 2,
+              "date": "2026-12-21",
+              "title": "Ngày 2",
+              "stops": [
+                {
+                  "stop_id": "ecdab8ce-3712-47ff-8bb7-d307084e6106",
+                  "poi_id": "cafe-garden",
+                  "title": "Cà phê Vườn Demo",
+                  "city": "Hue",
+                  "address": null,
+                  "category": "Quán cafe giải khát",
+                  "stop_type": "poi",
+                  "source": "assistant",
+                  "sequence": 0,
+                  "duration_minutes": 60,
+                  "start_time": "09:00",
+                  "end_time": "10:00",
+                  "latitude": 16.46,
+                  "longitude": 107.58,
+                  "comment": "Đã lưu trong Ý tưởng. Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+                },
+                {
+                  "stop_id": "5c8e0072-a4e2-49ee-8cdf-1ef3929597cc",
+                  "poi_id": "extra-0",
+                  "title": "Điểm Huế Demo 0",
+                  "city": "Hue",
+                  "address": null,
+                  "category": "Cảnh quan thiên nhiên",
+                  "stop_type": "poi",
+                  "source": "assistant",
+                  "sequence": 1,
+                  "duration_minutes": 60,
+                  "start_time": "10:15",
+                  "end_time": "11:15",
+                  "latitude": 16.46,
+                  "longitude": 107.58,
+                  "comment": "Đề xuất thêm; chưa lưu vào Ý tưởng. Di chuyển ước tính 0 phút (đã đệm ×1,5); chưa phải ETA đường đi. Cần kiểm tra giờ mở cửa."
+                },
+                {
+                  "stop_id": "35362c72-22bc-4213-a70a-8980374197c7",
+                  "title": "Ăn trưa và nghỉ",
+                  "stop_type": "rest",
+                  "source": "assistant",
+                  "sequence": 2,
+                  "duration_minutes": 60,
+                  "start_time": "12:00",
+                  "end_time": "13:00"
+                }
+              ]
+            },
+            {
+              "day_id": "ui-real-route-trip-day-3",
+              "day_number": 3,
+              "date": "2026-12-22",
+              "title": "Ngày 3",
+              "stops": [
+                {
+                  "stop_id": "0efbbd68-8c9e-4e49-82fe-011938e576a4",
+                  "poi_id": "extra-1",
+                  "title": "Điểm Huế Demo 1",
+                  "city": "Hue",
+                  "address": null,
+                  "category": "Cảnh quan thiên nhiên",
+                  "stop_type": "poi",
+                  "source": "assistant",
+                  "sequence": 0,
+                  "duration_minutes": 60,
+                  "start_time": "09:00",
+                  "end_time": "10:00",
+                  "latitude": 16.461000000000002,
+                  "longitude": 107.58,
+                  "comment": "Đề xuất thêm; chưa lưu vào Ý tưởng. Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+                },
+                {
+                  "stop_id": "ee0b6da0-b182-42f5-82e2-5346b06277d6",
+                  "poi_id": "extra-2",
+                  "title": "Điểm Huế Demo 2",
+                  "city": "Hue",
+                  "address": null,
+                  "category": "Cảnh quan thiên nhiên",
+                  "stop_type": "poi",
+                  "source": "assistant",
+                  "sequence": 1,
+                  "duration_minutes": 60,
+                  "start_time": "10:23",
+                  "end_time": "11:23",
+                  "latitude": 16.462,
+                  "longitude": 107.58,
+                  "comment": "Đề xuất thêm; chưa lưu vào Ý tưởng. Di chuyển ước tính 8 phút (đã đệm ×1,5); chưa phải ETA đường đi. Cần kiểm tra giờ mở cửa."
+                },
+                {
+                  "stop_id": "07091936-fc0e-4fa9-9ff6-d1c9f04256d5",
+                  "title": "Ăn trưa và nghỉ",
+                  "stop_type": "rest",
+                  "source": "assistant",
+                  "sequence": 2,
+                  "duration_minutes": 60,
+                  "start_time": "12:00",
+                  "end_time": "13:00"
+                }
+              ]
+            },
+            {
+              "day_id": "ui-real-route-trip-day-4",
+              "day_number": 4,
+              "date": "2026-12-23",
+              "title": "Ngày 4",
+              "stops": [
+                {
+                  "stop_id": "4aa8b343-aa08-4bac-9407-67584325f12c",
+                  "poi_id": "museum",
+                  "title": "Bảo tàng Demo",
+                  "city": "Hue",
+                  "address": null,
+                  "category": "Di tích lịch sử và văn hóa",
+                  "stop_type": "poi",
+                  "source": "assistant",
+                  "sequence": 0,
+                  "duration_minutes": 60,
+                  "start_time": "09:00",
+                  "end_time": "10:00",
+                  "latitude": 16.47,
+                  "longitude": 107.58,
+                  "comment": "Đã lưu trong Ý tưởng. Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+                },
+                {
+                  "stop_id": "02b87252-357a-4508-97b4-bde5f267a051",
+                  "poi_id": "park",
+                  "title": "Công viên Demo",
+                  "city": "Hue",
+                  "address": null,
+                  "category": "Cảnh quan thiên nhiên",
+                  "stop_type": "poi",
+                  "source": "assistant",
+                  "sequence": 1,
+                  "duration_minutes": 60,
+                  "start_time": "10:25",
+                  "end_time": "11:25",
+                  "latitude": 16.475,
+                  "longitude": 107.58,
+                  "comment": "Đã lưu trong Ý tưởng. Di chuyển ước tính 10 phút (đã đệm ×1,5); chưa phải ETA đường đi. Cần kiểm tra giờ mở cửa."
+                },
+                {
+                  "stop_id": "5fb4b8c7-2e33-45df-9085-86cf5230d008",
+                  "title": "Ăn trưa và nghỉ",
+                  "stop_type": "rest",
+                  "source": "assistant",
+                  "sequence": 2,
+                  "duration_minutes": 60,
+                  "start_time": "12:00",
+                  "end_time": "13:00"
+                }
+              ]
+            }
+          ]
+        },
+        "warnings": [
+          "Cần kiểm tra giờ mở cửa tại các điểm chưa có khung giờ rõ ràng.",
+          "Thời gian di chuyển tính từ tọa độ, không gọi dịch vụ tuyến có phí; chi phí khách sạn/ăn uống chưa được cộng thành tổng chuyến."
+        ]
+      },
+      "engine": "database",
+      "idea_ids": [
+        "cafe-garden",
+        "museum",
+        "park",
+        "d58fe815-4aa1-45b2-831a-11b97e130918"
+      ],
+      "active_draft_id": "2fdbb8f9-5be7-458f-8386-e65a887fbc94",
+      "trace": {
+        "route": "rules",
+        "reason": "ai_disabled",
+        "changes": {},
+        "elapsed_ms": 14.7,
+        "model_calls": 0
+      }
+    }
+  }
+]

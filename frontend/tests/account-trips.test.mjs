@@ -47,3 +47,16 @@ test('An injected account cache never overrides a server-owned list',async()=>{
  const rows=await loadAccountTrips(db,'bob',async()=>[]);
  assert.equal(rows.length,0);
 });
+
+
+test('Stale cached revisions and a legacy 409 do not hide newly saved server trips',async()=>{
+ const db=storage();const raw=JSON.stringify([{id:'stale',workspaceRevision:9,ideas:['backup']}]);db.setItem(tripStorageKey('alice'),raw);
+ const serverTrip={id:'just-created',title:'Server trip',ideas:['selected']};
+ const rows=await loadAccountTrips(db,'alice',async()=>[serverTrip,{trip_id:'legacy',title:'Old',destination:'Huế',days_count:1}],async trip=>{throw Object.assign(Error('conflict'),{status:409});});
+ assert.equal(rows[0].id,'just-created');assert.equal(rows[1].id,'legacy');assert.equal(db.getItem(tripStorageKey('alice')),raw);
+});
+
+test('Migration does not submit an obsolete browser revision',async()=>{
+ const db=storage();db.setItem(tripStorageKey('alice'),JSON.stringify([{id:'old',workspaceRevision:99,ideas:['idea']} ]));
+ await loadAccountTrips(db,'alice',async()=>[{trip_id:'old',title:'Owned',destination:'Huế',days_count:1}],async trip=>{assert.equal(trip.workspaceRevision,undefined);return trip;});
+});

@@ -39,7 +39,7 @@ test('Saved Places collections, membership, search, authentication, and responsi
   const profile = await mkdtemp(path.join(tmpdir(), 'greentrip-saved-places-'));
   const testPort = await getAvailablePort();
   const server = await createServer({
-    configFile: false,
+    configFile: false, cacheDir: path.join(root, 'node_modules', '.vite-test-'+path.basename(profile)),
     root,
     envDir: profile,
     plugins: [react(), {

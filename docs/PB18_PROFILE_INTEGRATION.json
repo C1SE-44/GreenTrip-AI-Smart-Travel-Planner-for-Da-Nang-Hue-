@@ -1,0 +1,44 @@
+{
+  "source_branch": "origin/feature/#pb18-user-profile-settings",
+  "source_commit": "88e041159f1f6332312f4f8b10e11100407f553b",
+  "author": "Huynh Van Thien",
+  "integration_branch": "feature/pb18-profile-ui-integration",
+  "url": "http://localhost:5173/profile",
+  "integration": "Selected PB18 changes merged against existing working tree; existing trip/auth/POI behavior retained. No commit/push.",
+  "ui": {
+    "real_route": true,
+    "authenticated_profile": true,
+    "desktop": {
+      "viewport": 1280,
+      "document_width": 1280,
+      "email_readonly": true,
+      "primary_button_radius": "9999px"
+    },
+    "narrow": {
+      "viewport": 320,
+      "document_width": 320,
+      "sidebar_width": 68,
+      "main_width": 246
+    },
+    "account_menu": true,
+    "password_form_open_cancel": true,
+    "online_profile_write": false,
+    "avatar_upload": false,
+    "password_change": false
+  },
+  "validation": {
+    "pb18_backend_tests": "34 passed",
+    "related_backend_regression": "67 passed; 2 pre-existing contract failures when included",
+    "account_isolation_frontend": "9 passed",
+    "typecheck": "PASS",
+    "build": "PASS after final button-radius adjustment",
+    "account_scoped_lint": "PASS",
+    "project_lint": "FAIL: 11 errors / 139 warnings across pre-existing broader code",
+    "account_browser_harness": "BLOCKED: Chromium test hung; terminated and verified real route using in-app browser instead"
+  },
+  "known_limits": [
+    "Migration 014 and Supabase avatar bucket were not applied or changed online.",
+    "Actual online profile writes, avatar upload and password change were not performed.",
+    "Two broader tests expect obsolete JWT claims / unauthenticated copilot access; no AI code changed in this task."
+  ]
+}

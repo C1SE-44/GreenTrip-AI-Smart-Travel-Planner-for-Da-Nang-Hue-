@@ -12,11 +12,6 @@ interface LoginModalProps {
   onRegisterSuccess?: () => void;
 }
 
-// Mock "database" mẫu dự phòng
-const MOCK_USERS: Record<string, string> = {
-  'admin@gmail.com': '1111',
-};
-
 type Step = 'email' | 'login' | 'register' | 'otp';
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -49,6 +44,14 @@ export default function LoginModal({
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const googleAttempt = useRef(0);
+  const openRef = useRef(isOpen);
+  openRef.current = isOpen;
+  useEffect(() => {
+    const attempts = googleAttempt;
+    if(!isOpen) {attempts.current++; window.google?.accounts?.id?.cancel?.();}
+    return () => {attempts.current++; window.google?.accounts?.id?.cancel?.();};
+  }, [isOpen]);
 
   useEffect(() => {
     setMounted(true);
@@ -180,15 +183,19 @@ export default function LoginModal({
       return;
     }
 
+    const attempt = ++googleAttempt.current;
+    setError('');
     try {
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: async (response: { credential?: string }) => {
-          if (!response.credential) return;
+          if (!response.credential || !openRef.current || attempt !== googleAttempt.current) return;
           try {
             setLoading(true);
-            const res = await googleLogin(response.credential);
-            if (res.access_token || !res.require_otp) {
+            const res = await googleLogin(response.credential, false);
+            if (!openRef.current || attempt !== googleAttempt.current) return;
+            if (res.access_token) {
+              localStorage.setItem('access_token',res.access_token); sessionStorage.removeItem('access_token');
               window.dispatchEvent(new Event('auth-change'));
               onClose();
               if (onLoginSuccess) onLoginSuccess();
@@ -200,7 +207,8 @@ export default function LoginModal({
               setCountdown(60);
             }
           } catch (err: unknown) {
-            setError(getErrorMessage(err, 'Đăng nhập Google thất bại. Vui lòng thử lại.'));
+            if(openRef.current && attempt === googleAttempt.current) setError(getErrorMessage(err, 'Đăng nhập Google thất bại. Vui lòng thử lại.'));
+            window.google?.accounts?.id?.cancel?.();
           } finally {
             setLoading(false);
           }
@@ -214,6 +222,8 @@ export default function LoginModal({
   };
 
   const handleContinue = async () => {
+    const attempt = ++googleAttempt.current;
+    const active = () => openRef.current && attempt === googleAttempt.current;
     setError('');
     setAttemptedSubmit(true);
 
@@ -227,51 +237,32 @@ export default function LoginModal({
       setLoading(true);
       try {
         const check = await checkEmail(cleanEmail);
+        if(!active()) return;
         setAttemptedSubmit(false);
         if (check.exists) {
           setStep('login');
         } else {
           setStep('register');
         }
-      } catch {
-        // Fallback kiểm tra mock nếu offline hoặc kiểm tra ban đầu
-        if (MOCK_USERS[cleanEmail] || initialMode === 'login') {
-          setStep('login');
-        } else {
-          setStep('register');
-        }
+      } catch (err: unknown) {
+        if(!active()) return;
+        setError(getErrorMessage(err, 'Chưa kiểm tra được email. Vui lòng thử lại.'));
       } finally {
-        setLoading(false);
+        if(active()) setLoading(false);
       }
     }
-    // BƯỚC 2A: Đăng nhập (tài khoản đã tồn tại)
     else if (step === 'login') {
       setLoading(true);
       try {
-        const res = await login({ email: email.trim().toLowerCase(), password });
-        localStorage.setItem('access_token', res.access_token);
+        const res = await login({email:email.trim().toLowerCase(),password});
+        if(!active()) return;
+        localStorage.setItem('access_token',res.access_token);
+        sessionStorage.removeItem('access_token');
         window.dispatchEvent(new Event('auth-change'));
         onClose();
-        if (onLoginSuccess) {
-          onLoginSuccess();
-        } else {
-          navigate('/explore');
-        }
-      } catch (err: unknown) {
-        // Fallback kiểm tra mock nếu offline hoặc tài khoản mẫu
-        const correctPass = MOCK_USERS[email.toLowerCase()];
-        if (correctPass && password === correctPass) {
-          localStorage.setItem('access_token', 'mock-user-token');
-          window.dispatchEvent(new Event('auth-change'));
-          onClose();
-          if (onLoginSuccess) onLoginSuccess();
-          else navigate('/explore');
-          return;
-        }
-        setError(getErrorMessage(err, 'Mật khẩu không đúng, vui lòng thử lại.'));
-      } finally {
-        setLoading(false);
-      }
+        if(onLoginSuccess) onLoginSuccess(); else navigate('/explore');
+      } catch(err: unknown) {if(!active()) return;setError(getErrorMessage(err,'Mật khẩu không đúng, vui lòng thử lại.'));}
+      finally {if(active()) setLoading(false);}
     }
     // BƯỚC 2B: Thiết lập mật khẩu đăng ký
     else if (step === 'register') {
@@ -293,9 +284,11 @@ export default function LoginModal({
           full_name: email.split('@')[0],
           email: email.trim().toLowerCase(),
           password,
-        });
+        }, false);
+        if(!active()) return;
 
-        if (res.access_token || !res.require_otp) {
+        if (res.access_token) {
+          localStorage.setItem('access_token',res.access_token);sessionStorage.removeItem('access_token');
           window.dispatchEvent(new Event('auth-change'));
           onClose();
           if (onRegisterSuccess) {
@@ -317,6 +310,7 @@ export default function LoginModal({
         setOtpDigits(['', '', '', '', '', '']);
         setStep('otp');
       } catch (err: unknown) {
+        if(!active()) return;
         if (err instanceof ApiError && err.status === 409) {
           setStep('login');
           setError('Email đã được đăng ký. Vui lòng nhập mật khẩu để đăng nhập.');
@@ -324,7 +318,7 @@ export default function LoginModal({
         }
         setError(getErrorMessage(err, 'Đăng ký thất bại. Vui lòng thử lại.'));
       } finally {
-        setLoading(false);
+        if(active()) setLoading(false);
       }
     }
     // BƯỚC 3: Xác thực mã OTP qua Gmail
@@ -343,9 +337,10 @@ export default function LoginModal({
             otp_code: fullOtp,
             otp_session_token: otpSessionToken,
           });
-          localStorage.setItem('access_token', res.access_token);
+          if(!active()) return;
+          localStorage.setItem('access_token', res.access_token);sessionStorage.removeItem('access_token');
         } else {
-          localStorage.setItem('access_token', 'mock-user-token');
+          throw new Error('Phiên xác thực đã hết hạn. Vui lòng đăng nhập lại.');
         }
 
         window.dispatchEvent(new Event('auth-change'));
@@ -358,9 +353,10 @@ export default function LoginModal({
           navigate('/explore');
         }
       } catch (err: unknown) {
+        if(!active()) return;
         setError(getErrorMessage(err, 'Mã OTP không chính xác hoặc đã hết hạn.'));
       } finally {
-        setLoading(false);
+        if(active()) setLoading(false);
       }
     }
   };

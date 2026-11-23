@@ -1,0 +1,36 @@
+{
+  "api": "PASS",
+  "ui": "PASS",
+  "environment": "isolated SQLite + strict varchar(64) legacy identifier triggers, production routers",
+  "trip": "77d05c73-0d5b-41a1-903f-4a9e8abccb9b",
+  "destination": "Huế",
+  "startDate": "2026-12-20",
+  "peopleCount": 3,
+  "totalBudget": 5000000,
+  "poiIds": [
+    "ee82501d-6895-43cc-af78-c8caf301da4e",
+    "084a4f33-2af6-44cf-83ad-88ceaaac1092",
+    "47c62755-252e-478d-aee3-e8bcbd1197d6",
+    "d229571b-14fb-4357-aad6-af1547af7615",
+    "1b13e870-232f-4f86-ba04-49b2aff0985f",
+    "0a0fae57-fba7-4487-a675-1f3e2193e73f"
+  ],
+  "names": [
+    "VOU Roastery",
+    "Đại Nội Huế (Hoàng Thành & Tử Cấm Thành)",
+    "Nhà Nguyện Cổ Xavier (Trường Pellerin Cũ – Học Viện Âm Nhạc Huế)",
+    "Cầu Gỗ Lim Ven Sông Hương",
+    "Làng sinh thái Thủy Biều",
+    "Trung Tâm Thiền Vipassana Huế"
+  ],
+  "guestEditedBeforeLogin": true,
+  "sixStopsPreserved": true,
+  "oneSetupAfterLogin": true,
+  "directItineraryTab": true,
+  "editTimeAndReload": true,
+  "calendarUsesSavedTimes": true,
+  "calendarUnscheduledNotFabricated": true,
+  "mobileWidth": 320,
+  "formWidth": 308,
+  "productionWrites": false
+}

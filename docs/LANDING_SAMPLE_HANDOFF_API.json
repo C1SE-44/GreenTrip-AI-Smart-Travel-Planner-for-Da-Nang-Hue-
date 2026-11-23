@@ -1,0 +1,34 @@
+{
+  "environment": "isolated SQLite; production POI router with fixture-only PostGIS/jsonb dialect adapter",
+  "api": "PASS",
+  "catalogueCount": 200,
+  "trip": "71d52bb3-ed48-4048-b466-75afe9c30694",
+  "stopIds": [
+    "1a499cb8-37fd-4dfe-9260-e467b8e49494",
+    "e54d76d9-2b62-4d38-a6b5-dc158212910c",
+    "46f2acf9-512b-4f31-8904-a3330c6e204e",
+    "936b4a05-8051-4fda-aba1-42c28c143cb3",
+    "084a4f33-2af6-44cf-83ad-88ceaaac1092",
+    "ee82501d-6895-43cc-af78-c8caf301da4e",
+    "47c62755-252e-478d-aee3-e8bcbd1197d6",
+    "d229571b-14fb-4357-aad6-af1547af7615"
+  ],
+  "stopNames": [
+    "The Local Beans - Phan Châu Trinh",
+    "Bảo Tàng Điêu Khắc Chăm Đà Nẵng",
+    "Omandala Vietnam - Sound Healing",
+    "Mì Quảng Bà Mua",
+    "Đại Nội Huế (Hoàng Thành & Tử Cấm Thành)",
+    "VOU Roastery",
+    "Nhà Nguyện Cổ Xavier (Trường Pellerin Cũ – Học Viện Âm Nhạc Huế)",
+    "Cầu Gỗ Lim Ven Sông Hương"
+  ],
+  "days": 2,
+  "startDate": "2030-01-30",
+  "peopleCount": 3,
+  "totalBudget": 5000000,
+  "strictVarchar64": true,
+  "orderAndIdeasMatch": true,
+  "ownerIsolation": true,
+  "noProductionWrites": true
+}

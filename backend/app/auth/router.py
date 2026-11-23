@@ -609,7 +609,10 @@ def resend_verification(request: ResendVerificationRequest) -> VerifyEmailRespon
 
 @router.post("/google", response_model=GoogleLoginResponse)
 def google_login(request: GoogleLoginRequest) -> GoogleLoginResponse:
-    google_user = verify_google_token(request.credential)
+    try:
+        google_user = verify_google_token(request.credential)
+    except AuthServiceUnavailable as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
     if not google_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

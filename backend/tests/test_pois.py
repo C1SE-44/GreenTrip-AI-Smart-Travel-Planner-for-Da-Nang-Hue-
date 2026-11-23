@@ -373,7 +373,10 @@ def test_list_pois_ignores_all_filter_values(
     assert response.status_code == 200
     page_query, page_parameters = queries[0]
 
-    assert "WHERE" not in page_query
+    assert "WHERE p.is_active = TRUE" in page_query
+    assert "ci.code =" not in page_query
+    assert "c.name = ANY" not in page_query
+    assert "WHERE p.is_active = TRUE" in queries[1][0]
     assert page_parameters == (10, 0)
 
 

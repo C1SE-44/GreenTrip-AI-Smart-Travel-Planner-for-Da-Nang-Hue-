@@ -1,0 +1,187 @@
+{
+  "training_status": "COMPLETE",
+  "weights_trained": true,
+  "completed_steps": 64,
+  "model": "Qwen/Qwen3-0.6B",
+  "scores": {
+    "base": {
+      "dev": 0,
+      "test": 0
+    },
+    "lora": {
+      "dev": 2,
+      "test": 4
+    }
+  },
+  "rows": [
+    {
+      "id": "dev-mix-166",
+      "split": "dev",
+      "variant": "base",
+      "schema_valid": false,
+      "expected_contract_exact": false,
+      "semantic_pass": false,
+      "seconds": 35.7
+    },
+    {
+      "id": "dev-list-167",
+      "split": "dev",
+      "variant": "base",
+      "schema_valid": false,
+      "expected_contract_exact": false,
+      "semantic_pass": false,
+      "seconds": 27.02
+    },
+    {
+      "id": "dev-near-168",
+      "split": "dev",
+      "variant": "base",
+      "schema_valid": false,
+      "expected_contract_exact": false,
+      "semantic_pass": false,
+      "seconds": 12.64
+    },
+    {
+      "id": "dev-edit-169",
+      "split": "dev",
+      "variant": "base",
+      "schema_valid": false,
+      "expected_contract_exact": false,
+      "semantic_pass": false,
+      "seconds": 26.96
+    },
+    {
+      "id": "test-mix-170",
+      "split": "test",
+      "variant": "base",
+      "schema_valid": false,
+      "expected_contract_exact": false,
+      "semantic_pass": false,
+      "seconds": 12.24
+    },
+    {
+      "id": "test-list-171",
+      "split": "test",
+      "variant": "base",
+      "schema_valid": false,
+      "expected_contract_exact": false,
+      "semantic_pass": false,
+      "seconds": 29.14
+    },
+    {
+      "id": "test-save-172",
+      "split": "test",
+      "variant": "base",
+      "schema_valid": false,
+      "expected_contract_exact": false,
+      "semantic_pass": false,
+      "seconds": 10.51
+    },
+    {
+      "id": "test-exclude-173",
+      "split": "test",
+      "variant": "base",
+      "schema_valid": false,
+      "expected_contract_exact": false,
+      "semantic_pass": false,
+      "seconds": 10.33
+    },
+    {
+      "id": "dev-mix-166",
+      "split": "dev",
+      "variant": "lora",
+      "schema_valid": true,
+      "expected_contract_exact": false,
+      "semantic_pass": false,
+      "seconds": 7.21
+    },
+    {
+      "id": "dev-list-167",
+      "split": "dev",
+      "variant": "lora",
+      "schema_valid": true,
+      "expected_contract_exact": true,
+      "semantic_pass": true,
+      "seconds": 3.06
+    },
+    {
+      "id": "dev-near-168",
+      "split": "dev",
+      "variant": "lora",
+      "schema_valid": true,
+      "expected_contract_exact": true,
+      "semantic_pass": true,
+      "seconds": 4.71
+    },
+    {
+      "id": "dev-edit-169",
+      "split": "dev",
+      "variant": "lora",
+      "schema_valid": false,
+      "expected_contract_exact": false,
+      "semantic_pass": false,
+      "seconds": 17.02
+    },
+    {
+      "id": "test-mix-170",
+      "split": "test",
+      "variant": "lora",
+      "schema_valid": true,
+      "expected_contract_exact": true,
+      "semantic_pass": true,
+      "seconds": 7.68
+    },
+    {
+      "id": "test-list-171",
+      "split": "test",
+      "variant": "lora",
+      "schema_valid": true,
+      "expected_contract_exact": true,
+      "semantic_pass": true,
+      "seconds": 3.18
+    },
+    {
+      "id": "test-save-172",
+      "split": "test",
+      "variant": "lora",
+      "schema_valid": true,
+      "expected_contract_exact": true,
+      "semantic_pass": true,
+      "seconds": 3.33
+    },
+    {
+      "id": "test-exclude-173",
+      "split": "test",
+      "variant": "lora",
+      "schema_valid": true,
+      "expected_contract_exact": true,
+      "semantic_pass": true,
+      "seconds": 4.53
+    }
+  ],
+  "production_enabled": false,
+  "dataset_note": "small synthetic template corpus; no production generalization claim",
+  "reload_smoke": {
+    "prediction": "{\"intent\":\"search\",\"changes\":[{\"field\":\"city\",\"op\":\"set\",\"value\":\"Huế\"},{\"field\":\"count\",\"op\":\"set\",\"value\":5},{\"field\":\"mix\",\"op\":\"set\",\"value\":{\"cafe\":3,\"temple\":2}}],\"search_scope\":\"new\"}",
+    "seconds": 7.54,
+    "provider": "local_lora_experimental",
+    "message": "Tìm giúp tôi 2 quán cà phê ở Huế và 3 ngôi chùa",
+    "expected_mix": {
+      "cafe": 2,
+      "temple": 3
+    },
+    "actual_mix": {
+      "cafe": 3,
+      "temple": 2
+    },
+    "pass_case": false,
+    "reload_succeeded": true
+  },
+  "adapter": {
+    "bytes": 4602248,
+    "sha256": "bd33d225302481ff873a2cb1f83ef36bb8b17375957c2a8b0097e112d8e62c69"
+  },
+  "training_seconds": 860.8,
+  "trainable_parameters": 1146880,
+  "decision": "DO_NOT_ENABLE: failed held-out and fresh paraphrase; CPU latency also requires product acceptance"
+}

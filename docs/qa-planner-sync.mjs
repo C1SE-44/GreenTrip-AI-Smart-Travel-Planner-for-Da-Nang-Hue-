@@ -1,0 +1,77 @@
+import {createRequire} from 'node:module';
+import {writeFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const {chromium,request}=createRequire(import.meta.url)('C:/Users/ngoho/Documents/Codex/2026-11-13/b-y/work/qa-runtime/node_modules/playwright');
+const api=await request.newContext({baseURL:'http://127.0.0.1:8021'});
+const token=(await (await api.post('/auth/login',{data:{email:'assistant-qa@example.test',password:'AssistantQA123!'}})).json()).access_token;
+const headers={Authorization:'Bearer '+token};
+const trip={id:'qa-expired-sync',title:'Kiểm đồng bộ ngày',destination:'Huế',daysCount:3,startDate:'2026-11-10',peopleCount:2,ideas:['cafe-garden','museum','park']};
+const existing=await api.get('/trip-workspaces/'+trip.id,{headers});
+const seed=await api.put('/trip-workspaces/'+trip.id,{headers,data:{data:trip,expected_revision:existing.ok()?(await existing.json()).workspaceRevision:null}});assert(seed.ok());
+const browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});
+page.on('dialog',dialog=>dialog.accept());
+const errors=[];page.on('pageerror',e=>errors.push(e.message));let failMetadata=false;let failRead=false;let writes=0;
+await page.route('**/*',async route=>{
+ const u=new URL(route.request().url());
+ if(u.port==='8000'){
+   if(route.request().method()==='PUT')writes++;
+   if(failRead&&u.pathname==='/trips/'+trip.id+'/itinerary'&&route.request().method()==='GET')return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'QA: tải lịch tạm lỗi'})});
+   if(failMetadata&&u.pathname.startsWith('/trip-workspaces/')&&route.request().method()==='PUT')return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'QA: lưu thông tin chuyến tạm lỗi'})});
+   return route.fulfill({response:await route.fetch({url:'http://127.0.0.1:8021'+u.pathname+u.search})});
+ }
+ if(!['localhost','127.0.0.1'].includes(u.hostname))return route.abort();
+ return route.continue();
+});
+await page.addInitScript(token=>{localStorage.setItem('access_token',token);sessionStorage.setItem('access_token',token);},token);
+const observations=[];
+
+
+
+await page.goto('http://localhost:5173/planner');await page.getByText(trip.title,{exact:true}).waitFor();await page.getByText(trip.title,{exact:true}).click();
+const roll=page.getByRole('button',{name:/Dời sang hôm nay/});await roll.waitFor();
+failMetadata=true;await roll.click();await page.getByText('QA: lưu thông tin chuyến tạm lỗi',{exact:true}).waitFor();
+assert.equal((await (await api.get('/trip-workspaces/'+trip.id,{headers})).json()).startDate,'2026-11-10');
+observations.push({case:'metadata failure',result:'error shown; banner remains; no completed date change'});
+failMetadata=false;const completed=page.waitForResponse(r=>new URL(r.url()).pathname==='/trip-workspaces/'+trip.id&&r.request().method()==='PUT'&&r.status()===200);await roll.click();await completed;await page.getByText(/17\/11 – 19\/11/).first().waitFor();
+const meta=await (await api.get('/trip-workspaces/'+trip.id,{headers})).json();
+const plan=await (await api.get('/trips/'+trip.id+'/itinerary',{headers})).json();
+assert.equal(meta.startDate,plan.start_date);assert.notEqual(meta.startDate,'2026-11-10');assert.equal(plan.days.flatMap(d=>d.stops).length,3);assert.deepEqual(plan.days.flatMap(d=>d.stops.map(s=>s.stop_id)),['qa-preserved-0','qa-preserved-1','qa-preserved-2']);
+observations.push({case:'roll expired trip',date:meta.startDate,poi_ids:plan.days.flatMap(d=>d.stops.map(s=>s.poi_id)),days:plan.days.map(d=>d.date),result:'both stores persisted; all original stops preserved'});
+await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/planner-dates-ideas.png'});
+await page.getByRole('button',{name:'Lịch trình',exact:true}).click();await page.getByText('Cà phê Vườn Demo',{exact:true}).first().waitFor();
+await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/planner-dates-itinerary.png'});
+await page.getByRole('button',{name:'Lịch',exact:true}).click();await page.getByRole('button',{name:meta.startDate+' hôm nay',exact:true}).waitFor();
+await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/planner-dates-calendar.png'});
+await page.getByRole('button',{name:'Ý tưởng',exact:true}).click();assert.equal(await page.getByRole('button',{name:/Dời sang hôm nay/}).count(),0);
+await page.reload();await page.getByText(trip.title,{exact:true}).waitFor();await page.getByText(trip.title,{exact:true}).click();assert.equal(await page.getByRole('button',{name:/Dời sang hôm nay/}).count(),0);
+await page.getByRole('button',{name:'Lịch',exact:true}).click();await page.getByRole('button',{name:meta.startDate+' hôm nay',exact:true}).waitFor();
+observations.push({case:'three tabs and reload',result:'same new date and stops; expired banner does not return'});
+await page.getByRole('button',{name:'Lịch trình',exact:true}).click();await page.getByTitle('Tùy chọn lịch trình',{exact:true}).click();
+const added=page.waitForResponse(r=>new URL(r.url()).pathname==='/trip-workspaces/'+trip.id&&r.request().method()==='PUT'&&r.status()===200);await page.getByRole('button',{name:'Thêm ngày mới',exact:true}).click();await added;
+const expanded=await (await api.get('/trip-workspaces/'+trip.id,{headers})).json();assert.equal(expanded.daysCount,4);
+await page.getByRole('button',{name:'Lịch',exact:true}).click();assert.equal(await page.getByRole('button',{name:plan.days[0].date+' hôm nay',exact:true}).count(),1);
+observations.push({case:'add day',result:'metadata has four days; calendar uses same range'});
+await page.getByRole('button',{name:'Lịch trình',exact:true}).click();
+const deleted=page.waitForResponse(r=>new URL(r.url()).pathname==='/trip-workspaces/'+trip.id&&r.request().method()==='PUT'&&r.status()===200);void deleted.catch(()=>{});
+await page.getByRole('heading',{name:'Ngày 4',exact:true}).click();await page.getByTitle('Xóa Ngày 4',{exact:true}).click();await deleted;
+assert.equal((await (await api.get('/trip-workspaces/'+trip.id,{headers})).json()).daysCount,3);
+assert.equal((await (await api.get('/trips/'+trip.id+'/itinerary',{headers})).json()).days.flatMap(d=>d.stops).length,3);
+observations.push({case:'remove empty added day',result:'three days in both stores; original stops preserved'});
+await page.getByTitle('Tùy chỉnh thông số chuyến đi',{exact:true}).click();
+await page.getByRole('button',{name:/Thời gian bắt đầu/}).click();
+await page.getByRole('button',{name:'2026-11-22',exact:true}).click();await page.getByRole('button',{name:'2026-11-24',exact:true}).click();
+const changed=page.waitForResponse(r=>new URL(r.url()).pathname==='/trip-workspaces/'+trip.id&&r.request().method()==='PUT'&&r.status()===200);
+await page.getByRole('button',{name:'Cập nhật',exact:true}).click();await changed;
+assert.equal((await (await api.get('/trip-workspaces/'+trip.id,{headers})).json()).startDate,'2026-11-22');
+assert.equal((await (await api.get('/trips/'+trip.id+'/itinerary',{headers})).json()).start_date,'2026-11-22');
+observations.push({case:'custom dates popup',result:'22–24 November persisted in metadata and itinerary'});
+const beforeFailures=writes;failRead=true;
+await page.getByRole('button',{name:'Lịch',exact:true}).click();await page.getByRole('alert').filter({hasText:'QA: tải lịch tạm lỗi'}).waitFor();
+assert.equal(await page.getByText('Chưa có hoạt động được xếp giờ.',{exact:true}).count(),0);assert.equal(writes,beforeFailures);
+failRead=false;const recovered=page.waitForResponse(r=>new URL(r.url()).pathname==='/trips/'+trip.id+'/itinerary'&&r.status()===200);await page.getByRole('button',{name:'Thử tải lại',exact:true}).click();await recovered;await page.waitForTimeout(200);await page.getByRole('button',{name:'2026-11-22',exact:true}).waitFor();
+failRead=true;await page.getByRole('button',{name:'Lịch trình',exact:true}).click();await page.getByRole('alert').filter({hasText:'QA: tải lịch tạm lỗi'}).waitFor();assert.equal(writes,beforeFailures);
+failRead=false;await page.getByRole('button',{name:'Thử tải lại',exact:true}).click();await page.getByText('Cà phê Vườn Demo',{exact:true}).first().waitFor();
+observations.push({case:'load errors in itinerary/calendar',result:'errors shown instead of empty schedule; no writes; retry recovers stops'});
+await page.reload();await page.getByText(trip.title,{exact:true}).waitFor();await page.getByText(trip.title,{exact:true}).click();
+await page.setViewportSize({width:320,height:850});await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/planner-dates-mobile.png'});
+assert.deepEqual(errors,[]);await writeFile('D:/ĐỒ ÁN/repo/docs/PLANNER_SYNC_UI.json',JSON.stringify(observations,null,2));console.log(JSON.stringify(observations,null,2));await browser.close();await api.dispose();

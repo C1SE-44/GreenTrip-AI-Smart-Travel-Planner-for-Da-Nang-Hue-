@@ -1,0 +1,542 @@
+{
+  "status": "COMPLETE",
+  "model": "Qwen/Qwen3-0.6B",
+  "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+  "device": "cpu",
+  "method": "LoRA q_proj/v_proj rank 8",
+  "weights_trained": true,
+  "data_sha256": "dee86a5fd8e8dd7127a33a30571dc0b5593107f98a847804224a952d20253b4a",
+  "train_count": 166,
+  "heldout_count": 8,
+  "max_tokens": 404,
+  "evaluations": [
+    {
+      "id": "dev-mix-166",
+      "split": "dev",
+      "variant": "base",
+      "pass": false,
+      "seconds": 35.7,
+      "prediction": "{\n  \"intent\": \"greeting\",\n  \"changes\": [\n    {\n      \"field\": \"city\",\n      \"op\": \"keep\",\n      \"value\": \"Huế\"\n    },\n    {\n      \"field\": \"category\",\n      \"op\": \"keep\",\n      \"value\": \"cafe\"\n    },\n    {\n      \"field\": \"count\",\n      \"op\": \"keep\",\n      \"value\": \"2\"\n    },\n    {\n      \"field\": \"mix\",\n      \"op\": \"keep\",\n      \"value\": \"4\"\n    },\n    {\n      \"field\": \"nearby\",\n      \"op\": \"keep\",\n      \"value\": \"4\"\n    },\n    {\n      \"field\": \"places\",\n      \"op\": \"keep\",\n      \"value\": \"4\"\n    },\n    {\n      \"field\": \"day\",\n      \"op\": \"keep\",\n      \"value\": \"2\"\n    },\n    {\n      \"field\": \"start_after\",\n      \"op\": \"keep\",\n      \"value\": \"2\"\n    },\n    {\n"
+    },
+    {
+      "id": "dev-list-167",
+      "split": "dev",
+      "variant": "base",
+      "pass": false,
+      "seconds": 27.02,
+      "prediction": "{\n  \"intent\": \"search\",\n  \"changes\": [\n    {\n      \"field\": \"city\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"category\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"count\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"mix\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"nearby\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"places\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"day\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"start_after\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"meal\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n"
+    },
+    {
+      "id": "dev-near-168",
+      "split": "dev",
+      "variant": "base",
+      "pass": false,
+      "seconds": 12.64,
+      "prediction": "{\n  \"intent\": \"search\",\n  \"changes\": [\n    {\n      \"field\": \"city\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"category\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"nearby\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    }\n  ],\n  \"search_scope\": \"new\",\n  \"reference_index\": \"anchor\"\n}"
+    },
+    {
+      "id": "dev-edit-169",
+      "split": "dev",
+      "variant": "base",
+      "pass": false,
+      "seconds": 26.96,
+      "prediction": "{\n  \"intent\": \"list_ideas\",\n  \"changes\": [\n    {\n      \"field\": \"city\",\n      \"op\": \"keep\",\n      \"value\": \"Hà Nội\"\n    },\n    {\n      \"field\": \"category\",\n      \"op\": \"keep\",\n      \"value\": \"food\"\n    },\n    {\n      \"field\": \"count\",\n      \"op\": \"keep\",\n      \"value\": \"1\"\n    },\n    {\n      \"field\": \"mix\",\n      \"op\": \"keep\",\n      \"value\": \"1\"\n    },\n    {\n      \"field\": \"nearby\",\n      \"op\": \"keep\",\n      \"value\": \"1\"\n    },\n    {\n      \"field\": \"places\",\n      \"op\": \"keep\",\n      \"value\": \"1\"\n    },\n    {\n      \"field\": \"day\",\n      \"op\": \"keep\",\n      \"value\": \"2\"\n    },\n    {\n      \"field\": \"start_after\",\n      \"op\": \"keep\",\n      \"value\": \"12:00"
+    },
+    {
+      "id": "test-mix-170",
+      "split": "test",
+      "variant": "base",
+      "pass": false,
+      "seconds": 12.24,
+      "prediction": "{\n  \"intent\": \"search\",\n  \"changes\": [\n    {\n      \"field\": \"city\",\n      \"op\": \"clear\",\n      \"value\": \"Đà Nẵng\"\n    },\n    {\n      \"field\": \"category\",\n      \"op\": \"clear\",\n      \"value\": \"coffee,temple,museum,food,nature,church,spiritual\"\n    }\n  ],\n  \"search_scope\": \"new\",\n  \"reference_index\": \"\"\n}"
+    },
+    {
+      "id": "test-list-171",
+      "split": "test",
+      "variant": "base",
+      "pass": false,
+      "seconds": 29.14,
+      "prediction": "{\n  \"intent\": \"greeting\",\n  \"changes\": [\n    {\n      \"field\": \"city\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"category\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"count\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"mix\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"nearby\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"places\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"day\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"start_after\",\n      \"op\": \"clear\",\n      \"value\": \"\"\n    },\n    {\n      \"field\": \"meal\",\n      \"op\": \"clear\",\n      \"value\":"
+    },
+    {
+      "id": "test-save-172",
+      "split": "test",
+      "variant": "base",
+      "pass": false,
+      "seconds": 10.51,
+      "prediction": "{\n  \"intent\": \"list_ideas\",\n  \"changes\": [\n    {\n      \"field\": \"city\",\n      \"op\": \"clear\",\n      \"value\": \"Huế\"\n    },\n    {\n      \"field\": \"category\",\n      \"op\": \"clear\",\n      \"value\": \"cafe\"\n    }\n  ]\n}"
+    },
+    {
+      "id": "test-exclude-173",
+      "split": "test",
+      "variant": "base",
+      "pass": false,
+      "seconds": 10.33,
+      "prediction": "{\n  \"intent\": \"search\",\n  \"changes\": [\n    {\n      \"field\": \"city\",\n      \"op\": \"clear\",\n      \"value\": \"Huế\"\n    },\n    {\n      \"field\": \"category\",\n      \"op\": \"clear\",\n      \"value\": \"cafe\"\n    }\n  ]\n}"
+    },
+    {
+      "id": "dev-mix-166",
+      "split": "dev",
+      "variant": "lora",
+      "pass": false,
+      "seconds": 7.21,
+      "prediction": "{\"intent\":\"search\",\"changes\":[{\"field\":\"city\",\"op\":\"set\",\"value\":\"Huế\"},{\"field\":\"count\",\"op\":\"set\",\"value\":4},{\"field\":\"mix\",\"op\":\"set\",\"value\":{\"cafe\":4,\"temple\":2}}],\"search_scope\":\"new\"}"
+    },
+    {
+      "id": "dev-list-167",
+      "split": "dev",
+      "variant": "lora",
+      "pass": true,
+      "seconds": 3.06,
+      "prediction": "{\"intent\":\"list_ideas\",\"changes\":[]}"
+    },
+    {
+      "id": "dev-near-168",
+      "split": "dev",
+      "variant": "lora",
+      "pass": true,
+      "seconds": 4.71,
+      "prediction": "{\"intent\":\"search\",\"changes\":[{\"field\":\"nearby\",\"op\":\"clear\",\"value\":null}],\"search_scope\":\"refine\"}"
+    },
+    {
+      "id": "dev-edit-169",
+      "split": "dev",
+      "variant": "lora",
+      "pass": false,
+      "seconds": 17.02,
+      "prediction": "{\"intent\":\"plan\",\"changes\":[{\"field\":\"day\",\"op\":\"set\",\"value\":2},{\"field\":\"start_after\",\"op\":\"set\",\"value\":\"10:45\"},{\"field\":\"day_stops\",\"op\":\"set\",\"value\":[{\"position\":1,\"title\":\"Điểm mẫu A\",\"stop_type\":\"poi\",\"start_time\":\"08:00\"},{\"position\":2,\"title\":\"Bữa trưa\",\"stop_type\":\"rest\",\"start_time\":\"12:00\"},{\"position\":3,\"title\":\"Điểm mẫu B\",\"stop_type\":\"poi\",\"start_time\":\"15:00\"}]}],\"search_scope\":\"refine\"}"
+    },
+    {
+      "id": "test-mix-170",
+      "split": "test",
+      "variant": "lora",
+      "pass": true,
+      "seconds": 7.68,
+      "prediction": "{\"intent\":\"search\",\"changes\":[{\"field\":\"city\",\"op\":\"set\",\"value\":\"Đà Nẵng\"},{\"field\":\"count\",\"op\":\"set\",\"value\":6},{\"field\":\"mix\",\"op\":\"set\",\"value\":{\"cafe\":3,\"temple\":3}}],\"search_scope\":\"new\"}"
+    },
+    {
+      "id": "test-list-171",
+      "split": "test",
+      "variant": "lora",
+      "pass": true,
+      "seconds": 3.18,
+      "prediction": "{\"intent\":\"list_ideas\",\"changes\":[]}"
+    },
+    {
+      "id": "test-save-172",
+      "split": "test",
+      "variant": "lora",
+      "pass": true,
+      "seconds": 3.33,
+      "prediction": "{\"intent\":\"save_idea\",\"changes\":[],\"reference_index\":2}"
+    },
+    {
+      "id": "test-exclude-173",
+      "split": "test",
+      "variant": "lora",
+      "pass": true,
+      "seconds": 4.53,
+      "prediction": "{\"intent\":\"search\",\"changes\":[{\"field\":\"places\",\"op\":\"exclude\",\"value\":[3]}],\"search_scope\":\"refine\"}"
+    }
+  ],
+  "loss": [
+    {
+      "step": 1,
+      "loss": 1.01101,
+      "elapsed_seconds": 14.4,
+      "available_gib": 2.6
+    },
+    {
+      "step": 2,
+      "loss": 0.65837,
+      "elapsed_seconds": 28.0,
+      "available_gib": 2.5
+    },
+    {
+      "step": 3,
+      "loss": 0.51985,
+      "elapsed_seconds": 42.3,
+      "available_gib": 2.6
+    },
+    {
+      "step": 4,
+      "loss": 0.7023,
+      "elapsed_seconds": 57.4,
+      "available_gib": 2.6
+    },
+    {
+      "step": 5,
+      "loss": 0.47694,
+      "elapsed_seconds": 74.9,
+      "available_gib": 2.5
+    },
+    {
+      "step": 6,
+      "loss": 0.40834,
+      "elapsed_seconds": 89.8,
+      "available_gib": 2.4
+    },
+    {
+      "step": 7,
+      "loss": 0.4244,
+      "elapsed_seconds": 104.4,
+      "available_gib": 2.4
+    },
+    {
+      "step": 8,
+      "loss": 0.18401,
+      "elapsed_seconds": 117.7,
+      "available_gib": 2.3
+    },
+    {
+      "step": 9,
+      "loss": 0.12444,
+      "elapsed_seconds": 132.5,
+      "available_gib": 2.2
+    },
+    {
+      "step": 10,
+      "loss": 0.13309,
+      "elapsed_seconds": 146.7,
+      "available_gib": 2.2
+    },
+    {
+      "step": 11,
+      "loss": 0.48163,
+      "elapsed_seconds": 160.4,
+      "available_gib": 3.5
+    },
+    {
+      "step": 12,
+      "loss": 0.16855,
+      "elapsed_seconds": 175.6,
+      "available_gib": 3.5
+    },
+    {
+      "step": 13,
+      "loss": 0.13085,
+      "elapsed_seconds": 188.0,
+      "available_gib": 3.6
+    },
+    {
+      "step": 14,
+      "loss": 0.17443,
+      "elapsed_seconds": 200.9,
+      "available_gib": 3.6
+    },
+    {
+      "step": 15,
+      "loss": 0.08812,
+      "elapsed_seconds": 213.4,
+      "available_gib": 3.6
+    },
+    {
+      "step": 16,
+      "loss": 0.25096,
+      "elapsed_seconds": 227.3,
+      "available_gib": 3.6
+    },
+    {
+      "step": 17,
+      "loss": 0.31639,
+      "elapsed_seconds": 241.0,
+      "available_gib": 3.6
+    },
+    {
+      "step": 18,
+      "loss": 0.11308,
+      "elapsed_seconds": 256.4,
+      "available_gib": 3.6
+    },
+    {
+      "step": 19,
+      "loss": 0.07819,
+      "elapsed_seconds": 269.5,
+      "available_gib": 3.6
+    },
+    {
+      "step": 20,
+      "loss": 0.0656,
+      "elapsed_seconds": 281.5,
+      "available_gib": 3.6
+    },
+    {
+      "step": 21,
+      "loss": 0.02721,
+      "elapsed_seconds": 294.1,
+      "available_gib": 3.6
+    },
+    {
+      "step": 22,
+      "loss": 0.50827,
+      "elapsed_seconds": 307.5,
+      "available_gib": 3.6
+    },
+    {
+      "step": 23,
+      "loss": 0.08826,
+      "elapsed_seconds": 320.7,
+      "available_gib": 3.5
+    },
+    {
+      "step": 24,
+      "loss": 0.09982,
+      "elapsed_seconds": 333.7,
+      "available_gib": 3.6
+    },
+    {
+      "step": 25,
+      "loss": 0.05825,
+      "elapsed_seconds": 345.5,
+      "available_gib": 3.7
+    },
+    {
+      "step": 26,
+      "loss": 0.04961,
+      "elapsed_seconds": 360.1,
+      "available_gib": 3.7
+    },
+    {
+      "step": 27,
+      "loss": 0.06123,
+      "elapsed_seconds": 373.6,
+      "available_gib": 3.7
+    },
+    {
+      "step": 28,
+      "loss": 0.02327,
+      "elapsed_seconds": 386.5,
+      "available_gib": 3.8
+    },
+    {
+      "step": 29,
+      "loss": 0.14589,
+      "elapsed_seconds": 399.1,
+      "available_gib": 3.7
+    },
+    {
+      "step": 30,
+      "loss": 0.04322,
+      "elapsed_seconds": 412.3,
+      "available_gib": 3.7
+    },
+    {
+      "step": 31,
+      "loss": 0.01492,
+      "elapsed_seconds": 426.0,
+      "available_gib": 3.7
+    },
+    {
+      "step": 32,
+      "loss": 0.0075,
+      "elapsed_seconds": 439.6,
+      "available_gib": 3.7
+    },
+    {
+      "step": 33,
+      "loss": 0.04043,
+      "elapsed_seconds": 452.9,
+      "available_gib": 4.1
+    },
+    {
+      "step": 34,
+      "loss": 0.03488,
+      "elapsed_seconds": 465.5,
+      "available_gib": 4.1
+    },
+    {
+      "step": 35,
+      "loss": 0.07996,
+      "elapsed_seconds": 480.6,
+      "available_gib": 4.0
+    },
+    {
+      "step": 36,
+      "loss": 0.03962,
+      "elapsed_seconds": 494.1,
+      "available_gib": 4.0
+    },
+    {
+      "step": 37,
+      "loss": 0.16531,
+      "elapsed_seconds": 505.3,
+      "available_gib": 4.0
+    },
+    {
+      "step": 38,
+      "loss": 0.03481,
+      "elapsed_seconds": 524.0,
+      "available_gib": 3.8
+    },
+    {
+      "step": 39,
+      "loss": 0.10251,
+      "elapsed_seconds": 538.8,
+      "available_gib": 3.8
+    },
+    {
+      "step": 40,
+      "loss": 0.04482,
+      "elapsed_seconds": 552.2,
+      "available_gib": 3.8
+    },
+    {
+      "step": 41,
+      "loss": 0.01832,
+      "elapsed_seconds": 565.4,
+      "available_gib": 3.8
+    },
+    {
+      "step": 42,
+      "loss": 0.08949,
+      "elapsed_seconds": 579.8,
+      "available_gib": 3.8
+    },
+    {
+      "step": 43,
+      "loss": 0.18944,
+      "elapsed_seconds": 592.9,
+      "available_gib": 3.7
+    },
+    {
+      "step": 44,
+      "loss": 0.10426,
+      "elapsed_seconds": 608.0,
+      "available_gib": 3.7
+    },
+    {
+      "step": 45,
+      "loss": 0.01539,
+      "elapsed_seconds": 621.0,
+      "available_gib": 3.7
+    },
+    {
+      "step": 46,
+      "loss": 0.00475,
+      "elapsed_seconds": 634.1,
+      "available_gib": 3.7
+    },
+    {
+      "step": 47,
+      "loss": 0.03267,
+      "elapsed_seconds": 647.2,
+      "available_gib": 3.6
+    },
+    {
+      "step": 48,
+      "loss": 0.11532,
+      "elapsed_seconds": 661.6,
+      "available_gib": 3.8
+    },
+    {
+      "step": 49,
+      "loss": 0.0067,
+      "elapsed_seconds": 674.4,
+      "available_gib": 3.9
+    },
+    {
+      "step": 50,
+      "loss": 0.00844,
+      "elapsed_seconds": 687.9,
+      "available_gib": 4.2
+    },
+    {
+      "step": 51,
+      "loss": 0.02065,
+      "elapsed_seconds": 701.4,
+      "available_gib": 4.2
+    },
+    {
+      "step": 52,
+      "loss": 0.02336,
+      "elapsed_seconds": 713.7,
+      "available_gib": 4.2
+    },
+    {
+      "step": 53,
+      "loss": 0.07333,
+      "elapsed_seconds": 725.8,
+      "available_gib": 4.2
+    },
+    {
+      "step": 54,
+      "loss": 0.01122,
+      "elapsed_seconds": 738.6,
+      "available_gib": 4.2
+    },
+    {
+      "step": 55,
+      "loss": 0.01363,
+      "elapsed_seconds": 749.6,
+      "available_gib": 4.2
+    },
+    {
+      "step": 56,
+      "loss": 0.02087,
+      "elapsed_seconds": 762.6,
+      "available_gib": 4.2
+    },
+    {
+      "step": 57,
+      "loss": 0.08036,
+      "elapsed_seconds": 775.8,
+      "available_gib": 4.2
+    },
+    {
+      "step": 58,
+      "loss": 0.00827,
+      "elapsed_seconds": 786.5,
+      "available_gib": 4.2
+    },
+    {
+      "step": 59,
+      "loss": 0.01619,
+      "elapsed_seconds": 797.3,
+      "available_gib": 4.2
+    },
+    {
+      "step": 60,
+      "loss": 0.00657,
+      "elapsed_seconds": 809.1,
+      "available_gib": 4.2
+    },
+    {
+      "step": 61,
+      "loss": 0.01977,
+      "elapsed_seconds": 820.6,
+      "available_gib": 4.2
+    },
+    {
+      "step": 62,
+      "loss": 0.02528,
+      "elapsed_seconds": 833.5,
+      "available_gib": 4.2
+    },
+    {
+      "step": 63,
+      "loss": 0.00353,
+      "elapsed_seconds": 845.3,
+      "available_gib": 4.2
+    },
+    {
+      "step": 64,
+      "loss": 0.03905,
+      "elapsed_seconds": 859.7,
+      "available_gib": 4.3
+    }
+  ],
+  "trainable_parameters": 1146880,
+  "completed_steps": 64,
+  "training_seconds": 860.8,
+  "scores": {
+    "base": {
+      "dev": 0,
+      "test": 0
+    },
+    "lora": {
+      "dev": 2,
+      "test": 4
+    }
+  },
+  "production_enabled": false
+}

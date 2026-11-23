@@ -1,5 +1,6 @@
 """Account-owned trip metadata in the private demo store; no public Data API table."""
 import json
+import math
 import sqlite3
 from contextlib import contextmanager
 from fastapi import APIRouter, Depends, HTTPException
@@ -58,6 +59,9 @@ class WorkspaceWrite(BaseModel):
             if not isinstance(ids,list) or len(ids)>200 or any(not isinstance(i,str) or not 1<=len(i)<=200 for i in ids):raise ValueError("Invalid place IDs")
         for key,lo,hi in (("daysCount",1,31),("flexibleDays",1,31),("peopleCount",1,20)):
             if data.get(key) is not None and (not isinstance(data[key],int) or isinstance(data[key],bool) or not lo<=data[key]<=hi):raise ValueError("Invalid trip duration or people count")
+        budget=data.get("totalBudget")
+        if budget is not None and (isinstance(budget,bool) or not isinstance(budget,(int,float)) or not math.isfinite(budget) or not 0<=budget<=100_000_000_000):
+            raise ValueError("Invalid trip budget")
         return {k:v for k,v in data.items() if k not in ("user_id","owner_id","workspaceRevision","copilotChatHistory")}
 
 

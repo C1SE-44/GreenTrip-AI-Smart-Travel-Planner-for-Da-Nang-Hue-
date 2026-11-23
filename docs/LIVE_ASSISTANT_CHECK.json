@@ -1,0 +1,51 @@
+{
+  "url": "http://localhost:5173/my-trips",
+  "backend": "actual localhost:8000",
+  "screenshot_trip_matched": true,
+  "saved_ideas": {
+    "expected": 5,
+    "actual": 5,
+    "ids_match": true,
+    "trace": {
+      "route": "rules",
+      "reason": "list_ideas",
+      "changes": {},
+      "elapsed_ms": 3603.57,
+      "model_calls": 0
+    }
+  },
+  "mixed": {
+    "expected": {
+      "cafe": 3,
+      "temple": 2,
+      "total": 5
+    },
+    "actual": {
+      "cafe": 3,
+      "temple": 2,
+      "total": 5
+    },
+    "trace": {
+      "route": "gemini",
+      "reason": "structured_turn",
+      "changes": {
+        "kept": [
+          "city",
+          "mix"
+        ],
+        "changed": [
+          "count",
+          "mix",
+          "city"
+        ],
+        "cleared": [],
+        "preferred": [],
+        "excluded": []
+      },
+      "elapsed_ms": 8368.84,
+      "model_calls": 1
+    },
+    "engine": "gemini+database"
+  },
+  "online_itinerary_writes": "blocked in QA browser"
+}

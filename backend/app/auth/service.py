@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import secrets
+import logging
 
 import jwt
 
@@ -130,18 +131,23 @@ def verify_email_token(token: str) -> str | None:
 
 def verify_google_token(id_token_str: str) -> dict | None:
     """Verify a Google ID token and return user profile information if valid."""
+    from google.auth.exceptions import TransportError, GoogleAuthError
     from google.auth.transport import requests as google_requests
     from google.oauth2 import id_token as google_id_token
 
     settings = get_settings()
     if not settings.GOOGLE_CLIENT_ID:
-        return None
+        raise AuthServiceUnavailable("Chưa cấu hình đăng nhập Google.")
     try:
-        request = google_requests.Request()
+        transport = google_requests.Request()
+        def request(*args, **kwargs):
+            kwargs["timeout"] = 8
+            return transport(*args, **kwargs)
         idinfo = google_id_token.verify_oauth2_token(
             id_token_str,
             request,
             audience=settings.GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=30,
         )
         if idinfo.get("iss") not in ["accounts.google.com", "https://accounts.google.com"]:
             return None
@@ -154,8 +160,14 @@ def verify_google_token(id_token_str: str) -> dict | None:
             "google_id": idinfo.get("sub"),
             "picture": idinfo.get("picture"),
         }
-    except Exception:
+    except TransportError as error:
+        raise AuthServiceUnavailable("Chưa kết nối được máy chủ xác thực Google. Vui lòng thử lại.") from error
+    except (ValueError, GoogleAuthError) as error:
+        message=str(error).lower()
+        reason = 'expired' if 'expired' in message else 'clock' if 'early' in message else 'audience' if 'recipient' in message or 'audience' in message else 'invalid'
+        logging.getLogger(__name__).warning("Google token verification rejected: %s", reason)
         return None
+
 
 
 def generate_otp_code() -> str:
@@ -203,4 +215,4 @@ def verify_otp_session_token(token: str) -> dict | None:
         }
     except (jwt.PyJWTError, ValueError, TypeError):
         return None
-
+

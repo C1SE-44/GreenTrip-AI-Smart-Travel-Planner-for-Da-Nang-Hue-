@@ -94,3 +94,16 @@ def test_route_reads_do_not_seed_private_itineraries(client,monkeypatch):
     monkeypatch.setattr(repository,'ensure_user_trip_itinerary',lambda *args,**kwargs:pytest.fail('Read must not seed a private itinerary'))
     assert repository.get_itinerary('trip-missing') is None
     assert repository.get_itinerary_day('trip-missing',1) is None
+
+
+@pytest.mark.parametrize("budget", [-1, True, "5000000", float("inf"), 100_000_000_001])
+def test_workspace_rejects_invalid_total_budget(budget):
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        workspaces.WorkspaceWrite(data={"id":"budget-test","title":"Budget","destination":"Huế","totalBudget":budget})
+
+
+def test_workspace_allows_optional_budget():
+    for value in (None, 0, 5000000):
+        result=workspaces.WorkspaceWrite(data={"id":"budget-test","title":"Budget","destination":"Huế","totalBudget":value})
+        assert result.data["totalBudget"] == value

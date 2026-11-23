@@ -31,7 +31,7 @@ test('Account menu, full-width profile, avatar, password, logout, and mobile lay
   const profile = await mkdtemp(path.join(tmpdir(), 'greentrip-account-settings-'));
   const testPort = await getAvailablePort();
   const server = await createServer({
-    configFile: false,
+    configFile: false, cacheDir: path.join(root, 'node_modules', '.vite-test-'+path.basename(profile)),
     root,
     envDir: profile,
     plugins: [react(), {

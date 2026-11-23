@@ -5,6 +5,8 @@ import type { UserTrip } from '@/pages/ExplorePage';
 import { validateTripParameters } from '@/services/tripService';
 
 export interface CreateTripMindtripModalProps {
+  existingTrip?: UserTrip;
+  onCompleteTrip?: (trip: UserTrip) => Promise<void>;
   isOpen: boolean;
   onClose: () => void;
   onCreateTrip?: (trip: UserTrip) => void | Promise<void>;
@@ -22,14 +24,15 @@ export default function CreateTripMindtripModal({
   isOpen,
   onClose,
   onCreateTrip,
-  onCreated,
+  onCreated, existingTrip, onCompleteTrip,
 }: CreateTripMindtripModalProps) {
+  const [budget, setBudget] = useState<number | undefined>(existingTrip?.totalBudget);
   const [tripPrompt, setTripPrompt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // 1. WHERE STATE (Ở đâu: Huế, Đà Nẵng, Cả 2)
-  const [whereTarget, setWhereTarget] = useState<string>('Đà Nẵng & Huế');
+  const [whereTarget, setWhereTarget] = useState<string>(existingTrip?.destination || 'Đà Nẵng & Huế');
   const [byCar, setByCar] = useState(false);
   const [showWhereModal, setShowWhereModal] = useState(false);
 
@@ -43,23 +46,25 @@ export default function CreateTripMindtripModal({
     return new Date(nextWeek.getFullYear(), nextWeek.getMonth(), 1);
   });
   const [rangeStart, setRangeStart] = useState<Date | null>(() => {
+    if(existingTrip) return null;
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
     return nextWeek;
   });
   const [rangeEnd, setRangeEnd] = useState<Date | null>(() => {
+    if(existingTrip) return null;
     const tripEnd = new Date();
     tripEnd.setDate(tripEnd.getDate() + 10);
     return tripEnd;
   });
 
   // Tab Linh hoạt: Số ngày và chọn 3 tháng
-  const [flexibleDays, setFlexibleDays] = useState(4);
+  const [flexibleDays, setFlexibleDays] = useState(existingTrip?.daysCount || 4);
   const [selectedMonth, setSelectedMonth] = useState('Tháng 11');
   const [showWhenModal, setShowWhenModal] = useState(false);
 
   // 3. WHO STATE (Ai: Số lượng du khách)
-  const [adults, setAdults] = useState(2);
+  const [adults, setAdults] = useState(existingTrip?.peopleCount || 2);
   const [children, setChildren] = useState(0);
   const [infants, setInfants] = useState(0);
   const [pets, setPets] = useState(0);
@@ -125,6 +130,7 @@ export default function CreateTripMindtripModal({
   const handleSelectDate = (year: number, month: number, day: number) => {
     const clicked = new Date(year, month, day);
     if (dateKey(clicked) < vietnamNow().date) return;
+    if(existingTrip) {const end=new Date(clicked);end.setDate(end.getDate()+(existingTrip.daysCount || 1)-1);setRangeStart(clicked);setRangeEnd(end);return;}
     if (!rangeStart || (rangeStart && rangeEnd)) {
       setRangeStart(clicked);
       setRangeEnd(null);
@@ -198,6 +204,14 @@ export default function CreateTripMindtripModal({
       ? `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, '0')}-${String(rangeStart.getDate()).padStart(2, '0')}`
       : null;
 
+    if(existingTrip) {
+      try {
+        if(!onCompleteTrip) throw new Error('Chưa mở được phần cập nhật chuyến đi.');
+        await onCompleteTrip({...existingTrip,startDate:startDateStr || undefined,peopleCount:Math.max(1,totalGuests),totalBudget:budget});
+      } catch(reason) {setErrorMessage(reason instanceof Error ? reason.message : 'Chưa cập nhật được thông tin. Thử lại.');}
+      finally {setIsSubmitting(false);}
+      return;
+    }
     let savingTrip=false;
     try {
       const backendResponse = await validateTripParameters({
@@ -286,8 +300,10 @@ export default function CreateTripMindtripModal({
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn select-none"
-      onClick={onClose}
+      role="dialog" aria-modal="true" aria-label={existingTrip ? 'Thông tin chuyến đi' : 'Tạo chuyến đi'}
+      onClick={() => {if(!isSubmitting) onClose();}}
     >
+      <fieldset disabled={isSubmitting} className="contents">
       {/* Khung hộp thoại: rộng 917px (max-w-[508px], -5%), bo góc 36px (rounded-[20px], -28%), hạ giữa dọc, padding chuẩn Mindtrip */}
       <div 
         className="w-full max-w-[508px] bg-white rounded-[20px] px-7 sm:px-[30px] pt-[22px] pb-[24px] shadow-2xl relative border border-gray-100"
@@ -295,6 +311,7 @@ export default function CreateTripMindtripModal({
       >
         {/* Nút đóng modal chính: cách mép trái/trên 43/42px (top-[17px] left-[17px], -28%), màu đen đậm nét dày */}
         <button
+          disabled={isSubmitting}
           onClick={onClose}
           className="w-7 h-7 rounded-full flex items-center justify-center text-black hover:bg-gray-100 transition absolute top-[17px] left-[17px] cursor-pointer"
           title="Đóng"
@@ -309,11 +326,11 @@ export default function CreateTripMindtripModal({
 
         {/* Modal Heading: tiêu đề chuẩn chính tả (đã sửa khoảng trắng thừa), cỡ chữ 33px (text-[19px] sm:text-[20.5px], -3%), giãn dòng 50px (leading-[1.3], -7%), cách ô nhập 45px (mb-[22px]) */}
         <h2 className="text-[19px] sm:text-[20.5px] font-bold text-gray-950 text-center tracking-tight mb-[22px] px-3 leading-[1.3]">
-          Anh ơi, em cần lưu ý điều gì cho chuyến đi này?
+          {existingTrip ? 'Thông tin chuyến đi' : 'Anh ơi, em cần lưu ý điều gì cho chuyến đi này?'}
         </h2>
 
         {/* Prompt Textarea: cao 188px (h-[106px], -18%), viền xám trung bình #c8c8c8, padding trái 23px (px-[13px] py-[12px], -23%), placeholder 1 dòng ngắn gọn */}
-        <div className="mb-[16px]">
+        {!existingTrip && <div className="mb-[16px]">
           <textarea
             placeholder="Ví dụ: 3 ngày ở Đà Nẵng và Huế, thích ngắm cảnh, ẩm thực..."
             value={tripPrompt}
@@ -326,11 +343,11 @@ export default function CreateTripMindtripModal({
               {tripPrompt.length} / 2000
             </span>
           </div>
-        </div>
+        </div>}
 
         {/* Dòng chữ gợi ý: cách bộ đếm 70px (mt-[16px]), màu xám trung bình #666666 */}
         <p className="text-[13px] text-[#666666] mt-[16px] mb-[12px] font-normal">
-          Bạn có thông tin chi tiết? Hãy chia sẻ những gì bạn biết.
+          {existingTrip ? 'Lịch đã ở trong chuyến đi của bạn. Chọn ngày bắt đầu để hoàn tất.' : 'Bạn có thông tin chi tiết? Hãy chia sẻ những gì bạn biết.'}
         </p>
 
         {/* 3 Detail Rows: cao mỗi hàng 81px (h-[44px], -17%), khoảng cách giữa các hàng 16px (space-y-[9px], -27%), viền #c8c8c8, padding trái nhãn 31px (pl-[17px]), padding phải 31px (pr-[17px]), đã bỏ mũi tên ">" */}
@@ -338,6 +355,7 @@ export default function CreateTripMindtripModal({
           {/* 1. Ở ĐÂU (Where) */}
           <button
             type="button"
+            disabled={!!existingTrip || isSubmitting}
             onClick={() => setShowWhereModal(true)}
             className="w-full h-[44px] flex items-center justify-between pl-[17px] pr-[17px] rounded-[14px] border border-[#c8c8c8] hover:border-gray-400 transition-colors bg-white cursor-pointer group text-left"
           >
@@ -384,6 +402,7 @@ export default function CreateTripMindtripModal({
           </button>
         </div>
 
+        {existingTrip && <label className="mt-3 block rounded-[14px] border border-[#c8c8c8] px-4 py-3 text-sm font-semibold">Ngân sách cả chuyến · VNĐ <span className="font-normal">(tùy chọn)</span><input type="number" aria-label="Ngân sách cả chuyến" min={0} max={100000000000} step={1000} value={budget ?? ''} onChange={e=>setBudget(e.target.value === '' ? undefined : Number(e.target.value))} placeholder="Có thể để trống" className="mt-2 min-h-11 w-full rounded-lg border border-neutral-300 px-3 font-normal" /></label>}
         {errorMessage && (
           <p className="mt-3 text-xs text-red-500 text-center font-medium">
             {errorMessage}
@@ -395,9 +414,9 @@ export default function CreateTripMindtripModal({
           <button
             type="button"
             onClick={handleCreate}
-            disabled={!tripPrompt.trim() || isSubmitting}
+            disabled={(!existingTrip && !tripPrompt.trim()) || isSubmitting}
             className={`w-[166px] h-[40px] rounded-full text-[14px] font-bold transition-all shadow-xs flex items-center justify-center gap-2 ${
-              tripPrompt.trim() && !isSubmitting
+              (existingTrip || tripPrompt.trim()) && !isSubmitting
                 ? 'bg-black text-white hover:bg-neutral-800 active:scale-95 cursor-pointer'
                 : 'bg-[#E5E7EB] text-gray-400 cursor-not-allowed'
             }`}
@@ -408,7 +427,7 @@ export default function CreateTripMindtripModal({
                 <span>Đang tạo lịch trình...</span>
               </>
             ) : (
-              <span>Tạo chuyến đi</span>
+              <span>{existingTrip ? 'Lưu thông tin' : 'Tạo chuyến đi'}</span>
             )}
           </button>
         </div>
@@ -532,6 +551,7 @@ export default function CreateTripMindtripModal({
                 </button>
                 <button 
                   type="button"
+                  disabled={!!existingTrip}
                   onClick={() => setWhenTab('flex')} 
                   className={`px-5 py-1.5 rounded-full text-[13px] font-bold transition-all cursor-pointer ${
                     whenTab === 'flex' ? 'bg-white shadow-xs text-black' : 'text-gray-500 hover:text-black'
@@ -909,6 +929,7 @@ export default function CreateTripMindtripModal({
           </div>
         </div>
       )}
+      </fieldset>
     </div>
   );
 }

@@ -80,7 +80,7 @@ export interface TokenResponse {
   token_type: string;
 }
 
-export async function signup(payload: SignupPayload): Promise<SignupResponse> {
+export async function signup(payload: SignupPayload, persist = true): Promise<SignupResponse> {
   const response = await fetch(`${API_BASE_URL}/auth/signup`, {
     method: 'POST',
     headers: {
@@ -101,9 +101,9 @@ export async function signup(payload: SignupPayload): Promise<SignupResponse> {
   }
 
   const data: SignupResponse = await response.json();
-  if (data.access_token) {
+  if (persist && data.access_token) {
     localStorage.setItem('access_token', data.access_token);
-    sessionStorage.setItem('access_token', data.access_token);
+    sessionStorage.removeItem('access_token');
   }
   return data;
 }
@@ -203,13 +203,14 @@ export interface ResendOtpResponse {
   email: string;
 }
 
-export async function googleLogin(credential: string): Promise<GoogleLoginResponse> {
+export async function googleLogin(credential: string, persist = true): Promise<GoogleLoginResponse> {
   const response = await fetch(`${API_BASE_URL}/auth/google`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ credential }),
+    signal: AbortSignal.timeout(15000),
   });
 
   if (!response.ok) {
@@ -224,9 +225,9 @@ export async function googleLogin(credential: string): Promise<GoogleLoginRespon
   }
 
   const data: GoogleLoginResponse = await response.json();
-  if (data.access_token) {
+  if (persist && data.access_token) {
     localStorage.setItem('access_token', data.access_token);
-    sessionStorage.setItem('access_token', data.access_token);
+    sessionStorage.removeItem('access_token');
   }
   return data;
 }

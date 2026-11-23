@@ -1,0 +1,41 @@
+[
+  {
+    "case": "metadata failure",
+    "result": "error shown; banner remains; no completed date change"
+  },
+  {
+    "case": "roll expired trip",
+    "date": "2026-11-17",
+    "poi_ids": [
+      "cafe-garden",
+      "museum",
+      "park"
+    ],
+    "days": [
+      "2026-11-17",
+      "2026-11-18",
+      "2026-11-19"
+    ],
+    "result": "both stores persisted; all original stops preserved"
+  },
+  {
+    "case": "three tabs and reload",
+    "result": "same new date and stops; expired banner does not return"
+  },
+  {
+    "case": "add day",
+    "result": "metadata has four days; calendar uses same range"
+  },
+  {
+    "case": "remove empty added day",
+    "result": "three days in both stores; original stops preserved"
+  },
+  {
+    "case": "custom dates popup",
+    "result": "22–24 November persisted in metadata and itinerary"
+  },
+  {
+    "case": "load errors in itinerary/calendar",
+    "result": "errors shown instead of empty schedule; no writes; retry recovers stops"
+  }
+]

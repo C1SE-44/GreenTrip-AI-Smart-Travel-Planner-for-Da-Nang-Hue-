@@ -1,0 +1,72 @@
+[
+  {
+    "message": "xin chào",
+    "text": "Chào bạn! Bạn muốn tìm địa điểm hay lên lịch cho chuyến đi?",
+    "ids": [],
+    "prompts": [
+      "Tìm cà phê ở Đà Nẵng & Huế",
+      "Gợi ý điểm thiên nhiên ở Đà Nẵng & Huế",
+      "Tìm bảo tàng ở Đà Nẵng & Huế"
+    ],
+    "trace": {
+      "route": "rules",
+      "reason": "greeting",
+      "changes": {},
+      "elapsed_ms": 12.42,
+      "model_calls": 0
+    }
+  },
+  {
+    "message": "tìm 3 điểm ở Đà Nẵng, 1 điểm là chùa",
+    "text": "AI đang tắt nên mình chưa xử lý chắc yêu cầu kết hợp này. Bạn muốn tìm một loại địa điểm trước?",
+    "ids": [],
+    "prompts": [
+      "Tìm cà phê ở Đà Nẵng & Huế",
+      "Gợi ý điểm thiên nhiên ở Đà Nẵng & Huế",
+      "Tìm bảo tàng ở Đà Nẵng & Huế"
+    ],
+    "trace": {
+      "route": "rules",
+      "reason": "ai_disabled",
+      "changes": {},
+      "elapsed_ms": 6.56,
+      "model_calls": 0
+    }
+  },
+  {
+    "message": "thêm 1 chùa nữa",
+    "text": "**Chùa Demo** — Miễn phí tham quan.",
+    "ids": [
+      "temple"
+    ],
+    "prompts": [
+      "Tìm cà phê ở Đà Nẵng & Huế",
+      "Gợi ý điểm thiên nhiên ở Đà Nẵng & Huế",
+      "Tìm bảo tàng ở Đà Nẵng & Huế"
+    ],
+    "trace": {
+      "route": "rules",
+      "reason": "ai_disabled",
+      "changes": {},
+      "elapsed_ms": 14001.25,
+      "model_calls": 0
+    }
+  },
+  {
+    "message": "tôi muốn ăn mì Quảng",
+    "text": "Mình chưa hiểu chắc phần muốn điều chỉnh; tiêu chí và bản nháp vẫn được giữ. Bạn muốn sửa tiêu chí nào?",
+    "ids": [],
+    "prompts": [
+      "Tìm cà phê ở Đà Nẵng & Huế",
+      "Gợi ý điểm thiên nhiên ở Đà Nẵng & Huế",
+      "Tìm bảo tàng ở Đà Nẵng & Huế"
+    ],
+    "trace": {
+      "route": "rules",
+      "reason": "ai_disabled",
+      "changes": {},
+      "elapsed_ms": 5.09,
+      "model_calls": 0
+    }
+  }
+]

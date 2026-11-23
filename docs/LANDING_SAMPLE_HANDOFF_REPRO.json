@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-18",
+  "source": "Live PostgreSQL information_schema + read-only jsonb_populate_record type conversion",
+  "column": "public.itinerary_stops.itinerary_stop_id",
+  "type": "varchar(64)",
+  "frontendStopIdLength": 75,
+  "confirmedSqlstate": "22001",
+  "message": "value too long for type character varying(64)",
+  "readonlyRepro": "SELECT (jsonb_populate_record(NULL::public.itinerary_stops, jsonb_build_object('itinerary_stop_id','777ce327-e280-414e-b746-2f68947a420c-1-936b4a05-8051-4fda-aba1-42c28c143cb3'))).itinerary_stop_id;",
+  "apiBefore": "503 with PostgreSQL-compatible 64-character trigger",
+  "apiAfter": "200, GET and retry preserve full modern IDs/order",
+  "fix": "Legacy IDs >64 map deterministically to UUID5; modern API IDs remain unchanged; short legacy IDs unchanged",
+  "onlineWrites": false
+}

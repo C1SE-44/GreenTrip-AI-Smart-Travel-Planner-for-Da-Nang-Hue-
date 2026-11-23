@@ -1,3 +1,7 @@
+## Landing Studio v3 — 18/11/2026
+
+Đã tích hợp hero/nhân vật và ba card từ ZIP người dùng, autoplay độc lập cuộn; giữ tối ưu tải, WebP 2,34 MB, CTA lịch mẫu/chỉnh/bỏ/sao chép và tra món sang Khám phá. UI desktop/320 px đã kiểm; query nhận đúng nhưng chưa xác nhận kết quả POI vì backend local chưa chạy. Không đụng AI/DB online, chưa publish. Chi tiết: [LANDING_STUDIO_V3.md](LANDING_STUDIO_V3.md).
+
 ## Ba hội thoại riêng và cache tài khoản — 17/11/2026
 
 Đã bổ sung conversation_id 1–3 cho history/chat/apply; giữ lịch sử cũ ở slot 1 và ngữ cảnh/bản nháp riêng theo account/trip/mode/slot. UI có bộ chọn ba hội thoại, 403 có đường tạo chuyến riêng. Cache chuyến FE theo verified account, chỉ nhập cache legacy có owner được server xác minh; không xóa hoặc tự chuyển quyền chuyến legacy còn lại. **171 test backend + 6 test frontend liên quan PASS**, typecheck/build/lint trợ lý mới PASS. IAB đã quan sát chuyển 1/2/3, lưu Ý tưởng → preview → Apply trên SQLite riêng, đổi chuyến/tài khoản và khôi phục chat. Chưa QA UI toàn ExplorePage với tài khoản thật, chưa kiểm Gemini thật trong lượt này. Chi tiết giới hạn chuyển cache cũ và kết quả từng ca: [QA_ASSISTANT_CONVERSATIONS_2026-11-17.md](QA_ASSISTANT_CONVERSATIONS_2026-11-17.md).
@@ -205,3 +209,21 @@ Chỉ sửa dòng trạng thái liên quan: ngày, owner, phạm vi, file, kiể
 
 - Đã fetch nhánh profile của Thiện (88e0411), ghép có chọn lọc vào feature/pb18-profile-ui-integration, đồng bộ UI và kiểm /profile thật ở 1280/320px.
 - Chi tiết QA và giới hạn: docs/PB18_PROFILE_INTEGRATION.md. Chưa push/commit, chưa áp migration/avatar Storage online; giữ nguyên phần AI.
+
+
+### 2026-11-18 · Sample sheet chân-mây (2)
+Đã dùng UI popup của ZIP, nối POI thật qua `/pois` dùng chung Explore, thêm/bỏ/đổi/lên-xuống trong popup; khách thử chỉnh, chỉ đăng nhập khi lưu chuyến riêng (quyết định người dùng). Giữ draft qua authcancel, lưu Ideas + itinerary đúng IDs/thứ tự, mở đúng chuyến; không tự train/gọi AI. API/UI PASS trong SQLite riêng, desktop/320px; 25 backend tests + 4 landing tests, typecheck/build/scoped lint PASS. Global lint vẫn 11 errors/139 warnings, full npm test còn lỗi ngoài phạm vi. Giới hạn: backend chính 8000 tắt, chưa test lưu production/OAuth/email thật; draft khách chưa giữ qua refresh. Chi tiết và bằng chứng: [LANDING_SAMPLE_V2.md](LANDING_SAMPLE_V2.md), [API](LANDING_SAMPLE_V2_API.json), [UI](LANDING_SAMPLE_V2_UI.json).
+
+
+### 2026-11-18 · Sửa lỗi lưu PostgreSQL và chốt thông tin lịch mẫu
+Đã xác minh SQLSTATE 22001 bằng SELECT PostgreSQL: mã điểm dừng 75 ký tự bị chép vào cột legacy varchar(64). BE ánh xạ alias dài bằng UUID5, giữ nguyên modern ID và ID thử lại; không migration hoặc ghi online. Ca strict SQLite trước 503, sau 200.
+
+Luồng mới: khách chỉnh → đăng nhập → một form (đích có sẵn/ngày/người/ngân sách tùy chọn) → tạo đủ Ideas/ngày/stops → mở thẳng tab Lịch trình. Giữ ngày/điểm/thứ tự đã chỉnh, không sinh lại bằng AI; lưu ngày đi/số người/ngân sách. Calendar hết gán giờ giả, thời lượng theo end-start, hỗ trợ giờ sớm/khuya.
+
+API/UI strict fixture PASS: 6 điểm Huế, 20/12/2026, 3 người, 5 triệu; sửa giờ 09–10 rồi tải lại vẫn giữ. BE 26 tests PASS; FE 7 landing/calendar và 4 account tests PASS; typecheck/build/scoped lint PASS (Calendar còn 27 cảnh báo có sẵn, 0 lỗi). Chi tiết: [HANDOFF](LANDING_SAMPLE_HANDOFF.md), [REPRO](LANDING_SAMPLE_HANDOFF_REPRO.json), [API](LANDING_SAMPLE_HANDOFF_API.json), [UI](LANDING_SAMPLE_HANDOFF_UI.json). Chưa ghi Supabase online, chưa kiểm OAuth/email thật. Cache fixture cũ gây 409 đã tách khỏi ca kiểm bằng tài khoản thử mới; không xóa cache người dùng.
+
+## 2026-11-18 — Luồng lịch mẫu vào Planner
+- Lưu draft thật sau đăng nhập, mở Planner trước rồi dùng lại form thông tin chuyến đi không AI; hoàn tất trên cùng ID, giữ địa điểm/thứ tự.
+- Sửa cache revision cũ chặn danh sách và tách Vite optimizer/React; giới hạn thời gian tải catalogue, chặn auth response cũ. Không xóa LocalStorage.
+- 17 FE + 22 BE focused tests, typecheck/build, UI desktop/320 và API local PASS. Google thật chưa xác minh, không ghi Supabase online. Xem docs/SAMPLE_PLANNER_FLOW_FIX.md.
+

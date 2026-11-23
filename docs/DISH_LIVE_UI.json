@@ -1,0 +1,207 @@
+{
+  "url": "http://localhost:5173/planner",
+  "backend": "http://127.0.0.1:8000",
+  "same_trip_and_conversation": true,
+  "screenshot_trip_matched": true,
+  "observed_cards": true,
+  "quick_button": {
+    "label": "Tìm quán khác",
+    "filled": "Tìm quán có mi quang khác ở Đà Nẵng",
+    "automatically_sent": false,
+    "itinerary_write": false
+  },
+  "final_criteria": {
+    "city": "Đà Nẵng",
+    "category": "food",
+    "dish": "mi quang",
+    "result_count": 5
+  },
+  "rows": [
+    {
+      "message": "tôi muốn ăn mì quảng thì có quán nào",
+      "trace": {
+        "route": "gemini",
+        "reason": "structured_turn",
+        "changes": {
+          "kept": [
+            "city"
+          ],
+          "changed": [
+            "dish",
+            "category"
+          ],
+          "cleared": [],
+          "preferred": [],
+          "excluded": []
+        },
+        "elapsed_ms": 6913.54,
+        "model_calls": 1,
+        "prompt_version": "baseline-v1",
+        "model": "gemini-3.5-flash-lite"
+      },
+      "text": "Mình tìm quán có thông tin xác nhận món mì quảng ở Đà Nẵng. Dữ liệu hiện chỉ xác nhận được 3 điểm khớp yêu cầu.\n**Mì Quảng Bà Mua** — Thực đơn ghi: Mỳ Quảng Tôm Thịt.\n**Mì Quảng Bà Vị** — Thực đơn ghi: Mỳ Quảng Tôm Thịt.\n**Mì Quảng Ếch Bếp Trang** — Thực đơn ghi: Mỳ Quảng Tôm Thịt.",
+      "pois": [
+        {
+          "id": "936b4a05-8051-4fda-aba1-42c28c143cb3",
+          "name": "Mì Quảng Bà Mua",
+          "city": "Đà Nẵng",
+          "dish_evidence": {
+            "source": "ai_metadata.menu_items",
+            "text": "Mỳ Quảng Tôm Thịt"
+          }
+        },
+        {
+          "id": "f8a7a21d-759d-40d0-bed8-2b524e1d5ef4",
+          "name": "Mì Quảng Bà Vị",
+          "city": "Đà Nẵng",
+          "dish_evidence": {
+            "source": "ai_metadata.menu_items",
+            "text": "Mỳ Quảng Tôm Thịt"
+          }
+        },
+        {
+          "id": "4ff65eac-6000-4160-b916-2272d260efb1",
+          "name": "Mì Quảng Ếch Bếp Trang",
+          "city": "Đà Nẵng",
+          "dish_evidence": {
+            "source": "ai_metadata.menu_items",
+            "text": "Mỳ Quảng Tôm Thịt"
+          }
+        }
+      ],
+      "prompts": [
+        {
+          "label": "Tìm quán khác",
+          "message": "Tìm quán có mì quảng khác ở Đà Nẵng"
+        }
+      ]
+    },
+    {
+      "message": "tìm mì Quảng ở Huế",
+      "trace": {
+        "route": "fallback",
+        "reason": "quota",
+        "changes": {},
+        "elapsed_ms": 4080.27,
+        "model_calls": 0,
+        "prompt_version": null,
+        "model": null
+      },
+      "text": "AI tạm gián đoạn; dưới đây là các điểm theo bộ lọc đã đọc được.\nMình tìm quán có thông tin xác nhận món mi quang ở Huế. Dữ liệu hiện chỉ xác nhận được 1 điểm khớp yêu cầu.\n**Mì Quảng Cô Ba** — Thực đơn ghi: Mỳ Quảng Tôm Thịt.",
+      "pois": [
+        {
+          "id": "685f6c62-5131-498b-9b09-dc81851313c8",
+          "name": "Mì Quảng Cô Ba",
+          "city": "Huế",
+          "dish_evidence": {
+            "source": "ai_metadata.menu_items",
+            "text": "Mỳ Quảng Tôm Thịt"
+          }
+        }
+      ],
+      "prompts": [
+        {
+          "label": "Tìm quán khác",
+          "message": "Tìm quán có mi quang khác ở Huế"
+        }
+      ]
+    },
+    {
+      "message": "Đà Nẵng thì sao?",
+      "trace": {
+        "route": "fallback",
+        "reason": "quota",
+        "changes": {},
+        "elapsed_ms": 5118.33,
+        "model_calls": 0,
+        "prompt_version": null,
+        "model": null
+      },
+      "text": "AI tạm gián đoạn; dưới đây là các điểm theo bộ lọc đã đọc được.\nMình tìm quán có thông tin xác nhận món mi quang ở Đà Nẵng. Dữ liệu hiện chỉ xác nhận được 3 điểm khớp yêu cầu.\n**Mì Quảng Bà Mua** — Thực đơn ghi: Mỳ Quảng Tôm Thịt.\n**Mì Quảng Bà Vị** — Thực đơn ghi: Mỳ Quảng Tôm Thịt.\n**Mì Quảng Ếch Bếp Trang** — Thực đơn ghi: Mỳ Quảng Tôm Thịt.",
+      "pois": [
+        {
+          "id": "936b4a05-8051-4fda-aba1-42c28c143cb3",
+          "name": "Mì Quảng Bà Mua",
+          "city": "Đà Nẵng",
+          "dish_evidence": {
+            "source": "ai_metadata.menu_items",
+            "text": "Mỳ Quảng Tôm Thịt"
+          }
+        },
+        {
+          "id": "f8a7a21d-759d-40d0-bed8-2b524e1d5ef4",
+          "name": "Mì Quảng Bà Vị",
+          "city": "Đà Nẵng",
+          "dish_evidence": {
+            "source": "ai_metadata.menu_items",
+            "text": "Mỳ Quảng Tôm Thịt"
+          }
+        },
+        {
+          "id": "4ff65eac-6000-4160-b916-2272d260efb1",
+          "name": "Mì Quảng Ếch Bếp Trang",
+          "city": "Đà Nẵng",
+          "dish_evidence": {
+            "source": "ai_metadata.menu_items",
+            "text": "Mỳ Quảng Tôm Thịt"
+          }
+        }
+      ],
+      "prompts": [
+        {
+          "label": "Tìm quán khác",
+          "message": "Tìm quán có mi quang khác ở Đà Nẵng"
+        }
+      ]
+    },
+    {
+      "message": "mì Quảng ở Đà Nẵng có quán nào?",
+      "trace": {
+        "route": "fallback",
+        "reason": "quota",
+        "changes": {},
+        "elapsed_ms": 3918.33,
+        "model_calls": 0,
+        "prompt_version": null,
+        "model": null
+      },
+      "text": "AI tạm gián đoạn; dưới đây là các điểm theo bộ lọc đã đọc được.\nMình tìm quán có thông tin xác nhận món mi quang ở Đà Nẵng. Dữ liệu hiện chỉ xác nhận được 3 điểm khớp yêu cầu.\n**Mì Quảng Bà Mua** — Thực đơn ghi: Mỳ Quảng Tôm Thịt.\n**Mì Quảng Bà Vị** — Thực đơn ghi: Mỳ Quảng Tôm Thịt.\n**Mì Quảng Ếch Bếp Trang** — Thực đơn ghi: Mỳ Quảng Tôm Thịt.",
+      "pois": [
+        {
+          "id": "936b4a05-8051-4fda-aba1-42c28c143cb3",
+          "name": "Mì Quảng Bà Mua",
+          "city": "Đà Nẵng",
+          "dish_evidence": {
+            "source": "ai_metadata.menu_items",
+            "text": "Mỳ Quảng Tôm Thịt"
+          }
+        },
+        {
+          "id": "f8a7a21d-759d-40d0-bed8-2b524e1d5ef4",
+          "name": "Mì Quảng Bà Vị",
+          "city": "Đà Nẵng",
+          "dish_evidence": {
+            "source": "ai_metadata.menu_items",
+            "text": "Mỳ Quảng Tôm Thịt"
+          }
+        },
+        {
+          "id": "4ff65eac-6000-4160-b916-2272d260efb1",
+          "name": "Mì Quảng Ếch Bếp Trang",
+          "city": "Đà Nẵng",
+          "dish_evidence": {
+            "source": "ai_metadata.menu_items",
+            "text": "Mỳ Quảng Tôm Thịt"
+          }
+        }
+      ],
+      "prompts": [
+        {
+          "label": "Tìm quán khác",
+          "message": "Tìm quán có mi quang khác ở Đà Nẵng"
+        }
+      ]
+    }
+  ],
+  "ui_result": "PASS for original question, Hue-to-Danang followup and direct dish query; zero-Hue and other dish verified at API only"
+}

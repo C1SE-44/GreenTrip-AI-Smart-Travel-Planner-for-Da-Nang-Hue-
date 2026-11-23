@@ -1,0 +1,1442 @@
+[
+  {
+    "variant": 0,
+    "message": "Địa điểm green là gì?",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893008404-0",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "explain_green",
+        "intent": "explain"
+      },
+      "execution": {
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a"
+        ]
+      },
+      "validation": {
+        "status": "explanation"
+      },
+      "response": {
+        "text": "Trong GreenTrip, địa điểm ‘green’ là gợi ý có dấu hiệu phù hợp du lịch bền vững trong dữ liệu, như gần gũi thiên nhiên, kinh doanh địa phương hoặc có thuộc tính sinh thái. Đây không phải chứng nhận môi trường. Mức phù hợp còn phụ thuộc thông tin đã có ở từng địa điểm; mình không khẳng định quán xanh chỉ vì có cây hay tên gọi.",
+        "prompts": [
+          {
+            "label": "Xem ví dụ ở Huế",
+            "message": "Cho mình 2 ví dụ ở Huế"
+          }
+        ]
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": null
+  },
+  {
+    "variant": 0,
+    "message": "Cho mình 2 ví dụ ở Huế",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893008404-0",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "green_examples",
+        "intent": "search"
+      },
+      "execution": {
+        "poi_ids": [
+          "museum",
+          "extra-0"
+        ],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a"
+        ]
+      },
+      "validation": {
+        "status": "results"
+      },
+      "response": {
+        "text": "Mình gợi ý 2 điểm ở Huế.\n**Bảo tàng Demo** — Địa điểm giả lập phục vụ kiểm thử giao diện; dữ liệu gắn nhãn cơ sở kinh doanh địa phương.\n**Điểm Huế Demo 0** — Địa điểm giả lập phục vụ kiểm thử giao diện; dữ liệu gắn nhãn cơ sở kinh doanh địa phương.",
+        "prompts": []
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": null
+  },
+  {
+    "variant": 0,
+    "message": "Lưu chỗ thứ 1 vào Ý tưởng",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893008404-0",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "card_action",
+        "intent": "save"
+      },
+      "execution": {
+        "action": "ideas_saved",
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum"
+        ]
+      },
+      "validation": {
+        "status": "saved"
+      },
+      "response": {
+        "text": "Đã lưu **Bảo tàng Demo** vào Ý tưởng của chuyến **Nghiệm thu 6 tầng 0**.",
+        "prompts": []
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": null
+  },
+  {
+    "variant": 0,
+    "message": "Lưu chỗ thứ 2 vào Ý tưởng",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893008404-0",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "card_action",
+        "intent": "save"
+      },
+      "execution": {
+        "action": "ideas_saved",
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ]
+      },
+      "validation": {
+        "status": "saved"
+      },
+      "response": {
+        "text": "Đã lưu **Điểm Huế Demo 0** vào Ý tưởng của chuyến **Nghiệm thu 6 tầng 0**.",
+        "prompts": []
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": null
+  },
+  {
+    "variant": 0,
+    "message": "Xếp 5 điểm trong Ý tưởng thành lịch 4 ngày",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893008404-0",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "whole_trip_plan",
+        "intent": "plan"
+      },
+      "execution": {
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ],
+        "draft_id": "69c99d9f-08e9-455c-a97f-a4c00d094190"
+      },
+      "validation": {
+        "status": "complete",
+        "requested_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ],
+        "scheduler_input_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "extra-0",
+          "museum"
+        ],
+        "used_ids": [
+          "dn-cafe",
+          "dn-temple-a",
+          "dn-park",
+          "extra-0",
+          "museum"
+        ],
+        "unresolved_ids": [],
+        "unscheduled_ids": []
+      },
+      "response": {
+        "text": "Mình đã xếp 5 điểm trong 4 ngày. Đây là **bản nháp**, lịch hiện tại chưa thay đổi.",
+        "prompts": [
+          {
+            "label": "Chỉnh ngày 1",
+            "message": "Ngày 1 nhẹ hơn, giữ nguyên các ngày khác"
+          },
+          {
+            "label": "Chỉnh ngày 2",
+            "message": "Ngày 2 nhẹ hơn, giữ nguyên các ngày khác"
+          },
+          {
+            "label": "Chỉnh ngày 3",
+            "message": "Ngày 3 nhẹ hơn, giữ nguyên các ngày khác"
+          }
+        ]
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": {
+      "id": "69c99d9f-08e9-455c-a97f-a4c00d094190",
+      "kind": "itinerary",
+      "before_digest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "itinerary": {
+        "trip_id": "six-layer-1794893008404-0",
+        "title": "Nghiệm thu 6 tầng 0",
+        "destination": "Đà Nẵng & Huế",
+        "start_date": "2026-12-20",
+        "days_count": 4,
+        "days": [
+          {
+            "day_id": "six-layer-1794893008404-0-day-1",
+            "day_number": 1,
+            "date": "2026-12-20",
+            "title": "Ngày 1",
+            "stops": [
+              {
+                "stop_id": "ef2322f4-e1dc-48f8-93c7-f08a623d86d9",
+                "poi_id": "dn-cafe",
+                "title": "Cà phê Sông Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Quán cafe giải khát",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.05,
+                "longitude": 108.2,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "69b30e03-c307-4988-86cc-90a8561195ce",
+                "poi_id": "dn-temple-a",
+                "title": "Chùa A Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Tâm linh & Tôn giáo",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "10:27",
+                "end_time": "11:27",
+                "latitude": 16.06,
+                "longitude": 108.2,
+                "comment": "Di chuyển ước tính 12 phút (đã đệm ×1,5); chưa phải ETA đường đi. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "6e2df978-41ac-4c6d-8c51-8e4fbcb8e161",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 2,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893008404-0-day-2",
+            "day_number": 2,
+            "date": "2026-12-21",
+            "title": "Ngày 2",
+            "stops": [
+              {
+                "stop_id": "f7b8ae57-9024-444e-a872-f4ae1a7968b3",
+                "poi_id": "dn-park",
+                "title": "Công viên Đà Nẵng Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Cảnh quan thiên nhiên",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.08,
+                "longitude": 108.2,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "0bcdd8cc-c028-4bd7-936f-e538ca8dff5f",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893008404-0-day-3",
+            "day_number": 3,
+            "date": "2026-12-22",
+            "title": "Ngày 3",
+            "stops": [
+              {
+                "stop_id": "b977d6c4-c747-4e72-827e-6ce9ef50a847",
+                "poi_id": "extra-0",
+                "title": "Điểm Huế Demo 0",
+                "city": "Hue",
+                "address": null,
+                "category": "Cảnh quan thiên nhiên",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.46,
+                "longitude": 107.58,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "69c54dd8-2c77-464b-89a6-e6143f0213eb",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893008404-0-day-4",
+            "day_number": 4,
+            "date": "2026-12-23",
+            "title": "Ngày 4",
+            "stops": [
+              {
+                "stop_id": "8c8099c3-0f84-4410-bb8a-722a9e200aa3",
+                "poi_id": "museum",
+                "title": "Bảo tàng Demo",
+                "city": "Hue",
+                "address": null,
+                "category": "Di tích lịch sử và văn hóa",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.47,
+                "longitude": 107.58,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "a6832f7e-1622-4418-befb-95392c3a700a",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [
+        "Cần kiểm tra giờ mở cửa tại các điểm chưa có khung giờ rõ ràng.",
+        "Thời gian di chuyển tính từ tọa độ, không gọi dịch vụ tuyến có phí; chi phí khách sạn/ăn uống chưa được cộng thành tổng chuyến."
+      ]
+    }
+  },
+  {
+    "variant": 0,
+    "message": "Ngày 2 nhẹ hơn, đừng đổi ngày khác",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893008404-0",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "scoped_simple_edit",
+        "intent": "clarify"
+      },
+      "execution": {
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ]
+      },
+      "validation": {
+        "status": "needs_clarification"
+      },
+      "response": {
+        "text": "Ngày 2 hiện có 1 điểm. Bạn muốn bắt đầu muộn hơn hay bớt điểm? Mình giữ nguyên các ngày khác.",
+        "prompts": [
+          {
+            "label": "Bắt đầu ngày 2 lúc 10h",
+            "message": "Ngày 2 bắt đầu lúc 10:00, giữ nguyên các ngày khác"
+          }
+        ]
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": null
+  },
+  {
+    "variant": 0,
+    "message": "Ngày 2 bắt đầu lúc 10:00, giữ nguyên các ngày khác",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893008404-0",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "scoped_simple_edit",
+        "intent": "edit_plan"
+      },
+      "execution": {
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ],
+        "draft_id": "05ae396f-33d0-4c4a-983f-8cdbf806a748"
+      },
+      "validation": {
+        "status": "complete",
+        "changed_day": 2
+      },
+      "response": {
+        "text": "Ngày 2: giờ Công viên Đà Nẵng Demo 09:00 → 10:00. Giữ 1 hoạt động trong ngày đang sửa và 3 ngày không đổi. Đây là bản nháp; bấm Áp dụng để lưu. Các ngày khác giữ nguyên; đây vẫn là bản xem trước.",
+        "prompts": []
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": {
+      "id": "05ae396f-33d0-4c4a-983f-8cdbf806a748",
+      "kind": "itinerary",
+      "before_digest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "itinerary": {
+        "trip_id": "six-layer-1794893008404-0",
+        "title": "Nghiệm thu 6 tầng 0",
+        "destination": "Đà Nẵng & Huế",
+        "start_date": "2026-12-20",
+        "days_count": 4,
+        "days": [
+          {
+            "day_id": "six-layer-1794893008404-0-day-1",
+            "day_number": 1,
+            "date": "2026-12-20",
+            "title": "Ngày 1",
+            "stops": [
+              {
+                "stop_id": "ef2322f4-e1dc-48f8-93c7-f08a623d86d9",
+                "poi_id": "dn-cafe",
+                "title": "Cà phê Sông Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Quán cafe giải khát",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.05,
+                "longitude": 108.2,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "69b30e03-c307-4988-86cc-90a8561195ce",
+                "poi_id": "dn-temple-a",
+                "title": "Chùa A Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Tâm linh & Tôn giáo",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "10:27",
+                "end_time": "11:27",
+                "latitude": 16.06,
+                "longitude": 108.2,
+                "comment": "Di chuyển ước tính 12 phút (đã đệm ×1,5); chưa phải ETA đường đi. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "6e2df978-41ac-4c6d-8c51-8e4fbcb8e161",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 2,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893008404-0-day-2",
+            "day_number": 2,
+            "date": "2026-12-21",
+            "title": "Ngày 2",
+            "stops": [
+              {
+                "stop_id": "f7b8ae57-9024-444e-a872-f4ae1a7968b3",
+                "poi_id": "dn-park",
+                "title": "Công viên Đà Nẵng Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Cảnh quan thiên nhiên",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "10:00",
+                "end_time": "11:00",
+                "latitude": 16.08,
+                "longitude": 108.2,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "0bcdd8cc-c028-4bd7-936f-e538ca8dff5f",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893008404-0-day-3",
+            "day_number": 3,
+            "date": "2026-12-22",
+            "title": "Ngày 3",
+            "stops": [
+              {
+                "stop_id": "b977d6c4-c747-4e72-827e-6ce9ef50a847",
+                "poi_id": "extra-0",
+                "title": "Điểm Huế Demo 0",
+                "city": "Hue",
+                "address": null,
+                "category": "Cảnh quan thiên nhiên",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.46,
+                "longitude": 107.58,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "69c54dd8-2c77-464b-89a6-e6143f0213eb",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893008404-0-day-4",
+            "day_number": 4,
+            "date": "2026-12-23",
+            "title": "Ngày 4",
+            "stops": [
+              {
+                "stop_id": "8c8099c3-0f84-4410-bb8a-722a9e200aa3",
+                "poi_id": "museum",
+                "title": "Bảo tàng Demo",
+                "city": "Hue",
+                "address": null,
+                "category": "Di tích lịch sử và văn hóa",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.47,
+                "longitude": 107.58,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "a6832f7e-1622-4418-befb-95392c3a700a",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [
+        "Giữ các điểm và ngày không được yêu cầu sửa. Thời gian di chuyển giữa các điểm sau khi thay cần kiểm tra lại."
+      ]
+    }
+  },
+  {
+    "variant": 0,
+    "apply": {
+      "database": "isolated-sqlite",
+      "before": null,
+      "after_ids": [
+        "dn-cafe",
+        "dn-temple-a",
+        "dn-park",
+        "extra-0",
+        "museum"
+      ],
+      "other_days_unchanged": true
+    },
+    "status": "PASS"
+  },
+  {
+    "variant": 1,
+    "message": "Giải thích điểm xanh giúp tôi",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893015470-1",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "explain_green",
+        "intent": "explain"
+      },
+      "execution": {
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a"
+        ]
+      },
+      "validation": {
+        "status": "explanation"
+      },
+      "response": {
+        "text": "Trong GreenTrip, địa điểm ‘green’ là gợi ý có dấu hiệu phù hợp du lịch bền vững trong dữ liệu, như gần gũi thiên nhiên, kinh doanh địa phương hoặc có thuộc tính sinh thái. Đây không phải chứng nhận môi trường. Mức phù hợp còn phụ thuộc thông tin đã có ở từng địa điểm; mình không khẳng định quán xanh chỉ vì có cây hay tên gọi.",
+        "prompts": [
+          {
+            "label": "Xem ví dụ ở Huế",
+            "message": "Cho mình 2 ví dụ ở Huế"
+          }
+        ]
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": null
+  },
+  {
+    "variant": 1,
+    "message": "Cho mình hai ví dụ ở Huế",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893015470-1",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "green_examples",
+        "intent": "search"
+      },
+      "execution": {
+        "poi_ids": [
+          "museum",
+          "extra-0"
+        ],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a"
+        ]
+      },
+      "validation": {
+        "status": "results"
+      },
+      "response": {
+        "text": "Mình gợi ý 2 điểm ở Huế.\n**Bảo tàng Demo** — Địa điểm giả lập phục vụ kiểm thử giao diện; dữ liệu gắn nhãn cơ sở kinh doanh địa phương.\n**Điểm Huế Demo 0** — Địa điểm giả lập phục vụ kiểm thử giao diện; dữ liệu gắn nhãn cơ sở kinh doanh địa phương.",
+        "prompts": []
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": null
+  },
+  {
+    "variant": 1,
+    "message": "Lưu chỗ thứ 1 vào Ý tưởng",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893015470-1",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "card_action",
+        "intent": "save"
+      },
+      "execution": {
+        "action": "ideas_saved",
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum"
+        ]
+      },
+      "validation": {
+        "status": "saved"
+      },
+      "response": {
+        "text": "Đã lưu **Bảo tàng Demo** vào Ý tưởng của chuyến **Nghiệm thu 6 tầng 1**.",
+        "prompts": []
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": null
+  },
+  {
+    "variant": 1,
+    "message": "Lưu chỗ thứ 2 vào Ý tưởng",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893015470-1",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "card_action",
+        "intent": "save"
+      },
+      "execution": {
+        "action": "ideas_saved",
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ]
+      },
+      "validation": {
+        "status": "saved"
+      },
+      "response": {
+        "text": "Đã lưu **Điểm Huế Demo 0** vào Ý tưởng của chuyến **Nghiệm thu 6 tầng 1**.",
+        "prompts": []
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": null
+  },
+  {
+    "variant": 1,
+    "message": "Xếp đều 5 điểm trong Ý tưởng thành lịch 4 ngày",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893015470-1",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "whole_trip_plan",
+        "intent": "plan"
+      },
+      "execution": {
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ],
+        "draft_id": "ba5a430a-e744-4763-b7ef-438d1d5465db"
+      },
+      "validation": {
+        "status": "complete",
+        "requested_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ],
+        "scheduler_input_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "extra-0",
+          "museum"
+        ],
+        "used_ids": [
+          "dn-cafe",
+          "dn-temple-a",
+          "dn-park",
+          "extra-0",
+          "museum"
+        ],
+        "unresolved_ids": [],
+        "unscheduled_ids": []
+      },
+      "response": {
+        "text": "Mình đã xếp 5 điểm trong 4 ngày. Đây là **bản nháp**, lịch hiện tại chưa thay đổi.",
+        "prompts": [
+          {
+            "label": "Chỉnh ngày 1",
+            "message": "Ngày 1 nhẹ hơn, giữ nguyên các ngày khác"
+          },
+          {
+            "label": "Chỉnh ngày 2",
+            "message": "Ngày 2 nhẹ hơn, giữ nguyên các ngày khác"
+          },
+          {
+            "label": "Chỉnh ngày 3",
+            "message": "Ngày 3 nhẹ hơn, giữ nguyên các ngày khác"
+          }
+        ]
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": {
+      "id": "ba5a430a-e744-4763-b7ef-438d1d5465db",
+      "kind": "itinerary",
+      "before_digest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "itinerary": {
+        "trip_id": "six-layer-1794893015470-1",
+        "title": "Nghiệm thu 6 tầng 1",
+        "destination": "Đà Nẵng & Huế",
+        "start_date": "2026-12-20",
+        "days_count": 4,
+        "days": [
+          {
+            "day_id": "six-layer-1794893015470-1-day-1",
+            "day_number": 1,
+            "date": "2026-12-20",
+            "title": "Ngày 1",
+            "stops": [
+              {
+                "stop_id": "a5fac8ab-28d6-4af2-ad81-d9edbe47d33c",
+                "poi_id": "dn-cafe",
+                "title": "Cà phê Sông Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Quán cafe giải khát",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.05,
+                "longitude": 108.2,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "946f3cf1-3868-4e17-b61c-f7ca867d4cce",
+                "poi_id": "dn-temple-a",
+                "title": "Chùa A Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Tâm linh & Tôn giáo",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "10:27",
+                "end_time": "11:27",
+                "latitude": 16.06,
+                "longitude": 108.2,
+                "comment": "Di chuyển ước tính 12 phút (đã đệm ×1,5); chưa phải ETA đường đi. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "6ab81784-2ae9-42e4-b083-d79ebf9c615a",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 2,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893015470-1-day-2",
+            "day_number": 2,
+            "date": "2026-12-21",
+            "title": "Ngày 2",
+            "stops": [
+              {
+                "stop_id": "77d9558b-adf7-40b2-a351-0c44cf0c7c2a",
+                "poi_id": "dn-park",
+                "title": "Công viên Đà Nẵng Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Cảnh quan thiên nhiên",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.08,
+                "longitude": 108.2,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "e0489d12-9f4d-4cdd-86e9-45806ab483ad",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893015470-1-day-3",
+            "day_number": 3,
+            "date": "2026-12-22",
+            "title": "Ngày 3",
+            "stops": [
+              {
+                "stop_id": "844afa60-5d4a-4c0e-8fbc-460bbebd955d",
+                "poi_id": "extra-0",
+                "title": "Điểm Huế Demo 0",
+                "city": "Hue",
+                "address": null,
+                "category": "Cảnh quan thiên nhiên",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.46,
+                "longitude": 107.58,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "0d9c008c-70d4-4d92-8ad2-e1b4834e4322",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893015470-1-day-4",
+            "day_number": 4,
+            "date": "2026-12-23",
+            "title": "Ngày 4",
+            "stops": [
+              {
+                "stop_id": "23ae73bf-1972-4aa9-8d08-76feee24f3b1",
+                "poi_id": "museum",
+                "title": "Bảo tàng Demo",
+                "city": "Hue",
+                "address": null,
+                "category": "Di tích lịch sử và văn hóa",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.47,
+                "longitude": 107.58,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "487bab76-961c-41dd-8cb4-72282c22f44b",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [
+        "Cần kiểm tra giờ mở cửa tại các điểm chưa có khung giờ rõ ràng.",
+        "Thời gian di chuyển tính từ tọa độ, không gọi dịch vụ tuyến có phí; chi phí khách sạn/ăn uống chưa được cộng thành tổng chuyến."
+      ]
+    }
+  },
+  {
+    "variant": 1,
+    "message": "Giảm nhịp ngày thứ hai, giữ nguyên phần còn lại",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893015470-1",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "scoped_simple_edit",
+        "intent": "clarify"
+      },
+      "execution": {
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ]
+      },
+      "validation": {
+        "status": "needs_clarification"
+      },
+      "response": {
+        "text": "Ngày 2 hiện có 1 điểm. Bạn muốn bắt đầu muộn hơn hay bớt điểm? Mình giữ nguyên các ngày khác.",
+        "prompts": [
+          {
+            "label": "Bắt đầu ngày 2 lúc 10h",
+            "message": "Ngày 2 bắt đầu lúc 10:00, giữ nguyên các ngày khác"
+          }
+        ]
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": null
+  },
+  {
+    "variant": 1,
+    "message": "Ngày 2 bắt đầu lúc 10:00, giữ nguyên các ngày khác",
+    "layers": {
+      "context": {
+        "trip_id": "six-layer-1794893015470-1",
+        "conversation_id": 1,
+        "idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ]
+      },
+      "understanding": {
+        "route": "rules",
+        "reason": "scoped_simple_edit",
+        "intent": "edit_plan"
+      },
+      "execution": {
+        "poi_ids": [],
+        "returned_idea_ids": [
+          "dn-cafe",
+          "dn-park",
+          "dn-temple-a",
+          "museum",
+          "extra-0"
+        ],
+        "draft_id": "0a1a1e59-5590-493d-9225-fe049a2d5389"
+      },
+      "validation": {
+        "status": "complete",
+        "changed_day": 2
+      },
+      "response": {
+        "text": "Ngày 2: giờ Công viên Đà Nẵng Demo 09:00 → 10:00. Giữ 1 hoạt động trong ngày đang sửa và 3 ngày không đổi. Đây là bản nháp; bấm Áp dụng để lưu. Các ngày khác giữ nguyên; đây vẫn là bản xem trước.",
+        "prompts": []
+      },
+      "ui": {
+        "url": "http://localhost:5173/my-trips",
+        "http_status": 200,
+        "apply_clicked": false
+      }
+    },
+    "draft": {
+      "id": "0a1a1e59-5590-493d-9225-fe049a2d5389",
+      "kind": "itinerary",
+      "before_digest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "itinerary": {
+        "trip_id": "six-layer-1794893015470-1",
+        "title": "Nghiệm thu 6 tầng 1",
+        "destination": "Đà Nẵng & Huế",
+        "start_date": "2026-12-20",
+        "days_count": 4,
+        "days": [
+          {
+            "day_id": "six-layer-1794893015470-1-day-1",
+            "day_number": 1,
+            "date": "2026-12-20",
+            "title": "Ngày 1",
+            "stops": [
+              {
+                "stop_id": "a5fac8ab-28d6-4af2-ad81-d9edbe47d33c",
+                "poi_id": "dn-cafe",
+                "title": "Cà phê Sông Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Quán cafe giải khát",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.05,
+                "longitude": 108.2,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "946f3cf1-3868-4e17-b61c-f7ca867d4cce",
+                "poi_id": "dn-temple-a",
+                "title": "Chùa A Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Tâm linh & Tôn giáo",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "10:27",
+                "end_time": "11:27",
+                "latitude": 16.06,
+                "longitude": 108.2,
+                "comment": "Di chuyển ước tính 12 phút (đã đệm ×1,5); chưa phải ETA đường đi. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "6ab81784-2ae9-42e4-b083-d79ebf9c615a",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 2,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893015470-1-day-2",
+            "day_number": 2,
+            "date": "2026-12-21",
+            "title": "Ngày 2",
+            "stops": [
+              {
+                "stop_id": "77d9558b-adf7-40b2-a351-0c44cf0c7c2a",
+                "poi_id": "dn-park",
+                "title": "Công viên Đà Nẵng Demo",
+                "city": "Da Nang",
+                "address": null,
+                "category": "Cảnh quan thiên nhiên",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "10:00",
+                "end_time": "11:00",
+                "latitude": 16.08,
+                "longitude": 108.2,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "e0489d12-9f4d-4cdd-86e9-45806ab483ad",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893015470-1-day-3",
+            "day_number": 3,
+            "date": "2026-12-22",
+            "title": "Ngày 3",
+            "stops": [
+              {
+                "stop_id": "844afa60-5d4a-4c0e-8fbc-460bbebd955d",
+                "poi_id": "extra-0",
+                "title": "Điểm Huế Demo 0",
+                "city": "Hue",
+                "address": null,
+                "category": "Cảnh quan thiên nhiên",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.46,
+                "longitude": 107.58,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "0d9c008c-70d4-4d92-8ad2-e1b4834e4322",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          },
+          {
+            "day_id": "six-layer-1794893015470-1-day-4",
+            "day_number": 4,
+            "date": "2026-12-23",
+            "title": "Ngày 4",
+            "stops": [
+              {
+                "stop_id": "23ae73bf-1972-4aa9-8d08-76feee24f3b1",
+                "poi_id": "museum",
+                "title": "Bảo tàng Demo",
+                "city": "Hue",
+                "address": null,
+                "category": "Di tích lịch sử và văn hóa",
+                "stop_type": "poi",
+                "source": "assistant",
+                "sequence": 0,
+                "duration_minutes": 60,
+                "start_time": "09:00",
+                "end_time": "10:00",
+                "latitude": 16.47,
+                "longitude": 107.58,
+                "comment": "Chưa tính chặng đến điểm đầu trong ngày. Cần kiểm tra giờ mở cửa."
+              },
+              {
+                "stop_id": "487bab76-961c-41dd-8cb4-72282c22f44b",
+                "title": "Ăn trưa và nghỉ",
+                "stop_type": "rest",
+                "source": "assistant",
+                "sequence": 1,
+                "duration_minutes": 60,
+                "start_time": "12:00",
+                "end_time": "13:00"
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [
+        "Giữ các điểm và ngày không được yêu cầu sửa. Thời gian di chuyển giữa các điểm sau khi thay cần kiểm tra lại."
+      ]
+    }
+  },
+  {
+    "variant": 1,
+    "apply": {
+      "database": "isolated-sqlite",
+      "before": null,
+      "after_ids": [
+        "dn-cafe",
+        "dn-temple-a",
+        "dn-park",
+        "extra-0",
+        "museum"
+      ],
+      "other_days_unchanged": true
+    },
+    "status": "PASS"
+  }
+]

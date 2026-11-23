@@ -1,0 +1,127 @@
+{
+  "checks": [
+    {
+      "model": "gemini-4-hydrogen",
+      "operation": "GET model metadata (not generation)",
+      "http_status": 200,
+      "seconds": 0.71,
+      "name": "models/gemini-4-hydrogen",
+      "version": "3.0",
+      "displayName": "Gemini 4 Hydrogen",
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "batchGenerateContent"
+      ]
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "operation": "GET model metadata (not generation)",
+      "http_status": 200,
+      "seconds": 0.46,
+      "name": "models/gemini-3.5-flash-lite",
+      "version": "3.5-flash-lite-07-2026",
+      "displayName": "Gemini 3.5 Flash Lite",
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent",
+        "batchGenerateContent"
+      ]
+    }
+  ],
+  "daily_generation_limit": 40,
+  "generation_used": 40,
+  "new_generation_calls": 2,
+  "billing_changed": false,
+  "previous_generation_results": {
+    "gemini-4-hydrogen": [
+      "unavailable",
+      "timeout",
+      "unavailable",
+      "unavailable"
+    ],
+    "gemini-3.5-flash-lite": "4/4 valid outputs"
+  },
+  "verified_findings": [
+    "Model metadata returns HTTP 200 using existing key.",
+    "Model advertises generateContent support.",
+    "Prior adapter mapped several provider/network errors into unavailable; original HTTP response was not retained.",
+    "Application generation timeout is 12 seconds; a timeout was observed, but its upstream cause is not established."
+  ],
+  "authorized_extra_generation_calls": 2,
+  "generation_checks": [
+    {
+      "case": "exact_app_request_longer_timeout",
+      "model": "gemini-4-hydrogen",
+      "timeout_seconds": 45,
+      "http_status": 200,
+      "finish_reason": "STOP",
+      "output": "{\"intent\": \"search\", \"reply\": \"\", \"changes\": [{\"field\": \"dish\", \"op\": \"set\", \"value\": \"mì quảng\"}, {\"field\": \"category\", \"op\": \"set\", \"value\": \"food\"}], \"search_scope\": \"new\", \"reference_index\": null, \"budget\": null}",
+      "usage": {
+        "promptTokenCount": 2513,
+        "candidatesTokenCount": 87,
+        "totalTokenCount": 2967,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 2513
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 87
+          }
+        ],
+        "thoughtsTokenCount": 367,
+        "serviceTier": "standard"
+      },
+      "production_schema_valid": true,
+      "seconds": 15.61
+    },
+    {
+      "case": "minimal_json_low_thinking",
+      "model": "gemini-4-hydrogen",
+      "timeout_seconds": 45,
+      "http_status": 200,
+      "finish_reason": "STOP",
+      "output": "{\"dish\":\"mì Quảng\",\"city\":\"Huế\"}",
+      "usage": {
+        "promptTokenCount": 116,
+        "candidatesTokenCount": 16,
+        "totalTokenCount": 172,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 116
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 16
+          }
+        ],
+        "thoughtsTokenCount": 40,
+        "serviceTier": "standard"
+      },
+      "seconds": 41.7
+    }
+  ],
+  "generation_used_after_authorized_diagnostics": 42,
+  "conclusion": {
+    "generation_access": "Confirmed HTTP 200 twice with existing key",
+    "exact_app_schema": "Valid; no schema change needed for observed success",
+    "latency_seconds": [
+      15.61,
+      41.7
+    ],
+    "app_timeout_seconds": 12,
+    "verified_timeout_mismatch": true,
+    "previous_unavailable_root_cause": "Not recoverable from prior coarse statuses; do not assert all were latency or 503",
+    "model_promoted": false,
+    "production_settings_changed": false,
+    "authorized_extra_calls_used": 2
+  }
+}

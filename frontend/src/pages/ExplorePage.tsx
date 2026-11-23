@@ -55,6 +55,7 @@ type CategoryFilter = 'all' | PoiCategory;
 export interface UserTrip {
   id: string;
   workspaceRevision?: number;
+  needsTripSetup?: boolean;
   title: string;
   destination: string;
   startDate?: string;
@@ -324,7 +325,23 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     setSelectedTripForDetails(current => current ? userTrips.find(trip => trip.id === current.id) || null : null);
   }, [userTrips]);
 
-  const [search, setSearch] = useState('');
+  const [sampleSetupTrip, setSampleSetupTrip] = useState<UserTrip | null>(null);
+  const openedLandingTrip = useRef('');
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('trip');
+    if (!id || tripsLoading || !tripsOwner || openedLandingTrip.current === `${tripsOwner}:${id}`) return;
+    const trip = userTrips.find(t => t.id === id);
+    if (!trip) return;
+    openedLandingTrip.current = `${tripsOwner}:${id}`;
+    setViewMode('trips');
+    const tab = new URLSearchParams(window.location.search).get('tab') === 'itinerary' ? 'itinerary' : 'ideas';
+    setActiveOverviewTrip(trip);
+    setSelectedTripForDetails(tab === 'itinerary' ? trip : null);
+    setActiveTripSubTab(tab);
+    if (trip.needsTripSetup) setSampleSetupTrip(trip);
+  }, [userTrips, tripsLoading, tripsOwner]);
+
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('q')?.slice(0, 120) ?? '');
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [activeTab, setActiveTab] = useState<ExploreTabId>('for-you');
@@ -557,7 +574,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     loadUserProfile();
 
     const onAuthChange = () => {
-      accountRef.current=null;setCreateModalOpen(false);setTripsLoading(true);
+      accountRef.current=null;setCreateModalOpen(false);setSampleSetupTrip(null);setTripsLoading(true);
       setTripsOwner(null);
       setCurrentUser(null);
       setUserTrips([]);
@@ -1549,7 +1566,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               }}
             />
           ) : (activeTripSubTab === 'itinerary' && selectedTripForDetails) ? (
-            <TripItineraryView key={selectedTripForDetails.id}
+            <TripItineraryView key={`${selectedTripForDetails.id}-${selectedTripForDetails.needsTripSetup ? 'setup' : 'ready'}`}
               trip={selectedTripForDetails}
               onCreatePrivateTrip={ids=>{setPendingAddToTripPoiIds(ids);setIsCreateTripModalOpen(true);}}
               allPois={allPois}
@@ -2314,6 +2331,14 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
       />
 
       {/* 5. Create Trip Modal */}
+      {sampleSetupTrip && <CreateTripMindtripModal key={sampleSetupTrip.id} isOpen existingTrip={sampleSetupTrip}
+          onClose={() => setSampleSetupTrip(null)} onCompleteTrip={async updated => {
+            const {completeSampleTrip} = await import('@/services/completeSampleTrip');
+            const saved = await completeSampleTrip(updated);
+            setUserTrips(previous => previous.map(trip => trip.id === saved.id ? saved : trip));
+            setActiveOverviewTrip(saved); setSelectedTripForDetails(saved); setActiveTripSubTab('itinerary');
+            setSampleSetupTrip(null); navigate(`/planner?trip=${encodeURIComponent(saved.id)}&tab=itinerary`,{replace:true});
+          }} />}
       {isCreateTripModalOpen && (
         <CreateTripMindtripModal
           isOpen={isCreateTripModalOpen}

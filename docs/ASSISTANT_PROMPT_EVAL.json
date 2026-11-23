@@ -1,0 +1,341 @@
+{
+  "status": "COMPLETE",
+  "model": "gemini-3.5-flash-lite",
+  "weight_training": false,
+  "corpus_sha256": "9970e01f0e237e7b0d70d39e4fd43eaea92d0a3526914ae53cd2793d6e1bb7f1",
+  "calls": 13,
+  "dev_scores": {
+    "baseline": 4,
+    "candidate": 4
+  },
+  "dev_total": 4,
+  "regressions": [],
+  "selected": "baseline",
+  "test_passed": 4,
+  "test_total": 4,
+  "promoted": false,
+  "results": [
+    {
+      "case": "dev-mix",
+      "split": "dev",
+      "variant": "baseline",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2054,
+      "provider_status": null,
+      "retry_statuses": [],
+      "prediction": {
+        "intent": "search",
+        "reply": "",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "temple": 3,
+              "cafe": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "case": "dev-mix",
+      "split": "dev",
+      "variant": "candidate",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2161,
+      "provider_status": null,
+      "retry_statuses": [],
+      "prediction": {
+        "intent": "search",
+        "reply": "",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Huế"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 5
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "temple": 3,
+              "cafe": 2
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "case": "dev-list",
+      "split": "dev",
+      "variant": "baseline",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3221,
+      "provider_status": null,
+      "retry_statuses": [],
+      "prediction": {
+        "intent": "list_ideas",
+        "reply": "",
+        "changes": [],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "case": "dev-list",
+      "split": "dev",
+      "variant": "candidate",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2085,
+      "provider_status": null,
+      "retry_statuses": [],
+      "prediction": {
+        "intent": "list_ideas",
+        "reply": "",
+        "changes": [],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "case": "dev-near",
+      "split": "dev",
+      "variant": "baseline",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 1788,
+      "provider_status": null,
+      "retry_statuses": [],
+      "prediction": {
+        "intent": "search",
+        "reply": "",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear"
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "case": "dev-near",
+      "split": "dev",
+      "variant": "candidate",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3114,
+      "provider_status": null,
+      "retry_statuses": [],
+      "prediction": {
+        "intent": "search",
+        "reply": "",
+        "changes": [
+          {
+            "field": "nearby",
+            "op": "clear"
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "case": "dev-edit",
+      "split": "dev",
+      "variant": "baseline",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3047,
+      "provider_status": null,
+      "retry_statuses": [],
+      "prediction": {
+        "intent": "plan",
+        "reply": "",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:30"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "case": "dev-edit",
+      "split": "dev",
+      "variant": "candidate",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2089,
+      "provider_status": null,
+      "retry_statuses": [],
+      "prediction": {
+        "intent": "plan",
+        "reply": "",
+        "changes": [
+          {
+            "field": "day",
+            "op": "set",
+            "value": 2
+          },
+          {
+            "field": "start_after",
+            "op": "set",
+            "value": "10:30"
+          },
+          {
+            "field": "meal",
+            "op": "keep",
+            "value": "lunch"
+          },
+          {
+            "field": "replace_stop",
+            "op": "set",
+            "value": "last"
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "case": "test-mix",
+      "split": "test",
+      "variant": "baseline",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 4898,
+      "provider_status": null,
+      "retry_statuses": [],
+      "prediction": {
+        "intent": "search",
+        "reply": "",
+        "changes": [
+          {
+            "field": "city",
+            "op": "set",
+            "value": "Đà Nẵng"
+          },
+          {
+            "field": "count",
+            "op": "set",
+            "value": 4
+          },
+          {
+            "field": "mix",
+            "op": "set",
+            "value": {
+              "museum": 1,
+              "cafe": 3
+            }
+          }
+        ],
+        "search_scope": "new"
+      }
+    },
+    {
+      "case": "test-list",
+      "split": "test",
+      "variant": "baseline",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 2081,
+      "provider_status": null,
+      "retry_statuses": [],
+      "prediction": {
+        "intent": "list_ideas",
+        "reply": "",
+        "changes": [],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "case": "test-exclude",
+      "split": "test",
+      "variant": "baseline",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 3579,
+      "provider_status": null,
+      "retry_statuses": [],
+      "prediction": {
+        "intent": "search",
+        "reply": "",
+        "changes": [
+          {
+            "field": "places",
+            "op": "exclude",
+            "value": [
+              1
+            ]
+          }
+        ],
+        "search_scope": "refine"
+      }
+    },
+    {
+      "case": "test-quiet",
+      "split": "test",
+      "variant": "baseline",
+      "pass": true,
+      "failures": [],
+      "elapsed_ms": 6437,
+      "provider_status": null,
+      "retry_statuses": [
+        "unavailable"
+      ],
+      "prediction": {
+        "intent": "compare",
+        "reply": "",
+        "changes": [
+          {
+            "field": "quiet",
+            "op": "prefer",
+            "value": true
+          },
+          {
+            "field": "ambience",
+            "op": "prefer",
+            "value": "conversation"
+          }
+        ],
+        "search_scope": "refine"
+      }
+    }
+  ]
+}

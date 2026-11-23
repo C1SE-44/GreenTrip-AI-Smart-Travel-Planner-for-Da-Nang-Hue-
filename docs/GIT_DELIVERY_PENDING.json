@@ -1,0 +1,16 @@
+{
+  "remote": "https://github.com/C1SE-44/GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-.git",
+  "remote_develop_last_seen": "c22ee3b",
+  "local_work_branch": "feature/pb18-profile-ui-integration",
+  "local_work_commit": "d4a7d6e23f14732d6b4ed74c47344f8df7e6b7f8",
+  "develop_ready_branch": "feature/pb18-profile-ui-develop",
+  "develop_ready_commit": "872c3e5236ca5a2c0e815b95d519b4dd4141e6e2",
+  "push_status": "PUSHED_TO_ORIGIN",
+  "develop_protection": "Branch protection rule requires pull request to merge into develop",
+  "pull_requests": {
+    "develop_ready": "https://github.com/C1SE-44/GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-/pull/new/feature/pb18-profile-ui-develop",
+    "full_integration": "https://github.com/C1SE-44/GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-/pull/new/feature/pb18-profile-ui-integration"
+  },
+  "develop_changed_online": false,
+  "next_action": "Open Pull Request on GitHub and merge into develop branch."
+}

@@ -1,0 +1,50 @@
+{
+  "environment": "Isolated SQLite 8019 + Vite 5178; real POI IDs/photos copied read-only from local project DB",
+  "ui": "PASS",
+  "desktop": {
+    "width": 1280,
+    "height": 720,
+    "preview": true,
+    "remove": true,
+    "move": true,
+    "searchAndAdd": "Mì Quảng Bà Mua, ID 936b4a05-8051-4fda-aba1-42c28c143cb3",
+    "replace": true,
+    "detailAndEscape": true,
+    "keyboardTabTrap": true
+  },
+  "mobile": {
+    "width": 320,
+    "height": 740,
+    "documentScrollWidth": 320,
+    "sheetWidth": 308,
+    "noHorizontalOverflow": true
+  },
+  "loginGate": "Only Save as private trip; cancelling login preserves exact edited draft",
+  "savedUITrip": "777ce327-e280-414e-b746-2f68947a420c",
+  "savedNames": [
+    "The Local Beans - Phan Châu Trinh",
+    "Omandala Vietnam - Sound Healing",
+    "Cầu Rồng",
+    "Mì Quảng Bà Mua"
+  ],
+  "ideasAndItineraryMatch": true,
+  "refreshPreservesTrip": true,
+  "switchPresetsRetainsEdits": true,
+  "closeReopenRetainsEdits": true,
+  "selectionSyncsWithHero": true,
+  "combinedOneDayDisabled": true,
+  "emptySearch": true,
+  "loadErrorAndRetry": true,
+  "slowSave": {
+    "delaySecondsPerPut": 4,
+    "backDisabled": true,
+    "saveDisabled": true,
+    "navigatedAfterSuccess": true
+  },
+  "productionWrites": false,
+  "limits": [
+    "No real signup/email delivery or OAuth tested",
+    "Primary backend port 8000 was not running; no production save test",
+    "Anonymous preview persists in mounted page memory, not across a browser refresh"
+  ]
+}

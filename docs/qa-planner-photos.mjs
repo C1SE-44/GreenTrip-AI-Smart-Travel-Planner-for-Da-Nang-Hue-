@@ -1,0 +1,14 @@
+import {createRequire} from 'node:module';
+import assert from 'node:assert/strict';
+const {chromium,request}=createRequire(import.meta.url)('C:/Users/ngoho/Documents/Codex/2026-11-13/b-y/work/qa-runtime/node_modules/playwright');
+const api=await request.newContext({baseURL:'http://127.0.0.1:8021'});
+const token=(await (await api.post('/auth/login',{data:{email:'assistant-qa@example.test',password:'AssistantQA123!'}})).json()).access_token;
+const browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});let release;const gate=new Promise(r=>release=r);
+await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.port==='8000'){const response=await route.fetch({url:'http://127.0.0.1:8021'+u.pathname+u.search});if(u.pathname==='/trip-workspaces')await gate;return route.fulfill({response});}if(!['localhost','127.0.0.1'].includes(u.hostname))return route.abort();return route.continue();});
+await page.addInitScript(token=>{localStorage.setItem('access_token',token);sessionStorage.setItem('access_token',token);},token);
+await page.goto('http://localhost:5173/planner',{waitUntil:'domcontentloaded'});await page.getByLabel('Đang tải chuyến đi',{exact:true}).waitFor();await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/planner-list-skeleton.png',animations:'disabled'});release();
+await page.getByText('Kiểm đồng bộ ngày',{exact:true}).waitFor();await page.getByText('Kiểm đồng bộ ngày',{exact:true}).click();await page.getByText('Cà phê Vườn Demo',{exact:true}).first().waitFor();await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/planner-dates-ideas.png',animations:'disabled'});
+await page.getByRole('button',{name:'Lịch trình',exact:true}).click();await page.getByText('Cà phê Vườn Demo',{exact:true}).first().waitFor();await page.getByText('Đang tải lịch trình…',{exact:true}).waitFor({state:'detached'});await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/planner-dates-itinerary.png',animations:'disabled'});
+await page.getByRole('button',{name:'Lịch',exact:true}).click();await page.getByText('Đang tải lịch chuyến đi…',{exact:true}).waitFor({state:'detached'});await page.getByRole('button',{name:'2026-11-22',exact:true}).waitFor();await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/planner-dates-calendar.png',animations:'disabled'});
+await page.getByRole('button',{name:'Ý tưởng',exact:true}).click();await page.setViewportSize({width:320,height:850});await page.screenshot({path:'D:/ĐỒ ÁN/repo/docs/planner-dates-mobile.png',animations:'disabled'});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+console.log('Captured loaded three-tab UI and loading skeleton; 320px has no document overflow.');await browser.close();await api.dispose();

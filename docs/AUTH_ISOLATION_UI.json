@@ -1,0 +1,57 @@
+[
+  {
+    "case": "guest",
+    "status": "PASS",
+    "url": "http://localhost:5173/planner",
+    "private_trips_visible": false,
+    "create_requires_login": true
+  },
+  {
+    "case": "create_signed_in",
+    "status": "PASS",
+    "confirmed_by_server": true
+  },
+  {
+    "case": "conversations",
+    "status": "PASS",
+    "empty_placeholder_hidden": true,
+    "real_histories": 3,
+    "slot1_has_no_slot2_draft": true,
+    "slot2_draft_restored": true
+  },
+  {
+    "case": "reload_same_account",
+    "status": "PASS",
+    "server_ideas": [
+      "cafe-garden",
+      "museum",
+      "park",
+      "cafe-group"
+    ],
+    "server_revision": 3
+  },
+  {
+    "case": "other_trip_same_account",
+    "status": "PASS",
+    "starts_without_old_chat": true,
+    "independent_history_count": 1
+  },
+  {
+    "case": "account_B",
+    "status": "PASS",
+    "cannot_read_A": true,
+    "injected_A_cache_ignored": true,
+    "chat_starts_empty": true
+  },
+  {
+    "case": "server_restore_without_account_cache",
+    "status": "PASS",
+    "idea_count": 4
+  },
+  {
+    "case": "logout",
+    "status": "PASS",
+    "workspace_closed": true,
+    "chat_cleared": true
+  }
+]

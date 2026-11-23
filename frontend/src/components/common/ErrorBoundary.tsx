@@ -49,15 +49,6 @@ export class ErrorBoundary extends Component<Props, State> {
           )}
           <div style={{ display: 'flex', gap: 12 }}>
             <button
-              onClick={() => {
-                localStorage.clear();
-                window.location.reload();
-              }}
-              style={{ padding: '8px 18px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 9999, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-            >
-              Xóa LocalStorage & Tải lại
-            </button>
-            <button
               onClick={() => window.location.reload()}
               style={{ padding: '8px 18px', background: '#111827', color: '#fff', border: 'none', borderRadius: 9999, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
             >

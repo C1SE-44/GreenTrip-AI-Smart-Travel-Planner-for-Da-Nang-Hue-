@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
+from uuid import NAMESPACE_URL, uuid5
 
 from fastapi import HTTPException
 
@@ -178,6 +180,14 @@ def _itinerary_revision(value: Any) -> datetime | str:
     return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
 
 
+logger = logging.getLogger(__name__)
+
+
+def _legacy_id(kind: str, value: str) -> str:
+    # Modern API IDs allow 100 characters; legacy route columns still use varchar(64).
+    return value if len(value) <= 64 else str(uuid5(NAMESPACE_URL, f"greentrip:{kind}:{value}"))
+
+
 def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None, *, expected_updated_at: str | None = None) -> TripItineraryResponse:
     from app.assistant.workspaces import assert_access
     assert_access(payload.trip_id,user_id)
@@ -229,11 +239,11 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None, *, ex
                         destination = EXCLUDED.destination,
                         start_date = EXCLUDED.start_date,
                         days_count = EXCLUDED.days_count,
-                        itinerary_id = EXCLUDED.trip_id,
+                        itinerary_id = EXCLUDED.itinerary_id,
                         total_days = EXCLUDED.days_count,
                         updated_at = CURRENT_TIMESTAMP
                     """,
-                    (payload.trip_id, effective_user_id, payload.title, payload.destination, payload.start_date, payload.days_count, payload.trip_id, payload.days_count),
+                    (payload.trip_id, effective_user_id, payload.title, payload.destination, payload.start_date, payload.days_count, _legacy_id("trip", payload.trip_id), payload.days_count),
                 )
                 if isinstance(connection, SQLiteConnectionWrapper):
                     # SQLite CURRENT_TIMESTAMP has only seconds: two edits must still get different revisions.
@@ -246,7 +256,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None, *, ex
                 for day in payload.days:
                     cursor.execute(
                         "INSERT INTO public.itinerary_days (day_id, trip_id, day_number, date, title, itinerary_id, itinerary_day_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                        (day.day_id, payload.trip_id, day.day_number, day.date, day.title, payload.trip_id, day.day_id),
+                        (day.day_id, payload.trip_id, day.day_number, day.date, day.title, _legacy_id("trip", payload.trip_id), _legacy_id("day", day.day_id)),
                     )
                     for stop in day.stops:
                         cursor.execute(
@@ -261,7 +271,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None, *, ex
                                 stop.stop_id, day.day_id, stop.poi_id, stop.title, stop.city, stop.address, stop.category,
                                 stop.stop_type, stop.source, stop.sequence, stop.duration_minutes,
                                 stop.start_time, stop.end_time, stop.comment, stop.latitude, stop.longitude,
-                                stop.stop_id, day.day_id, stop.sequence,
+                                _legacy_id("stop", stop.stop_id), _legacy_id("day", day.day_id), stop.sequence,
                             ),
                         )
                 connection.commit()
@@ -271,6 +281,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None, *, ex
     except HTTPException:
         raise
     except Exception as error:
+        logger.exception("Failed to persist itinerary")
         raise HTTPException(status_code=503, detail="Chưa thể lưu lịch trình vào cơ sở dữ liệu.") from error
 
 

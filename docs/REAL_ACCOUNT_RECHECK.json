@@ -1,0 +1,164 @@
+[
+  {
+    "message": "địa điểm green là gì",
+    "trip_id": "trip_0e023d8b-f011-4d91-8ffa-ce580d65e49d",
+    "idea_ids": [
+      "029a28df-b091-49d9-a911-738572c72464",
+      "d58fe815-4aa1-45b2-831a-11b97e130918",
+      "bfed964e-ff10-44f4-8654-2136245ab062",
+      "95a4174a-7bb3-42d0-927b-b8f50313b61b",
+      "ee82501d-6895-43cc-af78-c8caf301da4e"
+    ],
+    "status": 200,
+    "text": "Trong GreenTrip, địa điểm ‘green’ là gợi ý có dấu hiệu phù hợp du lịch bền vững trong dữ liệu, như gần gũi thiên nhiên, kinh doanh địa phương hoặc có thuộc tính sinh thái. Đây không phải chứng nhận môi trường. Mức phù hợp còn phụ thuộc thông tin đã có ở từng địa điểm; mình không khẳng định quán xanh chỉ vì có cây hay tên gọi.",
+    "trace": {
+      "route": "rules",
+      "reason": "explain_green",
+      "changes": {},
+      "elapsed_ms": 998.77,
+      "model_calls": 0
+    },
+    "pois": []
+  },
+  {
+    "message": "Cho mình 2 ví dụ ở Huế",
+    "trip_id": "trip_0e023d8b-f011-4d91-8ffa-ce580d65e49d",
+    "idea_ids": [
+      "029a28df-b091-49d9-a911-738572c72464",
+      "d58fe815-4aa1-45b2-831a-11b97e130918",
+      "bfed964e-ff10-44f4-8654-2136245ab062",
+      "95a4174a-7bb3-42d0-927b-b8f50313b61b",
+      "ee82501d-6895-43cc-af78-c8caf301da4e"
+    ],
+    "status": 200,
+    "text": "Mình gợi ý 2 điểm ở Huế.\n**Đại Nội Huế (Hoàng Thành & Tử Cấm Thành)** — Đại Nội Huế (Hoàng Thành & Tử Cấm Thành) tại Thuận Thành, Huế. Trái tim của Di sản Văn hóa Thế giới UNESCO, Ngọ Môn, Điện Thái Hòa, Cung Diên Thọ và Thế Tổ Miếu.\n**VOU Roastery** — VOU Roastery tại Phú Hội, Huế. Hạt cà phê Arabica bản địa chế biến ướt và natural, hương hoa quả nhiệt đới bung tỏa.",
+    "trace": {
+      "route": "rules",
+      "reason": "green_examples",
+      "changes": {},
+      "elapsed_ms": 6710.57,
+      "model_calls": 0
+    },
+    "pois": [
+      "084a4f33-2af6-44cf-83ad-88ceaaac1092",
+      "ee82501d-6895-43cc-af78-c8caf301da4e"
+    ]
+  },
+  {
+    "message": "bạn có lên lịch trình 4 ngày cho 5 địa điểm ở ý tưởng được không",
+    "trip_id": "trip_0e023d8b-f011-4d91-8ffa-ce580d65e49d",
+    "idea_ids": [
+      "029a28df-b091-49d9-a911-738572c72464",
+      "d58fe815-4aa1-45b2-831a-11b97e130918",
+      "bfed964e-ff10-44f4-8654-2136245ab062",
+      "95a4174a-7bb3-42d0-927b-b8f50313b61b",
+      "ee82501d-6895-43cc-af78-c8caf301da4e"
+    ],
+    "status": 200,
+    "text": "Mình đã xếp 5 điểm trong 4 ngày. Đây là **bản nháp**, lịch hiện tại chưa thay đổi.",
+    "trace": {
+      "route": "rules",
+      "reason": "whole_trip_plan",
+      "changes": {},
+      "elapsed_ms": 2290.29,
+      "model_calls": 0
+    },
+    "pois": [],
+    "days": [
+      {
+        "day": 1,
+        "ids": [
+          "d58fe815-4aa1-45b2-831a-11b97e130918",
+          "029a28df-b091-49d9-a911-738572c72464"
+        ]
+      },
+      {
+        "day": 2,
+        "ids": [
+          "bfed964e-ff10-44f4-8654-2136245ab062"
+        ]
+      },
+      {
+        "day": 3,
+        "ids": [
+          "ee82501d-6895-43cc-af78-c8caf301da4e"
+        ]
+      },
+      {
+        "day": 4,
+        "ids": [
+          "95a4174a-7bb3-42d0-927b-b8f50313b61b"
+        ]
+      }
+    ]
+  },
+  {
+    "message": "Ngày 2 nhẹ hơn, đừng đổi ngày khác",
+    "trip_id": "trip_0e023d8b-f011-4d91-8ffa-ce580d65e49d",
+    "idea_ids": [
+      "029a28df-b091-49d9-a911-738572c72464",
+      "d58fe815-4aa1-45b2-831a-11b97e130918",
+      "bfed964e-ff10-44f4-8654-2136245ab062",
+      "95a4174a-7bb3-42d0-927b-b8f50313b61b",
+      "ee82501d-6895-43cc-af78-c8caf301da4e"
+    ],
+    "status": 200,
+    "text": "Ngày 2 hiện có 1 điểm. Bạn muốn bắt đầu muộn hơn hay bớt điểm? Mình giữ nguyên các ngày khác.",
+    "trace": {
+      "route": "rules",
+      "reason": "scoped_simple_edit",
+      "changes": {},
+      "elapsed_ms": 947.5,
+      "model_calls": 0
+    },
+    "pois": []
+  },
+  {
+    "message": "Ngày 2 bắt đầu lúc 10:00, giữ nguyên các ngày khác",
+    "trip_id": "trip_0e023d8b-f011-4d91-8ffa-ce580d65e49d",
+    "idea_ids": [
+      "029a28df-b091-49d9-a911-738572c72464",
+      "d58fe815-4aa1-45b2-831a-11b97e130918",
+      "bfed964e-ff10-44f4-8654-2136245ab062",
+      "95a4174a-7bb3-42d0-927b-b8f50313b61b",
+      "ee82501d-6895-43cc-af78-c8caf301da4e"
+    ],
+    "status": 200,
+    "text": "Ngày 2: giờ Nhà Thờ Giáo Xứ An Hải & Đền Thánh Tử Đạo An Hải 09:00 → 10:00. Giữ 1 hoạt động trong ngày đang sửa và 3 ngày không đổi. Đây là bản nháp; bấm Áp dụng để lưu. Các ngày khác giữ nguyên; đây vẫn là bản xem trước.",
+    "trace": {
+      "route": "rules",
+      "reason": "scoped_simple_edit",
+      "changes": {},
+      "elapsed_ms": 916.1,
+      "model_calls": 0
+    },
+    "pois": [],
+    "days": [
+      {
+        "day": 1,
+        "ids": [
+          "d58fe815-4aa1-45b2-831a-11b97e130918",
+          "029a28df-b091-49d9-a911-738572c72464"
+        ]
+      },
+      {
+        "day": 2,
+        "ids": [
+          "bfed964e-ff10-44f4-8654-2136245ab062"
+        ]
+      },
+      {
+        "day": 3,
+        "ids": [
+          "ee82501d-6895-43cc-af78-c8caf301da4e"
+        ]
+      },
+      {
+        "day": 4,
+        "ids": [
+          "95a4174a-7bb3-42d0-927b-b8f50313b61b"
+        ]
+      }
+    ]
+  }
+]

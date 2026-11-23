@@ -1785,7 +1785,7 @@ export default function TripItineraryView({
                                           >
                                             <Clock size={12} className="text-gray-400 group-hover/time:text-black" />
                                             <span>
-                                              {stop.start_time || '08:00'} – {stop.end_time || '09:30'}
+                                              {stop.start_time && stop.end_time ? `${stop.start_time} – ${stop.end_time}` : 'Chưa xếp giờ'}
                                             </span>
                                             <Pencil size={10} className="text-gray-300 group-hover/time:text-gray-600 ml-0.5 opacity-0 group-hover/time:opacity-100" />
                                           </button>

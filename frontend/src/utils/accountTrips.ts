@@ -32,12 +32,15 @@ export async function loadAccountTrips(storage: Storage, userId: string, getOwne
     const previous = cached.find(t => t.id === remote.trip_id) || legacy.find(t => t.id === remote.trip_id);
     const trip = {...previous, id:remote.trip_id, title:remote.title, destination:remote.destination,
       daysCount:remote.days_count, startDate:remote.start_date, peopleCount:previous?.peopleCount || 2, createdAt:previous?.createdAt || ''};
-    result.push(migrate ? await migrate(trip) : trip);
+    // A stale migration cache must not block server-owned trips that already loaded.
+    if (!migrate) { result.push(trip); continue; }
+    try {result.push(await migrate({...trip,workspaceRevision:undefined}));}
+    catch(error) {if ((error as {status?:number}).status === 409) result.push(trip); else throw error;}
   }
   if (migrate) for (const trip of cached) {
     if (result.some(t => t.id===trip.id)) continue;
     try { result.push(await migrate(trip)); }
-    catch (error) { if (![403,410].includes((error as {status?:number}).status || 0)) throw error; }
+    catch (error) { if (![403,409,410].includes((error as {status?:number}).status || 0)) throw error; }
   }
   return result;
 }

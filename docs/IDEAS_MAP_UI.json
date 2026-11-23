@@ -1,0 +1,8 @@
+{
+  "empty_trip_markers": 0,
+  "one_idea_markers": 1,
+  "reload_preserves_one_marker": true,
+  "switch_back_to_empty_markers": 0,
+  "url": "http://localhost:5173/my-trips",
+  "backend": "SQLite fixture 8021"
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Compass, CalendarCheck, MapPinned, LogIn, UserPlus, LogOut } from 'lucide-react';
+import { Menu, X, Compass, CalendarCheck, MapPinned, LogIn, LogOut } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import LoginModal from '@/components/auth/LoginModal';
 import OnboardingModal from '@/components/auth/OnboardingModal';
@@ -170,20 +170,12 @@ export default function Navbar() {
                   </button>
                 </>
               ) : (
-                <>
-                  <Link
-                    to="/login"
-                    className="px-4 py-1.5 text-[14px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-all duration-300 outline-none focus:outline-none cursor-pointer"
-                  >
-                    Đăng nhập
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="px-4 py-1.5 text-[14px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-all duration-300 outline-none focus:outline-none cursor-pointer"
-                  >
-                    Đăng ký
-                  </Link>
-                </>
+                <Link
+                  to="/login"
+                  className="px-4 py-1.5 text-[14px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-all duration-300 outline-none focus:outline-none cursor-pointer"
+                >
+                  Đăng nhập
+                </Link>
               )}
             </div>
 
@@ -240,14 +232,6 @@ export default function Navbar() {
                 >
                   <LogIn size={18} strokeWidth={2.5} />
                   Đăng nhập
-                </Link>
-                <Link
-                  to="/register"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-black/20 text-black hover:bg-black/5 px-4 py-2.5 text-[15px] font-medium transition-colors cursor-pointer"
-                >
-                  <UserPlus size={18} strokeWidth={2.5} />
-                  Đăng ký
                 </Link>
               </div>
             )}

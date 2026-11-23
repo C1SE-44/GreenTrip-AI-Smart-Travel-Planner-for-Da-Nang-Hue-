@@ -1,4 +1,4 @@
-import type { CopilotTripMessage } from '@/components/planner/copilotTripData';
+import { buildDefaultMindtripItinerary, type CopilotTripMessage } from '@/components/planner/copilotTripData';
 import type { TimeOfDay } from '@/components/poi/ExploreFilterModal';
 import type { Poi, PoiCategory, PoiCity } from '@/data/pois';
 import type { CostBreakdown, DailyItineraryOutline, MatchedPOI } from '@/services/tripService';
@@ -170,6 +170,7 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
       'd58fe815-4aa1-45b2-831a-11b97e130918',
       'bfed964e-ff10-44f4-8654-2136245ab062',
     ],
+    itineraryOutline: buildDefaultMindtripItinerary('Đà Nẵng & Huế', 3) as unknown as DailyItineraryOutline[],
   },
   {
     id: 'sample-danang-hue-5d',
@@ -181,6 +182,7 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
     tags: ['Đà Nẵng & Huế', '5 Ngày', 'Di sản & Biển xanh'],
     createdAt: '2026-11-23',
     image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
+    itineraryOutline: buildDefaultMindtripItinerary('Đà Nẵng & Huế', 5) as unknown as DailyItineraryOutline[],
   },
   {
     id: 'sample-central-vietnam-7d',
@@ -192,5 +194,6 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
     tags: ['Miền Trung', '7 Ngày', 'Tour gia đình'],
     createdAt: '2026-11-23',
     image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800&auto=format&fit=crop&q=80',
+    itineraryOutline: buildDefaultMindtripItinerary('Đà Nẵng & Huế', 7) as unknown as DailyItineraryOutline[],
   },
 ];

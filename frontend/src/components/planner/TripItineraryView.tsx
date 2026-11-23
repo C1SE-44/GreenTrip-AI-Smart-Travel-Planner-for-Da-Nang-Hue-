@@ -205,8 +205,8 @@ export default function TripItineraryView({
     }
   }, [dismissedRecommendationIds, trip.id]);
 
-  // State giao diện
-  const [expandIdeas, setExpandIdeas] = useState(true);
+  // State giao diện (Ý tưởng thu gọn mặc định khi đã có lịch trình để ưu tiên hiển thị Ngày 1 ngay tầm mắt)
+  const [expandIdeas, setExpandIdeas] = useState<boolean>(() => !trip.itineraryOutline?.length);
   const [ideasFilter, setIdeasFilter] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua' | 'luu-tru' | 'unplaced'>('all');
   const [showIdeasFilterMenu, setShowIdeasFilterMenu] = useState(false);
   const [showIdeasMoreMenu, setShowIdeasMoreMenu] = useState(false);
@@ -2018,21 +2018,11 @@ export default function TripItineraryView({
               </div>
             </div>
 
-            {/* Thanh công cụ Delighters: Checklist hành trang, Xuất .ics, In / Lưu PDF */}
-            <TripExportToolbar
-              trip={trip}
-              plan={plan}
-              isChecklistOpen={isChecklistModalOpen}
-              onChecklistOpenChange={setIsChecklistModalOpen}
-              onBeforePrint={() => setCollapsedDays(new Set())}
-              className="mb-3"
-            />
-
             {/* Trợ lý sắp xếp lịch trình & nhịp độ — Gọn 1 hàng để ưu tiên hiển thị lịch theo ngày */}
-            <section className="mb-3 rounded-2xl border border-gray-200 bg-gray-50/70 px-3.5 py-2.5" aria-label="Trợ lý sắp xếp lịch trình">
+            <section className="mb-2.5 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2" aria-label="Trợ lý sắp xếp lịch trình">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-xs font-bold text-gray-800">Nhịp chuyến đi</h3>
                 <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Chọn nhịp chuyến đi">
+                  <span className="text-xs font-bold text-gray-800 mr-1">Nhịp:</span>
                   {([
                     ['Relaxed', '🌿 Thong thả', '~2 điểm'],
                     ['Balanced', '⚖️ Cân bằng', '~3 điểm'],
@@ -2044,17 +2034,24 @@ export default function TripItineraryView({
                       aria-pressed={pacingLevel === level}
                       disabled={isLoading || isSaving || isScheduleRecommendationsLoading || (!ideaPois.length && !scheduleRecommendations.length && !plan.days.some((day) => day.stops.length))}
                       onClick={() => runSmartSchedule(level)}
-                      className={`min-h-9 rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 ${pacingLevel === level ? 'border-emerald-800 bg-emerald-100 text-emerald-950' : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-100'}`}
+                      className={`min-h-8 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 ${pacingLevel === level ? 'border-emerald-800 bg-emerald-100 text-emerald-950' : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-100'}`}
                     >
                       <span>{label}</span>
                       <span className="ml-1 font-normal text-gray-600">({target})</span>
                     </button>
                   ))}
                 </div>
+                <TripExportToolbar
+                  trip={trip}
+                  plan={plan}
+                  isChecklistOpen={isChecklistModalOpen}
+                  onChecklistOpenChange={setIsChecklistModalOpen}
+                  onBeforePrint={() => setCollapsedDays(new Set())}
+                />
               </div>
-              {isScheduleRecommendationsLoading && <p className="mt-2 text-xs text-gray-700" role="status">Đang tối ưu lịch trình...</p>}
-              {!isScheduleRecommendationsLoading && recommendationFetchError && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-950" role="status"><span>Đang dùng danh sách địa điểm sẵn có tại điểm đến.</span><button type="button" onClick={() => setRecommendationRetryKey((value) => value + 1)} className="min-h-8 rounded-full px-2.5 font-semibold text-amber-950 underline underline-offset-2 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800">Thử lại</button></div>}
-              {assistantInsight && <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-950" aria-live="polite"><strong>Vì sao GreenTrip xếp như vậy?</strong> {assistantInsight}</p>}
+              {isScheduleRecommendationsLoading && <p className="mt-1.5 text-xs text-gray-700" role="status">Đang tối ưu lịch trình...</p>}
+              {!isScheduleRecommendationsLoading && recommendationFetchError && <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-950" role="status"><span>Đang dùng danh sách địa điểm sẵn có tại điểm đến.</span><button type="button" onClick={() => setRecommendationRetryKey((value) => value + 1)} className="min-h-8 rounded-full px-2.5 font-semibold text-amber-950 underline underline-offset-2 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800">Thử lại</button></div>}
+              {assistantInsight && <p className="mt-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs leading-5 text-emerald-950" aria-live="polite"><strong>Vì sao GreenTrip xếp như vậy?</strong> {assistantInsight}</p>}
             </section>
 
             {/* Bảng Tối ưu Lộ trình & Ước tính Carbon (Phần 1) */}

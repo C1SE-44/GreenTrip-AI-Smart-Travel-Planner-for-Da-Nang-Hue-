@@ -1,10 +1,14 @@
 """Multimodal attachment analyzer for GreenTrip Copilot ('+' Upload file / Add link / Add receipt).
 
-Implements Mindtrip-grade 4-step processing for YouTube/social links, photos, and receipts:
-1. Metadata extraction (oEmbed + YouTube watch shortDescription/chapters + optional captions)
-2. LLM Named Entity Recognition (NER) distinguishing named venues vs generic mentions
-3. PostGIS Entity Linking + Central Vietnam Geocoding anchors
-4. Interactive response synthesis with map pins and multi-turn source memory
+Implements Mindtrip-grade 4-step processing (enhanced with YouTube Vietnamese transcript & TikTok Vision OCR):
+1. Multi-layer metadata extraction:
+   - YouTube: oEmbed + watch shortDescription/chapters + Innertube Android Vietnamese/English transcript
+   - TikTok / Social: oEmbed + cover thumbnail Vision OCR when captions lack place names
+   - Articles / Blogs: SSRF-guarded HTML parsing with Semantic Content Guard
+2. LLM NER & Structured Extraction (Pydantic CopilotExtractedPlace + direct user-intent response + Eco note)
+3. 2-tier Entity Linking & Geocoding (Supabase PostGIS -> Geo-Anchors -> Google Places / OSM Nominatim)
+   plus Haversine radius-aware nearby POI search for uploaded landmark photos
+4. Structured receipt extraction with deduplication (CopilotReceiptBooking) & multi-turn memory
 """
 from __future__ import annotations
 
@@ -13,6 +17,7 @@ import html
 import ipaddress
 import json
 import logging
+import math
 import re
 import socket
 import time
@@ -38,6 +43,8 @@ from app.trips.schemas import (
     CopilotAttachmentPayload,
     CopilotChatRequest,
     CopilotChatResponse,
+    CopilotExtractedPlace,
+    CopilotReceiptBooking,
     CopilotSuggestedPoiItem,
     TripContextPayload,
 )
@@ -51,6 +58,7 @@ _META_TAG_RE = re.compile(r"<meta\s+[^>]*>", re.IGNORECASE)
 _ATTR_RE = re.compile(r'([a-zA-Z0-9_:-]+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\')')
 _SCRIPT_STYLE_RE = re.compile(r"<(script|style|noscript)[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL)
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+_CAPTION_P_RE = re.compile(r'<p\s+[^>]*t="(\d+)"[^>]*>(.*?)</p>', re.IGNORECASE | re.DOTALL)
 _TIMESTAMP_LINE_RE = re.compile(r"^\s*(?:[-•*]\s*)?(?:\d{1,2}:)?\d{1,2}:\d{2}\s*[-–—:|•]?\s*\S+")
 _YT_VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 _ALLOWED_IMAGE_MIMES = frozenset({"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "application/pdf"})
@@ -63,11 +71,19 @@ _BROWSER_HEADERS = {
     "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
 }
 
-# Verified Central Vietnam geo-anchors for iconic places often featured in Da Nang / Hue / Hoi An
-# videos even when a venue is in Quang Nam or not yet seeded in public.pois.
+_TRANSCRIPT_PLACE_HINTS = (
+    "bien", "chua", "cau", "lang", "cho", "nha hang", "quan", "khach san",
+    "resort", "homestay", "khu du lich", "bao tang", "pho co", "nui", "deo",
+    "ban dao", "suoi", "dao", "vinh", "cafe", "ca phe", "hai san", "check-in",
+    "my khe", "son tra", "ba na", "linh ung", "hoi an", "dai noi", "thien mu",
+    "ngu hanh son", "than tai", "vinpearl", "vinwonder", "muoi bien", "mikazuki",
+    "cu lao cham", "rung dua", "song han", "song huong", "ky uc", "nha tho",
+)
+
+# Verified Central Vietnam geo-anchors for iconic Da Nang / Hue / Hoi An places
 _CENTRAL_VIETNAM_GEO_ANCHORS: list[dict[str, Any]] = [
     {
-        "keys": ("nui than tai", "cong vien suoi khoang nong nui than tai"),
+        "keys": ("nui than tai", "cong vien suoi khoang nong nui than tai", "nui thanh tai"),
         "id": "ext-nui-than-tai",
         "name": "KDL Suối Khoáng Nóng Núi Thần Tài",
         "category": "Cảnh quan và thiên nhiên",
@@ -95,7 +111,7 @@ _CENTRAL_VIETNAM_GEO_ANCHORS: list[dict[str, Any]] = [
         "estimated_cost": 300000.0,
     },
     {
-        "keys": ("pho co hoi an", "hoi an", "chua cau"),
+        "keys": ("pho co hoi an", "chua cau"),
         "id": "ext-pho-co-hoi-an",
         "name": "Phố Cổ Hội An (Chùa Cầu)",
         "category": "Di tích lịch sử và văn hóa",
@@ -109,7 +125,7 @@ _CENTRAL_VIETNAM_GEO_ANCHORS: list[dict[str, Any]] = [
         "estimated_cost": 120000.0,
     },
     {
-        "keys": ("vinpearl nam hoi an", "vinwonders nam hoi an"),
+        "keys": ("vinpearl nam hoi an", "vinwonders nam hoi an", "vinwonder hoi an", "vinwonders hoi an"),
         "id": "ext-vinpearl-nam-hoi-an",
         "name": "VinWonders / Vinpearl Nam Hội An",
         "category": "Giải trí & trải nghiệm",
@@ -123,7 +139,7 @@ _CENTRAL_VIETNAM_GEO_ANCHORS: list[dict[str, Any]] = [
         "estimated_cost": 600000.0,
     },
     {
-        "keys": ("ba na hills", "sun world ba na", "cau vang"),
+        "keys": ("ba na hills", "ba na hill", "sun world ba na", "cau vang", "golden bridge"),
         "id": "ext-ba-na-hills",
         "name": "Bà Nà Hills & Cầu Vàng",
         "category": "Cảnh quan và thiên nhiên",
@@ -137,9 +153,9 @@ _CENTRAL_VIETNAM_GEO_ANCHORS: list[dict[str, Any]] = [
         "estimated_cost": 900000.0,
     },
     {
-        "keys": ("rung dua bay mau", "cam thanh"),
+        "keys": ("rung dua bay mau", "rung dua hoi an", "cam thanh"),
         "id": "ext-rung-dua-bay-mau",
-        "name": "Rừng Dừa Bảy Mẫu Cẩm Thanh",
+        "name": "Rừng Dừa Bảy Mẫu Hội An",
         "category": "Cảnh quan và thiên nhiên",
         "city": "Hội An",
         "lat": 15.8752,
@@ -151,7 +167,7 @@ _CENTRAL_VIETNAM_GEO_ANCHORS: list[dict[str, Any]] = [
         "estimated_cost": 150000.0,
     },
     {
-        "keys": ("cu lao cham",),
+        "keys": ("cu lao cham", "tour cu lao cham"),
         "id": "ext-cu-lao-cham",
         "name": "Cù Lao Chàm",
         "category": "Cảnh quan và thiên nhiên",
@@ -164,12 +180,125 @@ _CENTRAL_VIETNAM_GEO_ANCHORS: list[dict[str, Any]] = [
         "rating": 4.8,
         "estimated_cost": 500000.0,
     },
+    {
+        "keys": ("ky uc hoi an", "show ky uc hoi an", "dao ky uc"),
+        "id": "ext-ky-uc-hoi-an",
+        "name": "Show Ký Ức Hội An (Đảo Ký Ức)",
+        "category": "Văn hóa & nghệ thuật",
+        "city": "Hội An",
+        "lat": 15.8756,
+        "lng": 108.3389,
+        "address": "Cồn Hến, 200 Nguyễn Tri Phương, Cẩm Nam, Hội An",
+        "image_url": "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
+        "green_score": 86,
+        "rating": 4.8,
+        "estimated_cost": 460000.0,
+    },
+    {
+        "keys": ("du thuyen song han", "cheo sup song han"),
+        "id": "ext-du-thuyen-song-han",
+        "name": "Bến Du Thuyền Sông Hàn Đà Nẵng",
+        "category": "Cảnh quan và thiên nhiên",
+        "city": "Đà Nẵng",
+        "lat": 16.0772,
+        "lng": 108.2248,
+        "address": "32 Bạch Đằng, Hải Châu, Đà Nẵng",
+        "image_url": "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
+        "green_score": 83,
+        "rating": 4.6,
+        "estimated_cost": 150000.0,
+    },
+    {
+        "keys": ("mikazuki", "da nang mikazuki"),
+        "id": "ext-mikazuki-da-nang",
+        "name": "Da Nang Mikazuki Japanese Resorts & Spa",
+        "category": "Lưu trú & nghỉ dưỡng",
+        "city": "Đà Nẵng",
+        "lat": 16.0919,
+        "lng": 108.1517,
+        "address": "Khu du lịch Xuân Thiều, Nguyễn Tất Thành, Liên Chiểu, Đà Nẵng",
+        "image_url": "https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&auto=format&fit=crop&q=80",
+        "green_score": 81,
+        "rating": 4.6,
+        "estimated_cost": 310000.0,
+    },
+    {
+        "keys": ("cau tinh yeu", "love lock bridge", "love pier"),
+        "id": "ext-cau-tinh-yeu",
+        "name": "Cầu Tình Yêu Đà Nẵng",
+        "category": "Cảnh quan và thiên nhiên",
+        "city": "Đà Nẵng",
+        "lat": 16.0631,
+        "lng": 108.2298,
+        "address": "Đường Trần Hưng Đạo, An Hải Trung, Sơn Trà, Đà Nẵng",
+        "image_url": "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
+        "green_score": 87,
+        "rating": 4.5,
+        "estimated_cost": 0.0,
+    },
+    {
+        "keys": ("nha tho con ga", "nha tho chinh toa da nang", "da nang cathedral", "pink church"),
+        "id": "ext-nha-tho-con-ga",
+        "name": "Nhà Thờ Chính Tòa Đà Nẵng (Nhà Thờ Con Gà)",
+        "category": "Di tích lịch sử và văn hóa",
+        "city": "Đà Nẵng",
+        "lat": 16.0664,
+        "lng": 108.2233,
+        "address": "156 Trần Phú, Hải Châu 1, Hải Châu, Đà Nẵng",
+        "image_url": "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
+        "green_score": 89,
+        "rating": 4.5,
+        "estimated_cost": 0.0,
+    },
+    {
+        "keys": ("bien my khe", "bai bien my khe", "my khe beach"),
+        "id": "ext-bien-my-khe",
+        "name": "Bãi Biển Mỹ Khê",
+        "category": "Cảnh quan và thiên nhiên",
+        "city": "Đà Nẵng",
+        "lat": 16.0598,
+        "lng": 108.2464,
+        "address": "Đường Võ Nguyên Giáp, Phước Mỹ, Sơn Trà, Đà Nẵng",
+        "image_url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80",
+        "green_score": 92,
+        "rating": 4.7,
+        "estimated_cost": 0.0,
+    },
+    {
+        "keys": ("chua linh ung", "linh ung pagoda"),
+        "id": "ext-chua-linh-ung-son-tra",
+        "name": "Chùa Linh Ứng Bán Đảo Sơn Trà",
+        "category": "Tâm linh và chùa thiền",
+        "city": "Đà Nẵng",
+        "lat": 16.0996,
+        "lng": 108.2775,
+        "address": "Hoàng Sa, Thọ Quang, Sơn Trà, Đà Nẵng",
+        "image_url": "https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80",
+        "green_score": 93,
+        "rating": 4.8,
+        "estimated_cost": 0.0,
+    },
+    {
+        "keys": ("sala danang", "sala danang beach hotel"),
+        "id": "ext-sala-danang-hotel",
+        "name": "Sala Danang Beach Hotel",
+        "category": "Lưu trú & nghỉ dưỡng",
+        "city": "Đà Nẵng",
+        "lat": 16.0609,
+        "lng": 108.2454,
+        "address": "36-38 Lâm Hoành, Phước Mỹ, Sơn Trà, Đà Nẵng",
+        "image_url": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop&q=80",
+        "green_score": 84,
+        "rating": 4.7,
+        "estimated_cost": 1600000.0,
+    },
 ]
 
 _FOLLOWUP_SOURCE_MARKERS = (
     "video",
     "viudeo",
     "youtube",
+    "tiktok",
     "clip",
     "link",
     "duong dan",
@@ -291,48 +420,113 @@ def _extract_chapter_lines(description: str) -> list[str]:
     return chapters[:40]
 
 
-def _extract_youtube_caption_snippet(watch_html: str) -> str:
-    """Best-effort fetch of public YouTube captions (vi/en) if embedded in watch page player JSON."""
-    idx = watch_html.find('"captionTracks":[')
-    if idx == -1:
-        return ""
-    end = watch_html.find("]", idx)
-    if end == -1 or end - idx > 20_000:
-        return ""
-    try:
-        tracks = json.loads(watch_html[idx + len('"captionTracks":') : end + 1])
-    except Exception:
-        return ""
-    if not isinstance(tracks, list) or not tracks:
-        return ""
+def _parse_timedtext_xml_to_highlights(xml_text: str, max_chars: int = 3400) -> str:
+    """Parse YouTube timedtext XML (<p t="ms">...</p>) and keep place-bearing spoken segments + periodic samples."""
+    segments: list[tuple[int, str]] = []
+    for match in _CAPTION_P_RE.finditer(xml_text):
+        t_sec = int(match.group(1)) // 1000
+        cleaned = html.unescape(_HTML_TAG_RE.sub(" ", match.group(2)))
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        if cleaned and cleaned not in ("[âm nhạc]", "[music]"):
+            segments.append((t_sec, cleaned))
 
-    chosen_url = ""
-    for lang in ("vi", "en"):
-        for track in tracks:
-            if isinstance(track, dict) and str(track.get("languageCode", "")).lower().startswith(lang):
-                chosen_url = str(track.get("baseUrl") or "")
-                if chosen_url:
-                    break
-        if chosen_url:
-            break
-    if not chosen_url and isinstance(tracks[0], dict):
-        chosen_url = str(tracks[0].get("baseUrl") or "")
-    if not chosen_url or not is_safe_public_url(chosen_url):
-        return ""
+    if not segments:
+        plain = html.unescape(_HTML_TAG_RE.sub(" ", xml_text))
+        return re.sub(r"\s+", " ", plain).strip()[:max_chars]
 
+    # Group into ~15-second spoken blocks for clean context
+    blocks: list[tuple[int, str]] = []
+    cur_start = segments[0][0]
+    cur_words: list[str] = []
+    for t_sec, txt in segments:
+        if t_sec - cur_start >= 16 and cur_words:
+            blocks.append((cur_start, " ".join(cur_words)))
+            cur_start = t_sec
+            cur_words = [txt]
+        else:
+            cur_words.append(txt)
+    if cur_words:
+        blocks.append((cur_start, " ".join(cur_words)))
+
+    # Prioritize blocks that mention travel/place words so long videos never miss spoken venues
+    selected: list[str] = []
+    used_indices: set[int] = set()
+    total_len = 0
+
+    for idx, (t_sec, text_block) in enumerate(blocks):
+        folded = strip_vietnamese_accents(text_block).lower()
+        if any(hint in folded for hint in _TRANSCRIPT_PLACE_HINTS):
+            formatted = f"[{t_sec // 60:02d}:{t_sec % 60:02d}] {text_block}"
+            if total_len + len(formatted) + 1 <= max_chars:
+                selected.append(formatted)
+                used_indices.add(idx)
+                total_len += len(formatted) + 1
+
+    # Fill remaining budget with evenly spaced blocks
+    if total_len < max_chars - 200 and blocks:
+        step = max(1, len(blocks) // 12)
+        for idx in range(0, len(blocks), step):
+            if idx in used_indices:
+                continue
+            t_sec, text_block = blocks[idx]
+            formatted = f"[{t_sec // 60:02d}:{t_sec % 60:02d}] {text_block}"
+            if total_len + len(formatted) + 1 > max_chars:
+                break
+            selected.append(formatted)
+            total_len += len(formatted) + 1
+
+    selected.sort()
+    return "\n".join(selected)[:max_chars]
+
+
+def _fetch_youtube_innertube_transcript(video_id: str) -> str:
+    """Fetch public Vietnamese (or English) YouTube captions via Innertube Android player (zero extra deps)."""
     try:
-        resp = httpx.get(chosen_url, headers=_BROWSER_HEADERS, timeout=2.5)
-        if resp.status_code != 200 or not resp.text:
+        resp = httpx.post(
+            "https://www.youtube.com/youtubei/v1/player",
+            json={
+                "context": {"client": {"clientName": "ANDROID", "clientVersion": "20.10.38"}},
+                "videoId": video_id,
+            },
+            headers={"User-Agent": "com.google.android.youtube/20.10.38 (Linux; U; Android 14)"},
+            timeout=5.0,
+        )
+        if resp.status_code != 200:
             return ""
-        plain = _HTML_TAG_RE.sub(" ", html.unescape(resp.text))
-        plain = re.sub(r"\s+", " ", plain).strip()
-        return plain[:2200]
-    except Exception:
+        data = resp.json()
+        tracks = (
+            data.get("captions", {})
+            .get("playerCaptionsTracklistRenderer", {})
+            .get("captionTracks", [])
+        )
+        if not isinstance(tracks, list) or not tracks:
+            return ""
+
+        chosen_url = ""
+        for lang in ("vi", "en"):
+            for track in tracks:
+                if isinstance(track, dict) and str(track.get("languageCode", "")).lower().startswith(lang):
+                    chosen_url = str(track.get("baseUrl") or "")
+                    if chosen_url:
+                        break
+            if chosen_url:
+                break
+        if not chosen_url and isinstance(tracks[0], dict):
+            chosen_url = str(tracks[0].get("baseUrl") or "")
+        if not chosen_url or not is_safe_public_url(chosen_url):
+            return ""
+
+        cap_resp = httpx.get(chosen_url, timeout=4.5)
+        if cap_resp.status_code != 200 or not cap_resp.text:
+            return ""
+        return _parse_timedtext_xml_to_highlights(cap_resp.text)
+    except Exception as exc:
+        logger.debug("Innertube transcript fetch skipped for %s: %s", video_id, exc)
         return ""
 
 
 def _extract_youtube_watch_details(video_id: str) -> dict[str, str]:
-    """Fetch YouTube watch HTML to extract full shortDescription, chapter timestamps, and optional captions."""
+    """Fetch YouTube watch HTML (shortDescription + chapters) and Innertube Android Vietnamese transcript."""
     watch_url = f"https://www.youtube.com/watch?v={video_id}"
     details = {
         "title": "",
@@ -344,35 +538,34 @@ def _extract_youtube_watch_details(video_id: str) -> dict[str, str]:
     }
     try:
         resp = httpx.get(watch_url, headers=_BROWSER_HEADERS, timeout=5.0, follow_redirects=True)
-        if resp.status_code != 200 or not resp.text:
-            return details
-        body = resp.text
-        short_desc = _extract_json_string_field(body, "shortDescription").strip()
-        watch_title = _extract_json_string_field(body, "title").strip()
-        if watch_title:
-            details["title"] = watch_title[:240]
-        if short_desc:
-            details["description"] = short_desc[:3500]
-            chapters = _extract_chapter_lines(short_desc)
-            if chapters:
-                details["chapters"] = "\n".join(chapters)
-            details["metadata_source"] = "description_and_chapters" if chapters else "description_only"
-
-        # Best-effort public captions fetch (fast timeout, never blocks response)
-        captions = _extract_youtube_caption_snippet(body)
-        if captions:
-            details["transcript"] = captions
-            details["metadata_source"] = (
-                "captions_and_description" if short_desc else "captions_only"
-            )
+        if resp.status_code == 200 and resp.text:
+            body = resp.text
+            short_desc = _extract_json_string_field(body, "shortDescription").strip()
+            watch_title = _extract_json_string_field(body, "title").strip()
+            if watch_title:
+                details["title"] = watch_title[:240]
+            if short_desc:
+                details["description"] = short_desc[:3500]
+                chapters = _extract_chapter_lines(short_desc)
+                if chapters:
+                    details["chapters"] = "\n".join(chapters)
+                details["metadata_source"] = "description_and_chapters" if chapters else "description_only"
     except Exception as exc:
         logger.debug("YouTube watch detail extraction skipped for %s: %s", video_id, exc)
+
+    # Layer 2: Fetch spoken Vietnamese/English transcript via Innertube Android player
+    transcript = _fetch_youtube_innertube_transcript(video_id)
+    if transcript:
+        details["transcript"] = transcript
+        details["metadata_source"] = (
+            "transcript_and_description" if details["description"] else "transcript_only"
+        )
     return details
 
 
 def _extract_html_metadata(raw_html: str) -> dict[str, str]:
-    """Parse title, og:title, og:description, and plain text snippet from HTML."""
-    meta: dict[str, str] = {"title": "", "description": "", "snippet": ""}
+    """Parse title, og:title, og:description, og:image, and plain text snippet from HTML."""
+    meta: dict[str, str] = {"title": "", "description": "", "snippet": "", "thumbnail_url": ""}
     title_match = _TITLE_RE.search(raw_html)
     if title_match:
         meta["title"] = html.unescape(re.sub(r"\s+", " ", title_match.group(1))).strip()[:240]
@@ -391,16 +584,40 @@ def _extract_html_metadata(raw_html: str) -> dict[str, str]:
             meta["title"] = content[:240]
         elif prop in ("og:description", "description", "twitter:description") and len(content) > len(meta["description"]):
             meta["description"] = content[:600]
+        elif prop in ("og:image", "twitter:image") and not meta["thumbnail_url"] and content.startswith("http"):
+            meta["thumbnail_url"] = content[:500]
 
     cleaned = _SCRIPT_STYLE_RE.sub(" ", raw_html[:120_000])
     cleaned = _HTML_TAG_RE.sub(" ", cleaned)
     cleaned = html.unescape(re.sub(r"\s+", " ", cleaned)).strip()
-    meta["snippet"] = cleaned[:1400]
+    meta["snippet"] = cleaned[:1600]
     return meta
 
 
+def _fetch_image_as_inline_data(image_url: str) -> dict[str, str] | None:
+    """Safely download a public thumbnail/cover image (<= 2 MB) for Gemini Vision OCR (e.g. TikTok poster)."""
+    if not image_url or not is_safe_public_url(image_url):
+        return None
+    try:
+        resp = httpx.get(image_url, headers=_BROWSER_HEADERS, timeout=4.0, follow_redirects=True)
+        if resp.status_code != 200 or not resp.content or len(resp.content) > 2_200_000:
+            return None
+        ctype = (resp.headers.get("content-type") or "image/jpeg").split(";")[0].strip().lower()
+        if ctype == "image/jpg":
+            ctype = "image/jpeg"
+        if ctype not in ("image/jpeg", "image/png", "image/webp", "image/gif"):
+            return None
+        return {
+            "mime_type": ctype,
+            "data": base64.b64encode(resp.content).decode("ascii"),
+        }
+    except Exception as exc:
+        logger.debug("Thumbnail image download skipped: %s", exc)
+        return None
+
+
 def fetch_link_metadata(url: str) -> dict[str, str]:
-    """Step 1: Fetch public page metadata, YouTube shortDescription + chapters safely with SSRF guards."""
+    """Step 1: Fetch public page metadata, YouTube shortDescription/chapters/transcript, or TikTok cover."""
     platform = detect_link_platform(url)
     parsed = urlparse(url)
     slug_hint = unquote(f"{parsed.path} {parsed.query}").replace("-", " ").replace("_", " ").replace("/", " ").strip()
@@ -420,7 +637,6 @@ def fetch_link_metadata(url: str) -> dict[str, str]:
     if not is_safe_public_url(url):
         return result
 
-    # YouTube: combine oEmbed (fast title/author/thumbnail) + watch page (full shortDescription & chapters)
     if platform == "YouTube":
         video_id = extract_youtube_video_id(url)
         try:
@@ -456,35 +672,34 @@ def fetch_link_metadata(url: str) -> dict[str, str]:
 
         if not result["description"] and result["author"]:
             result["description"] = f"Video YouTube bởi {result['author']}"
-        if result["title"] or result["description"]:
+        if result["title"] or result["description"] or result["transcript"]:
             return result
 
-    # TikTok oEmbed
     if platform == "TikTok":
         try:
             oe = httpx.get(
                 "https://www.tiktok.com/oembed",
                 params={"url": url},
                 headers=_BROWSER_HEADERS,
-                timeout=3.5,
+                timeout=4.0,
             )
             if oe.status_code == 200:
                 oe_json = oe.json()
                 result["title"] = str(oe_json.get("title") or "")[:240]
                 result["author"] = str(oe_json.get("author_name") or "")[:120]
                 result["thumbnail_url"] = str(oe_json.get("thumbnail_url") or "")
-                result["description"] = f"Video TikTok bởi {result['author']}".strip()
-                result["metadata_source"] = "title_only"
-                if result["title"]:
+                result["description"] = result["title"] or f"Video TikTok bởi {result['author']}".strip()
+                result["metadata_source"] = "tiktok_oembed_and_cover" if result["thumbnail_url"] else "title_only"
+                if result["title"] or result["thumbnail_url"]:
                     return result
         except Exception as exc:
             logger.debug("TikTok oEmbed lookup skipped: %s", exc)
 
-    # Generic HTML pages / blogs / articles with manual SSRF-safe redirect checks
+    # Generic HTML pages / articles / blogs with manual SSRF-safe redirect checks
     current_url = url
     try:
         for _ in range(3):
-            resp = httpx.get(current_url, headers=_BROWSER_HEADERS, timeout=4.0, follow_redirects=False)
+            resp = httpx.get(current_url, headers=_BROWSER_HEADERS, timeout=4.5, follow_redirects=False)
             if resp.status_code in (301, 302, 303, 307, 308) and resp.headers.get("location"):
                 next_url = str(resp.url.join(resp.headers["location"]))
                 if not is_safe_public_url(next_url):
@@ -497,6 +712,8 @@ def fetch_link_metadata(url: str) -> dict[str, str]:
                 result["description"] = parsed_meta["description"] or result["description"]
                 if parsed_meta["snippet"]:
                     result["snippet"] = parsed_meta["snippet"]
+                if parsed_meta["thumbnail_url"] and not result["thumbnail_url"]:
+                    result["thumbnail_url"] = parsed_meta["thumbnail_url"]
                 result["metadata_source"] = "html_page"
             break
     except Exception as exc:
@@ -521,46 +738,55 @@ def _analyze_attachment_with_gemini(
     trip_context: TripContextPayload,
     link_meta: dict[str, str] | None,
 ) -> dict[str, Any] | None:
-    """Step 2: Gemini 2.5 Flash NER + direct user-intent answer synthesis."""
+    """Step 2: Gemini 2.5 Flash Multimodal NER (Text + Transcript + Thumbnail/Photo Vision OCR)."""
     settings = get_settings()
     if not settings.gemini_configured:
         return None
 
-    system_prompt = """Bạn là **GreenTrip AI** — trợ lý du lịch đa phương thức chuẩn Mindtrip AI chuyên sâu khu vực Đà Nẵng, Huế và Hội An.
-Nhiệm vụ của bạn gồm 2 việc đồng thời:
-(1) Nhận diện thực thể địa điểm (NER) từ metadata video YouTube / bài viết / ảnh / hóa đơn, phân biệt rõ:
-    - Địa điểm CỤ THỂ có tên riêng (VD: KDL Núi Thần Tài, Nhà Hàng Muối Biển, Cầu Rồng, Phố Cổ Hội An, Vinpearl Nam Hội An).
-    - Cụm từ CHUNG CHUNG chưa rõ tên cụ thể (VD: "Khách Sạn Đà Nẵng" — ghi chú rõ là mô tả không nêu tên khách sạn cụ thể).
-(2) Viết `direct_answer_markdown` bằng tiếng Việt trả lời THẲNG và CHÍNH XÁC yêu cầu thật của người dùng (`USER_QUESTION`):
-    - Nếu nguồn là video YouTube và `METADATA_SOURCE` là `description_and_chapters` hoặc `description_only`: mở đầu thẳng thắn, trung thực giống Mindtrip AI (VD: "Mình có thể giúp bạn liệt kê các địa điểm xuất hiện trong video. Tuy nhiên, hiện mình chỉ xem được phần mô tả + các mốc thời gian (chưa có phụ đề chi tiết từng câu), nên danh sách dưới đây là toàn bộ địa điểm được nêu rõ trong mô tả video:").
-    - Nếu `METADATA_SOURCE` là `title_only`: nói rõ chỉ đọc được tiêu đề video nên mới thấy các địa điểm trên tiêu đề.
-    - Trình bày danh sách đánh số `1.`, `2.`, `3.` kèm icon loại địa điểm (`📍` khu vực, `⭐` khu du lịch/tham quan, `🏨` khách sạn, `🍴` nhà hàng/quán ăn, `🌉` cầu/cảnh quan, `🏛️` di tích/phố cổ, `🏖️` biển/resort) và **IN ĐẬM `**Tên địa điểm**`** cho mỗi tên riêng để giao diện gắn liên kết trực tiếp lên bản đồ.
-    - TUYỆT ĐỐI KHÔNG tự bịa thêm địa điểm không có trong dữ liệu nguồn, và KHÔNG tự bịa ràng buộc không có thật (như "đi xe máy một mình" hay "không phù hợp đi độc hành").
-    - Kết thúc bằng 1 câu hỏi chốt mở A/B ngắn gọn, hữu ích theo đúng ngữ cảnh người dùng hỏi.
+    system_prompt = """Bạn là **GreenTrip AI** — chuyên gia cố vấn du lịch đa phương thức chuẩn Mindtrip AI tại Đà Nẵng, Huế và Hội An.
+Hãy phân tích dữ liệu đính kèm (metadata video, mô tả/mốc thời gian, phụ đề lời thoại tiếng Việt, ảnh bìa TikTok/video, ảnh chụp địa điểm hoặc hóa đơn đặt chỗ) và trả về DUY NHẤT 1 JSON hợp lệ.
 
-Trả về DUY NHẤT 1 JSON hợp lệ theo schema:
+QUY TẮC BẮT BUỘC:
+1. **Kiểm tra khớp nội dung (Semantic Content Guard)**:
+   - Nếu nguồn là link bài viết (`html_page`) mà nội dung tải về KHÔNG liên quan tới chủ đề du lịch / thành phố người dùng hỏi (VD: bài báo Showbiz/thể thao thay vì du lịch Huế): mở đầu thẳng thắn báo rõ nội dung tải về không khớp và gợi ý gửi lại link đúng hoặc chụp màn hình bài viết; sau đó vẫn cung cấp danh sách gợi ý du lịch xanh chất lượng cho điểm đến người dùng đang hỏi (không bỏ rơi người dùng).
+2. **Đọc đa tầng & Trung thực nguồn dữ liệu**:
+   - Nếu có `VIDEO_CAPTIONS_TRANSCRIPT`: đọc kỹ cả lời thoại (chú ý sửa lỗi chính tả nhận dạng giọng nói, VD "Núi Thành Tài" -> "Núi Thần Tài", "chùa Linh Ứng", "biển Mỹ Khê") để tìm thêm địa điểm reviewer nói bằng miệng mà mô tả bỏ sót.
+   - Nếu có ảnh bìa TikTok/video đính kèm (`COVER_IMAGE_VISION_OCR = true`): đọc toàn bộ chữ / bảng giá / danh sách địa điểm in trên khung hình ảnh bìa!
+   - Nói rõ ngắn gọn mình đọc được từ nguồn nào (mô tả + mốc giờ + lời thoại / ảnh khung hình / tiêu đề).
+3. **Bản sắc GreenTrip AI (Không ghi đè, không bịa ràng buộc)**:
+   - Luôn liệt kê **ĐẦY ĐỦ 100% địa điểm có trong video/ảnh/bài viết TRƯỚC** bằng danh sách đánh số `1.`, `2.`, `3.` kèm icon (`📍`, `⭐`, `🏨`, `🍴`, `🌉`, `🏛️`, `🏖️`) và **IN ĐẬM `**Tên địa điểm**`** để frontend gắn liên kết bản đồ.
+   - Phân biệt rõ tên riêng cụ thể vs mục chung chung (VD: `**Khách Sạn Đà Nẵng** *(mô tả không nêu tên khách sạn cụ thể)*`).
+   - TUYỆT ĐỐI KHÔNG tự bịa ràng buộc "đi xe máy một mình" hay tự ý xóa bớt địa điểm trong video.
+   - Sau danh sách chính, thêm 1 đoạn ngắn **🌱 Gợi ý xanh & Tối ưu lộ trình từ GreenTrip AI** (1-2 câu thực tế về gom cụm / phương tiện xanh) và kết thúc bằng 1 câu hỏi chốt A/B.
+4. **Với ảnh địa điểm (`file`)**: Chốt thẳng tên địa danh ngay câu đầu tiên, ghi tên chuẩn vào `anchor_place_name`, sau đó gợi ý trải nghiệm & quán ăn gần đó.
+
+JSON SCHEMA:
 {
-  "direct_answer_markdown": "Câu trả lời đầy đủ bằng tiếng Việt (markdown, có danh sách đánh số và câu hỏi chốt A/B)",
-  "summary": "Tóm tắt 1-2 câu về nguồn đính kèm",
+  "direct_answer_markdown": "Câu trả lời tiếng Việt hoàn chỉnh (markdown, danh sách đánh số, mục Gợi ý xanh ngắn, câu hỏi chốt A/B)",
+  "summary": "Tóm tắt 1-2 câu về nội dung đính kèm",
+  "content_mismatch": false,
+  "anchor_place_name": "Tên địa danh chính nếu là ảnh địa điểm hoặc khách sạn trên hóa đơn, ngược lại null",
   "detected_city": "Đà Nẵng" | "Huế" | "Đà Nẵng & Huế" | null,
   "extracted_places": [
     {
-      "name": "Tên địa điểm chuẩn",
-      "category": "attraction" | "restaurant" | "hotel" | "area" | "heritage" | "beach",
+      "name": "Tên địa điểm chuẩn tiếng Việt",
+      "place_type": "attraction" | "restaurant" | "hotel" | "heritage" | "beach" | "area",
       "city": "Đà Nẵng" | "Huế" | "Hội An",
-      "is_specific": true | false,
-      "timestamp": "11:03 hoặc null",
-      "note": "Ghi chú ngắn (nếu chung chung thì nêu rõ mô tả không ghi tên cụ thể)"
+      "is_specific": true,
+      "timestamp": "01:30 hoặc null",
+      "context": "Tóm tắt ngắn 1 câu reviewer nói gì hoặc điểm nổi bật"
     }
   ],
-  "place_keywords": ["tối đa 10 tên địa điểm cụ thể để khớp DB và bản đồ"],
+  "place_keywords": ["tối đa 12 tên địa điểm cụ thể để khớp DB và ghim bản đồ"],
   "receipt_info": {
     "booking_type": "hotel" | "train" | "flight" | "restaurant" | "ticket" | null,
     "title": "Tên khách sạn / chuyến tàu / nhà hàng / vé tham quan",
-    "date_str": "YYYY-MM-DD hoặc chuỗi ngày ngắn gọn nếu thấy trên vé",
-    "time_str": "HH:MM nếu thấy trên vé",
+    "date_str": "YYYY-MM-DD hoặc ngày nhận phòng/khởi hành",
+    "checkout_str": "YYYY-MM-DD hoặc ngày trả phòng nếu là khách sạn, ngược lại null",
+    "time_str": "HH:MM",
     "city": "Đà Nẵng" | "Huế" | null,
-    "estimated_cost_vnd": integer hoặc null
+    "estimated_cost_vnd": integer hoặc null,
+    "confirmation_code": "Mã đặt chỗ nếu có, ngược lại null"
   }
 }
 Nếu không phải hóa đơn/vé đặt chỗ, đặt `receipt_info = null`. Chỉ trả JSON thuần."""
@@ -573,6 +799,8 @@ Nếu không phải hóa đơn/vé đặt chỗ, đặt `receipt_info = null`. C
     ]
     if attachment.file_name:
         text_context_lines.append(f"FILE_NAME: {attachment.file_name}")
+
+    cover_inline: dict[str, str] | None = None
     if link_meta:
         text_context_lines.append(f"PLATFORM: {link_meta.get('platform')}")
         text_context_lines.append(f"URL: {link_meta.get('url')}")
@@ -584,15 +812,37 @@ Nếu không phải hóa đơn/vé đặt chỗ, đặt `receipt_info = null`. C
         if link_meta.get("chapters"):
             text_context_lines.append(f"VIDEO_CHAPTERS:\n{link_meta['chapters']}")
         if link_meta.get("description"):
-            text_context_lines.append(f"PAGE_DESCRIPTION:\n{link_meta['description'][:3200]}")
+            text_context_lines.append(f"PAGE_DESCRIPTION:\n{link_meta['description'][:3000]}")
         if link_meta.get("transcript"):
-            text_context_lines.append(f"VIDEO_CAPTIONS_SNIPPET:\n{link_meta['transcript'][:2000]}")
-        elif link_meta.get("snippet") and not link_meta.get("description"):
-            text_context_lines.append(f"PAGE_SNIPPET:\n{link_meta['snippet'][:1000]}")
+            text_context_lines.append(f"VIDEO_CAPTIONS_TRANSCRIPT:\n{link_meta['transcript'][:3400]}")
+        elif link_meta.get("snippet"):
+            text_context_lines.append(f"PAGE_SNIPPET:\n{link_meta['snippet'][:1400]}")
+
+        # TikTok / sparse social post Vision OCR: attach cover thumbnail image so Gemini reads text inside video frame!
+        needs_cover_ocr = (
+            bool(link_meta.get("thumbnail_url"))
+            and not link_meta.get("chapters")
+            and not link_meta.get("transcript")
+            and (
+                link_meta.get("platform") == "TikTok"
+                or len(link_meta.get("description") or "") < 200
+            )
+        )
+        if needs_cover_ocr:
+            cover_inline = _fetch_image_as_inline_data(link_meta["thumbnail_url"])
+            if cover_inline:
+                text_context_lines.append(
+                    "COVER_IMAGE_VISION_OCR: true — Hãy đọc kỹ toàn bộ chữ, bảng giá, danh sách địa điểm hiển thị trên hình ảnh đính kèm của video này."
+                )
+                link_meta["metadata_source"] = "cover_image_ocr"
+
     if attachment.extracted_text:
         text_context_lines.append(f"EXTRACTED_TEXT:\n{attachment.extracted_text[:2500]}")
 
     parts.append({"text": "\n".join(text_context_lines)})
+
+    if cover_inline is not None:
+        parts.append({"inline_data": cover_inline})
 
     if attachment.content_base64:
         pure_b64, detected_mime = _strip_data_url_prefix(attachment.content_base64)
@@ -610,25 +860,38 @@ Nếu không phải hóa đơn/vé đặt chỗ, đặt `receipt_info = null`. C
                 pass
 
     try:
-        url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
-        )
         req_payload = {
             "system_instruction": {"parts": [{"text": system_prompt}]},
             "contents": [{"role": "user", "parts": parts}],
             "generationConfig": {
                 "temperature": 0.15,
-                "maxOutputTokens": 1400,
+                "maxOutputTokens": 1800,
                 "responseMimeType": "application/json",
             },
         }
-        resp = httpx.post(url, json=req_payload, timeout=14.0)
-        if resp.status_code in (429, 503):
-            time.sleep(0.6)
-            resp = httpx.post(url, json=req_payload, timeout=14.0)
-        if resp.status_code != 200:
-            logger.warning("Gemini attachment analysis returned HTTP %s", resp.status_code)
+        candidate_models = [settings.GEMINI_MODEL, settings.GEMINI_MODEL]
+        for fallback_model in ("gemini-3.5-flash", "gemini-2.5-flash"):
+            if fallback_model not in candidate_models:
+                candidate_models.append(fallback_model)
+
+        resp: httpx.Response | None = None
+        for idx, model_name in enumerate(candidate_models):
+            url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
+            )
+            resp = httpx.post(url, json=req_payload, timeout=16.0)
+            if resp.status_code == 200:
+                break
+            if resp.status_code in (404, 429, 503):
+                logger.warning("Gemini model %s returned HTTP %s, retrying...", model_name, resp.status_code)
+                if idx < len(candidate_models) - 1:
+                    time.sleep(0.9 if resp.status_code in (429, 503) else 0.2)
+                    continue
+            break
+
+        if resp is None or resp.status_code != 200:
+            logger.warning("Gemini attachment analysis returned HTTP %s", resp.status_code if resp else "none")
             return None
         data = resp.json()
         candidates = data.get("candidates") or []
@@ -652,14 +915,15 @@ def _detect_city_from_text(text: str, default_destination: str) -> str:
         k in norm
         for k in (
             "da nang", "danang", "my khe", "son tra", "cau rong", "ba na",
-            "ngu hanh son", "hai chau", "han river", "nui than tai", "muoi bien", "hoi an",
+            "ngu hanh son", "hai chau", "han river", "nui than tai", "muoi bien",
+            "hoi an", "mikazuki", "cu lao cham", "sala danang",
         )
     )
     has_hue = any(
         k in norm
         for k in (
             "hue", "dai noi", "thien mu", "song huong", "khai dinh",
-            "tu duc", "dong ba", "co do", "bun bo hue",
+            "tu duc", "dong ba", "co do", "bun bo hue", "minh mang", "thuy xuan",
         )
     )
     if has_dn and has_hue:
@@ -684,7 +948,7 @@ def _extract_fallback_keywords(combined_text: str) -> list[str]:
     for extra in ("bún bò", "mì quảng", "bánh xèo", "cà phê", "chay", "biển", "chùa", "lăng", "hải sản"):
         if strip_vietnamese_accents(extra).lower() in norm and extra not in found:
             found.append(extra)
-    return found[:10]
+    return found[:12]
 
 
 def _extract_fallback_receipt_info(combined_text: str, file_name: str | None, detected_city: str) -> dict[str, Any]:
@@ -709,6 +973,7 @@ def _extract_fallback_receipt_info(combined_text: str, file_name: str | None, de
     time_match = re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", raw)
     date_match = re.search(r"\b(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)\b", raw)
     cost_match = re.search(r"(\d{1,3}(?:[.,]\d{3})+|\d{5,8})\s*(?:vnd|đ|d\b)", norm)
+    code_match = re.search(r"\b([A-Z]{2,4}[-_]\d{4}[-_]\d{4,8}|[A-Z0-9]{6,10})\b", raw)
     cost_val: int | None = None
     if cost_match:
         digits = re.sub(r"[^\d]", "", cost_match.group(1))
@@ -719,9 +984,11 @@ def _extract_fallback_receipt_info(combined_text: str, file_name: str | None, de
         "booking_type": booking_type,
         "title": default_title,
         "date_str": date_match.group(1) if date_match else None,
+        "checkout_str": None,
         "time_str": f"{int(time_match.group(1)):02d}:{time_match.group(2)}" if time_match else ("14:00" if booking_type == "hotel" else "09:00"),
         "city": "Huế" if detected_city == "Huế" else "Đà Nẵng",
         "estimated_cost_vnd": cost_val,
+        "confirmation_code": code_match.group(1) if code_match else None,
     }
 
 
@@ -736,10 +1003,87 @@ def _normalize_city_display(raw_city: str) -> str:
     return raw_city or "Đà Nẵng"
 
 
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lng2 - lng1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def _geocode_central_vietnam_place(place_name: str, city_hint: str = "Đà Nẵng") -> dict[str, Any] | None:
+    """Step 3c: Dynamic geocoding fallback for newly mentioned venues not yet in Supabase DB.
+    Uses Google Places Text Search if GOOGLE_PLACES_API_KEY is configured, else free OSM Nominatim bounded to Central Vietnam."""
+    query = f"{place_name}, {city_hint}, Vietnam".strip(", ")
+    settings = get_settings()
+
+    # Optional Google Places Text Search when API key is provided
+    if settings.GOOGLE_PLACES_API_KEY.strip():
+        try:
+            resp = httpx.get(
+                "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                params={"query": query, "language": "vi", "key": settings.GOOGLE_PLACES_API_KEY.strip()},
+                timeout=3.0,
+            )
+            if resp.status_code == 200:
+                results = resp.json().get("results") or []
+                if results:
+                    top = results[0]
+                    loc = (top.get("geometry") or {}).get("location") or {}
+                    lat, lng = loc.get("lat"), loc.get("lng")
+                    if isinstance(lat, (int, float)) and isinstance(lng, (int, float)) and 15.2 <= lat <= 17.0 and 107.0 <= lng <= 109.0:
+                        return {
+                            "name": str(top.get("name") or place_name),
+                            "address": str(top.get("formatted_address") or city_hint),
+                            "lat": float(lat),
+                            "lng": float(lng),
+                            "rating": float(top.get("rating") or 4.5),
+                            "source": "google_places",
+                        }
+        except Exception as exc:
+            logger.debug("Google Places lookup skipped for %s: %s", place_name, exc)
+
+    # Free OpenStreetMap Nominatim bounded to Da Nang - Hue - Quang Nam
+    try:
+        resp = httpx.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={
+                "q": query,
+                "format": "jsonv2",
+                "limit": 1,
+                "countrycodes": "vn",
+                "viewbox": "107.0,16.9,108.9,15.3",
+                "bounded": 1,
+            },
+            headers={"User-Agent": "GreenTripAI/1.0 (+https://greentrip.vn)"},
+            timeout=2.5,
+        )
+        if resp.status_code == 200:
+            items = resp.json()
+            if isinstance(items, list) and items:
+                top = items[0]
+                lat = float(top["lat"])
+                lng = float(top["lon"])
+                if 15.2 <= lat <= 17.0 and 107.0 <= lng <= 109.0:
+                    return {
+                        "name": place_name,
+                        "address": str(top.get("display_name") or city_hint)[:160],
+                        "lat": lat,
+                        "lng": lng,
+                        "rating": 4.6,
+                        "source": "geocoded",
+                    }
+    except Exception as exc:
+        logger.debug("Nominatim geocoding skipped for %s: %s", place_name, exc)
+    return None
+
+
 def _row_to_suggested_poi(
     row: tuple[Any, ...],
     constraints: list[str],
     idx: int,
+    distance_km: float | None = None,
 ) -> CopilotSuggestedPoiItem:
     poi_id, name, cat, sub_cat, city, addr, _, est_cost, green_score, rating, lat, lng, image_url = row
     display_city = _normalize_city_display(str(city))
@@ -766,6 +1110,7 @@ def _row_to_suggested_poi(
         swap_reason=kg_reason,
         kg_explanation=kg_reason,
         eco_practices=eco_practices,
+        distance_info=f"Cách ~{distance_km:.1f} km" if distance_km is not None else None,
         estimated_cost=float(est_cost) if est_cost is not None else None,
     )
 
@@ -802,9 +1147,12 @@ def _query_matching_pois(
     keywords: list[str],
     target_city: str,
     constraints: list[str],
-    limit: int = 5,
+    limit: int = 8,
+    anchor_place_name: str | None = None,
+    enable_dynamic_geocoding: bool = True,
 ) -> list[CopilotSuggestedPoiItem]:
-    """Step 3: 1-to-1 Entity Linking per extracted place (PostGIS public.pois first, then verified geo-anchors)."""
+    """Step 3: 1-to-1 Entity Linking per extracted place (PostGIS public.pois -> Geo-Anchors -> Nominatim/Google Places),
+    plus Haversine radius-aware nearby ranking when an uploaded photo identifies an anchor landmark."""
     city_codes = ["DANANG", "HUE"]
     if target_city == "Đà Nẵng":
         city_codes = ["DANANG"]
@@ -853,16 +1201,24 @@ def _query_matching_pois(
     results: list[CopilotSuggestedPoiItem] = []
     used_ids: set[str] = set()
     used_names: set[str] = set()
+    geocode_budget = 2 if enable_dynamic_geocoding else 0
 
-    # Pass 1: Resolve 1 exact/strong entity per extracted keyword in video order
-    for kw_raw in keywords:
+    ordered_keywords: list[str] = []
+    if anchor_place_name and anchor_place_name.strip():
+        ordered_keywords.append(anchor_place_name.strip())
+    for kw in keywords:
+        if kw and kw not in ordered_keywords:
+            ordered_keywords.append(kw)
+
+    # Pass 1: Resolve 1 exact/strong entity per extracted keyword in video/photo order
+    for kw_raw in ordered_keywords:
         if len(results) >= limit:
             break
         kw = strip_vietnamese_accents(kw_raw or "").lower().strip()
-        if len(kw) < 3:
+        if len(kw) < 3 or kw in ("da nang", "hue", "hoi an", "viet nam", "pho da nang", "khach san da nang"):
             continue
 
-        # 1a. Strong DB POI name match (prevents "Cầu Rồng" from matching "Sena homestay Cầu Rồng")
+        # 1a. Strong DB POI name match
         best_db: tuple[float, str, tuple[Any, ...]] | None = None
         for name_norm, _, row in prepared_rows:
             poi_id = str(row[0])
@@ -885,7 +1241,8 @@ def _query_matching_pois(
             used_names.add(name_norm)
             continue
 
-        # 1b. Verified Central Vietnam geo-anchor match (e.g. Núi Thần Tài, Nhà Hàng Muối Biển, Phố Cổ Hội An, Vinpearl)
+        # 1b. Verified Central Vietnam geo-anchor match
+        anchor_matched = False
         for anchor in _CENTRAL_VIETNAM_GEO_ANCHORS:
             if anchor["id"] in used_ids:
                 continue
@@ -897,9 +1254,72 @@ def _query_matching_pois(
                 results.append(poi_item)
                 used_ids.add(poi_item.id)
                 used_names.add(anchor_norm)
+                anchor_matched = True
                 break
+        if anchor_matched:
+            continue
 
-    # Pass 2: Broad DB haystack matches if slots remain
+        # 1c. Dynamic Geocoding fallback (Google Places if key set, else free OSM Nominatim)
+        if geocode_budget > 0 and len(kw) >= 5:
+            geocode_budget -= 1
+            city_hint = "Huế" if target_city == "Huế" else ("Hội An" if "hoi an" in kw else "Đà Nẵng")
+            geo = _geocode_central_vietnam_place(kw_raw, city_hint)
+            if geo is not None:
+                slug_id = re.sub(r"[^a-z0-9]+", "-", kw).strip("-")[:32]
+                geo_id = f"geo-{slug_id}"
+                if geo_id not in used_ids:
+                    kg_reason, eco_practices = build_kg_explanation_for_poi(
+                        poi_name=geo["name"],
+                        category="Địa điểm du lịch",
+                        sub_category=None,
+                        city=city_hint,
+                        constraints=constraints,
+                    )
+                    results.append(
+                        CopilotSuggestedPoiItem(
+                            id=geo_id,
+                            name=geo["name"],
+                            category="Địa điểm du lịch",
+                            sub_category=None,
+                            city=city_hint,
+                            lat=geo["lat"],
+                            lng=geo["lng"],
+                            image_url="https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
+                            green_score=80,
+                            rating=round(float(geo["rating"]), 1),
+                            address=geo["address"],
+                            swap_reason=kg_reason,
+                            kg_explanation=kg_reason,
+                            eco_practices=eco_practices,
+                        )
+                    )
+                    used_ids.add(geo_id)
+                    used_names.add(kw)
+
+    # Pass 2: Radius-aware nearby DB POI ranking for uploaded landmark photos (like Mindtrip 0.3-5 km radius!)
+    if anchor_place_name and results and len(results) < min(5, limit) and prepared_rows:
+        anchor_lat = results[0].lat
+        anchor_lng = results[0].lng
+        if anchor_lat is not None and anchor_lng is not None:
+            nearby_candidates: list[tuple[float, tuple[Any, ...]]] = []
+            for _, _, row in prepared_rows:
+                if str(row[0]) in used_ids:
+                    continue
+                r_lat, r_lng = row[10], row[11]
+                if r_lat is None or r_lng is None:
+                    continue
+                dist = _haversine_km(anchor_lat, anchor_lng, float(r_lat), float(r_lng))
+                if dist <= 12.0:
+                    nearby_candidates.append((dist, row))
+            nearby_candidates.sort(key=lambda item: item[0])
+            for dist, row in nearby_candidates:
+                if len(results) >= min(5, limit):
+                    break
+                poi_item = _row_to_suggested_poi(row, constraints, len(results), distance_km=dist)
+                results.append(poi_item)
+                used_ids.add(poi_item.id)
+
+    # Pass 3: Broad DB haystack matches if slots still < 3
     if len(results) < min(3, limit) and prepared_rows:
         norm_keywords = [strip_vietnamese_accents(k).lower().strip() for k in keywords if k and len(k.strip()) >= 3]
         broad_scored: list[tuple[float, tuple[Any, ...]]] = []
@@ -929,6 +1349,70 @@ def _query_matching_pois(
     return results[:limit]
 
 
+def _build_extracted_places_list(
+    gemini_result: dict[str, Any] | None,
+    link_meta: dict[str, str] | None,
+    suggested_pois: list[CopilotSuggestedPoiItem],
+) -> list[CopilotExtractedPlace]:
+    """Assemble Pydantic CopilotExtractedPlace array linked with coordinates from suggested_pois."""
+    poi_by_norm = [
+        (strip_vietnamese_accents(p.name).lower(), p)
+        for p in suggested_pois
+    ]
+
+    def _find_linked_poi(name: str) -> tuple[CopilotSuggestedPoiItem | None, str]:
+        norm = strip_vietnamese_accents(name).lower().strip()
+        for p_norm, poi in poi_by_norm:
+            if norm and (norm in p_norm or p_norm in norm):
+                src = "geo_anchor" if poi.id.startswith("ext-") else ("geocoded" if poi.id.startswith("geo-") else "db")
+                return poi, src
+        return None, "video"
+
+    places: list[CopilotExtractedPlace] = []
+    raw_places = gemini_result.get("extracted_places") if isinstance(gemini_result, dict) else None
+    if isinstance(raw_places, list):
+        for item in raw_places[:15]:
+            if not isinstance(item, dict) or not item.get("name"):
+                continue
+            name = str(item["name"]).strip()
+            linked, src = _find_linked_poi(name)
+            places.append(
+                CopilotExtractedPlace(
+                    name=name,
+                    timestamp=str(item["timestamp"]).strip() if item.get("timestamp") else None,
+                    place_type=str(item.get("place_type") or item.get("category") or "attraction"),
+                    context=str(item.get("context") or item.get("note") or "")[:240],
+                    is_specific=bool(item.get("is_specific", True)),
+                    city=str(item.get("city") or (linked.city if linked else "") or "") or None,
+                    lat=linked.lat if linked else None,
+                    lng=linked.lng if linked else None,
+                    source=src,
+                )
+            )
+
+    if not places and link_meta and link_meta.get("chapters"):
+        for raw_line in link_meta["chapters"].splitlines()[:12]:
+            line = raw_line.strip()
+            ts_m = re.match(r"^((?:\d{1,2}:)?\d{1,2}:\d{2})\s*[-–—:|•]?\s*(.+)$", line)
+            ts_val = ts_m.group(1) if ts_m else None
+            name = ts_m.group(2).strip() if ts_m else line
+            linked, src = _find_linked_poi(name)
+            places.append(
+                CopilotExtractedPlace(
+                    name=name,
+                    timestamp=ts_val,
+                    place_type="attraction",
+                    context="",
+                    is_specific="khach san da nang" not in strip_vietnamese_accents(name).lower(),
+                    city=linked.city if linked else None,
+                    lat=linked.lat if linked else None,
+                    lng=linked.lng if linked else None,
+                    source=src,
+                )
+            )
+    return places
+
+
 def _build_deterministic_video_reply(
     link_meta: dict[str, str] | None,
     detected_city: str,
@@ -945,10 +1429,9 @@ def _build_deterministic_video_reply(
         poi_section = ""
         if suggested_pois:
             bullets = "\n".join(format_three_layer_poi_bullet(p) for p in suggested_pois)
-            poi_section = f"\n\n**Các điểm đã khớp tọa độ lên bản đồ:**\n{bullets}"
+            poi_section = f"\n\n**🌱 Gợi ý xanh & Các điểm đã khớp tọa độ lên bản đồ:**\n{bullets}"
         return (
-            f"Mình đã đọc xong phần mô tả và các mốc thời gian của video **YouTube** (*{title_display[:110]}*). "
-            f"Hiện mình đọc dựa trên mô tả + mốc thời gian (chưa có phụ đề chi tiết từng câu):\n\n"
+            f"Mình đã đọc xong phần mô tả và các mốc thời gian của video **YouTube** (*{title_display[:110]}*):\n\n"
             f"**Các mục / địa điểm có trong video:**\n{chapter_lines}"
             f"{poi_section}\n\n"
             f"Bạn muốn mình **A — Gom các điểm này thành lịch trình {detected_city} tối ưu theo tuyến gần nhau**, "
@@ -957,8 +1440,8 @@ def _build_deterministic_video_reply(
 
     bullets = "\n".join(format_three_layer_poi_bullet(p) for p in suggested_pois)
     scope_note = (
-        " *(lưu ý: video này không công khai mô tả chi tiết nên mình đối chiếu dựa trên tiêu đề video)*"
-        if platform == "YouTube" and source_kind == "title_only"
+        " *(lưu ý: đường dẫn này không công khai mô tả chi tiết nên mình đối chiếu dựa trên thông tin hiện có)*"
+        if source_kind == "title_only"
         else ""
     )
     return (
@@ -974,20 +1457,15 @@ def _build_deterministic_video_reply(
 def _format_source_memory_payload(
     attachment: CopilotAttachmentPayload,
     link_meta: dict[str, str] | None,
-    gemini_result: dict[str, Any] | None,
+    extracted_places: list[CopilotExtractedPlace],
     suggested_pois: list[CopilotSuggestedPoiItem],
 ) -> str:
     """Serialize compact source context into trip_memory so follow-up turns never forget the video/file."""
-    extracted = gemini_result.get("extracted_places") if isinstance(gemini_result, dict) else None
     places_compact: list[str] = []
-    if isinstance(extracted, list):
-        for item in extracted[:15]:
-            if isinstance(item, dict) and item.get("name"):
-                ts = f" ({item['timestamp']})" if item.get("timestamp") else ""
-                note = f" — {item['note']}" if item.get("note") else ""
-                places_compact.append(f"{item['name']}{ts}{note}")
-    if not places_compact and link_meta and link_meta.get("chapters"):
-        places_compact = [c.strip() for c in link_meta["chapters"].splitlines()[:12] if c.strip()]
+    for item in extracted_places[:15]:
+        ts = f" ({item.timestamp})" if item.timestamp else ""
+        note = f" — {item.context}" if item.context else ""
+        places_compact.append(f"{item.name}{ts}{note}")
     if not places_compact:
         places_compact = [p.name for p in suggested_pois]
 
@@ -1038,18 +1516,14 @@ def answer_attached_source_followup(
         keywords=keywords,
         target_city=detected_city,
         constraints=constraints,
-        limit=5,
+        limit=6,
+        enable_dynamic_geocoding=False,
     )
 
     if places:
         numbered = "\n".join(f"{idx}. 📍 **{place}**" for idx, place in enumerate(places, start=1))
-        scope_text = (
-            "Dựa trên phần mô tả và các mốc thời gian đã trích xuất từ"
-            if "description" in source_kind
-            else "Dựa trên thông tin đã trích xuất từ"
-        )
         reply_text = (
-            f"{scope_text} **{platform}** (*{title[:100]}*), toàn bộ các địa điểm được nhắc tới gồm:\n\n"
+            f"Dựa trên dữ liệu đã trích xuất từ **{platform}** (*{title[:100]}*), toàn bộ các địa điểm gồm:\n\n"
             f"{numbered}\n\n"
             f"Bạn muốn mình **A — Sắp xếp các điểm này thành lịch trình {ctx.days_count} ngày theo cụm gần nhau**, "
             f"hay **B — Bổ sung thêm quán ăn bản địa & điểm xanh gần từng địa điểm trên**?"
@@ -1096,12 +1570,12 @@ def process_copilot_attachment(
     ctx = request.trip_context
     constraints = extract_persistent_constraints(request.message or "", ctx)
 
-    # Step 1: Metadata Extraction (oEmbed + YouTube watch shortDescription/chapters + optional captions)
+    # Step 1: Multi-layer Metadata Extraction (YouTube Description+Chapters+Transcript / TikTok Cover OCR / HTML)
     link_meta: dict[str, str] | None = None
     if attachment.type == "link" and attachment.url:
         link_meta = fetch_link_metadata(attachment.url)
 
-    # Step 2: LLM NER + User-Intent Direct Answer
+    # Step 2: LLM NER + Semantic Guard + Vision OCR
     gemini_result = _analyze_attachment_with_gemini(
         attachment=attachment,
         user_message=request.message or "",
@@ -1115,6 +1589,12 @@ def process_copilot_attachment(
             if isinstance(place, dict) and place.get("name") and place.get("is_specific", True):
                 extracted_names.append(str(place["name"]).strip())
 
+    anchor_place_name = (
+        str(gemini_result.get("anchor_place_name") or "").strip()
+        if isinstance(gemini_result, dict) and gemini_result.get("anchor_place_name")
+        else None
+    )
+
     combined_signal_text = " ".join(
         filter(
             None,
@@ -1122,9 +1602,11 @@ def process_copilot_attachment(
                 request.message,
                 attachment.file_name,
                 attachment.extracted_text,
+                anchor_place_name,
                 link_meta.get("title") if link_meta else None,
                 link_meta.get("chapters") if link_meta else None,
                 link_meta.get("description") if link_meta else None,
+                link_meta.get("transcript") if link_meta else None,
                 link_meta.get("snippet") if link_meta else None,
                 str(gemini_result.get("summary") or "") if gemini_result else None,
                 " ".join(gemini_result.get("place_keywords") or []) if gemini_result else None,
@@ -1150,18 +1632,23 @@ def process_copilot_attachment(
             keywords.append(fb_kw)
     keywords = keywords[:12]
 
-    # Step 3: PostGIS Entity Linking + Central Vietnam Geo-Anchors
+    # Step 3: 2-tier Entity Linking + Geocoding + Radius-aware nearby search (for photo landmarks)
     effective_ctx = ctx.model_copy(update={"destination": detected_city})
     suggested_pois = _query_matching_pois(
         connection=connection,
         keywords=keywords,
         target_city=detected_city,
         constraints=constraints,
-        limit=5,
+        limit=8 if attachment.type == "link" else 5,
+        anchor_place_name=anchor_place_name if attachment.type in ("file", "receipt") else None,
+        enable_dynamic_geocoding=attachment.type == "link",
     )
+
+    extracted_places = _build_extracted_places_list(gemini_result, link_meta, suggested_pois)
 
     updated_outline: list[dict[str, Any]] | None = None
     mutation_summary: list[str] = []
+    receipt_booking: CopilotReceiptBooking | None = None
     action_type = "add_stop" if suggested_pois else "none"
     intent_category: Any = "POI_RECOMMENDATION"
     intent = f"attachment_{attachment.type}"
@@ -1190,9 +1677,9 @@ def process_copilot_attachment(
             "Ước tính chi phí và phương tiện di chuyển xanh cho tuyến này",
         ]
         reasoning_trace = (
-            f"1. Metadata ({platform}, source={source_kind}): Đã trích xuất tiêu đề, mô tả & mốc thời gian an toàn (SSRF-guarded).\n"
-            f"2. NER địa điểm: {keywords[:8] or ['du lịch xanh miền Trung']} -> Khu vực: {detected_city}.\n"
-            f"3. Entity Linking & PostGIS Map Pinning: Ghim thành công {len(suggested_pois)} địa điểm có tọa độ thật lên bản đồ."
+            f"1. Metadata ({platform}, source={source_kind}): Trích xuất đa tầng an toàn (SSRF-guarded).\n"
+            f"2. NER địa điểm ({len(extracted_places)} mục): {keywords[:8] or ['du lịch xanh miền Trung']} -> Khu vực: {detected_city}.\n"
+            f"3. Entity Linking & Map Pinning: Ghim thành công {len(suggested_pois)} địa điểm có tọa độ thật lên bản đồ."
         )
 
     elif attachment.type == "receipt":
@@ -1201,13 +1688,25 @@ def process_copilot_attachment(
             if gemini_result and isinstance(gemini_result.get("receipt_info"), dict)
             else _extract_fallback_receipt_info(combined_signal_text, attachment.file_name, detected_city)
         )
+        r_type = str(receipt_info.get("booking_type") or "hotel")
         r_title = str(receipt_info.get("title") or "Xác nhận đặt chỗ (Từ hóa đơn)")
         r_time = str(receipt_info.get("time_str") or "14:00")
-        r_date = receipt_info.get("date_str")
+        r_date = str(receipt_info.get("date_str")) if receipt_info.get("date_str") else None
+        r_checkout = str(receipt_info.get("checkout_str")) if receipt_info.get("checkout_str") else None
         r_city = str(receipt_info.get("city") or ("Huế" if detected_city == "Huế" else "Đà Nẵng"))
-        r_cost = receipt_info.get("estimated_cost_vnd")
+        r_cost_raw = receipt_info.get("estimated_cost_vnd")
+        r_cost = int(r_cost_raw) if isinstance(r_cost_raw, (int, float)) and r_cost_raw > 0 else None
+        r_code = str(receipt_info.get("confirmation_code")) if receipt_info.get("confirmation_code") else None
 
-        if ctx.mode == "trip" or ctx.current_itinerary_state:
+        # Deduplication check against processed_receipts in trip_memory (matches Mindtrip Receipt dedup)
+        fingerprint = strip_vietnamese_accents(f"{r_title}|{r_date or ''}|{r_time}|{r_code or ''}").lower()
+        prior_fingerprints = [
+            f.strip() for f in str((ctx.trip_memory or {}).get("processed_receipts") or "").split(";;") if f.strip()
+        ]
+        is_duplicate = fingerprint in prior_fingerprints
+
+        synced_day: int | None = None
+        if not is_duplicate and (ctx.mode == "trip" or ctx.current_itinerary_state):
             updated_outline, mutation_summary = _insert_landmark_into_day(
                 trip_context=effective_ctx,
                 day_number=ctx.current_day or 1,
@@ -1215,41 +1714,66 @@ def process_copilot_attachment(
                 real_city=r_city,
                 constraints=constraints,
             )
+            synced_day = ctx.current_day or 1
             action_type = "mutate_itinerary"
             intent_category = "ITINERARY_MUTATION"
 
-        cost_line = f" · Chi phí ghi nhận: **{int(r_cost):,} ₫**".replace(",", ".") if isinstance(r_cost, (int, float)) and r_cost > 0 else ""
-        date_line = f" · Ngày: **{r_date}**" if r_date else ""
+        receipt_booking = CopilotReceiptBooking(
+            booking_type=r_type,
+            title=r_title,
+            city=r_city,
+            date_str=r_date,
+            checkout_str=r_checkout,
+            time_str=r_time,
+            estimated_cost_vnd=r_cost,
+            confirmation_code=r_code,
+            is_duplicate=is_duplicate,
+            auto_synced_day=synced_day,
+        )
+
+        cost_line = f" · Chi phí: **{r_cost:,} ₫**".replace(",", ".") if r_cost else ""
+        date_line = f" · Ngày: **{r_date}**" + (f" → **{r_checkout}**" if r_checkout else "") if r_date else ""
+        code_line = f" · Mã xác nhận: **{r_code}**" if r_code else ""
         bullets = "\n".join(format_three_layer_poi_bullet(p) for p in suggested_pois[:3])
 
-        reply_text = (
-            f"Mình đã đọc xong hóa đơn / xác nhận **{attachment.file_name or 'đặt chỗ'}** của bạn!\n\n"
-            f"**Thông tin đặt chỗ đã trích xuất:**\n"
-            f"- **Mục đặt chỗ**: {r_title}\n"
-            f"- **Khu vực & Thời gian**: {r_city} · Khung giờ **{r_time}**{date_line}{cost_line}\n"
-            + (
-                f"\n✅ Đã đồng bộ mốc này vào **Ngày {ctx.current_day or 1}** trong Kế hoạch chi tiết.\n"
-                if updated_outline
-                else "\n"
+        if is_duplicate:
+            reply_text = (
+                f"✅ Mình đã nhận tệp **{attachment.file_name or 'hóa đơn'}** — tuy nhiên xác nhận **{r_title}** ({r_time}{date_line}) "
+                f"đã được ghi nhận trong hành trình trước đó nên mình **không thêm trùng** nữa.\n\n"
+                f"Bạn muốn mình **A — Gợi ý thêm quán ăn xanh quanh {r_title}**, "
+                f"hay **B — Lên phương án di chuyển xanh từ sân bay / nhà ga về đây**?"
             )
-            + (f"\n**Gợi ý điểm ăn uống / tham quan xanh gần nơi bạn đặt chỗ:**\n{bullets}\n\n" if bullets else "\n")
-            + "Bạn muốn mình **A — Xếp thêm quán ăn bản địa ngay gần điểm check-in này**, hay **B — Gợi ý phương tiện di chuyển xanh (buýt/taxi điện) từ ga/sân bay tới đây**?"
-        )
+        else:
+            reply_text = (
+                f"✅ Đã đọc xong hóa đơn / xác nhận **{attachment.file_name or 'đặt chỗ'}** của bạn!\n\n"
+                f"**Thông tin đặt chỗ đã trích xuất:**\n"
+                f"- **Mục đặt chỗ**: **{r_title}**\n"
+                f"- **Khu vực & Thời gian**: {r_city} · **{r_time}**{date_line}{cost_line}{code_line}\n"
+                + (
+                    f"\n✅ Đã tự động đồng bộ mốc này vào **Ngày {synced_day}** trong Kế hoạch chi tiết.\n"
+                    if updated_outline
+                    else "\n"
+                )
+                + (f"\n**🌱 Gợi ý điểm ăn uống / tham quan xanh gần nơi bạn đặt chỗ:**\n{bullets}\n\n" if bullets else "\n")
+                + "Bạn muốn mình **A — Tạo ngay chuyến đi & xếp quán ăn bản địa gần điểm check-in này**, "
+                + "hay **B — Gợi ý phương tiện di chuyển xanh (buýt/taxi điện) từ ga/sân bay tới đây**?"
+            )
+
         next_prompts = [
-            f"Gợi ý quán ăn ngon gần {r_city} ngay sau khi check-in",
-            f"Cách di chuyển xanh từ sân bay/ga đến điểm đặt chỗ tại {r_city}",
+            f"Gợi ý quán ăn ngon gần {r_title} ngay sau khi check-in",
+            f"Cách di chuyển xanh từ sân bay/ga đến {r_title}",
             "Cập nhật lại ngân sách còn lại sau khoản đặt chỗ này",
         ]
         reasoning_trace = (
-            f"1. Đính kèm Hóa đơn / Vé đặt chỗ ({attachment.file_name or 'upload'}): Trích xuất mốc '{r_title}' lúc {r_time} tại {r_city}.\n"
-            f"2. Đồng bộ lịch trình: {'Đã chèn vào Ngày ' + str(ctx.current_day or 1) if updated_outline else 'Sẵn sàng tạo chuyến đi mới'}.\n"
-            f"3. Gợi ý lân cận từ DB: {len(suggested_pois)} địa điểm xanh."
+            f"1. Đính kèm Hóa đơn / Vé ({attachment.file_name or 'upload'}): Trích xuất '{r_title}' ({r_time}, {r_city}, duplicate={is_duplicate}).\n"
+            f"2. Đồng bộ lịch trình: {'Trùng lặp (đã chặn)' if is_duplicate else ('Đã chèn vào Ngày ' + str(synced_day) if updated_outline else 'Sẵn sàng tạo chuyến đi mới')}.\n"
+            f"3. Gợi ý lân cận theo bán kính từ DB: {len(suggested_pois)} địa điểm xanh."
         )
 
     else:  # attachment.type == "file" (photo, screenshot, PDF)
         if direct_md and len(direct_md) >= 40:
             ab_fallback = (
-                f"Bạn muốn mình **A — Ghép ngay các điểm này vào lịch trình {ctx.days_count} ngày**, "
+                f"Bạn muốn mình **A — Ghép ngay điểm này & các quán gần đây vào lịch trình {ctx.days_count} ngày**, "
                 f"hay **B — Tìm thêm góc chụp / quán bản địa cùng phong cách nhưng ít đông hơn**?"
             )
             reply_text = ensure_closing_ab_hook(direct_md, ab_fallback)
@@ -1257,7 +1781,7 @@ def process_copilot_attachment(
             summary_line = (
                 str(gemini_result["summary"])
                 if gemini_result and gemini_result.get("summary")
-                else f"Mình đã xem tệp **{attachment.file_name or 'ảnh đính kèm'}** và nhận diện các điểm đến xanh nổi bật tại **{detected_city}** khớp với phong cách trong hình."
+                else f"Mình đã xem tệp **{attachment.file_name or 'ảnh đính kèm'}** và nhận diện các điểm đến xanh nổi bật tại **{detected_city}**."
             )
             bullets = "\n".join(format_three_layer_poi_bullet(p) for p in suggested_pois)
             reply_text = (
@@ -1272,9 +1796,9 @@ def process_copilot_attachment(
             "Nên đi các điểm này vào khung giờ nào đẹp nhất?",
         ]
         reasoning_trace = (
-            f"1. Đính kèm Tệp / Ảnh chụp màn hình ({attachment.file_name or 'image'}, {attachment.mime_type or 'unknown'}).\n"
+            f"1. Đính kèm Tệp / Ảnh ({attachment.file_name or 'image'}, {attachment.mime_type or 'unknown'}, anchor={anchor_place_name or 'auto'}).\n"
             f"2. NER địa điểm: {keywords[:8] or ['phong cảnh & trải nghiệm xanh']} -> Khu vực: {detected_city}.\n"
-            f"3. Entity Linking & PostGIS Map Pinning: Ghim thành công {len(suggested_pois)} thẻ POI thật lên bản đồ."
+            f"3. Entity Linking & Spatial Radius Pinning: Ghim thành công {len(suggested_pois)} thẻ POI thật lên bản đồ."
         )
 
     raw_resp = CopilotChatResponse(
@@ -1285,6 +1809,8 @@ def process_copilot_attachment(
         recommended_poi_ids=[p.id for p in suggested_pois],
         detected_constraints=constraints,
         suggested_pois=suggested_pois,
+        extracted_places=extracted_places,
+        receipt_booking=receipt_booking,
         action_type=action_type,
         next_suggested_prompts=next_prompts,
         green_impact_summary=f"Đã đối chiếu & ghim {len(suggested_pois)} địa điểm lên bản đồ du lịch xanh {detected_city}.",
@@ -1300,9 +1826,21 @@ def process_copilot_attachment(
     finalized.trip_memory["attached_source"] = _format_source_memory_payload(
         attachment=attachment,
         link_meta=link_meta,
-        gemini_result=gemini_result,
+        extracted_places=extracted_places,
         suggested_pois=suggested_pois,
     )
-    if link_meta and link_meta.get("title"):
-        finalized.trip_memory["attached_source_title"] = link_meta["title"][:160]
+    # Always overwrite attached_source_title & attached_source_url cleanly (prevents YouTube title bleeding onto TikTok turns!)
+    resolved_title = (link_meta.get("title") if link_meta else "") or (attachment.file_name or "")
+    finalized.trip_memory["attached_source_title"] = resolved_title[:160]
+    finalized.trip_memory["attached_source_url"] = attachment.url or ""
+    if receipt_booking is not None:
+        fingerprint = strip_vietnamese_accents(
+            f"{receipt_booking.title}|{receipt_booking.date_str or ''}|{receipt_booking.time_str or ''}|{receipt_booking.confirmation_code or ''}"
+        ).lower()
+        prior = [
+            f.strip() for f in str((ctx.trip_memory or {}).get("processed_receipts") or "").split(";;") if f.strip()
+        ]
+        if fingerprint not in prior:
+            prior.append(fingerprint)
+        finalized.trip_memory["processed_receipts"] = ";;".join(prior[-12:])
     return finalized

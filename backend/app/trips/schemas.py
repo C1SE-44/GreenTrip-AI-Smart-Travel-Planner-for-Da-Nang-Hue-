@@ -558,6 +558,31 @@ class CopilotSuggestedPoiItem(BaseModel):
     open_range_label: str | None = None
 
 
+class CopilotExtractedPlace(BaseModel):
+    name: str
+    timestamp: str | None = None
+    place_type: str = "attraction"
+    context: str = ""
+    is_specific: bool = True
+    city: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    source: str = "video"  # 'db' | 'geo_anchor' | 'geocoded' | 'video'
+
+
+class CopilotReceiptBooking(BaseModel):
+    booking_type: str = "hotel"
+    title: str
+    city: str = "Đà Nẵng"
+    date_str: str | None = None
+    checkout_str: str | None = None
+    time_str: str | None = None
+    estimated_cost_vnd: int | None = None
+    confirmation_code: str | None = None
+    is_duplicate: bool = False
+    auto_synced_day: int | None = None
+
+
 class CopilotChatResponse(BaseModel):
     reply_text: str
     intent: str
@@ -569,6 +594,8 @@ class CopilotChatResponse(BaseModel):
     fact_check_warning: str | None = None
     target_slot: str | None = None
     suggested_pois: list[CopilotSuggestedPoiItem] = Field(default_factory=list)
+    extracted_places: list[CopilotExtractedPlace] = Field(default_factory=list)
+    receipt_booking: CopilotReceiptBooking | None = None
     action_type: str = "none"  # 'replace_stop', 'add_stop', 'mutate_itinerary', 'view_on_map', 'none'
     next_suggested_prompts: list[str] = Field(default_factory=list)
     avoid_notice: str | None = None

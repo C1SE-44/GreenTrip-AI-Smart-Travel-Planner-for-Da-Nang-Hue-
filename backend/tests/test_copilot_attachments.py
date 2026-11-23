@@ -11,6 +11,7 @@ from app.main import app
 from app.trips.copilot_attachments import (
     _extract_chapter_lines,
     _extract_json_string_field,
+    _parse_timedtext_xml_to_highlights,
     answer_attached_source_followup,
     detect_link_platform,
     extract_youtube_video_id,
@@ -288,3 +289,89 @@ def test_youtube_chapters_pin_geo_anchors_and_persist_source_memory() -> None:
     assert followup_resp.intent == "attachment_followup"
     assert "Nhà Hàng Muối Biển" in followup_resp.reply_text
     assert "xe máy một mình" not in followup_resp.reply_text.lower()
+
+
+def test_innertube_transcript_xml_highlights_extracts_spoken_landmarks() -> None:
+    sample_xml = (
+        '<timedtext><body>'
+        '<p t="616000" d="3000">Trước mặt chúng ta là biển Mỹ Khê quá đẹp</p>'
+        '<p t="628000" d="3000">Nhìn qua bên kia sẽ thấy chùa Linh Ứng trên bán đảo Sơn Trà</p>'
+        '</body></timedtext>'
+    )
+    highlights = _parse_timedtext_xml_to_highlights(sample_xml)
+    assert "[10:16]" in highlights
+    assert "biển Mỹ Khê" in highlights
+    assert "chùa Linh Ứng" in highlights
+
+
+def test_receipt_deduplication_and_non_bleeding_source_title() -> None:
+    req1 = CopilotChatRequest(
+        message="Đọc hóa đơn khách sạn này giúp mình",
+        trip_context=TripContextPayload(mode="ideation", destination="Đà Nẵng", days_count=3),
+        attachment=CopilotAttachmentPayload(
+            type="receipt",
+            file_name="sala_danang_hotel.pdf",
+            mime_type="application/pdf",
+            extracted_text="Hotel: Sala Danang Beach Hotel Check-in 2026-12-18 14:00 4,800,000 VND",
+        ),
+    )
+    with patch("app.trips.copilot_attachments._analyze_attachment_with_gemini", return_value=None):
+        resp1 = process_copilot_attachment(req1, _DummyConn(SAMPLE_POI_ROWS))  # type: ignore[arg-type]
+
+    assert resp1.receipt_booking is not None
+    assert resp1.receipt_booking.is_duplicate is False
+    assert "processed_receipts" in resp1.trip_memory
+
+    # Second upload of the same booking must be caught by deduplication
+    req2 = CopilotChatRequest(
+        message="Đọc lại hóa đơn này",
+        trip_context=TripContextPayload(
+            mode="ideation",
+            destination="Đà Nẵng",
+            days_count=3,
+            trip_memory=resp1.trip_memory,
+        ),
+        attachment=CopilotAttachmentPayload(
+            type="receipt",
+            file_name="sala_danang_hotel.png",
+            mime_type="image/png",
+            extracted_text="Hotel: Sala Danang Beach Hotel Check-in 2026-12-18 14:00 4,800,000 VND",
+        ),
+    )
+    with patch("app.trips.copilot_attachments._analyze_attachment_with_gemini", return_value=None):
+        resp2 = process_copilot_attachment(req2, _DummyConn(SAMPLE_POI_ROWS))  # type: ignore[arg-type]
+
+    assert resp2.receipt_booking is not None
+    assert resp2.receipt_booking.is_duplicate is True
+    assert "không thêm trùng" in resp2.reply_text
+
+    # Subsequent link with empty title must overwrite attached_source_title cleanly (no stale bleed)
+    tiktok_req = CopilotChatRequest(
+        message="Liệt kê địa điểm trong clip này",
+        trip_context=TripContextPayload(
+            mode="ideation",
+            destination="Đà Nẵng",
+            days_count=3,
+            trip_memory={"attached_source_title": "OLD YOUTUBE TITLE"},
+        ),
+        attachment=CopilotAttachmentPayload(type="link", url="https://www.tiktok.com/@test/video/123"),
+    )
+    mock_tt = {
+        "platform": "TikTok",
+        "url": "https://www.tiktok.com/@test/video/123",
+        "title": "",
+        "description": "",
+        "chapters": "",
+        "transcript": "",
+        "snippet": "",
+        "thumbnail_url": "",
+        "metadata_source": "url_only",
+    }
+    with (
+        patch("app.trips.copilot_attachments.fetch_link_metadata", return_value=mock_tt),
+        patch("app.trips.copilot_attachments._analyze_attachment_with_gemini", return_value=None),
+    ):
+        resp_tt = process_copilot_attachment(tiktok_req, _DummyConn(SAMPLE_POI_ROWS))  # type: ignore[arg-type]
+
+    assert resp_tt.trip_memory.get("attached_source_title") == ""
+    assert resp_tt.trip_memory.get("attached_source_url") == "https://www.tiktok.com/@test/video/123"

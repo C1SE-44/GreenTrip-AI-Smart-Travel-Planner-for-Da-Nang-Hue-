@@ -32,12 +32,15 @@ test('MindtripAttachmentMenu implements all 3 views (menu, link, receipt) matchi
 
   // 3. API payload support
   assert.ok(copilotSvcSrc.includes('CopilotAttachmentPayload'), 'copilotService must export CopilotAttachmentPayload');
+  assert.ok(copilotSvcSrc.includes('CopilotExtractedPlace'), 'copilotService must export CopilotExtractedPlace');
+  assert.ok(copilotSvcSrc.includes('CopilotReceiptBooking'), 'copilotService must export CopilotReceiptBooking');
   assert.ok(copilotSvcSrc.includes('attachment?: CopilotAttachmentPayload'), 'CopilotChatRequest must accept attachment');
 
-  // 4. Wired into both /chat and /planner with staged preview chip & desktop split-screen map
+  // 4. Wired into both /chat and /planner with staged preview chip, receipt card & desktop split-screen map
   assert.ok(ideationSrc.includes('<MindtripAttachmentMenu'), 'IdeationChatView (/chat) must render MindtripAttachmentMenu');
   assert.ok(ideationSrc.includes('pendingAttachment'), 'IdeationChatView must stage attachments inside the input box');
   assert.ok(ideationSrc.includes('staged-attachment-chip'), 'IdeationChatView must render staged attachment preview chip');
+  assert.ok(ideationSrc.includes('receipt-booking-card'), 'IdeationChatView must render receipt booking card');
   assert.ok(ideationSrc.includes('isSplitMapCollapsed'), 'IdeationChatView must support Mindtrip-style split-screen live map');
   assert.ok(overviewSrc.includes('<MindtripAttachmentMenu'), 'TripOverviewView (/planner) must render MindtripAttachmentMenu');
   assert.ok(overviewSrc.includes('pendingAttachment'), 'TripOverviewView must stage attachments inside the chat input box');

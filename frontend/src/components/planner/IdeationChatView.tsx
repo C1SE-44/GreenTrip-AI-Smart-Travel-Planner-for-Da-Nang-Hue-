@@ -20,7 +20,12 @@ import {
 import { normalizeCategory, normalizeCity, type Poi } from '@/data/pois';
 import PoiImage from '@/components/ui/PoiImage';
 import PoiMap from '@/components/poi/PoiMap';
-import { streamCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
+import {
+  streamCopilotChat,
+  type CopilotExtractedPlace,
+  type CopilotReceiptBooking,
+  type CopilotSuggestedPoi,
+} from '@/services/copilotService';
 import { extractTripIntentFromPrompt } from '@/utils/vietnamesePromptExtractor';
 import { FormattedCopilotMessage, type CopilotAttachmentSummary } from './TripOverviewView';
 import MindtripAttachmentMenu, { type ReadyAttachment } from './MindtripAttachmentMenu';
@@ -33,6 +38,8 @@ interface IdeationMessage {
   timestamp: string;
   attachment?: CopilotAttachmentSummary;
   suggestedPois?: CopilotSuggestedPoi[];
+  extractedPlaces?: CopilotExtractedPlace[];
+  receiptBooking?: CopilotReceiptBooking | null;
   nextSuggestedPrompts?: string[];
   avoidNotice?: string | null;
   greenImpactSummary?: string | null;
@@ -296,7 +303,12 @@ export default function IdeationChatView({
       if (res.trip_memory) {
         setTripMemory((prev) => ({ ...prev, ...res.trip_memory }));
       }
-      const resolvedSourceTitle = res.trip_memory?.attached_source_title;
+      const rawResolvedTitle = res.trip_memory?.attached_source_title?.trim();
+      const titleMatchesCurrentAttachment =
+        Boolean(rawResolvedTitle) &&
+        Boolean(activeAttachment) &&
+        (activeAttachment?.payload.type !== 'link' ||
+          res.trip_memory?.attached_source_url === activeAttachment?.payload.url);
 
       const aiMsg: IdeationMessage = {
         id: `idea-a-${Date.now()}`,
@@ -304,6 +316,8 @@ export default function IdeationChatView({
         text: res.reply_text,
         timestamp: nowHHMM(),
         suggestedPois: res.suggested_pois || [],
+        extractedPlaces: res.extracted_places || [],
+        receiptBooking: res.receipt_booking ?? null,
         nextSuggestedPrompts: res.next_suggested_prompts || [],
         avoidNotice: res.avoid_notice,
         greenImpactSummary: res.green_impact_summary,
@@ -311,10 +325,10 @@ export default function IdeationChatView({
       };
       setMessages((prev) => {
         const enriched =
-          resolvedSourceTitle && activeAttachment
+          titleMatchesCurrentAttachment && rawResolvedTitle
             ? prev.map((m) =>
                 m.id === userMsgId && m.attachment
-                  ? { ...m, attachment: { ...m.attachment, displayTitle: resolvedSourceTitle } }
+                  ? { ...m, attachment: { ...m.attachment, displayTitle: rawResolvedTitle } }
                   : m
               )
             : prev;
@@ -566,6 +580,44 @@ export default function IdeationChatView({
                         onSelectPoi={handleFocusPoiOnMap}
                       />
 
+                      {msg.receiptBooking && (
+                        <div
+                          data-testid="receipt-booking-card"
+                          className="mt-2 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3.5 flex flex-wrap items-center justify-between gap-3"
+                        >
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-emerald-800 text-white flex items-center justify-center shrink-0">
+                              <ReceiptText size={17} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-emerald-950">
+                                {msg.receiptBooking.is_duplicate
+                                  ? 'Hóa đơn đã tồn tại trong hành trình (không thêm trùng)'
+                                  : 'Đã nhận xác nhận đặt chỗ'}
+                              </p>
+                              <p className="text-[13px] font-semibold text-neutral-950 truncate">
+                                {msg.receiptBooking.title}
+                              </p>
+                              <p className="text-xs text-neutral-700">
+                                {msg.receiptBooking.city}
+                                {msg.receiptBooking.time_str ? ` · ${msg.receiptBooking.time_str}` : ''}
+                                {msg.receiptBooking.date_str ? ` · ${msg.receiptBooking.date_str}` : ''}
+                                {msg.receiptBooking.checkout_str ? ` → ${msg.receiptBooking.checkout_str}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          {!msg.receiptBooking.is_duplicate && (
+                            <button
+                              type="button"
+                              onClick={handleCreateTripClick}
+                              className="min-h-[38px] px-3.5 rounded-full bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-semibold cursor-pointer transition shrink-0"
+                            >
+                              Tạo chuyến đi từ xác nhận này
+                            </button>
+                          )}
+                        </div>
+                      )}
+
                       {(msg.avoidNotice || msg.greenImpactSummary || msg.budgetImpactSummary) && (
                         <div className="pt-2 border-t border-neutral-100 flex flex-wrap gap-2 text-xs">
                           {msg.greenImpactSummary && (
@@ -593,6 +645,11 @@ export default function IdeationChatView({
                       <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
                         {msg.suggestedPois.map((poi) => {
                           const isSaved = selectedIdeaIdSet.has(poi.id);
+                          const matchedExtracted = msg.extractedPlaces?.find((ep) => {
+                            const epNorm = ep.name.toLowerCase();
+                            const poiNorm = poi.name.toLowerCase();
+                            return epNorm.includes(poiNorm) || poiNorm.includes(epNorm);
+                          });
                           return (
                             <article
                               key={poi.id}
@@ -615,6 +672,11 @@ export default function IdeationChatView({
                                   <Leaf size={11} />
                                   {poi.green_score}/100
                                 </span>
+                                {matchedExtracted?.timestamp && (
+                                  <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/75 text-white text-xs font-medium">
+                                    {matchedExtracted.timestamp}
+                                  </span>
+                                )}
                                 <button
                                   type="button"
                                   aria-label={isSaved ? `Bỏ chọn ${poi.name}` : `Chọn ${poi.name} vào ý tưởng`}
@@ -793,9 +855,13 @@ export default function IdeationChatView({
                 }
               }}
               placeholder={
-                pendingAttachment
-                  ? 'Nhập câu hỏi cho tệp/đường dẫn vừa đính kèm (VD: Liệt kê tất cả các địa điểm trong video này)...'
-                  : 'Hỏi GreenTrip AI về Đà Nẵng – Huế, hoặc bấm + để tải ảnh, dán link, vé đặt chỗ...'
+                pendingAttachment?.payload.type === 'link'
+                  ? 'Bạn muốn làm gì với đường dẫn này? (VD: Liệt kê tất cả các địa điểm trong video)...'
+                  : pendingAttachment?.payload.type === 'file'
+                    ? 'Bạn muốn làm gì với tệp / ảnh này? (VD: Đây là địa điểm nào, gợi ý quán ăn gần đây)...'
+                    : pendingAttachment?.payload.type === 'receipt'
+                      ? 'Bạn muốn đồng bộ hóa đơn / xác nhận đặt chỗ này như thế nào?...'
+                      : 'Hỏi GreenTrip AI về Đà Nẵng – Huế, hoặc bấm + để tải ảnh, dán link, vé đặt chỗ...'
               }
               aria-label="Nhập câu hỏi khởi tạo ý tưởng chuyến đi"
               className="w-full resize-none overflow-y-auto bg-transparent text-[14.5px] text-neutral-900 placeholder:text-neutral-500 focus:outline-none max-h-36 leading-relaxed"

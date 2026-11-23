@@ -76,6 +76,31 @@ export interface CopilotChatRequest {
   attachment?: CopilotAttachmentPayload;
 }
 
+export interface CopilotExtractedPlace {
+  name: string;
+  timestamp?: string | null;
+  place_type: string;
+  context?: string;
+  is_specific?: boolean;
+  city?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  source?: string;
+}
+
+export interface CopilotReceiptBooking {
+  booking_type: string;
+  title: string;
+  city: string;
+  date_str?: string | null;
+  checkout_str?: string | null;
+  time_str?: string | null;
+  estimated_cost_vnd?: number | null;
+  confirmation_code?: string | null;
+  is_duplicate?: boolean;
+  auto_synced_day?: number | null;
+}
+
 export interface CopilotChatResponse {
   reply_text: string;
   intent: string;
@@ -87,6 +112,8 @@ export interface CopilotChatResponse {
   fact_check_warning?: string | null;
   target_slot?: string | null;
   suggested_pois: CopilotSuggestedPoi[];
+  extracted_places?: CopilotExtractedPlace[];
+  receipt_booking?: CopilotReceiptBooking | null;
   action_type: 'replace_stop' | 'add_stop' | 'mutate_itinerary' | 'view_on_map' | 'none' | string;
   next_suggested_prompts?: string[];
   avoid_notice?: string | null;

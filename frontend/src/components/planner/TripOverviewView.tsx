@@ -1825,9 +1825,13 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 ref={chatInputRef}
                 type="text"
                 placeholder={
-                  pendingAttachment
-                    ? 'Nhập yêu cầu cho tệp/đường dẫn vừa đính kèm...'
-                    : 'Bắt đầu một cuộc trò chuyện mới cho chuyến đi này...'
+                  pendingAttachment?.payload.type === 'link'
+                    ? 'Bạn muốn làm gì với đường dẫn này?...'
+                    : pendingAttachment?.payload.type === 'file'
+                      ? 'Bạn muốn làm gì với tệp / ảnh này?...'
+                      : pendingAttachment?.payload.type === 'receipt'
+                        ? 'Bạn muốn đồng bộ hóa đơn / vé này vào ngày nào?...'
+                        : 'Bắt đầu một cuộc trò chuyện mới cho chuyến đi này...'
                 }
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}

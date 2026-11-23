@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowLeft,
   ArrowUp,
   Check,
   Compass,
@@ -135,7 +136,9 @@ export default function IdeationChatView({
   const [tripMemory, setTripMemory] = useState<Record<string, string>>({});
   const [activeConstraints, setActiveConstraints] = useState<string[]>([]);
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [isSplitMapCollapsed, setIsSplitMapCollapsed] = useState(false);
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<ReadyAttachment | null>(null);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
 
@@ -203,36 +206,49 @@ export default function IdeationChatView({
     setMessages([]);
     setSelectedIdeaPoiIds([]);
     setInput('');
+    setPendingAttachment(null);
     setErrorMessage(null);
     setLastFailedPrompt(null);
     setTripMemory({});
     setActiveConstraints([]);
+    setIsSplitMapCollapsed(false);
+  };
+
+  const handleFocusPoiOnMap = (poiId: string) => {
+    setSelectedMapPoiId(poiId);
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setIsSplitMapCollapsed(false);
+    } else {
+      setIsMapOpen(true);
+    }
   };
 
   const handleSend = async (rawText?: string, readyAttachment?: ReadyAttachment) => {
+    const activeAttachment = readyAttachment ?? pendingAttachment ?? undefined;
     const typedText = (rawText ?? input).trim();
-    const defaultAttachmentMessage = readyAttachment
-      ? readyAttachment.payload.type === 'link'
-        ? `Phân tích đường dẫn ${readyAttachment.subtitle} này và gợi ý địa điểm xanh cho chuyến đi`
-        : readyAttachment.payload.type === 'receipt'
-          ? `Đọc vé / xác nhận đặt chỗ "${readyAttachment.displayTitle}" và đồng bộ gợi ý chuyến đi`
-          : `Phân tích tệp "${readyAttachment.displayTitle}" và nhận diện các điểm đến xanh phù hợp`
+    const defaultAttachmentMessage = activeAttachment
+      ? activeAttachment.payload.type === 'link'
+        ? `Phân tích đường dẫn ${activeAttachment.subtitle} này và liệt kê các địa điểm nổi bật`
+        : activeAttachment.payload.type === 'receipt'
+          ? `Đọc vé / xác nhận đặt chỗ "${activeAttachment.displayTitle}" và đồng bộ gợi ý chuyến đi`
+          : `Phân tích tệp "${activeAttachment.displayTitle}" và nhận diện các điểm đến xanh phù hợp`
       : '';
     const text = typedText || defaultAttachmentMessage;
-    if ((!text && !readyAttachment) || isSending) return;
+    if ((!text && !activeAttachment) || isSending) return;
 
+    const userMsgId = `idea-u-${Date.now()}`;
     const userMsg: IdeationMessage = {
-      id: `idea-u-${Date.now()}`,
+      id: userMsgId,
       sender: 'user',
       text,
       timestamp: nowHHMM(),
-      attachment: readyAttachment
+      attachment: activeAttachment
         ? {
-            type: readyAttachment.payload.type,
-            displayTitle: readyAttachment.displayTitle,
-            subtitle: readyAttachment.subtitle,
-            previewUrl: readyAttachment.previewUrl,
-            url: readyAttachment.payload.url,
+            type: activeAttachment.payload.type,
+            displayTitle: activeAttachment.displayTitle,
+            subtitle: activeAttachment.subtitle,
+            previewUrl: activeAttachment.previewUrl,
+            url: activeAttachment.payload.url,
           }
         : undefined,
     };
@@ -240,6 +256,7 @@ export default function IdeationChatView({
     const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
     if (!rawText) setInput('');
+    setPendingAttachment(null);
     setErrorMessage(null);
     setLastFailedPrompt(null);
     setStreamingText('');
@@ -252,7 +269,7 @@ export default function IdeationChatView({
       const res = await streamCopilotChat(
         {
           message: text,
-          attachment: readyAttachment?.payload,
+          attachment: activeAttachment?.payload,
           trip_context: {
             mode: 'ideation',
             destination: parsed.destination || 'Đà Nẵng & Huế',
@@ -279,6 +296,7 @@ export default function IdeationChatView({
       if (res.trip_memory) {
         setTripMemory((prev) => ({ ...prev, ...res.trip_memory }));
       }
+      const resolvedSourceTitle = res.trip_memory?.attached_source_title;
 
       const aiMsg: IdeationMessage = {
         id: `idea-a-${Date.now()}`,
@@ -291,7 +309,20 @@ export default function IdeationChatView({
         greenImpactSummary: res.green_impact_summary,
         budgetImpactSummary: res.budget_impact_summary,
       };
-      setMessages((prev) => [...prev, aiMsg]);
+      setMessages((prev) => {
+        const enriched =
+          resolvedSourceTitle && activeAttachment
+            ? prev.map((m) =>
+                m.id === userMsgId && m.attachment
+                  ? { ...m, attachment: { ...m.attachment, displayTitle: resolvedSourceTitle } }
+                  : m
+              )
+            : prev;
+        return [...enriched, aiMsg];
+      });
+      if ((res.suggested_pois?.length || 0) > 0) {
+        setIsSplitMapCollapsed(false);
+      }
     } catch (err) {
       console.error('Ideation chat error:', err);
       setErrorMessage('Không thể kết nối tới trợ lý AI lúc này. Vui lòng kiểm tra backend và thử lại.');
@@ -384,7 +415,13 @@ export default function IdeationChatView({
             {mapPois.length > 0 && (
               <button
                 type="button"
-                onClick={() => setIsMapOpen(true)}
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                    setIsSplitMapCollapsed((prev) => !prev);
+                  } else {
+                    setIsMapOpen(true);
+                  }
+                }}
                 className="min-h-[40px] px-3.5 rounded-full border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
               >
                 <MapIcon size={15} className="text-emerald-700" />
@@ -438,6 +475,9 @@ export default function IdeationChatView({
         </div>
       </header>
 
+      {/* Split-Screen Body: Left Chat Stream + Input | Right Live Synced Map (Desktop lg+) */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
       {/* Main Scrollable Chat Stream */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
         <div className="max-w-[780px] mx-auto space-y-6 pb-8">
@@ -523,10 +563,7 @@ export default function IdeationChatView({
                         text={msg.text}
                         entityLookup={entityLookup}
                         onHoverPoi={setHoveredPoiId}
-                        onSelectPoi={(poiId) => {
-                          setSelectedMapPoiId(poiId);
-                          setIsMapOpen(true);
-                        }}
+                        onSelectPoi={handleFocusPoiOnMap}
                       />
 
                       {(msg.avoidNotice || msg.greenImpactSummary || msg.budgetImpactSummary) && (
@@ -559,10 +596,9 @@ export default function IdeationChatView({
                           return (
                             <article
                               key={poi.id}
-                              onClick={() => {
-                                setSelectedMapPoiId(poi.id);
-                                setIsMapOpen(true);
-                              }}
+                              onMouseEnter={() => setHoveredPoiId(poi.id)}
+                              onMouseLeave={() => setHoveredPoiId(null)}
+                              onClick={() => handleFocusPoiOnMap(poi.id)}
                               className="w-[235px] shrink-0 snap-start rounded-2xl bg-white border border-neutral-200/90 hover:border-neutral-400 overflow-hidden shadow-2xs transition cursor-pointer flex flex-col"
                             >
                               <div className="relative h-28 bg-neutral-100">
@@ -691,18 +727,60 @@ export default function IdeationChatView({
         </div>
       </div>
 
-      {/* Bottom Floating Input Bar chuẩn MindTripAI (+ Multimodal Attach Menu) */}
+      {/* Bottom Floating Input Bar chuẩn MindTripAI (+ Multimodal Attach Menu + Staged Preview) */}
       <footer className="shrink-0 px-4 sm:px-8 pb-4 pt-2 bg-gradient-to-t from-[#FCFAF5] via-[#FCFAF5] to-transparent">
         <div className="max-w-[744px] mx-auto relative">
           <MindtripAttachmentMenu
             isOpen={isAttachMenuOpen}
             onClose={() => setIsAttachMenuOpen(false)}
             onSelectAttachment={(ready) => {
-              void handleSend(undefined, ready);
+              setPendingAttachment(ready);
+              setTimeout(() => textareaRef.current?.focus(), 0);
             }}
           />
 
           <div className="rounded-[28px] border border-neutral-300/90 bg-white px-4 pt-3 pb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.06)] focus-within:border-neutral-900 focus-within:ring-1 focus-within:ring-neutral-900/15 transition">
+            {pendingAttachment && (
+              <div
+                data-testid="staged-attachment-chip"
+                className="mb-2.5 inline-flex items-center gap-2.5 rounded-2xl border border-neutral-200 bg-neutral-50 p-1.5 pr-2.5 max-w-full"
+              >
+                {pendingAttachment.previewUrl ? (
+                  <img
+                    src={pendingAttachment.previewUrl}
+                    alt={pendingAttachment.displayTitle}
+                    className="w-12 h-12 rounded-xl object-cover border border-neutral-200 shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
+                    {pendingAttachment.payload.type === 'link' ? (
+                      <Link2 size={17} />
+                    ) : pendingAttachment.payload.type === 'receipt' ? (
+                      <ReceiptText size={17} />
+                    ) : (
+                      <ImageIcon size={17} />
+                    )}
+                  </div>
+                )}
+                <div className="min-w-0 text-left">
+                  <p className="text-xs font-semibold text-neutral-950 truncate max-w-[240px]">
+                    {pendingAttachment.displayTitle}
+                  </p>
+                  <p className="text-xs text-neutral-600 truncate">
+                    {pendingAttachment.subtitle} · Nhập câu hỏi rồi bấm gửi
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingAttachment(null)}
+                  aria-label="Gỡ tệp đính kèm"
+                  className="w-7 h-7 rounded-full hover:bg-neutral-200 flex items-center justify-center text-neutral-700 shrink-0 cursor-pointer transition"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
             <textarea
               ref={textareaRef}
               rows={1}
@@ -714,7 +792,11 @@ export default function IdeationChatView({
                   void handleSend();
                 }
               }}
-              placeholder="Hỏi GreenTrip AI về Đà Nẵng – Huế, hoặc bấm + để tải ảnh, dán link, vé đặt chỗ..."
+              placeholder={
+                pendingAttachment
+                  ? 'Nhập câu hỏi cho tệp/đường dẫn vừa đính kèm (VD: Liệt kê tất cả các địa điểm trong video này)...'
+                  : 'Hỏi GreenTrip AI về Đà Nẵng – Huế, hoặc bấm + để tải ảnh, dán link, vé đặt chỗ...'
+              }
               aria-label="Nhập câu hỏi khởi tạo ý tưởng chuyến đi"
               className="w-full resize-none overflow-y-auto bg-transparent text-[14.5px] text-neutral-900 placeholder:text-neutral-500 focus:outline-none max-h-36 leading-relaxed"
             />
@@ -738,10 +820,10 @@ export default function IdeationChatView({
               <button
                 type="button"
                 onClick={() => void handleSend()}
-                disabled={!input.trim() || isSending}
+                disabled={(!input.trim() && !pendingAttachment) || isSending}
                 aria-label="Gửi tin nhắn"
                 className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
-                  input.trim() && !isSending
+                  (input.trim() || pendingAttachment) && !isSending
                     ? 'bg-neutral-950 hover:bg-neutral-800 text-white cursor-pointer active:scale-95'
                     : 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
                 }`}
@@ -756,6 +838,36 @@ export default function IdeationChatView({
           </p>
         </div>
       </footer>
+        </div>
+
+        {/* Desktop Split-Screen Interactive Map chuẩn MindTripAI */}
+        {mapPois.length > 0 && !isSplitMapCollapsed && (
+          <aside
+            aria-label="Bản đồ địa điểm tương tác"
+            className="hidden lg:flex w-[44%] xl:w-[46%] shrink-0 h-full p-3 pl-0 bg-[#FCFAF5]"
+          >
+            <div className="w-full h-full rounded-[22px] overflow-hidden border border-neutral-200/90 shadow-[0_4px_18px_rgba(0,0,0,0.06)] relative bg-white">
+              <button
+                type="button"
+                onClick={() => setIsSplitMapCollapsed(true)}
+                aria-label="Thu gọn bản đồ"
+                title="Thu gọn bản đồ"
+                className="absolute top-3 left-3 z-[400] w-10 h-10 rounded-full bg-white/95 hover:bg-white border border-neutral-200 shadow-md flex items-center justify-center text-neutral-900 cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+              >
+                <ArrowLeft size={17} />
+              </button>
+              <PoiMap
+                pois={mapPois}
+                selectedPoiId={selectedMapPoiId}
+                hoveredPoiId={hoveredPoiId}
+                onSelectPoi={setSelectedMapPoiId}
+                onHoverPoi={setHoveredPoiId}
+                hideTopControls
+              />
+            </div>
+          </aside>
+        )}
+      </div>
 
       {/* Quick Map Preview Modal chuẩn MindTrip [🗺️ Map] */}
       {isMapOpen && mapPois.length > 0 && (

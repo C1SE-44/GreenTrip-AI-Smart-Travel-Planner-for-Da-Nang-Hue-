@@ -141,7 +141,7 @@ def build_kg_explanation_for_poi(
             f"Không gian kiến trúc mở ngập ánh sáng và mặt nước tại {city}, chuyên dòng Specialty Coffee yên tĩnh"
         )
         eco_practices.append("Sử dụng hạt cà phê Fair Trade minh bạch nguồn gốc và hạn chế rác thải nhựa")
-    elif "cà phê muối" in name_lower or "muối" in name_lower:
+    elif "cà phê muối" in name_lower or ("muối" in name_lower and not any(w in name_lower for w in ("biển", "seafood", "hải sản"))):
         reasons.append(
             "Quán khai sinh món Cà phê muối trứ danh xứ Huế — lớp kem muối béo mặn hòa quyện cà phê phin truyền thống trong sân vườn thoáng mát"
         )
@@ -176,7 +176,7 @@ def build_kg_explanation_for_poi(
             "Thịt heo hai đầu da luộc vừa tới cuốn cùng bánh tráng Đại Lộc và hơn 10 loại rau vườn địa phương"
         )
         eco_practices.append("Chuỗi cung ứng rau sạch vùng ven Đà Nẵng – Quảng Nam (Food Miles thấp)")
-    elif "hải sản" in name_lower or "bé mặn" in name_lower or "năm đảnh" in name_lower:
+    elif "hải sản" in name_lower or "seafood" in name_lower or "muối biển" in name_lower or "bé mặn" in name_lower or "năm đảnh" in name_lower:
         reasons.append(
             "Hải sản đánh bắt trong ngày từ vùng biển Sơn Trà – Mỹ Khê, chế biến tươi tại chỗ và niêm yết giá rõ ràng"
         )

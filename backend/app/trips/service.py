@@ -806,6 +806,14 @@ def process_copilot_chat(
 
         return process_copilot_attachment(request, connection)
 
+    from app.trips.copilot_attachments import (
+        answer_attached_source_followup,
+        is_attached_source_followup,
+    )
+
+    if is_attached_source_followup(request):
+        return answer_attached_source_followup(request, connection)
+
     intent_category, intent, fact_check, constraints, effective_ctx, nlu_meta = (
         classify_copilot_request_hybrid(request.message, request.trip_context)
     )

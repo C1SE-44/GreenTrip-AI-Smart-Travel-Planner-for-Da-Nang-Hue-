@@ -173,6 +173,7 @@ export default function TripOverviewView({
   const [chatInput, setChatInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<ReadyAttachment | null>(null);
   const [isPlannerDesktopViewport, setIsPlannerDesktopViewport] = useState<boolean>(() =>
     typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true,
   );
@@ -873,16 +874,17 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
   // Xử lý gửi tin nhắn trò chuyện với Trợ lý AI Copilot (PB14 - 6 Core Mindtrip MVPs + Multimodal Attachments)
   const handleSendChatMessage = async (overridePrompt?: string, readyAttachment?: ReadyAttachment) => {
+    const activeAttachment = readyAttachment ?? pendingAttachment ?? undefined;
     const typedPrompt = (overridePrompt ?? chatInput).trim();
-    const defaultAttachmentPrompt = readyAttachment
-      ? readyAttachment.payload.type === 'link'
-        ? `Phân tích đường dẫn ${readyAttachment.subtitle} này và gợi ý địa điểm xanh cho chuyến đi`
-        : readyAttachment.payload.type === 'receipt'
-          ? `Đọc vé / xác nhận đặt chỗ "${readyAttachment.displayTitle}" và đồng bộ vào lịch trình`
-          : `Phân tích tệp "${readyAttachment.displayTitle}" và nhận diện địa điểm xanh phù hợp`
+    const defaultAttachmentPrompt = activeAttachment
+      ? activeAttachment.payload.type === 'link'
+        ? `Phân tích đường dẫn ${activeAttachment.subtitle} này và liệt kê các địa điểm nổi bật`
+        : activeAttachment.payload.type === 'receipt'
+          ? `Đọc vé / xác nhận đặt chỗ "${activeAttachment.displayTitle}" và đồng bộ vào lịch trình`
+          : `Phân tích tệp "${activeAttachment.displayTitle}" và nhận diện địa điểm xanh phù hợp`
       : '';
     const promptToSend = typedPrompt || defaultAttachmentPrompt;
-    if ((!promptToSend && !readyAttachment) || isAiThinking) return;
+    if ((!promptToSend && !activeAttachment) || isAiThinking) return;
 
     const userMsgId = `user-${Date.now()}`;
     const newUserMsg: CopilotChatMessageItem = {
@@ -890,13 +892,13 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       sender: 'user',
       text: promptToSend,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      attachment: readyAttachment
+      attachment: activeAttachment
         ? {
-            type: readyAttachment.payload.type,
-            displayTitle: readyAttachment.displayTitle,
-            subtitle: readyAttachment.subtitle,
-            previewUrl: readyAttachment.previewUrl,
-            url: readyAttachment.payload.url,
+            type: activeAttachment.payload.type,
+            displayTitle: activeAttachment.displayTitle,
+            subtitle: activeAttachment.subtitle,
+            previewUrl: activeAttachment.previewUrl,
+            url: activeAttachment.payload.url,
           }
         : undefined,
     };
@@ -908,6 +910,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
     setChatMessages((prev) => [...prev, newUserMsg]);
     setChatInput('');
+    setPendingAttachment(null);
     setStreamingText('');
     setStreamingStatus(null);
     setIsAiThinking(true);
@@ -916,7 +919,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       const res = await streamCopilotChat(
         {
           message: promptToSend,
-          attachment: readyAttachment?.payload,
+          attachment: activeAttachment?.payload,
           trip_context: {
             destination: trip.destination || 'Đà Nẵng & Huế',
             days_count: trip.daysCount || 4,
@@ -1774,15 +1777,58 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               isOpen={isAttachMenuOpen}
               onClose={() => setIsAttachMenuOpen(false)}
               onSelectAttachment={(ready) => {
-                void handleSendChatMessage(undefined, ready);
+                setPendingAttachment(ready);
+                setTimeout(() => chatInputRef.current?.focus(), 0);
               }}
             />
 
             <div className="w-full rounded-[24px] border border-gray-200/90 p-3 shadow-sm bg-white hover:border-gray-300 focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all flex flex-col justify-between">
+              {pendingAttachment && (
+                <div className="mb-2 inline-flex items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-1.5 pr-2 max-w-full">
+                  {pendingAttachment.previewUrl ? (
+                    <img
+                      src={pendingAttachment.previewUrl}
+                      alt={pendingAttachment.displayTitle}
+                      className="w-10 h-10 rounded-xl object-cover border border-neutral-200 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
+                      {pendingAttachment.payload.type === 'link' ? (
+                        <Link2 size={15} />
+                      ) : pendingAttachment.payload.type === 'receipt' ? (
+                        <ReceiptText size={15} />
+                      ) : (
+                        <ImageIcon size={15} />
+                      )}
+                    </div>
+                  )}
+                  <div className="min-w-0 text-left">
+                    <p className="text-xs font-semibold text-neutral-950 truncate max-w-[200px]">
+                      {pendingAttachment.displayTitle}
+                    </p>
+                    <p className="text-xs text-neutral-600 truncate">
+                      {pendingAttachment.subtitle}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPendingAttachment(null)}
+                    aria-label="Gỡ tệp đính kèm"
+                    className="w-7 h-7 rounded-full hover:bg-neutral-200 flex items-center justify-center text-neutral-700 shrink-0 cursor-pointer transition"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+
               <input
                 ref={chatInputRef}
                 type="text"
-                placeholder="Bắt đầu một cuộc trò chuyện mới cho chuyến đi này..."
+                placeholder={
+                  pendingAttachment
+                    ? 'Nhập yêu cầu cho tệp/đường dẫn vừa đính kèm...'
+                    : 'Bắt đầu một cuộc trò chuyện mới cho chuyến đi này...'
+                }
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => {

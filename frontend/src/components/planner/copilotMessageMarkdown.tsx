@@ -107,13 +107,35 @@ export function FormattedCopilotMessage({
           return <div key={idx} className="h-1" />;
         }
 
+        // Numbered list item (takes precedence so '1. 📍 **Đà Nẵng**' renders as a crisp numbered row)
+        const numMatch = trimmed.match(/^(\d+)\.\s*(.*)/);
+        if (numMatch) {
+          const num = numMatch[1];
+          const content = numMatch[2];
+          return (
+            <div key={idx} className="flex items-start gap-2.5 pl-1 my-1.5">
+              <span className="font-bold text-[13px] text-neutral-900 shrink-0">
+                {num}.
+              </span>
+              <div className="flex-1 leading-normal text-neutral-800">
+                {renderInlineMarkdown(content, entityLookup, onHoverPoi, onSelectPoi)}
+              </div>
+            </div>
+          );
+        }
+
         // Special Badges: Di chuyển, Chi phí, Lý do
-        if (trimmed.includes('📍') || trimmed.includes('Di chuyển:')) {
+        if (
+          trimmed.startsWith('📍') ||
+          trimmed.startsWith('- 📍') ||
+          trimmed.startsWith('* 📍') ||
+          trimmed.includes('Di chuyển:')
+        ) {
           return (
             <div key={idx} className="flex items-start gap-1.5 pl-2 my-1 text-[12px] text-neutral-700 bg-neutral-100/70 p-2 rounded-xl border border-neutral-200/50">
               <span className="shrink-0 text-xs">📍</span>
               <div className="flex-1 leading-normal">
-                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''), entityLookup, onHoverPoi, onSelectPoi)}
+                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, '').replace(/^📍\s*/, ''), entityLookup, onHoverPoi, onSelectPoi)}
               </div>
             </div>
           );
@@ -136,23 +158,6 @@ export function FormattedCopilotMessage({
               <span className="shrink-0 text-xs">✅</span>
               <div className="flex-1 leading-normal">
                 {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''), entityLookup, onHoverPoi, onSelectPoi)}
-              </div>
-            </div>
-          );
-        }
-
-        // Numbered list item
-        const numMatch = trimmed.match(/^(\d+)\.\s*(.*)/);
-        if (numMatch) {
-          const num = numMatch[1];
-          const content = numMatch[2];
-          return (
-            <div key={idx} className="flex items-start gap-2.5 pl-1 my-1.5">
-              <span className="font-bold text-[13px] text-neutral-900 shrink-0">
-                {num}.
-              </span>
-              <div className="flex-1 leading-normal text-neutral-800">
-                {renderInlineMarkdown(content, entityLookup, onHoverPoi, onSelectPoi)}
               </div>
             </div>
           );

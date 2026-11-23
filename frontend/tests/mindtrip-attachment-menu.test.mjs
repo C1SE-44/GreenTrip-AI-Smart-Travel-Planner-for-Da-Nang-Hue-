@@ -26,11 +26,19 @@ test('MindtripAttachmentMenu implements all 3 views (menu, link, receipt) matchi
   assert.ok(menuSrc.includes('onDrop='), 'Receipt view must support drag & drop upload');
   assert.ok(menuSrc.includes('MAX_FILE_BYTES'), 'Must enforce file size guard');
 
-  // 2. API payload support
+  // 2. YouTube thumbnail extraction for staged & sent previews
+  assert.ok(menuSrc.includes('extractYouTubeVideoId'), 'MindtripAttachmentMenu must extract YouTube video ID');
+  assert.ok(menuSrc.includes('i.ytimg.com/vi/'), 'MindtripAttachmentMenu must build YouTube thumbnail preview URL');
+
+  // 3. API payload support
   assert.ok(copilotSvcSrc.includes('CopilotAttachmentPayload'), 'copilotService must export CopilotAttachmentPayload');
   assert.ok(copilotSvcSrc.includes('attachment?: CopilotAttachmentPayload'), 'CopilotChatRequest must accept attachment');
 
-  // 3. Wired into both /chat and /planner
+  // 4. Wired into both /chat and /planner with staged preview chip & desktop split-screen map
   assert.ok(ideationSrc.includes('<MindtripAttachmentMenu'), 'IdeationChatView (/chat) must render MindtripAttachmentMenu');
+  assert.ok(ideationSrc.includes('pendingAttachment'), 'IdeationChatView must stage attachments inside the input box');
+  assert.ok(ideationSrc.includes('staged-attachment-chip'), 'IdeationChatView must render staged attachment preview chip');
+  assert.ok(ideationSrc.includes('isSplitMapCollapsed'), 'IdeationChatView must support Mindtrip-style split-screen live map');
   assert.ok(overviewSrc.includes('<MindtripAttachmentMenu'), 'TripOverviewView (/planner) must render MindtripAttachmentMenu');
+  assert.ok(overviewSrc.includes('pendingAttachment'), 'TripOverviewView must stage attachments inside the chat input box');
 });

@@ -39,6 +39,31 @@ function detectPlatformLabel(rawUrl: string): string {
   return 'Bài viết du lịch';
 }
 
+function extractYouTubeVideoId(rawUrl: string): string | null {
+  try {
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.toLowerCase();
+    const idRe = /^[A-Za-z0-9_-]{11}$/;
+    if (host.includes('youtu.be')) {
+      const seg = parsed.pathname.replace(/^\/+/, '').split('/')[0] || '';
+      return idRe.test(seg) ? seg : null;
+    }
+    if (host.includes('youtube.com')) {
+      if (parsed.pathname === '/watch') {
+        const v = parsed.searchParams.get('v') || '';
+        return idRe.test(v) ? v : null;
+      }
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      if (parts.length >= 2 && ['shorts', 'embed', 'live', 'v'].includes(parts[0])) {
+        return idRe.test(parts[1]) ? parts[1] : null;
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 function normalizeUrlInput(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
@@ -211,11 +236,13 @@ export default function MindtripAttachmentMenu({
     }
 
     const platform = detectPlatformLabel(normalized);
+    const ytVideoId = extractYouTubeVideoId(normalized);
     onSelectAttachment({
       payload: {
         type: 'link',
         url: normalized,
       },
+      previewUrl: ytVideoId ? `https://i.ytimg.com/vi/${ytVideoId}/hqdefault.jpg` : undefined,
       displayTitle: normalized.replace(/^https?:\/\/(www\.)?/i, '').slice(0, 64),
       subtitle: platform,
     });

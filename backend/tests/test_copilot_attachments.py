@@ -9,7 +9,12 @@ import pytest
 
 from app.main import app
 from app.trips.copilot_attachments import (
+    _extract_chapter_lines,
+    _extract_json_string_field,
+    answer_attached_source_followup,
     detect_link_platform,
+    extract_youtube_video_id,
+    is_attached_source_followup,
     is_safe_public_url,
     process_copilot_attachment,
 )
@@ -211,3 +216,75 @@ def test_process_file_attachment_endpoint_via_fastapi() -> None:
     body = response.json()
     assert body["intent"] == "attachment_file"
     assert isinstance(body["reply_text"], str) and len(body["reply_text"]) > 20
+
+
+def test_youtube_video_id_and_chapters_extraction() -> None:
+    assert extract_youtube_video_id("https://youtu.be/dQw4w9WgXcQ?si=abc") == "dQw4w9WgXcQ"
+    assert extract_youtube_video_id("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=12s") == "dQw4w9WgXcQ"
+    assert extract_youtube_video_id("https://www.youtube.com/shorts/dQw4w9WgXcQ") == "dQw4w9WgXcQ"
+    assert extract_youtube_video_id("https://example.com/blog") is None
+
+    fake_html = (
+        '{"videoDetails":{"shortDescription":"Du lịch Đà Nẵng\\n'
+        '00:00 Đà Nẵng\\n01:30 KDL Núi Thần Tài\\n11:03 Nhà Hàng Muối Biển\\n19:05 Cầu Rồng","isCrawlable":true}}'
+    )
+    desc = _extract_json_string_field(fake_html, "shortDescription")
+    assert "KDL Núi Thần Tài" in desc
+    chapters = _extract_chapter_lines(desc)
+    assert len(chapters) == 4
+    assert any("Nhà Hàng Muối Biển" in c for c in chapters)
+
+
+def test_youtube_chapters_pin_geo_anchors_and_persist_source_memory() -> None:
+    req = CopilotChatRequest(
+        message="hãy giúp tôi liệt kê tất cả các địa điểm có trong video youtube này",
+        trip_context=TripContextPayload(mode="ideation", destination="Đà Nẵng & Huế", days_count=3),
+        attachment=CopilotAttachmentPayload(
+            type="link",
+            url="https://youtu.be/dQw4w9WgXcQ",
+        ),
+    )
+    mock_meta = {
+        "platform": "YouTube",
+        "url": "https://youtu.be/dQw4w9WgXcQ",
+        "title": "HƯỚNG DẪN DU LỊCH ĐÀ NẴNG TỰ TÚC",
+        "author": "Toro Pan",
+        "description": "00:00 Đà Nẵng\n01:30 KDL Núi Thần Tài\n11:03 Nhà Hàng Muối Biển\n19:05 Cầu Rồng\n25:00 Phố Cổ Hội An",
+        "chapters": "00:00 Đà Nẵng\n01:30 KDL Núi Thần Tài\n11:03 Nhà Hàng Muối Biển\n19:05 Cầu Rồng\n25:00 Phố Cổ Hội An",
+        "transcript": "",
+        "snippet": "",
+        "thumbnail_url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+        "metadata_source": "description_and_chapters",
+    }
+    with (
+        patch("app.trips.copilot_attachments.fetch_link_metadata", return_value=mock_meta),
+        patch("app.trips.copilot_attachments._analyze_attachment_with_gemini", return_value=None),
+    ):
+        resp = process_copilot_attachment(req, _DummyConn(SAMPLE_POI_ROWS))  # type: ignore[arg-type]
+
+    assert resp.intent == "attachment_link"
+    assert "KDL Núi Thần Tài" in resp.reply_text
+    assert "Nhà Hàng Muối Biển" in resp.reply_text
+    assert "Cầu Rồng" in resp.reply_text
+    assert len(resp.suggested_pois) >= 3
+    poi_names = {p.name for p in resp.suggested_pois}
+    assert any("Cầu Rồng" in n for n in poi_names)
+    assert any("Núi Thần Tài" in n or "Muối Biển" in n for n in poi_names)
+    assert "attached_source" in resp.trip_memory
+    assert resp.trip_memory.get("attached_source_title") == "HƯỚNG DẪN DU LỊCH ĐÀ NẴNG TỰ TÚC"
+
+    # Follow-up turn without re-attaching link must recall the video's places cleanly
+    followup_req = CopilotChatRequest(
+        message="hãy liệt kê tất cả các địa điểm có trong video tôi đã đính kèm",
+        trip_context=TripContextPayload(
+            mode="ideation",
+            destination="Đà Nẵng & Huế",
+            days_count=3,
+            trip_memory=resp.trip_memory,
+        ),
+    )
+    assert is_attached_source_followup(followup_req) is True
+    followup_resp = answer_attached_source_followup(followup_req, _DummyConn(SAMPLE_POI_ROWS))  # type: ignore[arg-type]
+    assert followup_resp.intent == "attachment_followup"
+    assert "Nhà Hàng Muối Biển" in followup_resp.reply_text
+    assert "xe máy một mình" not in followup_resp.reply_text.lower()

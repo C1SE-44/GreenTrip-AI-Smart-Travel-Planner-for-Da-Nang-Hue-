@@ -6,7 +6,6 @@ import {
   ChevronUp,
   ChevronRight,
   Clock,
-  Calendar as CalendarIcon,
   Plus,
   ArrowUp,
   ArrowDown,
@@ -104,6 +103,7 @@ import ItineraryMapPanel from './ItineraryMapPanel';
 import ItineraryAddPlacesModal from './ItineraryAddPlacesModal';
 import TripDayEditorModal from './TripDayEditorModal';
 import ExpiredTripBanner from './ExpiredTripBanner';
+import TripHeader from './TripHeader';
 import { dateAt, vietnamNow } from '@/utils/tripDates';
 import PoiImage from '@/components/ui/PoiImage';
 
@@ -118,6 +118,7 @@ export interface TripItineraryViewProps {
   onClose?: () => void;
   initialFocus?: 'ideas' | 'itinerary';
   onNavigateToCalendar?: () => void;
+  onNavigateToTab?: (tab: 'ideas' | 'itinerary' | 'calendar') => void;
 }
 
 export default function TripItineraryView({
@@ -131,6 +132,7 @@ export default function TripItineraryView({
   onClose,
   initialFocus,
   onNavigateToCalendar,
+  onNavigateToTab,
 }: TripItineraryViewProps) {
   // ─── 0. Hệ thống địa điểm đã lưu (Favorites / Đã thích) của Thiện ───
   const navigate = useNavigate();
@@ -231,6 +233,7 @@ export default function TripItineraryView({
   const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
+  const [showCustomSettings, setShowCustomSettings] = useState(false);
 
   // Bộ lọc xem ngày nổi trên Bản đồ (đặt góc trên bên phải)
   const [mapDayFilter, setMapDayFilter] = useState<number | 'all'>(1);
@@ -1529,97 +1532,50 @@ export default function TripItineraryView({
           </div>
         </header>
       ) : (
-        <header className="no-print h-[60px] px-4 sm:px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between gap-2 shrink-0 z-30">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              type="button"
-              onClick={onBack}
-              className="w-8 h-8 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-black transition cursor-pointer shrink-0"
-              title="Quay lại chuyến đi"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <img
-              src={trip.image || (trip.destination === 'Huế' 
-                ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=200&auto=format&fit=crop&q=80'
-                : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80'
-              )}
-              alt={trip.destination}
-              className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
-            />
-            <div className="min-w-0">
-              <h1 className="font-extrabold text-[16px] sm:text-[18px] text-gray-950 truncate leading-snug">
-                {displayTitle}
-              </h1>
-              <p className="text-xs text-gray-500 mt-0.5 font-medium truncate">
-                {displaySubtitle}
-              </p>
-            </div>
-          </div>
-
-          {/* Nút hành động phải: Bản đồ mobile + Chuyển sang Lịch + Trạng thái lưu & Nút Xong */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setIsMapExpanded((prev) => !prev);
-                setTimeout(() => window.dispatchEvent(new Event('resize')), 150);
-              }}
-              aria-pressed={isMapExpanded}
-              className="md:hidden min-h-[40px] flex items-center gap-1 px-2.5 rounded-full border border-gray-200 hover:border-black text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-              title={isMapExpanded ? 'Quay lại danh sách lịch trình' : 'Xem bản đồ lộ trình'}
-            >
-              <MapPin size={14} className="text-emerald-700" aria-hidden="true" />
-              <span>{isMapExpanded ? 'Danh sách' : 'Bản đồ'}</span>
-            </button>
-
-            {onNavigateToCalendar && (
+        <TripHeader
+          trip={trip}
+          activeTab="itinerary"
+          onNavigateToTab={(tab) => {
+            if (tab === 'calendar' && onNavigateToCalendar) {
+              onNavigateToCalendar();
+            } else {
+              onNavigateToTab?.(tab);
+            }
+          }}
+          onBack={onBack}
+          showCustomSettings={showCustomSettings}
+          setShowCustomSettings={setShowCustomSettings}
+          isSaving={isSaving}
+          saveError={errorMessage || null}
+          daysCount={plan.days.length}
+          rightActions={
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 type="button"
-                onClick={onNavigateToCalendar}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 hover:border-black text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer shadow-2xs group"
-                title="Chuyển sang chế độ xem dạng Lịch"
+                onClick={() => {
+                  setIsMapExpanded((prev) => !prev);
+                  setTimeout(() => window.dispatchEvent(new Event('resize')), 150);
+                }}
+                aria-pressed={isMapExpanded}
+                className="md:hidden min-h-[40px] flex items-center gap-1 px-2.5 rounded-full border border-gray-200 hover:border-black text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                title={isMapExpanded ? 'Quay lại danh sách lịch trình' : 'Xem bản đồ lộ trình'}
               >
-                <CalendarIcon size={13} className="text-blue-600" />
-                <span>Xem dạng Lịch</span>
-                <ChevronRight size={12} className="text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+                <MapPin size={14} className="text-emerald-700" aria-hidden="true" />
+                <span>{isMapExpanded ? 'Danh sách' : 'Bản đồ'}</span>
               </button>
-            )}
 
-            <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium">
-              {isSaving ? (
-                <span className="flex items-center gap-1 text-amber-700">
-                  <RefreshCw size={12} className="animate-spin" /> Đang lưu...
-                </span>
-              ) : hasUnsavedChanges ? (
-                <span className="text-gray-400">Chưa lưu</span>
-              ) : (
-                <span className="text-emerald-700 flex items-center gap-1">
-                  <Check size={13} /> Đã lưu
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={handleSaveAndShare}
+                className="min-h-[40px] flex items-center gap-1.5 px-3.5 rounded-full border border-emerald-700/30 bg-emerald-50 hover:bg-emerald-100 text-xs font-bold text-emerald-900 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                title="Lưu & Chia sẻ lịch trình"
+              >
+                <Share2 size={13} aria-hidden="true" />
+                <span className="hidden sm:inline">Lưu &amp; Chia sẻ</span>
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={handleSaveAndShare}
-              className="min-h-[40px] flex items-center gap-1.5 px-3.5 rounded-full border border-emerald-700/30 bg-emerald-50 hover:bg-emerald-100 text-xs font-bold text-emerald-900 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-              title="Lưu & Chia sẻ lịch trình"
-            >
-              <Share2 size={13} aria-hidden="true" />
-              <span className="hidden sm:inline">Lưu &amp; Chia sẻ</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDone}
-              className="min-h-[40px] px-5 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-              title="Lưu lịch trình và quay lại tổng quan"
-            >
-              Xong
-            </button>
-          </div>
-        </header>
+          }
+        />
       )}
 
       {!isDrawerMode && (

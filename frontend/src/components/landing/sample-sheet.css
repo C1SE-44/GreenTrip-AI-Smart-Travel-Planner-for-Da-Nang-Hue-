@@ -1,0 +1,15 @@
+.sheet-backdrop {position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(17,17,17,.46);font-family:Inter,system-ui,sans-serif;}
+.sheet-backdrop[hidden], .sample-portal[hidden] {display:none!important;}
+.sheet-backdrop button:focus-visible,.sheet-backdrop input:focus-visible {outline:2px solid #1f6b49;outline-offset:2px;}
+.sheet-backdrop button {min-height:40px;}
+.sheet-backdrop button:disabled {opacity:.45;cursor:not-allowed;}
+.sheet-backdrop [data-use-itinerary-btn],.sheet-backdrop [data-save-sample] {background:#111;color:white;}
+.sheet-backdrop [data-sample-itinerary-sheet] {min-height:0;}
+.sheet-backdrop [data-itinerary-scroll-body],.sheet-backdrop [data-planner-preview-body] {min-height:0;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#b9b2a6 transparent;}
+.sample-load {position:relative;width:min(600px,100%);border-radius:22px;background:#fbf9f2;color:#172820;padding:32px;}
+.sample-load h2 {font-size:24px;font-weight:700;margin-bottom:20px;}
+.sample-load button {min-height:44px;padding:8px 16px;}
+.sample-close {position:absolute;right:12px;top:12px;font-size:24px;}
+.sample-auth-loading {position:fixed;inset:0;z-index:101;display:grid;place-items:center;background:#fbf9f2;}
+@media(max-width:480px){.sheet-backdrop {padding:6px;} .sheet-backdrop [data-sample-itinerary-sheet] {max-height:96svh;border-radius:16px;} .sheet-backdrop footer {gap:8px;} .sheet-backdrop [data-save-sample] {white-space:normal;}}
+

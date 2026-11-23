@@ -34,6 +34,7 @@ import {
   updateDateRangeWithDays,
 } from '@/services/itineraryService';
 import ExpiredTripBanner from './ExpiredTripBanner';
+import TripHeader from './TripHeader';
 import PoiMap from '@/components/poi/PoiMap';
 import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
@@ -44,6 +45,7 @@ export interface TripCalendarViewProps {
   onBack: () => void;
   onUpdateTrip?: (trip: UserTrip) => void;
   onNavigateToItinerary?: () => void;
+  onNavigateToTab?: (tab: 'ideas' | 'itinerary' | 'calendar') => void;
 }
 
 const CALENDAR_HOURS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
@@ -91,12 +93,14 @@ export default function TripCalendarView({
   onBack,
   onUpdateTrip,
   onNavigateToItinerary,
+  onNavigateToTab,
 }: TripCalendarViewProps) {
   const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
 
   // 1. Quản lý trạng thái Lịch trình (Itinerary Plan)
   const [plan, setPlan] = useState<TripItinerary>(() => createEmptyItinerary(trip));
   const [isSaving, setIsSaving] = useState(false);
+  const [showCustomSettings, setShowCustomSettings] = useState(false);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(1);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
@@ -242,72 +246,23 @@ export default function TripCalendarView({
 
   return (
     <div className="flex flex-col h-full w-full bg-white text-gray-900 select-none overflow-hidden animate-fadeIn print-scroll-unlock">
-      {/* ─── HEADER: TIÊU ĐỀ CHUYẾN ĐI & NÚT QUAY LẠI ─── */}
-      <header className="no-print h-[60px] px-4 sm:px-6 lg:px-[36px] bg-white border-b border-gray-200/90 flex items-center justify-between gap-2 shrink-0 z-30">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="w-8 h-8 rounded-full border border-gray-200 hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-black transition cursor-pointer shrink-0"
-            title="Quay lại danh sách chuyến đi"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <img
-            src={trip.image || (trip.destination === 'Huế' 
-              ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=200&auto=format&fit=crop&q=80'
-              : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80'
-            )}
-            alt={trip.destination}
-            className="w-8 h-8 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
-          />
-          <div className="min-w-0">
-            <h1 className="font-extrabold text-[16px] sm:text-[18px] text-gray-950 truncate leading-snug">
-              {displayTitle}
-            </h1>
-            <p className="text-xs text-gray-500 mt-0.5 font-medium truncate">
-              {trip.destination} • {calendarRangeText} ({plan.days.length} ngày)
-            </p>
-          </div>
-        </div>
-
-        {/* Nút hành động phải */}
-        <div className="flex items-center gap-2.5">
-          {onNavigateToItinerary && (
-            <button
-              type="button"
-              onClick={onNavigateToItinerary}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 hover:border-black text-xs font-bold text-gray-800 hover:bg-gray-50 transition cursor-pointer shadow-2xs group"
-              title="Xem danh sách chi tiết các ngày"
-            >
-              <Compass size={13} className="text-emerald-600" />
-              <span>Kế hoạch chi tiết</span>
-              <ChevronRight size={12} className="text-gray-400 group-hover:translate-x-0.5 transition-transform" />
-            </button>
-          )}
-
-          <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium">
-            {isSaving ? (
-              <span className="flex items-center gap-1 text-amber-700">
-                <RefreshCw size={12} className="animate-spin" /> Đang lưu...
-              </span>
-            ) : (
-              <span className="text-emerald-700 flex items-center gap-1">
-                <Check size={13} /> Đã lưu
-              </span>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={onBack}
-            className="h-9 px-5 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition cursor-pointer shadow-xs active:scale-95"
-            title="Xong và quay lại"
-          >
-            Xong
-          </button>
-        </div>
-      </header>
+      {/* ─── HEADER: TIÊU ĐỀ CHUYẾN ĐI & 3 TAB (TRIPHEADER) ─── */}
+      <TripHeader
+        trip={trip}
+        activeTab="calendar"
+        onNavigateToTab={(tab) => {
+          if (tab === 'itinerary' && onNavigateToItinerary) {
+            onNavigateToItinerary();
+          } else {
+            onNavigateToTab?.(tab);
+          }
+        }}
+        onBack={onBack}
+        showCustomSettings={showCustomSettings}
+        setShowCustomSettings={setShowCustomSettings}
+        isSaving={isSaving}
+        daysCount={plan.days.length}
+      />
 
       <ExpiredTripBanner
         trip={trip}

@@ -5,6 +5,27 @@ import re
 
 _CAFE_CATEGORY_TOKENS = ("cafe", "cà phê", "giải khát", "coffee")
 
+_STAY_CATEGORY_TOKENS = (
+    "lưu trú",
+    "luu-tru",
+    "luu tru",
+    "nghỉ dưỡng",
+    "accommodation",
+    "stays",
+    "stay",
+)
+
+_STAY_SUBCATEGORIES = (
+    "eco_lodge",
+    "homestay",
+    "resort",
+    "villa",
+    "hotel",
+    "serviced_apartment",
+    "guesthouse",
+    "hostel",
+)
+
 _ALWAYS_DRINK_OR_CHE_TOKENS = (
     " chè ",
     " sinh tố ",
@@ -107,7 +128,12 @@ def normalize_poi_price_display(
     sub_lower = (sub_category or "").lower()
     raw = (raw_price_display or "").strip()
 
-    if any(k in cat_lower for k in _CAFE_CATEGORY_TOKENS):
+    is_stay = any(k in cat_lower for k in _STAY_CATEGORY_TOKENS) or sub_lower in _STAY_SUBCATEGORIES
+
+    if is_stay:
+        unit = "đêm"
+        default_range = "650.000 – 1.800.000 ₫"
+    elif any(k in cat_lower for k in _CAFE_CATEGORY_TOKENS):
         unit = "ly"
         default_range = "35.000 – 65.000 ₫"
     elif any(k in name_padded for k in _ALWAYS_DRINK_OR_CHE_TOKENS):
@@ -141,7 +167,7 @@ def normalize_poi_price_display(
         if "miễn phí" in raw.lower():
             return "Miễn phí tham quan"
         cleaned_amount = re.sub(
-            r"(?:\s*/\s*(?:ly|tô|phần|người|vé|món|suất|ấm|nồi))+\b.*$",
+            r"(?:\s*/\s*(?:ly|tô|phần|người|vé|đêm|món|suất|ấm|nồi))+\b.*$",
             "",
             raw,
             flags=re.IGNORECASE,

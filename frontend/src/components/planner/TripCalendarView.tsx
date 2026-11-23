@@ -73,6 +73,9 @@ function getStopSlot(stop: ItineraryStop, idx: number) {
 
 function getStopCategoryTheme(category: string | null) {
   const cat = (category || '').toLowerCase();
+  if (cat.includes('luu-tru') || cat.includes('lưu trú') || cat.includes('nghỉ dưỡng') || cat.includes('homestay') || cat.includes('resort') || cat.includes('hotel')) {
+    return 'bg-purple-100/90 hover:bg-purple-200/90 border-purple-300 text-purple-950 shadow-2xs';
+  }
   if (cat.includes('quan-an') || cat.includes('ẩm thực') || cat.includes('ăn') || cat.includes('cafe')) {
     return 'bg-amber-100/90 hover:bg-amber-200/90 border-amber-300 text-amber-950 shadow-2xs';
   }

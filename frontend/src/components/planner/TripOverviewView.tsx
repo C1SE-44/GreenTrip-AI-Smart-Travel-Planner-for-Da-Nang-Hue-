@@ -658,6 +658,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       list = list.filter((p) => p.category === 'chua');
     } else if (modalCategory === 'quan-an' || modalCategory === 'restaurants') {
       list = list.filter((p) => p.category === 'quan-an');
+    } else if (modalCategory === 'luu-tru') {
+      list = list.filter((p) => p.category === 'luu-tru');
     } else if (modalCategory === 'experiences') {
       list = list.filter((p) => p.category === 'di-tich' || p.category === 'chua');
     }
@@ -2168,6 +2170,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                             ? 'Di tích' 
                             : poi.category === 'canh-quan' 
                             ? 'Cảnh quan' 
+                            : poi.category === 'luu-tru'
+                            ? 'Lưu trú'
                             : 'Tâm linh'} • {poi.city}
                         </span>
                       </div>

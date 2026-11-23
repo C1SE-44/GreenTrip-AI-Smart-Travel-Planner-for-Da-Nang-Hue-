@@ -9,7 +9,7 @@ import { isPoiEcoCertified } from '@/services/poi';
 export type BudgetTier = 'all' | 'free' | '$' | '$$' | '$$$' | '$$$$';
 export type EcoPriority = 'all' | 'basic' | 'balanced' | 'eco' | 'pure';
 export type TimeOfDay = 'morning' | 'afternoon' | 'evening';
-export type PoiCategoryFilter = 'di-tich' | 'canh-quan' | 'chua' | 'quan-an' | 'bao-tang' | 'giai-tri';
+export type PoiCategoryFilter = 'di-tich' | 'canh-quan' | 'chua' | 'quan-an' | 'luu-tru' | 'bao-tang' | 'giai-tri';
 
 export interface ExploreFilterValues {
   budget: BudgetTier;
@@ -78,6 +78,7 @@ export function getDistanceFromLatLonInKm(
 
 export function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {
   if (timeOfDayList.length === 0) return true;
+  if (poi.category === 'luu-tru') return true;
 
   return timeOfDayList.some((tod) => {
     if (poi.best_time && poi.best_time.length > 0) {
@@ -181,6 +182,7 @@ export const CATEGORY_FACET_TITLES: Record<string, string> = {
   'di-tich': 'Di sản & Lịch sử',
   'canh-quan': 'Trải nghiệm thiên nhiên',
   'chua': 'Chùa chiền & Tâm linh',
+  'luu-tru': 'Lưu trú xanh',
 };
 
 export const SPECIFIC_FACETS_BY_CATEGORY: Record<string, SpecificFacet[]> = {
@@ -357,6 +359,33 @@ export const SPECIFIC_FACETS_BY_CATEGORY: Record<string, SpecificFacet[]> = {
       subKeys: ['shrine', 'heritage'],
     },
   ],
+  'luu-tru': [
+    {
+      id: 'eco_lodge',
+      label: 'Eco Lodge & Sinh thái',
+      subKeys: ['eco_lodge'],
+    },
+    {
+      id: 'homestay',
+      label: 'Homestay bản địa',
+      subKeys: ['homestay'],
+    },
+    {
+      id: 'resort',
+      label: 'Resort & Nghỉ dưỡng',
+      subKeys: ['resort'],
+    },
+    {
+      id: 'villa',
+      label: 'Villa & Biệt thự',
+      subKeys: ['villa'],
+    },
+    {
+      id: 'hotel',
+      label: 'Khách sạn xanh',
+      subKeys: ['hotel', 'serviced_apartment', 'guesthouse', 'hostel'],
+    },
+  ],
 };
 
 // ─────────────────────────────────────────────
@@ -403,6 +432,14 @@ export const FEATURES_BY_CATEGORY: Record<string, FeatureItem[]> = {
     { id: 'highly_reviewed', label: 'Được đánh giá cao (★ 4.5+)' },
     { id: 'free_ticket', label: 'Miễn phí tham quan' },
     { id: 'eco_green', label: '🍃 Bảo tồn sinh thái xanh' },
+  ],
+  'luu-tru': [
+    { id: 'eco_green', label: '🍃 Chuẩn lưu trú xanh' },
+    { id: 'highly_reviewed', label: 'Được đánh giá cao (★ 4.5+)' },
+    { id: 'quiet', label: 'Không gian yên tĩnh' },
+    { id: 'family_friendly', label: 'Thân thiện với gia đình' },
+    { id: 'scenic_view', label: 'View biển / Sông / Vườn' },
+    { id: 'rainy_friendly', label: 'Phù hợp ngày mưa' },
   ],
 };
 
@@ -665,7 +702,7 @@ export function matchesPoiFeature(poi: Poi, featureId: string, category: string)
 export interface ExploreFilterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  activeTab: 'all' | 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua' | string;
+  activeTab: 'all' | 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua' | 'luu-tru' | string;
   values: ExploreFilterValues;
   onApply: (newValues: ExploreFilterValues) => void;
   onClearAll: () => void;
@@ -750,19 +787,23 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
         const isFree = poi.budget_tier === 'free' || cost === 0;
         if (!isFree) return false;
       } else if (budget === '$') {
-        if (activeTab === 'quan-an') {
-          if (cost > 50000 && poi.budget_tier !== '$') return false;
+        if (activeTab === 'luu-tru') {
+          if (cost > 800000 && poi.budget_tier !== '$') return false;
         } else {
           if (cost > 50000 && poi.budget_tier !== '$') return false;
         }
       } else if (budget === '$$') {
-        if (activeTab === 'quan-an') {
+        if (activeTab === 'luu-tru') {
+          if ((cost <= 800000 || cost > 2000000) && poi.budget_tier !== '$$') return false;
+        } else if (activeTab === 'quan-an') {
           if ((cost <= 50000 || cost > 150000) && poi.budget_tier !== '$$') return false;
         } else {
           if ((cost <= 50000 || cost > 200000) && poi.budget_tier !== '$$') return false;
         }
       } else if (budget === '$$$') {
-        if (activeTab === 'quan-an') {
+        if (activeTab === 'luu-tru') {
+          if (cost <= 2000000 && poi.budget_tier !== '$$$') return false;
+        } else if (activeTab === 'quan-an') {
           if (cost <= 150000 && poi.budget_tier !== '$$$') return false;
         } else {
           if (cost <= 200000 && poi.budget_tier !== '$$$') return false;
@@ -1167,6 +1208,32 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
                   { id: '$' as const, label: '$', desc: '< 50k (Bình dân / Cafe)' },
                   { id: '$$' as const, label: '$$', desc: '50k - 150k (Tiêu chuẩn)' },
                   { id: '$$$' as const, label: '$$$', desc: '> 150k (Cao cấp)' },
+                ].map(({ id, label, desc }) => {
+                  const isSelected = budget === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setBudget(isSelected ? 'all' : id)}
+                      className={`px-3.5 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-black border-black text-white font-medium shadow-sm'
+                          : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
+                      }`}
+                    >
+                      <span className="font-semibold">{label}</span>
+                      <span className={`text-[11px] ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
+                        {desc}
+                      </span>
+                    </button>
+                  );
+                })
+              ) : activeTab === 'luu-tru' ? (
+                // Lưu trú xanh theo giá / đêm
+                [
+                  { id: '$' as const, label: '$', desc: '< 800k/đêm · Tiết kiệm' },
+                  { id: '$$' as const, label: '$$', desc: '800k - 2tr/đêm · Tiêu chuẩn' },
+                  { id: '$$$' as const, label: '$$$', desc: '> 2tr/đêm · Cao cấp' },
                 ].map(({ id, label, desc }) => {
                   const isSelected = budget === id;
                   return (

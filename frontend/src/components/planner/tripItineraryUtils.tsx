@@ -1,4 +1,4 @@
-import { Coffee, Compass, Landmark, Utensils } from 'lucide-react';
+import { BedDouble, Coffee, Compass, Landmark, Utensils } from 'lucide-react';
 import { getDeterministicImage, type Poi, type PoiCategory } from '@/data/pois';
 import { updateDateRangeWithDays, type RouteTransportMode } from '@/services/itineraryService';
 
@@ -25,6 +25,7 @@ export const GREEN_CATEGORY_TABS: { id: string; label: string }[] = [
   { id: 'di-tich', label: 'Di tích' },
   { id: 'canh-quan', label: 'Cảnh quan' },
   { id: 'chua', label: 'Chùa' },
+  { id: 'luu-tru', label: 'Lưu trú' },
 ];
 
 export const MODAL_CATEGORY_TABS: { id: string; label: string }[] = [
@@ -34,11 +35,13 @@ export const MODAL_CATEGORY_TABS: { id: string; label: string }[] = [
   { id: 'canh-quan', label: 'Cảnh quan' },
   { id: 'chua', label: 'Chùa' },
   { id: 'quan-an', label: 'Quán ăn' },
+  { id: 'luu-tru', label: 'Lưu trú' },
 ];
 
 export function formatCategoryLabel(cat?: string | null): string {
   if (!cat) return 'Điểm đến';
   const c = cat.toLowerCase().replace(/[-_]/g, ' ');
+  if (c.includes('luu tru') || c.includes('lưu trú') || c.includes('nghỉ dưỡng') || c.includes('homestay') || c.includes('resort') || c.includes('hotel')) return 'Lưu trú';
   if (c.includes('quan an') || c.includes('quán ăn') || c.includes('ẩm thực') || c.includes('food') || c.includes('restaurant')) return 'Quán ăn';
   if (c.includes('di tich') || c.includes('di tích') || c.includes('lăng') || c.includes('đại nội')) return 'Di tích';
   if (c.includes('chua') || c.includes('chùa')) return 'Chùa';
@@ -55,6 +58,9 @@ export function getPoiImage(poi?: Poi | null): string {
 
 export function getCategoryIcon(cat?: string | null) {
   const c = (cat || '').toLowerCase();
+  if (c.includes('luu-tru') || c.includes('lưu trú') || c.includes('nghỉ dưỡng') || c.includes('homestay') || c.includes('resort') || c.includes('hotel')) {
+    return <BedDouble size={12} className="text-purple-300 shrink-0" />;
+  }
   if (c.includes('ăn') || c.includes('ẩm thực') || c.includes('food') || c.includes('restaurant') || c.includes('culinary') || c.includes('quan-an')) {
     return <Utensils size={12} className="text-amber-300 shrink-0" />;
   }

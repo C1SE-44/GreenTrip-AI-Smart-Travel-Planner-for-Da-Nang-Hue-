@@ -31,6 +31,14 @@ CATEGORY_ALIAS_MAP: dict[str, list[str]] = {
     "cà phê": ["Quán cafe giải khát"],
     "giai-tri": ["Cảnh quan và thiên nhiên"],
     "bao-tang": ["Di tích lịch sử và văn hóa"],
+    "luu-tru": ["Lưu trú và nghỉ dưỡng"],
+    "lưu trú": ["Lưu trú và nghỉ dưỡng"],
+    "luu tru": ["Lưu trú và nghỉ dưỡng"],
+    "stays": ["Lưu trú và nghỉ dưỡng"],
+    "stay": ["Lưu trú và nghỉ dưỡng"],
+    "homestay": ["Lưu trú và nghỉ dưỡng"],
+    "khach-san": ["Lưu trú và nghỉ dưỡng"],
+    "khách sạn": ["Lưu trú và nghỉ dưỡng"],
 }
 
 

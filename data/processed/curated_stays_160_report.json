@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-11-23T05:06:17.710798+00:00",
+  "total_source_stays": 2274,
+  "total_curated": 160,
+  "by_city": {
+    "DANANG": 80,
+    "HUE": 80
+  },
+  "by_city_and_subcategory": {
+    "DANANG": {
+      "eco_lodge": 8,
+      "homestay": 25,
+      "resort": 18,
+      "villa": 12,
+      "hotel": 17
+    },
+    "HUE": {
+      "eco_lodge": 6,
+      "homestay": 28,
+      "resort": 16,
+      "villa": 12,
+      "hotel": 18
+    }
+  },
+  "by_budget_tier": {
+    "$": 55,
+    "$$": 57,
+    "$$$": 48
+  },
+  "green_score_range": [
+    0.6,
+    0.95
+  ],
+  "satisfaction_score_range": [
+    3.79,
+    5.0
+  ],
+  "with_estimated_cost": 159,
+  "image_verification_enabled": true,
+  "backfill_notes": {}
+}

@@ -271,6 +271,8 @@ export default function ItineraryAddPlacesModal({
                     ? 'Địa điểm'
                     : modalCategory === 'chua'
                     ? 'Tâm linh'
+                    : modalCategory === 'luu-tru'
+                    ? 'Lưu trú xanh'
                     : modalCategory === 'all'
                     ? 'Tất cả địa điểm'
                     : 'Trải nghiệm đề xuất'}
@@ -388,6 +390,7 @@ export default function ItineraryAddPlacesModal({
                               if (poi.category === 'quan-an') return '🍽️ Ẩm thực';
                               if (poi.category === 'di-tich') return '🏛️ Di tích lịch sử';
                               if (poi.category === 'canh-quan') return '🌿 Cảnh quan & Thắng cảnh';
+                              if (poi.category === 'luu-tru') return '🛏️ Lưu trú';
                               return '⛩️ Chùa & Tâm linh';
                             })()}
                           </span>

@@ -84,6 +84,24 @@ def _is_food_category(category: str | None) -> bool:
     return any(k in low for k in ("ẩm thực", "quán ăn", "quan-an", "cafe", "cà phê", "chay"))
 
 
+def _is_stay_category(category: str | None) -> bool:
+    low = (category or "").lower()
+    return any(
+        k in low
+        for k in (
+            "lưu trú",
+            "luu-tru",
+            "luu tru",
+            "nghỉ dưỡng",
+            "accommodation",
+            "stay",
+            "homestay",
+            "resort",
+            "hotel",
+        )
+    )
+
+
 def _format_vnd(amount: float) -> str:
     return f"{int(round(max(0.0, amount))):,} ₫".replace(",", ".")
 
@@ -694,6 +712,8 @@ def _find_cheaper_poi_candidate(
                     JOIN public.cities ci ON p.city_id = ci.city_id
                     WHERE p.is_active IS NOT FALSE
                       AND ci.name ILIKE %s
+                      AND c.name NOT ILIKE '%%lưu trú%%'
+                      AND c.name NOT ILIKE '%%nghỉ dưỡng%%'
                       AND (c.name ILIKE %s OR %s = FALSE)
                       AND p.estimated_cost IS NOT NULL
                       AND p.estimated_cost < %s
@@ -733,6 +753,8 @@ def _find_cheaper_poi_candidate(
         if rec.get("city_code") != target_city_code:
             continue
         if rec["name"].lower() in existing_names:
+            continue
+        if _is_stay_category(rec.get("category")):
             continue
         if _is_food_category(rec.get("category")) != want_food:
             continue

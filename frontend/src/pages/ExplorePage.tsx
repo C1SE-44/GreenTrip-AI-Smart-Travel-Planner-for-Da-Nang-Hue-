@@ -70,6 +70,7 @@ const TAB_DISPLAY_LABELS: Record<string, string> = {
   'di-tich': 'Di tích',
   'canh-quan': 'Thiên nhiên',
   'chua': 'Tâm linh',
+  'luu-tru': 'Lưu trú',
 };
 
 const TABS: { id: ExploreTabId; label: string }[] = [
@@ -78,6 +79,7 @@ const TABS: { id: ExploreTabId; label: string }[] = [
   { id: 'di-tich', label: 'Di tích & Lịch sử' },
   { id: 'canh-quan', label: 'Cảnh quan & Thiên nhiên' },
   { id: 'chua', label: 'Chùa & Tâm linh' },
+  { id: 'luu-tru', label: 'Lưu trú xanh' },
 ];
 
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'home' | 'explore' | 'trips' | 'saved' | 'chat' | 'profile' }) {
@@ -507,6 +509,16 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     setCategoryFilter(tabId as PoiCategory);
   };
 
+  useEffect(() => {
+    const validTabs = new Set<ExploreTabId>(['for-you', 'quan-an', 'di-tich', 'canh-quan', 'chua', 'luu-tru']);
+    const searchTab = new URLSearchParams(location.search).get('tab') as ExploreTabId | null;
+    const stateTab = (location.state as { initialTab?: ExploreTabId } | null)?.initialTab ?? null;
+    const requestedTab = searchTab || stateTab;
+    if (requestedTab && validTabs.has(requestedTab)) {
+      handleTabChange(requestedTab);
+    }
+  }, [location.search, location.state]);
+
   const filteredPois = useMemo(() => {
     const matched = allPois.filter((poi) => {
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
@@ -519,6 +531,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         matchCat = poi.category === 'quan-an';
       } else if (categoryFilter === 'canh-quan') {
         matchCat = poi.category === 'canh-quan';
+      } else if (categoryFilter === 'luu-tru') {
+        matchCat = poi.category === 'luu-tru';
       }
       const s = search.trim().toLowerCase();
       const matchSearch =
@@ -541,19 +555,23 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       if (filterValues.freeTicketOnly || filterValues.budget === 'free') {
         matchBudget = poi.budget_tier === 'free' || cost === 0;
       } else if (filterValues.budget === '$') {
-        if (categoryFilter === 'quan-an') {
-          matchBudget = poi.budget_tier === '$' || cost <= 50000;
+        if (categoryFilter === 'luu-tru' || poi.category === 'luu-tru') {
+          matchBudget = poi.budget_tier === '$' || (cost > 0 && cost <= 800000);
         } else {
           matchBudget = poi.budget_tier === '$' || cost <= 50000;
         }
       } else if (filterValues.budget === '$$') {
-        if (categoryFilter === 'quan-an') {
+        if (categoryFilter === 'luu-tru' || poi.category === 'luu-tru') {
+          matchBudget = poi.budget_tier === '$$' || (cost > 800000 && cost <= 2000000);
+        } else if (categoryFilter === 'quan-an') {
           matchBudget = poi.budget_tier === '$$' || (cost > 50000 && cost <= 150000);
         } else {
           matchBudget = poi.budget_tier === '$$' || (cost > 50000 && cost <= 200000);
         }
       } else if (filterValues.budget === '$$$') {
-        if (categoryFilter === 'quan-an') {
+        if (categoryFilter === 'luu-tru' || poi.category === 'luu-tru') {
+          matchBudget = poi.budget_tier === '$$$' || cost > 2000000;
+        } else if (categoryFilter === 'quan-an') {
           matchBudget = poi.budget_tier === '$$$' || cost > 150000;
         } else {
           matchBudget = poi.budget_tier === '$$$' || cost > 200000;
@@ -681,6 +699,10 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         // 4. Địa điểm biểu tượng / Must-Try
         if (isCuratedHighlight(a)) scoreA += 25;
         if (isCuratedHighlight(b)) scoreB += 25;
+
+        // Giữ cân bằng "Cho bạn": ưu tiên danh thắng & ẩm thực bản địa trừ khi người dùng đã thả tim lưu trú
+        if (a.category === 'luu-tru' && !likedCats.has('luu-tru')) scoreA -= 15;
+        if (b.category === 'luu-tru' && !likedCats.has('luu-tru')) scoreB -= 15;
 
         return scoreB - scoreA;
       });
@@ -822,6 +844,11 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     const limitTemples = expandedSectionCount['temples'] || 6;
     const topTemples = sortMustTry(allTemples).slice(0, limitTemples);
 
+    // 5. Lưu trú xanh & Homestay bản địa (Must-Try Stays)
+    const allStays = filteredPois.filter((p) => p.category === 'luu-tru');
+    const limitStays = expandedSectionCount['stays'] || 6;
+    const topStays = sortMustTry(allStays).slice(0, limitStays);
+
     const sections: Record<string, {
       title: string;
       subtitle: string;
@@ -865,6 +892,16 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       items: topTemples,
       categoryKey: 'chua' as PoiCategoryFilter,
     };
+
+    if (allStays.length > 0) {
+      sections['stays'] = {
+        title: 'Lưu trú xanh & Homestay Must-Try',
+        subtitle: 'Eco lodge, homestay bản địa và resort chuẩn xanh tại Đà Nẵng – Huế',
+        total: allStays.length,
+        items: topStays,
+        categoryKey: 'luu-tru' as PoiCategoryFilter,
+      };
+    }
 
     return sections;
   }, [isCuratedOverview, filteredPois, allPois, savedIds, expandedSectionCount]);
@@ -1246,9 +1283,11 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
 
       {viewMode === 'home' ? (
         <HomeDashboardView
-          onNavigateToExplore={() => {
+          onNavigateToExplore={(initialTab) => {
+            const targetTab = initialTab ?? 'for-you';
+            handleTabChange(targetTab);
             setViewMode('explore');
-            navigate('/explore');
+            navigate(targetTab !== 'for-you' ? `/explore?tab=${targetTab}` : '/explore');
           }}
           onNavigateToTrips={() => {
             setViewMode('trips');
@@ -1696,7 +1735,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                   onClick={() => handleTabChange(tab.id)}
                   className={`whitespace-nowrap transition-all duration-150 cursor-pointer h-[42px] flex items-center ${
                     isActive
-                      ? 'px-4.5 bg-black text-white rounded-full font-semibold shadow-xs text-[13.5px]'
+                      ? 'px-4 bg-black text-white rounded-full font-semibold shadow-xs text-[13.5px]'
                       : 'px-3 text-neutral-600 hover:text-black font-medium text-[13.5px] bg-transparent border-0'
                   }`}
                 >

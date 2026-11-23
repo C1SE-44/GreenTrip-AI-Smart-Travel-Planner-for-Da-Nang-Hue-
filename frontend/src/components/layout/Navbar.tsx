@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Compass, CalendarCheck, MapPinned, LogIn, LogOut } from 'lucide-react';
+import { Menu, X, Compass, CalendarCheck, Heart, LogIn, LogOut } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import LoginModal from '@/components/auth/LoginModal';
 import OnboardingModal from '@/components/auth/OnboardingModal';
@@ -8,8 +8,8 @@ import { clearAuthSession } from '@/services/auth';
 
 const navItems = [
   { to: '/explore', label: 'Khám Phá', icon: Compass },
-  { to: '/planner', label: 'Lập Lịch Trình', icon: CalendarCheck },
-  { to: '/my-trips', label: 'Chuyến Đi Của Tôi', icon: MapPinned },
+  { to: '/planner', label: 'Lịch Trình', icon: CalendarCheck },
+  { to: '/saved', label: 'Đã Lưu', icon: Heart },
 ];
 
 export default function Navbar() {
@@ -155,20 +155,12 @@ export default function Navbar() {
             {/* Right side - Wanderlog style pill buttons */}
             <div className="hidden items-center gap-2.5 md:flex">
               {isAuthenticated ? (
-                <>
-                  <NavLink
-                    to="/my-trips"
-                    className="px-4 py-1.5 text-[14px] text-charcoal/80 hover:text-black hover:bg-black/5 font-medium rounded-full transition-all"
-                  >
-                    Chuyến đi của tôi
-                  </NavLink>
-                  <button
-                    onClick={handleLogout}
-                    className="px-4 py-1.5 text-[14px] text-charcoal/60 hover:text-red-600 hover:bg-red-50 font-medium rounded-full transition-all cursor-pointer"
-                  >
-                    Đăng xuất
-                  </button>
-                </>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-1.5 text-[14px] text-charcoal/60 hover:text-red-600 hover:bg-red-50 font-medium rounded-full transition-all cursor-pointer"
+                >
+                  Đăng xuất
+                </button>
               ) : (
                 <Link
                   to="/login"

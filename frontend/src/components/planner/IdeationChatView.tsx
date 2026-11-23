@@ -35,6 +35,8 @@ interface IdeationMessage {
 
 export interface IdeationChatViewProps {
   allPois: Poi[];
+  initialPrompt?: string | null;
+  onConsumedInitialPrompt?: () => void;
   onCreateTripFromIdea: (payload: {
     initialPrompt: string;
     selectedPoiIds: string[];
@@ -85,7 +87,12 @@ function mapSuggestedToPoi(s: CopilotSuggestedPoi, allPois: Poi[]): Poi | null {
   };
 }
 
-export default function IdeationChatView({ allPois, onCreateTripFromIdea }: IdeationChatViewProps) {
+export default function IdeationChatView({
+  allPois,
+  initialPrompt,
+  onConsumedInitialPrompt,
+  onCreateTripFromIdea,
+}: IdeationChatViewProps) {
   const [messages, setMessages] = useState<IdeationMessage[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -138,6 +145,15 @@ export default function IdeationChatView({ allPois, onCreateTripFromIdea }: Idea
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isSending]);
+
+  useEffect(() => {
+    if (initialPrompt && initialPrompt.trim() && !isSending) {
+      const promptToRun = initialPrompt.trim();
+      onConsumedInitialPrompt?.();
+      void handleSend(promptToRun);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrompt]);
 
   const combinedUserText = useMemo(
     () => messages.filter((m) => m.sender === 'user').map((m) => m.text).join('. '),

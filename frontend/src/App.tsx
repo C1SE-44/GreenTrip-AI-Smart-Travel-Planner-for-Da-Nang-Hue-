@@ -60,10 +60,10 @@ function App() {
         <Route path="/chat" element={<ExplorePage initialView="chat" />} />
         <Route path="/profile" element={<ExplorePage initialView="profile" />} />
 
-        {/* Trip Planner page */}
+        {/* Trip Planner page (canonical route /planner; redirect legacy /my-trips and /trips) */}
         <Route path="/planner" element={<ExplorePage initialView="trips" />} />
-        <Route path="/my-trips" element={<ExplorePage initialView="trips" />} />
-        <Route path="/trips" element={<ExplorePage initialView="trips" />} />
+        <Route path="/my-trips" element={<Navigate to="/planner" replace />} />
+        <Route path="/trips" element={<Navigate to="/planner" replace />} />
 
         {/* Protected RBAC Admin Portal */}
         <Route

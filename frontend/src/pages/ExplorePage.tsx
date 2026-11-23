@@ -95,6 +95,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     initialPrompt: string;
     chatHistory: CopilotTripMessage[];
   } | null>(null);
+  const [pendingChatPrompt, setPendingChatPrompt] = useState<string | null>(null);
   const [addToTripSelection, setAddToTripSelection] = useState<AddToTripSelection | null>(null);
   const [pendingAddToTripPoiIds, setPendingAddToTripPoiIds] = useState<string[] | null>(null);
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
@@ -188,13 +189,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const handleOpenTripsView = () => {
     setViewMode('trips');
     setSelectedTripForDetails(null);
-    if (userTrips.length > 0) {
-      setActiveOverviewTrip(userTrips[0]);
-      setActiveTripSubTab('ideas');
-    } else {
-      setActiveOverviewTrip(null);
-      setIsCreateTripModalOpen(true);
-    }
+    setActiveOverviewTrip(null);
+    setActiveTripSubTab('ideas');
     navigate('/planner');
   };
 
@@ -1145,8 +1141,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                             : 'text-gray-600 hover:text-black hover:bg-gray-100 font-medium'
                         }`}
                       >
-                        <span className="text-amber-400 text-xs">💡</span>
-                        <span className="truncate">Ý tưởng</span>
+                        <span className="text-emerald-400 text-xs">💬</span>
+                        <span className="truncate">Trợ lý &amp; Tổng quan</span>
                       </button>
 
                       {/* Nhánh 2: Kế hoạch chi tiết */}
@@ -1326,7 +1322,18 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             setViewMode('saved');
             navigate('/saved');
           }}
+          onNavigateToChat={(promptText) => {
+            if (promptText) setPendingChatPrompt(promptText);
+            setViewMode('chat');
+            navigate('/chat');
+          }}
           onCreateTrip={(defaultDest, defaultTitle) => {
+            if (defaultDest || defaultTitle) {
+              setIdeationDraft({
+                initialPrompt: [defaultTitle, defaultDest].filter(Boolean).join(' tại '),
+                chatHistory: [],
+              });
+            }
             setIsCreateTripModalOpen(true);
           }}
           currentUser={currentUser}
@@ -1670,6 +1677,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
       ) : viewMode === 'chat' ? (
         <IdeationChatView
           allPois={allPois}
+          initialPrompt={pendingChatPrompt}
+          onConsumedInitialPrompt={() => setPendingChatPrompt(null)}
           onCreateTripFromIdea={({ initialPrompt, selectedPoiIds, chatHistory }) => {
             setIdeationDraft({ initialPrompt, chatHistory });
             setPendingAddToTripPoiIds(selectedPoiIds.length > 0 ? selectedPoiIds : null);

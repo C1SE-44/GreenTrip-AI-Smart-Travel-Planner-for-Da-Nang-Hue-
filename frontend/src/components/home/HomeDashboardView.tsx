@@ -27,16 +27,17 @@ export interface HomeDashboardViewProps {
   onNavigateToExplore: (initialTab?: ExploreTabId) => void;
   onNavigateToTrips: () => void;
   onNavigateToSaved: () => void;
+  onNavigateToChat?: (initialPrompt?: string) => void;
   onCreateTrip: (defaultDestination?: string, defaultTitle?: string) => void;
   currentUser?: { full_name?: string; email?: string } | null;
 }
 
 const TOP_CATEGORIES = [
-  { id: 'stays', label: 'Lưu trú', icon: 'ph-bed', bg: 'bg-purple-100', text: 'text-purple-700' },
-  { id: 'flights', label: 'Vé máy bay', icon: 'ph-airplane-tilt', bg: 'bg-sky-100', text: 'text-sky-700' },
-  { id: 'eats', label: 'Ẩm thực', icon: 'ph-fork-knife', bg: 'bg-amber-100', text: 'text-amber-700' },
-  { id: 'experiences', label: 'Trải nghiệm', icon: 'ph-sparkle', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  { id: 'events', label: 'Sự kiện', icon: 'ph-ticket', bg: 'bg-indigo-100', text: 'text-indigo-700' },
+  { id: 'experiences', label: 'Khám phá xanh', icon: 'ph-sparkle', bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  { id: 'eats', label: 'Ẩm thực & Cafe', icon: 'ph-fork-knife', bg: 'bg-amber-100', text: 'text-amber-700' },
+  { id: 'heritage', label: 'Di tích & Di sản', icon: 'ph-bank', bg: 'bg-indigo-100', text: 'text-indigo-700' },
+  { id: 'nature', label: 'Thiên nhiên & Biển', icon: 'ph-mountains', bg: 'bg-sky-100', text: 'text-sky-700' },
+  { id: 'stays', label: 'Lưu trú xanh', icon: 'ph-bed', bg: 'bg-purple-100', text: 'text-purple-700' },
   { id: 'trips', label: 'Lịch trình', icon: 'ph-calendar-check', bg: 'bg-teal-100', text: 'text-teal-700' },
 ];
 
@@ -89,6 +90,7 @@ export default function HomeDashboardView({
   onNavigateToExplore,
   onNavigateToTrips,
   onNavigateToSaved,
+  onNavigateToChat,
   onCreateTrip,
   currentUser,
 }: HomeDashboardViewProps) {
@@ -106,10 +108,16 @@ export default function HomeDashboardView({
 
   const displayName = currentUser?.full_name?.split(' ')[0] || 'bạn';
 
-  // Xử lý khi gửi prompt lên ý tưởng cho chatbot
+  // Xử lý khi gửi prompt lên ý tưởng cho chatbot -> Chuyển thẳng sang AI Copilot thật (/chat)
   const handleSendPrompt = (promptText?: string) => {
     const query = (promptText || chatPrompt).trim();
     if (!query) return;
+
+    if (onNavigateToChat) {
+      setChatPrompt('');
+      onNavigateToChat(query);
+      return;
+    }
 
     setIsGeneratingIdea(true);
     setChatPrompt(query);
@@ -149,6 +157,10 @@ export default function HomeDashboardView({
                     onNavigateToExplore('luu-tru');
                   } else if (cat.id === 'eats') {
                     onNavigateToExplore('quan-an');
+                  } else if (cat.id === 'heritage') {
+                    onNavigateToExplore('di-tich');
+                  } else if (cat.id === 'nature') {
+                    onNavigateToExplore('canh-quan');
                   } else if (cat.id === 'experiences') {
                     onNavigateToExplore('for-you');
                   } else if (cat.id === 'trips') {

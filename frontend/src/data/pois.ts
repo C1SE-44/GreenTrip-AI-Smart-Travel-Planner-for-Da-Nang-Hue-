@@ -93,6 +93,8 @@ export interface Poi {
   openHours?: string | null;
   estimatedCost?: number | null;
   isLocalBusiness?: boolean;
+  localBusinessType?: string | null;
+  popularityScore?: number | null;
   // Taxonomy V2 fields
   sub_category?: string | null;
   cuisine?: CuisineType | string | null;
@@ -145,6 +147,7 @@ export interface BackendPoiItem {
   email?: string | null;
   matchScore?: number;
   saved_count?: number | null;
+  popularity_score?: number | null;
 }
 
 export interface PaginationMetadata {
@@ -524,6 +527,8 @@ export type NormalizablePoiInput = Partial<BackendPoiItem> & {
   openHours?: string | null;
   estimatedCost?: number | null;
   isLocalBusiness?: boolean;
+  localBusinessType?: string | null;
+  popularityScore?: number | null;
   savedCount?: number;
   cleanName?: string;
   cleanTitle?: string;
@@ -652,6 +657,13 @@ export function normalizePoi(item: NormalizablePoiInput | null | undefined, allo
     ),
     estimatedCost,
     isLocalBusiness: item.is_local_business ?? undefined,
+    localBusinessType: item.local_business_type ?? null,
+    popularityScore:
+      item.popularity_score !== null &&
+      item.popularity_score !== undefined &&
+      Number.isFinite(Number(item.popularity_score))
+        ? Number(item.popularity_score)
+        : null,
     sub_category: item.sub_category ?? null,
     cuisine: item.cuisine ?? null,
     budget_tier: item.budget_tier ?? '$$',
@@ -875,6 +887,73 @@ export const VIBE_LABELS: Record<string, string> = {
   calligraphy: 'Thư pháp & thơ thiền',
   lotus_lake: 'Hồ sen cổ kính',
 };
+
+export interface LocalAuthenticStatus {
+  isLocalAuthentic: boolean;
+  isWestOfHanRiver: boolean;
+  isCraftVillage: boolean;
+  isCrowded: boolean;
+  badgeLabel: string | null;
+}
+
+export const HAN_RIVER_WEST_MAX_LNG = 108.224;
+export const LOCAL_AUTHENTIC_MAX_POPULARITY = 3.65;
+export const CROWDED_POI_MIN_POPULARITY = 3.85;
+
+export function evaluateLocalAuthentic(poi: Pick<
+  Poi,
+  'city' | 'category' | 'lng' | 'ecoScore' | 'isGreen' | 'isLocalBusiness' | 'localBusinessType' | 'popularityScore' | 'sub_category'
+>): LocalAuthenticStatus {
+  const isDaNang = poi.city === 'Đà Nẵng';
+  const isWestOfHanRiver = Boolean(
+    isDaNang && Number.isFinite(poi.lng) && poi.lng < HAN_RIVER_WEST_MAX_LNG
+  );
+  const btype = (poi.localBusinessType || '').trim().toLowerCase();
+  const isCraftVillage =
+    btype === 'craft_workshop' || poi.sub_category === 'craft_villages';
+  const pop =
+    poi.popularityScore !== null &&
+    poi.popularityScore !== undefined &&
+    Number.isFinite(poi.popularityScore)
+      ? poi.popularityScore
+      : 3.0;
+  const isCrowded = pop >= CROWDED_POI_MIN_POPULARITY;
+  const hasLocalFlag = poi.isLocalBusiness !== false;
+  const hasEcoOrCraft =
+    (poi.ecoScore ?? 0) >= 70 ||
+    poi.isGreen === true ||
+    isCraftVillage ||
+    btype === 'eco_lodge' ||
+    btype === 'homestay';
+
+  let isLocalAuthentic = false;
+  if (hasLocalFlag && hasEcoOrCraft) {
+    if (isDaNang && poi.category === 'quan-an') {
+      isLocalAuthentic = isWestOfHanRiver && pop <= LOCAL_AUTHENTIC_MAX_POPULARITY;
+    } else {
+      isLocalAuthentic = isCraftVillage || pop <= LOCAL_AUTHENTIC_MAX_POPULARITY;
+    }
+  }
+
+  let badgeLabel: string | null = null;
+  if (isCraftVillage) {
+    badgeLabel = isCrowded ? 'Làng nghề bản địa' : 'Làng nghề ít đông';
+  } else if (isLocalAuthentic && isWestOfHanRiver && poi.category === 'quan-an') {
+    badgeLabel = 'Bản địa Tây sông Hàn';
+  } else if (isLocalAuthentic) {
+    badgeLabel = 'Bản địa ít đông';
+  } else if (isCrowded) {
+    badgeLabel = 'Khu vực đông khách';
+  }
+
+  return {
+    isLocalAuthentic,
+    isWestOfHanRiver,
+    isCraftVillage,
+    isCrowded,
+    badgeLabel,
+  };
+}
 
 export function normalizePois(items: BackendPoiItem[] = []): Poi[] {
   return items

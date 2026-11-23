@@ -1,5 +1,31 @@
 import { fetchJson } from '@/lib/api';
 import type { Poi } from '@/data/pois';
+
+function evaluateStopLocalAuthentic(
+  poi: Pick<Poi, 'city' | 'category' | 'lng' | 'ecoScore' | 'popularityScore' | 'localBusinessType'>
+): { isLocalAuthentic: boolean; isCraftVillage: boolean; badgeLabel: string | null } {
+  const isHue = /huế|hue/i.test(poi.city || '');
+  const isWestHan =
+    !isHue &&
+    typeof poi.lng === 'number' &&
+    Number.isFinite(poi.lng) &&
+    poi.lng < 108.224 &&
+    poi.category === 'quan-an';
+  const isCraftVillage = poi.localBusinessType === 'craft_workshop';
+  const pop = poi.popularityScore;
+  const isCrowded = typeof pop === 'number' && Number.isFinite(pop) && pop >= 3.85;
+  const isLowCrowd = typeof pop === 'number' && Number.isFinite(pop) && pop <= 3.65;
+  const isLocalAuthentic =
+    isCraftVillage || (!isCrowded && (isWestHan || (isLowCrowd && (poi.ecoScore || 0) >= 70)));
+  const badgeLabel = isCraftVillage
+    ? 'Làng nghề ít đông'
+    : isWestHan
+      ? 'Bản địa Tây sông Hàn'
+      : isLocalAuthentic
+        ? 'Bản địa ít đông'
+        : null;
+  return { isLocalAuthentic, isCraftVillage, badgeLabel };
+}
 import type { UserTrip } from '@/pages/ExplorePage';
 import { dateAt, tripStartDate, vietnamNow } from '@/utils/tripDates';
 
@@ -2079,9 +2105,11 @@ export function suggestNearbyAlternativesForStop(
   day: ItineraryDay,
   allPois: Poi[],
   usedPoiIds: Set<string>,
-  limit = 3
+  limit = 3,
+  options?: { preferLocalAuthentic?: boolean }
 ): NearbyAlternativeSuggestion[] {
   if (limit <= 0) return [];
+  const preferLocalAuthentic = Boolean(options?.preferLocalAuthentic);
   const poiById = new Map(allPois.map((p) => [p.id, p]));
   const matched = targetStop.poi_id ? poiById.get(targetStop.poi_id) : undefined;
   const targetCity = normalizeCityLabel(targetStop.city || matched?.city || 'Đà Nẵng');
@@ -2098,7 +2126,15 @@ export function suggestNearbyAlternativesForStop(
     return true;
   });
 
-  return candidates
+  const localAuthenticCandidates = preferLocalAuthentic
+    ? candidates.filter((cand) => evaluateStopLocalAuthentic(cand).isLocalAuthentic)
+    : [];
+  const pool =
+    preferLocalAuthentic && localAuthenticCandidates.length > 0
+      ? localAuthenticCandidates
+      : candidates;
+
+  return pool
     .map((poi) => {
       const rawDist =
         origin && Number.isFinite(poi.lat) && Number.isFinite(poi.lng)
@@ -2107,19 +2143,41 @@ export function suggestNearbyAlternativesForStop(
       const dist = Math.round(rawDist * 100) / 100;
       const walkMinutes = dist > 0 ? Math.max(1, Math.round((dist / 4.5) * 60)) : 0;
       const ecoVal = poi.ecoScore || 85;
+      const authStatus = evaluateStopLocalAuthentic(poi);
+      const localPrefix =
+        preferLocalAuthentic && authStatus.badgeLabel ? `${authStatus.badgeLabel} · ` : '';
       const reason =
         dist > 0
-          ? `Cách ${dist.toFixed(1)} km (~${walkMinutes} phút đi bộ) · Eco ${ecoVal}`
-          : `Cùng khu vực ${targetCity} · Eco ${ecoVal}`;
-      return { poi, distanceKm: dist, walkMinutes, reason };
+          ? `${localPrefix}Cách ${dist.toFixed(1)} km (~${walkMinutes} phút đi bộ) · Eco ${ecoVal}`
+          : `${localPrefix}Cùng khu vực ${targetCity} · Eco ${ecoVal}`;
+      return { poi, distanceKm: dist, walkMinutes, reason, authStatus };
     })
     .sort((a, b) => {
+      if (preferLocalAuthentic) {
+        if (a.authStatus.isCraftVillage !== b.authStatus.isCraftVillage) {
+          return a.authStatus.isCraftVillage ? -1 : 1;
+        }
+        if (a.authStatus.isLocalAuthentic !== b.authStatus.isLocalAuthentic) {
+          return a.authStatus.isLocalAuthentic ? -1 : 1;
+        }
+        const popA = a.poi.popularityScore ?? 3.0;
+        const popB = b.poi.popularityScore ?? 3.0;
+        if (Math.abs(popA - popB) > 0.25 && (!origin || Math.abs(a.distanceKm - b.distanceKm) < 1.5)) {
+          return popA - popB;
+        }
+      }
       if (origin && Math.abs(a.distanceKm - b.distanceKm) > 1e-6) return a.distanceKm - b.distanceKm;
       const ecoDiff = (b.poi.ecoScore || 0) - (a.poi.ecoScore || 0);
       if (ecoDiff !== 0) return ecoDiff;
       return (b.poi.rating || 0) - (a.poi.rating || 0);
     })
-    .slice(0, limit);
+    .slice(0, limit)
+    .map(({ poi, distanceKm: dKm, walkMinutes, reason }) => ({
+      poi,
+      distanceKm: dKm,
+      walkMinutes,
+      reason,
+    }));
 }
 
 export function getStopShortReason(

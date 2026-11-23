@@ -1,9 +1,14 @@
 from typing import Any
 
 from app.db.postgres import get_connection
+from app.pois.explanation_repository import fetch_local_authentic_poi_ids
 from app.pois.model import POI
 from app.pois.price_normalizer import normalize_poi_price_display
-from app.pois.weights import ParsedSliderWeights
+from app.pois.weights import (
+    HAN_RIVER_WEST_MAX_LNG,
+    LOCAL_AUTHENTIC_MAX_POPULARITY,
+    ParsedSliderWeights,
+)
 
 
 CITY_ALIAS_MAP: dict[str, str] = {
@@ -139,7 +144,47 @@ def list_pois(
                 )
                 params.append(GREEN_TRANSIT_SQL_PATTERN)
 
+            if weights.local_authentic_only:
+                where_clauses.append("COALESCE(p.is_local_business, FALSE) = TRUE")
+                neo4j_local_ids = sorted(fetch_local_authentic_poi_ids())
+                quality_expr = (
+                    "(CASE WHEN p.green_score IS NULL THEN 0.0 "
+                    "WHEN p.green_score <= 1.0 THEN p.green_score::float * 100.0 "
+                    "ELSE p.green_score::float END) >= 70.0 "
+                    "OR p.local_business_type IN ('craft_workshop', 'eco_lodge', 'homestay')"
+                )
+                if neo4j_local_ids:
+                    where_clauses.append(f"({quality_expr} OR p.poi_id::text = ANY(%s))")
+                    params.append(neo4j_local_ids)
+                else:
+                    where_clauses.append(f"({quality_expr})")
+
+                where_clauses.append(
+                    "("
+                    "CASE "
+                    "WHEN ci.code = 'DANANG' AND c.name IN ('Ẩm thực và quán ăn', 'Quán cafe giải khát') THEN "
+                    "(ST_X(p.geom::geometry) < %s AND COALESCE(p.popularity_score::float, 3.0) <= %s) "
+                    "ELSE "
+                    "(p.local_business_type = 'craft_workshop' OR COALESCE(p.popularity_score::float, 3.0) <= %s) "
+                    "END"
+                    ")"
+                )
+                params.extend(
+                    [
+                        float(HAN_RIVER_WEST_MAX_LNG),
+                        float(LOCAL_AUTHENTIC_MAX_POPULARITY),
+                        float(LOCAL_AUTHENTIC_MAX_POPULARITY),
+                    ]
+                )
+
         where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+        craft_first_sql = "CASE WHEN p.local_business_type = 'craft_workshop' THEN 0 ELSE 1 END ASC"
+        han_west_first_sql = (
+            f"CASE WHEN ci.code = 'DANANG' AND ST_X(p.geom::geometry) < {float(HAN_RIVER_WEST_MAX_LNG)} "
+            "THEN 0 ELSE 1 END ASC"
+        )
+        low_crowd_sql = "COALESCE(p.popularity_score::float, 3.0) ASC"
 
         if weights is not None and weights.is_ranking_active:
             green_norm_sql = (
@@ -160,8 +205,26 @@ def list_pois(
             )
             w_g = float(weights.normalized_green_weight)
             w_b = float(weights.normalized_budget_weight)
+            if weights.local_authentic_only:
+                order_by_sql = (
+                    f"ORDER BY {craft_first_sql}, {han_west_first_sql}, "
+                    f"({w_g} * {green_norm_sql} + {w_b} * {budget_norm_sql}) DESC, "
+                    f"{low_crowd_sql}, p.name ASC, p.poi_id ASC"
+                )
+            else:
+                order_by_sql = (
+                    f"ORDER BY ({w_g} * {green_norm_sql} + {w_b} * {budget_norm_sql}) DESC, p.name ASC, p.poi_id ASC"
+                )
+        elif weights is not None and weights.local_authentic_only:
+            green_norm_sql = (
+                "(CASE WHEN p.green_score IS NULL THEN 0.5 "
+                "WHEN p.green_score < 0 THEN 0.0 "
+                "WHEN p.green_score <= 1.0 THEN p.green_score::float "
+                "ELSE LEAST(1.0, p.green_score::float / 100.0) END)"
+            )
             order_by_sql = (
-                f"ORDER BY ({w_g} * {green_norm_sql} + {w_b} * {budget_norm_sql}) DESC, p.name ASC, p.poi_id ASC"
+                f"ORDER BY {craft_first_sql}, {han_west_first_sql}, {green_norm_sql} DESC, "
+                f"{low_crowd_sql}, p.name ASC, p.poi_id ASC"
             )
         else:
             order_by_sql = "ORDER BY p.name ASC, p.poi_id ASC"
@@ -197,7 +260,8 @@ def list_pois(
                     p.social_links AS social_links,
                     p.opening_hours AS opening_hours,
                     p.email AS email,
-                    COALESCE(saved_counts.saved_count, 0) AS saved_count
+                    COALESCE(saved_counts.saved_count, 0) AS saved_count,
+                    p.popularity_score::float AS popularity_score
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id
                 JOIN public.cities ci ON p.city_id = ci.city_id AND (p.is_active IS NULL OR p.is_active = TRUE)

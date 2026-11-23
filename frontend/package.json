@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "test:unit": "node --test tests/account-trips.test.mjs tests/admin-rbac-contract.test.mjs tests/copilot-stream.test.mjs tests/demo-qr-and-deploy.test.mjs tests/for-you-and-planner-chat.test.mjs tests/home-dashboard.test.mjs tests/itinerary-route-map.test.mjs tests/itinerary-scheduling.test.mjs tests/map-green-interaction.test.mjs tests/morph-components.test.mjs tests/planner-date-schedule.test.mjs tests/planner-sync-logic.test.mjs tests/poi-cache.test.mjs tests/poi-image.test.mjs tests/stays-category.test.mjs",
+    "test:unit": "node --test tests/account-trips.test.mjs tests/admin-rbac-contract.test.mjs tests/central-vietnam-advisories.test.mjs tests/copilot-stream.test.mjs tests/demo-qr-and-deploy.test.mjs tests/for-you-and-planner-chat.test.mjs tests/home-dashboard.test.mjs tests/itinerary-route-map.test.mjs tests/itinerary-scheduling.test.mjs tests/local-authentic-mode.test.mjs tests/map-green-interaction.test.mjs tests/morph-components.test.mjs tests/planner-date-schedule.test.mjs tests/planner-sync-logic.test.mjs tests/poi-cache.test.mjs tests/poi-image.test.mjs tests/saved-collection-scheduler.test.mjs tests/stays-category.test.mjs tests/trip-export-and-checklist.test.mjs",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",

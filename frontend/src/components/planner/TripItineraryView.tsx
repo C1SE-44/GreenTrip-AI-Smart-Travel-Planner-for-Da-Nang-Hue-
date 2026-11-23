@@ -41,6 +41,7 @@ import {
   type Poi,
   type PoiCategory,
   type PoiCity,
+  evaluateLocalAuthentic,
   getDeterministicImage,
   normalizeCategory,
   normalizeCity,
@@ -48,6 +49,8 @@ import {
 } from '@/data/pois';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
+import CentralVietnamAdvisoryBanner from '@/components/planner/CentralVietnamAdvisoryBanner';
+import { evaluateCentralVietnamAdvisories } from '@/utils/centralVietnamAdvisories';
 import {
   createEmptyItinerary,
   buildItineraryFromOutline,
@@ -210,6 +213,8 @@ export default function TripItineraryView({
 
   const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set());
   const [showDistances, setShowDistances] = useState(true);
+  const [preferLocalAuthentic, setPreferLocalAuthentic] = useState(false);
+  const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
   const [transportMode, setTransportMode] = useState<RouteTransportMode>('motorcycle');
   const [optimizeFeedback, setOptimizeFeedback] = useState<string | null>(null);
   const [showGuestSyncPrompt, setShowGuestSyncPrompt] = useState(false);
@@ -1629,6 +1634,15 @@ export default function TripItineraryView({
         />
       )}
 
+      {!isDrawerMode && (
+        <CentralVietnamAdvisoryBanner
+          advisories={evaluateCentralVietnamAdvisories(trip, plan, allPois)}
+          onOpenChecklist={() => setIsChecklistModalOpen(true)}
+          onAddHueDay={handleAddDay}
+          className="px-4 sm:px-6 py-2 bg-white border-b border-gray-100 shrink-0"
+        />
+      )}
+
       {/* Guest Soft-Prompt & Sync Feedback Banner (non-blocking) */}
       {showGuestSyncPrompt && (
         <div
@@ -1945,6 +1959,20 @@ export default function TripItineraryView({
                     />
                   </button>
                 </div>
+
+                <button
+                  type="button"
+                  aria-pressed={preferLocalAuthentic}
+                  onClick={() => setPreferLocalAuthentic((prev) => !prev)}
+                  className={`min-h-[36px] px-3 rounded-full border text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                    preferLocalAuthentic
+                      ? 'border-emerald-800 bg-emerald-50 text-emerald-950'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
+                  }`}
+                  title="Ưu tiên gợi ý quán bản địa phía Tây sông Hàn, làng nghề và điểm ít đông"
+                >
+                  Bản địa ít đông
+                </button>
               </div>
 
               <div className="flex items-center gap-2 no-print">
@@ -1994,6 +2022,8 @@ export default function TripItineraryView({
             <TripExportToolbar
               trip={trip}
               plan={plan}
+              isChecklistOpen={isChecklistModalOpen}
+              onChecklistOpenChange={setIsChecklistModalOpen}
               onBeforePrint={() => setCollapsedDays(new Set())}
               className="mb-3"
             />
@@ -2390,6 +2420,27 @@ export default function TripItineraryView({
                                               <span className="leading-snug">{openingCheck.warningMessage}</span>
                                             </div>
                                           )}
+
+                                        {!isRest && matchedPoi && evaluateLocalAuthentic(matchedPoi).isCrowded && (
+                                          <div className="no-print mt-1.5 flex flex-wrap items-center gap-2">
+                                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900">
+                                              Khu vực đông khách
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setPreferLocalAuthentic(true);
+                                                setNearbyPickerTarget({
+                                                  dayNumber: day.day_number,
+                                                  stopId: stop.stop_id,
+                                                });
+                                              }}
+                                              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline underline-offset-2 cursor-pointer"
+                                            >
+                                              Đổi điểm bản địa ít đông
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
 
                                       {/* Ghi chú Note */}
@@ -2569,7 +2620,8 @@ export default function TripItineraryView({
                                         day,
                                         allPois,
                                         usedPoiIds,
-                                        3
+                                        3,
+                                        { preferLocalAuthentic }
                                       );
                                       return (
                                         <div
@@ -2577,17 +2629,33 @@ export default function TripItineraryView({
                                           aria-label={`Chọn điểm gần ${stop.title}`}
                                           className="no-print ml-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-2"
                                         >
-                                          <div className="flex items-center justify-between gap-2">
+                                          <div className="flex flex-wrap items-center justify-between gap-2">
                                             <span className="text-xs font-bold text-neutral-900">
-                                              Điểm gợi ý gần {stop.title}
+                                              {preferLocalAuthentic
+                                                ? `Điểm bản địa ít đông gần ${stop.title}`
+                                                : `Điểm gợi ý gần ${stop.title}`}
                                             </span>
-                                            <button
-                                              type="button"
-                                              onClick={() => setNearbyPickerTarget(null)}
-                                              className="min-h-[40px] px-3 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 text-xs font-semibold text-neutral-800 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-                                            >
-                                              Đóng
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                type="button"
+                                                aria-pressed={preferLocalAuthentic}
+                                                onClick={() => setPreferLocalAuthentic((p) => !p)}
+                                                className={`min-h-[36px] px-2.5 rounded-full border text-xs font-semibold cursor-pointer ${
+                                                  preferLocalAuthentic
+                                                    ? 'border-emerald-800 bg-emerald-800 text-white'
+                                                    : 'border-neutral-300 bg-white text-neutral-800'
+                                                }`}
+                                              >
+                                                Bản địa ít đông
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => setNearbyPickerTarget(null)}
+                                                className="min-h-[40px] px-3 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 text-xs font-semibold text-neutral-800 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                                              >
+                                                Đóng
+                                              </button>
+                                            </div>
                                           </div>
                                           {nearbyList.length === 0 ? (
                                             <p className="text-xs text-neutral-600">

@@ -64,8 +64,8 @@
 
 | Method | Path | Auth | Query / Path Params | Response chính |
 | :--- | :--- | :---: | :--- | :--- |
-| `GET` | `/pois/weights` | Public | Slider weight query params (`PB08`) | `ParsedSliderWeights` |
-| `GET` | `/pois` | Public | `page` (≥ 1), `limit`, `city`, `category`, `search`, slider weights... | `{ items: POIResponse[], pagination: { page, limit, total, total_pages, has_next, has_previous } }` |
+| `GET` | `/pois/weights` | Public | Slider weight query params (`PB08`, gồm `local_authentic_only`) | `ParsedSliderWeights` |
+| `GET` | `/pois` | Public | `page` (≥ 1), `limit`, `city`, `category`, `sub_category`, `cuisine`, `budget_tier`, `local_authentic_only`, slider weights... | `{ items: POIResponse[], pagination: { page, limit, total, total_pages, has_next, has_previous } }` *(gồm thêm trường tùy chọn `popularity_score`)* |
 | `GET` | `/pois/{poi_id}/explanation-facts` | Public | `poi_id` | `{ poi: { id, name, is_local_business, local_business_type, source }, facts: [{ relationship, target_type, target_key, target_name }] }` |
 
 ---

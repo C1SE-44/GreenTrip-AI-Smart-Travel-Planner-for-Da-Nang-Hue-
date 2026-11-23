@@ -34,6 +34,7 @@ class POIResponse(BaseModel):
     opening_hours: dict[str, Any] | None = None
     email: str | None = None
     saved_count: int = 0
+    popularity_score: float | None = None
 
 
 class PaginationMetadata(BaseModel):

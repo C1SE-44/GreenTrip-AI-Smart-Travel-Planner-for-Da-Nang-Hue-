@@ -47,6 +47,8 @@ import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import ExplanationModal from '@/components/poi/ExplanationModal';
 import TripItineraryView from './TripItineraryView';
+import CentralVietnamAdvisoryBanner from './CentralVietnamAdvisoryBanner';
+import { evaluateCentralVietnamAdvisories } from '@/utils/centralVietnamAdvisories';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { streamCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
 import {
@@ -1347,6 +1349,11 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         onUpdateTrip={onUpdateTrip}
         onPlanUpdated={(next) => setItineraryPlan(next)}
         onOpenWhen={() => setShowWhenModal(true)}
+      />
+
+      <CentralVietnamAdvisoryBanner
+        advisories={evaluateCentralVietnamAdvisories(trip, itineraryPlan, allPois)}
+        className="px-4 sm:px-6 py-2 bg-white border-b border-gray-100 shrink-0"
       />
 
       {/* ─── NỘI DUNG CHÍNH: BỐ CỤC CHUẨN TRANG EXPLORE (CỘT GIỮA + BẢN ĐỒ FLEX-1) ─── */}

@@ -515,6 +515,7 @@ def test_pb08_weights_endpoint_returns_parsed_slider_values(
         "max_budget": 400_000.0,
         "eco_certified_only": False,
         "green_transit_only": False,
+        "local_authentic_only": False,
         "is_ranking_active": True,
         "is_filtering_active": True,
         "zero_weights_fallback": False,

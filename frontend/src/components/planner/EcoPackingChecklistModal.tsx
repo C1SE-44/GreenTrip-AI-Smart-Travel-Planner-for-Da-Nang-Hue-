@@ -189,6 +189,17 @@ export default function EcoPackingChecklistModal({
 
         {/* Danh sách vật dụng */}
         <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-5">
+          {(season === 'rainy' || /đà nẵng|da nang|danang|cả/i.test(trip.destination || '')) && (
+            <div
+              role="note"
+              className="rounded-xl border border-amber-200 bg-amber-50/85 px-3.5 py-2.5 text-xs text-neutral-800 leading-relaxed"
+            >
+              <span className="font-bold text-neutral-950">Lưu ý an toàn biển Đà Nẵng: </span>
+              {season === 'rainy'
+                ? 'Tháng 9 – tháng 1 thường có mưa tạt, sóng lớn và dòng chảy xa bờ (rip currents). Luôn ưu tiên áo mưa bộ 2 mảnh, giày chống thấm và quan sát cờ cứu hộ khi xuống biển.'
+                : 'Biển Đà Nẵng có thể xuất hiện sóng lớn và dòng chảy xa bờ vào cuối ngày. Hãy tắm gần khu vực có lực lượng cứu hộ và đi cùng bạn đồng hành.'}
+            </div>
+          )}
           {(['green-core', 'weather', 'culture'] as const).map((groupKey) => {
             const items = visibleItems.filter((item) => item.group === groupKey);
             if (items.length === 0) return null;
@@ -269,6 +280,8 @@ export interface TripExportToolbarProps {
   plan: TripItinerary;
   onBeforePrint?: () => void;
   className?: string;
+  isChecklistOpen?: boolean;
+  onChecklistOpenChange?: (open: boolean) => void;
 }
 
 export function TripExportToolbar({
@@ -276,9 +289,17 @@ export function TripExportToolbar({
   plan,
   onBeforePrint,
   className = '',
+  isChecklistOpen,
+  onChecklistOpenChange,
 }: TripExportToolbarProps) {
-  const [showPackingModal, setShowPackingModal] = useState(false);
+  const [internalChecklistOpen, setInternalChecklistOpen] = useState(false);
   const [exportNotice, setExportNotice] = useState('');
+
+  const showPackingModal = isChecklistOpen ?? internalChecklistOpen;
+  const setShowPackingModal = (open: boolean) => {
+    setInternalChecklistOpen(open);
+    onChecklistOpenChange?.(open);
+  };
 
   const handleExportIcs = () => {
     const { eventCount } = downloadTripIcs(plan, trip);

@@ -15,6 +15,7 @@ export interface GetPoisParams {
   budget_tier?: BudgetTier;
   eco_certified_only?: boolean;
   green_transit_only?: boolean;
+  local_authentic_only?: boolean;
 }
 
 export const ECO_PRIORITY_WEIGHT_MAP: Record<EcoPriority, number> = {
@@ -244,6 +245,10 @@ export async function getPois(params: GetPoisParams = {}): Promise<PaginatedPois
 
   if (params.green_transit_only) {
     query.set('green_transit_only', 'true');
+  }
+
+  if (params.local_authentic_only) {
+    query.set('local_authentic_only', 'true');
   }
 
   const queryString = query.toString();

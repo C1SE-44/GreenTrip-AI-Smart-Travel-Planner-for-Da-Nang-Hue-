@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import type { Poi } from '@/data/pois';
+import { evaluateLocalAuthentic } from '@/data/pois';
 import { isPoiEcoCertified } from '@/services/poi';
 
 // ─────────────────────────────────────────────
@@ -16,6 +17,7 @@ export interface ExploreFilterValues {
   ecoPriority: EcoPriority;
   ecoCertifiedOnly: boolean;
   greenTransitOnly: boolean;
+  localAuthenticOnly: boolean;
   categories: PoiCategoryFilter[];
   timeOfDay: TimeOfDay[];
   radiusKm: number | null;
@@ -36,6 +38,7 @@ export const DEFAULT_FILTER_VALUES: ExploreFilterValues = {
   ecoPriority: 'all',
   ecoCertifiedOnly: false,
   greenTransitOnly: false,
+  localAuthenticOnly: false,
   categories: [],
   timeOfDay: [],
   radiusKm: null,
@@ -728,6 +731,7 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
   const [radiusKm, setRadiusKm] = useState<number | null>(values.radiusKm ?? null);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay[]>(values.timeOfDay || []);
   const [ecoCertifiedOnly, setEcoCertifiedOnly] = useState<boolean>(values.ecoCertifiedOnly ?? false);
+  const [localAuthenticOnly, setLocalAuthenticOnly] = useState<boolean>(values.localAuthenticOnly ?? false);
   const [openNowOnly, setOpenNowOnly] = useState<boolean>(values.openNowOnly ?? false);
   const [freeTicketOnly, setFreeTicketOnly] = useState<boolean>(values.freeTicketOnly ?? false);
   const [rainyDayFriendly, setRainyDayFriendly] = useState<boolean>(values.rainyDayFriendly ?? false);
@@ -746,6 +750,7 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
       setRadiusKm(values.radiusKm ?? null);
       setTimeOfDay(values.timeOfDay || []);
       setEcoCertifiedOnly(values.ecoCertifiedOnly ?? false);
+      setLocalAuthenticOnly(values.localAuthenticOnly ?? false);
       setOpenNowOnly(values.openNowOnly ?? false);
       setFreeTicketOnly(values.freeTicketOnly ?? false);
       setRainyDayFriendly(values.rainyDayFriendly ?? false);
@@ -822,6 +827,10 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
         return false;
       }
 
+      if (localAuthenticOnly && !evaluateLocalAuthentic(poi).isLocalAuthentic) {
+        return false;
+      }
+
       // 4b. Open now
       if (openNowOnly && poi.opening_hours?.open_now === false) {
         return false;
@@ -870,6 +879,7 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
     radiusKm,
     timeOfDay,
     ecoCertifiedOnly,
+    localAuthenticOnly,
     openNowOnly,
     freeTicketOnly,
     rainyDayFriendly,
@@ -913,6 +923,7 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
     radiusKm === null &&
     timeOfDay.length === 0 &&
     ecoCertifiedOnly === false &&
+    localAuthenticOnly === false &&
     openNowOnly === false &&
     freeTicketOnly === false &&
     rainyDayFriendly === false &&
@@ -928,6 +939,7 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
         radiusKm,
         timeOfDay,
         ecoCertifiedOnly,
+        localAuthenticOnly,
         openNowOnly,
         freeTicketOnly,
         rainyDayFriendly,
@@ -949,6 +961,7 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
     setRadiusKm(null);
     setTimeOfDay([]);
     setEcoCertifiedOnly(false);
+    setLocalAuthenticOnly(false);
     setOpenNowOnly(false);
     setFreeTicketOnly(false);
     setRainyDayFriendly(false);
@@ -1156,47 +1169,61 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
             </div>
           </div>
 
-          {/* 5. Tiện ích & Chuẩn Xanh (Đặc biệt hữu ích khi ở tab "Tất cả") */}
-          {activeTab === 'all' && (
-            <div className="border-b border-gray-100 pb-5">
-              <h3 className="text-[14px] font-bold text-gray-950 mb-3">Tiêu chuẩn & Tiện ích</h3>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEcoCertifiedOnly(!ecoCertifiedOnly)}
-                  className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                    ecoCertifiedOnly
-                      ? 'bg-black border-black text-white font-medium shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                  }`}
-                >
-                  <span>🍃 Chuẩn Xanh</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFreeTicketOnly(!freeTicketOnly)}
-                  className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer ${
-                    freeTicketOnly
-                      ? 'bg-black border-black text-white font-medium shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                  }`}
-                >
-                  Miễn phí vé
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRainyDayFriendly(!rainyDayFriendly)}
-                  className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer ${
-                    rainyDayFriendly
-                      ? 'bg-black border-black text-white font-medium shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                  }`}
-                >
-                  Thân thiện ngày mưa
-                </button>
-              </div>
+          {/* 5. Tiện ích, Bản địa ít đông & Chuẩn Xanh */}
+          <div className="border-b border-gray-100 pb-5">
+            <h3 className="text-[14px] font-bold text-gray-950 mb-3">Tiêu chuẩn &amp; Bản địa ít đông</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                aria-pressed={localAuthenticOnly}
+                onClick={() => setLocalAuthenticOnly(!localAuthenticOnly)}
+                className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
+                  localAuthenticOnly
+                    ? 'bg-emerald-900 border-emerald-900 text-white font-medium shadow-sm'
+                    : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
+                }`}
+              >
+                <span>Bản địa ít đông (Tây sông Hàn &amp; Làng nghề)</span>
+              </button>
+              {activeTab === 'all' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEcoCertifiedOnly(!ecoCertifiedOnly)}
+                    className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
+                      ecoCertifiedOnly
+                        ? 'bg-black border-black text-white font-medium shadow-sm'
+                        : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
+                    }`}
+                  >
+                    <span>🍃 Chuẩn Xanh</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFreeTicketOnly(!freeTicketOnly)}
+                    className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer ${
+                      freeTicketOnly
+                        ? 'bg-black border-black text-white font-medium shadow-sm'
+                        : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
+                    }`}
+                  >
+                    Miễn phí vé
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRainyDayFriendly(!rainyDayFriendly)}
+                    className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer ${
+                      rainyDayFriendly
+                        ? 'bg-black border-black text-white font-medium shadow-sm'
+                        : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
+                    }`}
+                  >
+                    Thân thiện ngày mưa
+                  </button>
+                </>
+              )}
             </div>
-          )}
+          </div>
 
           {/* 6. Khoảng giá */}
           <div className="border-b border-gray-100 pb-5">

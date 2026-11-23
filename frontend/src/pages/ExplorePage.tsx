@@ -9,7 +9,7 @@ import CreateTripCopilotModal from '@/components/planner/CreateTripCopilotModal'
 import IdeationChatView from '@/components/planner/IdeationChatView';
 import type { CopilotTripMessage } from '@/components/planner/copilotTripData';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
-import { pois, normalizePois, isCuratedHighlight } from '@/data/pois';
+import { pois, normalizePois, isCuratedHighlight, evaluateLocalAuthentic } from '@/data/pois';
 import ExplorePoiCard from '@/components/explore/ExplorePoiCard';
 import {
   CATEGORY_META,
@@ -25,7 +25,9 @@ export type { ExploreTabId, UserTrip };
 import PoiMap from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import SavedPlacesView from '@/components/saved/SavedPlacesView';
+import BuildTripFromCollectionModal from '@/components/saved/BuildTripFromCollectionModal';
 import AddToTripModal from '@/components/planner/AddToTripModal';
+import { saveTripItinerary } from '@/services/itineraryService';
 import HomeDashboardView from '@/components/home/HomeDashboardView';
 import AccountMenu from '@/components/account/AccountMenu';
 import ProfileSettingsPage from '@/components/account/ProfileSettingsPage';
@@ -266,6 +268,11 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [filterValues, setFilterValues] = useState<ExploreFilterValues>(DEFAULT_FILTER_VALUES);
+  const [collectionPlannerConfig, setCollectionPlannerConfig] = useState<{
+    collectionId?: string | null;
+    collectionName?: string | null;
+    places?: Poi[] | null;
+  } | null>(null);
 
   const [isHovered, setIsHovered] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
@@ -475,6 +482,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           budget_tier: filterValues.budget,
           eco_certified_only: filterValues.ecoCertifiedOnly,
           green_transit_only: filterValues.greenTransitOnly,
+          local_authentic_only: filterValues.localAuthenticOnly || undefined,
         });
 
         const normalized = normalizePois(response.items);
@@ -590,6 +598,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         return false;
       }
       if (filterValues.greenTransitOnly && !isPoiGreenTransit(poi)) {
+        return false;
+      }
+      if (filterValues.localAuthenticOnly && !evaluateLocalAuthentic(poi).isLocalAuthentic) {
         return false;
       }
       if (filterValues.rainyDayFriendly && poi.ai_metadata?.rainy_day_friendly !== true) {
@@ -709,6 +720,21 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     }
 
     if (!isCustomWeights) {
+      if (filterValues.localAuthenticOnly) {
+        return [...matched].sort((a, b) => {
+          const authA = evaluateLocalAuthentic(a);
+          const authB = evaluateLocalAuthentic(b);
+          if (authA.isCraftVillage !== authB.isCraftVillage) {
+            return authA.isCraftVillage ? -1 : 1;
+          }
+          if (authA.isWestOfHanRiver !== authB.isWestOfHanRiver) {
+            return authA.isWestOfHanRiver ? -1 : 1;
+          }
+          const popDiff = (a.popularityScore ?? 3.0) - (b.popularityScore ?? 3.0);
+          if (Math.abs(popDiff) > 1e-4) return popDiff;
+          return (b.ecoScore || 0) - (a.ecoScore || 0);
+        });
+      }
       return matched;
     }
 
@@ -736,6 +762,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     if (filterValues.ecoPriority !== 'all') count++;
     if (filterValues.ecoCertifiedOnly) count++;
     if (filterValues.greenTransitOnly) count++;
+    if (filterValues.localAuthenticOnly) count++;
     if (filterValues.categories.length > 0) count++;
     if (filterValues.timeOfDay.length > 0) count++;
     if (filterValues.radiusKm !== null) count++;
@@ -1377,13 +1404,23 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               <h1 className="text-[28px] sm:text-[32px] lg:text-[34px] font-bold text-gray-950 tracking-tight leading-none">
                 Lịch trình của bạn
               </h1>
-              <button
-                onClick={() => setIsCreateTripModalOpen(true)}
-                className="ml-auto w-auto whitespace-nowrap bg-black text-white hover:bg-neutral-800 min-h-[44px] h-[44px] sm:h-[40px] px-5 sm:px-[36px] rounded-full text-[13.5px] font-semibold flex items-center gap-[14px] transition active:scale-95 shadow-xs cursor-pointer shrink-0"
-              >
-                <i className="ph ph-plus font-bold text-sm"></i>
-                <span>Chuyến đi mới</span>
-              </button>
+              <div className="ml-auto flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCollectionPlannerConfig({ collectionId: null })}
+                  className="whitespace-nowrap border border-emerald-800 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 min-h-[44px] h-[44px] sm:h-[40px] px-4 rounded-full text-[13.5px] font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                >
+                  <i className="ph ph-sparkle text-sm text-emerald-800" aria-hidden="true"></i>
+                  <span>Xếp lịch từ Kho đã lưu</span>
+                </button>
+                <button
+                  onClick={() => setIsCreateTripModalOpen(true)}
+                  className="w-auto whitespace-nowrap bg-black text-white hover:bg-neutral-800 min-h-[44px] h-[44px] sm:h-[40px] px-5 sm:px-[36px] rounded-full text-[13.5px] font-semibold flex items-center gap-[14px] transition active:scale-95 shadow-xs cursor-pointer shrink-0"
+                >
+                  <i className="ph ph-plus font-bold text-sm"></i>
+                  <span>Chuyến đi mới</span>
+                </button>
+              </div>
             </div>
 
             {/* Section 2.2: Hàng Tab - Cỡ chữ 147px (text-[16px]), padding ngang 14px (px-[8px]), khoảng cách 2 chữ 48px (gap-[11px]), chữ cách gạch chân 38px (pb-[8px], -5%), gạch chân dày 3px (border-b-[1.5px]) */}
@@ -1503,12 +1540,21 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                     Bắt đầu lên kế hoạch cho chuyến phiêu lưu tiếp theo đến Đà Nẵng hoặc Huế bằng AI.
                   </p>
                   {/* Nút Tạo chuyến đi đầu tiên: cao 100px (h-[54px]), padding 48px, cỡ chữ 15px, không bị cắt đáy */}
-                  <button
-                    onClick={() => setIsCreateTripModalOpen(true)}
-                    className="bg-black text-white px-[48px] h-[54px] rounded-full text-[15px] font-semibold hover:bg-neutral-800 transition active:scale-95 shadow-xs cursor-pointer flex items-center justify-center shrink-0"
-                  >
-                    Tạo chuyến đi đầu tiên
-                  </button>
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      onClick={() => setIsCreateTripModalOpen(true)}
+                      className="bg-black text-white px-[48px] h-[54px] rounded-full text-[15px] font-semibold hover:bg-neutral-800 transition active:scale-95 shadow-xs cursor-pointer flex items-center justify-center shrink-0"
+                    >
+                      Tạo chuyến đi đầu tiên
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCollectionPlannerConfig({ collectionId: null })}
+                      className="border border-emerald-800 bg-emerald-50 text-emerald-950 px-6 h-[54px] rounded-full text-[15px] font-semibold hover:bg-emerald-100 transition cursor-pointer flex items-center justify-center shrink-0"
+                    >
+                      Xếp lịch từ Kho đã lưu
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* Grid of Trip Cards */
@@ -1613,7 +1659,14 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           onProfileUpdated={setCurrentUser}
         />
       ) : viewMode === 'saved' ? (
-        <SavedPlacesView addedTrips={addedTrips} onToggleAddTrip={toggleAddTrip} onAddAlbumToTrip={addAlbumToTrip} />
+        <SavedPlacesView
+          addedTrips={addedTrips}
+          onToggleAddTrip={toggleAddTrip}
+          onAddAlbumToTrip={addAlbumToTrip}
+          onBuildTripFromCollection={(collectionId, collectionName, places) =>
+            setCollectionPlannerConfig({ collectionId, collectionName, places })
+          }
+        />
       ) : viewMode === 'chat' ? (
         <IdeationChatView
           allPois={allPois}
@@ -1706,6 +1759,27 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               )}
             </div>
 
+            <button
+              type="button"
+              aria-pressed={filterValues.localAuthenticOnly}
+              onClick={() =>
+                setFilterValues((prev) => ({
+                  ...prev,
+                  localAuthenticOnly: !prev.localAuthenticOnly,
+                }))
+              }
+              className={`shrink-0 flex items-center gap-1.5 px-3.5 h-[46px] sm:h-[50px] rounded-full border transition text-[13.5px] font-semibold cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                filterValues.localAuthenticOnly
+                  ? 'bg-emerald-900 text-white border-emerald-900 shadow-sm'
+                  : 'border-gray-200 hover:bg-gray-50 text-gray-800'
+              }`}
+              title="Ưu tiên quán bản địa phía Tây sông Hàn, làng nghề và tránh điểm quá tải"
+            >
+              <i className="ph ph-compass text-base" aria-hidden="true"></i>
+              <span className="hidden sm:inline">Bản địa ít đông</span>
+              <span className="sm:hidden">Ít đông</span>
+            </button>
+
             <button 
               onClick={() => setIsFilterPopoverOpen(true)}
               className={`shrink-0 flex items-center gap-2 px-3.5 sm:px-5 h-[46px] sm:h-[50px] rounded-full border transition text-[14px] sm:text-[15px] font-medium cursor-pointer ${
@@ -1751,7 +1825,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         {/* Cards Scrollable Area: chip→thẻ đầu x0.24 (pt-[48px]), lề trái pl-[36px], cách map pr-[70px] */}
         <div className="px-4 pt-5 lg:pl-[36px] lg:pr-[70px] lg:pt-[48px]">
           {/* Active Filter Chips Bar (nếu có lọc kích hoạt) */}
-          {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.budget !== 'all' || filterValues.subCategories.length > 0 || (filterValues.features && filterValues.features.length > 0) || filterValues.timeOfDay.length > 0) && (
+          {(filterValues.minRating !== null || filterValues.radiusKm !== null || filterValues.ecoCertifiedOnly || filterValues.localAuthenticOnly || filterValues.budget !== 'all' || filterValues.subCategories.length > 0 || (filterValues.features && filterValues.features.length > 0) || filterValues.timeOfDay.length > 0) && (
             <div className="flex items-center gap-2 flex-wrap mb-5 animate-fadeIn">
               {filterValues.minRating !== null && (
                 <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-white border border-neutral-200/90 text-neutral-800 text-[12px] font-medium shadow-2xs hover:border-neutral-300 transition-all">
@@ -1795,6 +1869,19 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                   </button>
                 </span>
               )}
+              {filterValues.localAuthenticOnly && (
+                <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-emerald-50/90 border border-emerald-300 text-emerald-950 text-[12px] font-semibold shadow-2xs transition-all">
+                  <span>Bản địa ít đông</span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterValues(p => ({ ...p, localAuthenticOnly: false }))}
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-emerald-700 hover:text-emerald-950 hover:bg-emerald-100 transition-colors ml-0.5 cursor-pointer"
+                    title="Gỡ lọc bản địa ít đông"
+                  >
+                    <i className="ph ph-x text-[10px] font-bold"></i>
+                  </button>
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setFilterValues(DEFAULT_FILTER_VALUES)}
@@ -1827,6 +1914,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                     favorite={savedIds.has(poi.id)}
                     favoritePending={pendingIds.has(poi.id)}
                     isAdded={addedTrips.has(poi.id)}
+                    showLocalAuthenticBadge={filterValues.localAuthenticOnly}
                     onClick={() => {
                       handleSelectPoi(poi.id);
                       handleOpenFullDetail(poi.id);
@@ -2101,6 +2189,67 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
         onCreateTrip={createTripForPois}
         onClose={() => setAddToTripSelection(null)}
       />
+
+      {/* 7. Build Trip Strictly From Saved Collection Modal */}
+      {collectionPlannerConfig !== null && (
+        <BuildTripFromCollectionModal
+          isOpen={collectionPlannerConfig !== null}
+          allPois={allPois}
+          initialCollectionId={collectionPlannerConfig.collectionId ?? null}
+          initialCollectionName={collectionPlannerConfig.collectionName ?? null}
+          initialCollectionPois={collectionPlannerConfig.places ?? null}
+          onClose={() => setCollectionPlannerConfig(null)}
+          onConfirmBuild={async (payload) => {
+            const tripId = currentUser ? `trip-col-${Date.now()}` : `trip-quick-${Date.now()}`;
+            const syncedItinerary = {
+              ...payload.itinerary,
+              trip_id: tripId,
+              title: payload.title,
+            };
+            try {
+              localStorage.setItem(
+                `greentrip_itinerary_${tripId}`,
+                JSON.stringify(syncedItinerary)
+              );
+            } catch {
+              // Ignore browser storage quota failures cleanly
+            }
+            if (currentUser) {
+              await saveTripItinerary(syncedItinerary).catch(() => undefined);
+            }
+            const firstPhoto = allPois.find((p) => payload.savedPoiIds.includes(p.id))?.image;
+            const newTrip: UserTrip = {
+              id: tripId,
+              title: payload.title,
+              destination: payload.destination,
+              startDate: syncedItinerary.start_date || payload.startDate,
+              daysCount: payload.daysCount,
+              peopleCount: payload.peopleCount,
+              createdAt: new Date().toISOString(),
+              savedPlaces: payload.savedPoiIds,
+              ideas: payload.savedPoiIds,
+              image:
+                firstPhoto ||
+                (payload.destination === 'Huế'
+                  ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
+                  : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
+              tags: [
+                payload.destination,
+                `${payload.daysCount} ngày`,
+                `${payload.peopleCount} du khách`,
+                'Từ Kho đã lưu',
+              ],
+            };
+            setUserTrips((prev) => [newTrip, ...prev]);
+            setActiveOverviewTrip(newTrip);
+            setSelectedTripForDetails(newTrip);
+            setActiveTripSubTab('itinerary');
+            setViewMode('trips');
+            setCollectionPlannerConfig(null);
+            navigate('/planner');
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -957,24 +957,24 @@ title: 'Bà Nà Hills & Cầu Vàng',
             <h4 className="font-bold text-charcoal mb-4">Khám phá</h4>
             <ul className="space-y-3 text-sm text-muted">
               <li>
-                <a href="#" className="hover:text-forest-600">
+                <Link to="/explore" className="hover:text-forest-600">
                   Đà Nẵng
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-forest-600">
+                <Link to="/explore" className="hover:text-forest-600">
                   Thừa Thiên Huế
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-forest-600">
+                <Link to="/explore" className="hover:text-forest-600">
                   Quán ăn Eco
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-forest-600">
+                <Link to="/explore" className="hover:text-forest-600">
                   Khách sạn
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -983,17 +983,17 @@ title: 'Bà Nà Hills & Cầu Vàng',
             <h4 className="font-bold text-charcoal mb-4">Giải pháp</h4>
             <ul className="space-y-3 text-sm text-muted">
               <li>
-                <a href="#" className="hover:text-forest-600">
+                <a href="#toi-uu" className="hover:text-forest-600">
                   Thuật toán OR-Tools
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-forest-600">
+                <a href="#hoc-hoi" className="hover:text-forest-600">
                   AI Đề xuất
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-forest-600">
+                <a href="#thich-nghi" className="hover:text-forest-600">
                   Cách tính Eco Score
                 </a>
               </li>
@@ -1004,19 +1004,19 @@ title: 'Bà Nà Hills & Cầu Vàng',
             <h4 className="font-bold text-charcoal mb-4">Công ty</h4>
             <ul className="space-y-3 text-sm text-muted">
               <li>
-                <a href="#" className="hover:text-forest-600">
+                <a href="#hoc-hoi" className="hover:text-forest-600">
                   Về dự án
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-forest-600">
-                  Đội ngũ
-                </a>
+                <Link to="/planner" className="hover:text-forest-600">
+                  Lập lịch trình
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-forest-600">
-                  Liên hệ
-                </a>
+                <Link to="/saved" className="hover:text-forest-600">
+                  Kho đã lưu
+                </Link>
               </li>
               <li>
                 <Link to="/demo-qr" className="hover:text-forest-600">

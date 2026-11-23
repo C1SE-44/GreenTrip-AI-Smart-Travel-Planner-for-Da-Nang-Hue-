@@ -18,9 +18,9 @@ export const DEMO_QR_PRESETS = [
   },
   {
     id: 'explore',
-    label: 'Bản đồ 482 địa điểm xanh',
+    label: 'Bản đồ 642 địa điểm & lưu trú xanh',
     path: '/explore',
-    description: 'Trải nghiệm danh sách địa điểm, lọc trọng số xanh và bản đồ tương tác.',
+    description: 'Trải nghiệm 482 điểm tham quan/ẩm thực, 160 lưu trú xanh, lọc trọng số và bản đồ tương tác.',
     badge: 'Khám phá & Cache',
   },
   {

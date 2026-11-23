@@ -15,7 +15,7 @@ GreenTrip AI giúp du khách tự túc lập lịch trình đi Đà Nẵng và H
 
 | Nhu cầu của du khách | Mindtrip AI / Layla AI | Wanderlog | GreenTrip AI (C1SE-44) |
 | :--- | :--- | :--- | :--- |
-| Tìm quán địa phương đúng thông tin, không chết ảnh | Dữ liệu toàn cầu rộng nhưng thiếu chiều sâu ngách bản địa | Phụ thuộc người dùng tự nhập hoặc Google Places thô | Kho 482 địa điểm Đà Nẵng và Huế đã kiểm tra tọa độ, giá, giờ mở cửa; ảnh WebP lưu riêng trên Supabase `poi-images` |
+| Tìm quán ăn, điểm chơi và chỗ ở đúng thông tin, không chết ảnh | Dữ liệu toàn cầu rộng nhưng thiếu chiều sâu ngách bản địa | Phụ thuộc người dùng tự nhập hoặc Google Places thô | Kho 642 địa điểm Đà Nẵng và Huế (482 điểm tham quan, ẩm thực và 160 cơ sở lưu trú xanh) đã kiểm tra tọa độ, giá, giờ mở cửa; ảnh WebP lưu riêng trên Supabase `poi-images` |
 | Hỏi AI mà không bị gợi ý nhầm thành phố hay quán ảo | Trả lời LLM thuần nên vẫn có rủi ro nhầm địa bàn | Không chuyên lập lịch bằng hội thoại | Bộ lọc Corrective Grounding ([`copilot_grounding.py`](../backend/app/trips/copilot_grounding.py)) đối chiếu tên quán với DB, CSV chuẩn và `LANDMARK_CITY_KB` |
 | Giữ tổng chi phí không vượt ngân sách và đúng giờ mở cửa | Gợi ý ước lượng | Ghi chép thu chi thủ công | Bộ giải [`itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py) kiểm tra `C_total <= B_max`, đối chiếu giờ mở cửa (`poi_contacts_cache.json`) và chừa giờ nghỉ trưa |
 | Giảm đi vòng và biết mức phát thải CO2 | Sắp xếp tương đối | Sắp xếp điểm dừng cơ bản | Gom cụm đường đi theo Nearest-Neighbor + 2-opt và tính CO2 theo 4 phương tiện (ô tô 171g, xe máy 72g, buýt xanh 40g, đi bộ 0g/km) |
@@ -55,7 +55,7 @@ Với ChatGPT, khách nhận về một đoạn chữ dễ lẫn quán đã đó
 Tham khảo mã nguồn: [`backend/app/trips/copilot_grounding.py`](../backend/app/trips/copilot_grounding.py), [`backend/app/trips/itinerary_constraints.py`](../backend/app/trips/itinerary_constraints.py), [`backend/app/trips/handlers/rainy_day_handler.py`](../backend/app/trips/handlers/rainy_day_handler.py).
 
 #### Q2. Tại sao chỉ tập trung vào Đà Nẵng và Huế, liệu có mở rộng cho du khách đi các tỉnh khác không?
-Nhóm chọn đi sâu vào tuyến Đà Nẵng và Huế vì đây là hành lang du lịch có đủ biển, núi bán đảo, di sản UNESCO và đèo Hải Vân, cho phép nhóm kiểm tra tận tay 482 địa điểm thay vì gom dữ liệu thô khắp cả nước khiến thông tin sai lệch. Về kỹ thuật, cơ sở dữ liệu chuẩn 3NF đã tách riêng bảng `cities` (`city_id`) và `poi_categories` (`category_id`), nên khi thêm Hội An, Nha Trang hay Đà Lạt chỉ cần nạp dữ liệu mới bằng script sẵn có mà giữ nguyên toàn bộ API và giao diện.
+Nhóm chọn đi sâu vào tuyến Đà Nẵng và Huế vì đây là hành lang du lịch có đủ biển, núi bán đảo, di sản UNESCO và đèo Hải Vân, cho phép nhóm kiểm tra tận tay 642 địa điểm (gồm 482 điểm tham quan, ăn uống và 160 cơ sở lưu trú xanh) thay vì gom dữ liệu thô khắp cả nước khiến thông tin sai lệch. Về kỹ thuật, cơ sở dữ liệu chuẩn 3NF đã tách riêng bảng `cities` (`city_id`) và `poi_categories` (`category_id`), nên khi thêm Hội An, Nha Trang hay Đà Lạt chỉ cần nạp dữ liệu mới bằng script sẵn có mà giữ nguyên toàn bộ API và giao diện.
 
 Tham khảo mã nguồn: [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md), [`backend/scripts/safe_import_pois.py`](../backend/scripts/safe_import_pois.py).
 
@@ -96,8 +96,8 @@ Hệ thống nhận diện các chặng ngoài trời dễ bị ảnh hưởng t
 
 Tham khảo mã nguồn: [`backend/app/trips/handlers/rainy_day_handler.py`](../backend/app/trips/handlers/rainy_day_handler.py), [`frontend/src/components/planner/TripItineraryView.tsx`](../frontend/src/components/planner/TripItineraryView.tsx).
 
-#### Q10. Làm sao để ảnh của 482 địa điểm tải nhanh trên điện thoại và không bao giờ bị lỗi vỡ hình?
-Dữ liệu 482 địa điểm được làm sạch số điện thoại giả, chuẩn hóa địa chỉ và phân loại trước khi nạp DB (`clean_and_verify_all_pois.py`), sau đó chuyển toàn bộ ảnh sang định dạng WebP nhẹ đưa vào bucket `poi-images` trên Supabase Storage thay vì trỏ ra link ngoài dễ chết 404. Phía giao diện, component `PoiImage` bật `loading="lazy"` để tiết kiệm 4G cho khách, đặt `referrerPolicy="no-referrer"` và sẵn lớp ảnh dự phòng SVG nên thẻ địa điểm không bao giờ bị vỡ khung.
+#### Q10. Làm sao để ảnh của 642 địa điểm tải nhanh trên điện thoại và không bao giờ bị lỗi vỡ hình?
+Dữ liệu 642 địa điểm (482 điểm tham quan, ẩm thực và 160 cơ sở lưu trú xanh chọn lọc) được làm sạch số điện thoại giả, chuẩn hóa địa chỉ và phân loại trước khi nạp DB (`clean_and_verify_all_pois.py`, `curate_top_stays.py`), sau đó chuyển toàn bộ ảnh sang định dạng WebP nhẹ đưa vào bucket `poi-images` trên Supabase Storage thay vì trỏ ra link ngoài dễ chết 404. Phía giao diện, component `PoiImage` bật `loading="lazy"` để tiết kiệm 4G cho khách, đặt `referrerPolicy="no-referrer"` và sẵn lớp ảnh dự phòng SVG nên thẻ địa điểm không bao giờ bị vỡ khung.
 
 Tham khảo mã nguồn: [`backend/scripts/audit_and_migrate_poi_images.py`](../backend/scripts/audit_and_migrate_poi_images.py), [`backend/migrations/017_create_poi_images_bucket.sql`](../backend/migrations/017_create_poi_images_bucket.sql), [`frontend/src/components/ui/PoiImage.tsx`](../frontend/src/components/ui/PoiImage.tsx).
 
@@ -109,7 +109,7 @@ Sau Migration `018`, schema trên PostgreSQL 15 + PostGIS gồm 13 bảng `publi
 Tham khảo mã nguồn: [`backend/migrations/018_db_3nf_fk_indexes_and_audit.sql`](../backend/migrations/018_db_3nf_fk_indexes_and_audit.sql), [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md).
 
 #### Q12. Tại sao vẫn dùng `JSONB` / `TEXT[]` trên bảng `pois`, và giữ cả `user_id TEXT` lẫn `owner_user_id UUID` trên bảng `itineraries`?
-Đây là cách cân bằng có chủ đích giữa chuẩn mực 3NF và tốc độ tải bản đồ cho du khách: các thông tin phụ ít sửa như danh sách tiện ích xanh (`eco_features`) hay giờ mở cửa (`opening_hours`) được lưu dạng `TEXT[]` / `JSONB` có đánh chỉ mục GIN để trang `/explore` không phải nối thêm 4 đến 5 bảng con khi nạp 482 địa điểm. Còn cột `owner_user_id UUID` và `poi_uuid UUID` giữ ràng buộc khóa ngoại chặt cho người dùng đã đăng nhập mà vẫn tương thích với lịch trình mẫu công khai dành cho khách chưa tạo tài khoản.
+Đây là cách cân bằng có chủ đích giữa chuẩn mực 3NF và tốc độ tải bản đồ cho du khách: các thông tin phụ ít sửa như danh sách tiện ích xanh (`eco_features`) hay giờ mở cửa (`opening_hours`) được lưu dạng `TEXT[]` / `JSONB` có đánh chỉ mục GIN để trang `/explore` không phải nối thêm 4 đến 5 bảng con khi nạp 642 địa điểm. Còn cột `owner_user_id UUID` và `poi_uuid UUID` giữ ràng buộc khóa ngoại chặt cho người dùng đã đăng nhập mà vẫn tương thích với lịch trình mẫu công khai dành cho khách chưa tạo tài khoản.
 
 Tham khảo mã nguồn: [`docs/DATABASE_3NF_AUDIT_AND_ERD.md`](./DATABASE_3NF_AUDIT_AND_ERD.md) (Mục 1.2), [`backend/tests/test_db_3nf_migration.py`](../backend/tests/test_db_3nf_migration.py).
 

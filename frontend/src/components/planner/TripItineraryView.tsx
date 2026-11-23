@@ -204,7 +204,7 @@ export default function TripItineraryView({
 
   // State giao diện
   const [expandIdeas, setExpandIdeas] = useState(true);
-  const [ideasFilter, setIdeasFilter] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua' | 'unplaced'>('all');
+  const [ideasFilter, setIdeasFilter] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua' | 'luu-tru' | 'unplaced'>('all');
   const [showIdeasFilterMenu, setShowIdeasFilterMenu] = useState(false);
   const [showIdeasMoreMenu, setShowIdeasMoreMenu] = useState(false);
 
@@ -374,6 +374,10 @@ export default function TripItineraryView({
       if (ideasFilter === 'chua') {
         const c = (p.category || '').toLowerCase();
         return norm === 'chua' || c.includes('chùa');
+      }
+      if (ideasFilter === 'luu-tru') {
+        const c = (p.category || '').toLowerCase();
+        return norm === 'luu-tru' || c.includes('lưu trú') || c.includes('luu-tru');
       }
       return true;
     });
@@ -1415,6 +1419,8 @@ export default function TripItineraryView({
       list = list.filter((p) => p.category === 'chua');
     } else if (modalCategory === 'quan-an' || modalCategory === 'restaurants') {
       list = list.filter((p) => p.category === 'quan-an');
+    } else if (modalCategory === 'luu-tru') {
+      list = list.filter((p) => p.category === 'luu-tru');
     }
 
     // 3. Lọc theo từ khóa tìm kiếm
@@ -1771,6 +1777,8 @@ export default function TripItineraryView({
                         ? 'Cảnh quan'
                         : ideasFilter === 'chua'
                         ? 'Chùa'
+                        : ideasFilter === 'luu-tru'
+                        ? 'Lưu trú'
                         : 'Chưa xếp lịch'}
                     </span>
                     <ChevronDown size={12} className={showIdeasFilterMenu ? 'rotate-180 transition-transform' : 'transition-transform'} />
@@ -1788,6 +1796,7 @@ export default function TripItineraryView({
                         { id: 'di-tich', label: 'Di tích' },
                         { id: 'canh-quan', label: 'Cảnh quan' },
                         { id: 'chua', label: 'Chùa' },
+                        { id: 'luu-tru', label: 'Lưu trú' },
                         { id: 'unplaced', label: 'Chưa xếp lịch' },
                       ] as const).map((item) => (
                         <button

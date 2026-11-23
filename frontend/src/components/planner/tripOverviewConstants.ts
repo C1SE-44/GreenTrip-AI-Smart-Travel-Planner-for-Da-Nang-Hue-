@@ -6,6 +6,7 @@ export type ModalCategory =
   | 'canh-quan'
   | 'chua'
   | 'quan-an'
+  | 'luu-tru'
   | 'experiences'
   | 'restaurants'
   | 'scenic';
@@ -17,6 +18,7 @@ export const MODAL_CATEGORY_TABS: { id: ModalCategory; label: string }[] = [
   { id: 'canh-quan', label: 'Cảnh quan' },
   { id: 'chua', label: 'Chùa' },
   { id: 'quan-an', label: 'Quán ăn' },
+  { id: 'luu-tru', label: 'Lưu trú' },
 ];
 
 export interface CategoryBudgets {

@@ -38,6 +38,12 @@ function formatPriceRange(poi: Poi): string {
     if (/^miễn phí/i.test(display)) return 'Miễn phí';
     return `${display} (Tham khảo)`;
   }
+  if (poi.category === 'luu-tru') {
+    if (poi.estimatedCost && poi.estimatedCost > 0) {
+      return `Khoảng ${new Intl.NumberFormat('vi-VN').format(poi.estimatedCost)} ₫/đêm (Ước tính)`;
+    }
+    return 'Liên hệ cơ sở lưu trú để xem giá phòng theo đêm';
+  }
   if (poi.estimatedCost == null) return 'Miễn phí hoặc tùy dịch vụ tại chỗ';
   if (poi.estimatedCost === 0) return 'Miễn phí tham quan';
   return `Khoảng ${new Intl.NumberFormat('vi-VN').format(poi.estimatedCost)} ₫/người (Ước tính)`;
@@ -191,6 +197,27 @@ export default function PoiDetailSection({
   }, [poi.best_time]);
 
   const mindtripAiInsights = useMemo(() => {
+    if (poi.category === 'luu-tru') {
+      return {
+        questions: [
+          `${poi.name} có chính sách giảm rác thải nhựa và tiết kiệm năng lượng không?`,
+          `Từ ${poi.name} di chuyển đến các điểm tham quan chính mất bao lâu?`,
+          `Thời gian nhận phòng / trả phòng và tiện ích nổi bật tại ${poi.name}?`,
+          `Cơ sở lưu trú này có phù hợp cho gia đình hoặc nhóm bạn đi nghỉ dưỡng không?`,
+        ],
+        summary: `Du khách đánh giá ${poi.name} có vị trí thuận tiện tại ${poi.city}, không gian nghỉ ngơi sạch sẽ và nhiều lựa chọn phù hợp lưu trú bền vững.`,
+        pros: [
+          'Thông tin vị trí, giá phòng tham khảo theo đêm và đánh giá thực tế đã kiểm chứng',
+          'Thuận tiện kết nối cụm tham quan gần kề để giảm quãng đường di chuyển',
+          'Khuyến khích lưu trú bản địa, giữ gìn cảnh quan và tiết kiệm tài nguyên',
+        ],
+        cons: [
+          'Giá phòng có thể thay đổi theo cuối tuần hoặc mùa cao điểm du lịch miền Trung',
+          'Nên kiểm tra trước giờ nhận phòng (thường từ 14:00) và chỗ đỗ xe nếu đi ô tô',
+        ],
+        carbonSaved: '~2.0 – 3.2 kg CO₂/ngày khi chọn lưu trú gần cụm điểm tham quan chính',
+      };
+    }
     const isFoodOrCafe = poi.category === 'quan-an' || isCafe;
     if (isFoodOrCafe) {
       return {

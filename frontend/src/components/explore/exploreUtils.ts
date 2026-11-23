@@ -32,13 +32,14 @@ export interface UserTrip {
   copilotChatHistory?: CopilotTripMessage[];
 }
 
-export type ExploreTabId = 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua';
+export type ExploreTabId = 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua' | 'luu-tru';
 
 export const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
   'quan-an': { icon: 'ph-fork-knife', label: 'Quán ăn' },
   'di-tich': { icon: 'ph-landmark', label: 'Di tích' },
   'chua': { icon: 'ph-hands-praying', label: 'Chùa & Tâm linh' },
   'canh-quan': { icon: 'ph-mountains', label: 'Cảnh quan' },
+  'luu-tru': { icon: 'ph-bed', label: 'Lưu trú' },
 };
 
 export const CITY_CENTERS: Record<string, { lat: number; lng: number }> = {
@@ -75,6 +76,7 @@ export function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean 
       if (matchExplicit) return true;
     }
 
+    if (poi.category === 'luu-tru') return true;
     const name = poi.name.toLowerCase();
     const desc = (poi.description || '').toLowerCase();
     const sub = (poi.sub_category || '').toLowerCase();

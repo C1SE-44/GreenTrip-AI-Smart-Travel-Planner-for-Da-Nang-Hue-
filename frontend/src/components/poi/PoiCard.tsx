@@ -10,6 +10,7 @@ const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
   'di-tich': { icon: 'ph-landmark', label: 'Di tích' },
   'chua': { icon: 'ph-hands-praying', label: 'Chùa & Tâm linh' },
   'canh-quan': { icon: 'ph-mountains', label: 'Cảnh quan' },
+  'luu-tru': { icon: 'ph-bed', label: 'Lưu trú' },
 };
 
 

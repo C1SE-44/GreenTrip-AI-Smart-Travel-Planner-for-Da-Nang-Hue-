@@ -21,9 +21,10 @@ import {
   Star,
 } from 'lucide-react';
 import OnboardingModal from '@/components/auth/OnboardingModal';
+import type { ExploreTabId } from '@/components/explore/exploreUtils';
 
 export interface HomeDashboardViewProps {
-  onNavigateToExplore: () => void;
+  onNavigateToExplore: (initialTab?: ExploreTabId) => void;
   onNavigateToTrips: () => void;
   onNavigateToSaved: () => void;
   onCreateTrip: (defaultDestination?: string, defaultTitle?: string) => void;
@@ -144,8 +145,12 @@ export default function HomeDashboardView({
                 type="button"
                 onClick={() => {
                   setActiveTabFilter(isActive ? 'all' : cat.id);
-                  if (cat.id === 'experiences' || cat.id === 'eats') {
-                    onNavigateToExplore();
+                  if (cat.id === 'stays') {
+                    onNavigateToExplore('luu-tru');
+                  } else if (cat.id === 'eats') {
+                    onNavigateToExplore('quan-an');
+                  } else if (cat.id === 'experiences') {
+                    onNavigateToExplore('for-you');
                   } else if (cat.id === 'trips') {
                     onNavigateToTrips();
                   }
@@ -228,7 +233,7 @@ export default function HomeDashboardView({
 
           {/* CARD 2: GỢI Ý LÝ TƯỞNG CHO NGƯỜI DÙNG CHUYÊN SÂU (OCEAN BLUE GRADIENT) */}
           <div
-            onClick={onNavigateToExplore}
+            onClick={() => onNavigateToExplore()}
             className="h-[210px] rounded-[22px] p-5 flex flex-col justify-between relative overflow-hidden cursor-pointer group shadow-sm hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-[#1b557a] via-[#103a54] to-[#072132] text-white border border-white/10"
           >
             {/* Center Graphic: Overlapping Photo Cards */}

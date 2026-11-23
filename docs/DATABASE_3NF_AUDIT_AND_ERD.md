@@ -19,7 +19,7 @@ Tài liệu này tổng hợp thiết kế chuẩn **3NF (Third Normal Form)**, 
 
 ### 1.2. Phi chuẩn hóa có chủ đích (Controlled Denormalization for Performance & Flexibility)
 Để cân bằng giữa chuẩn 3NF và tốc độ đọc cho 10.000 người dùng:
-- **PostgreSQL `TEXT[]` + `JSONB` có GIN Index** trên `public.pois` (`vibes`, `eco_features`, `opening_hours`, `social_links`, `ai_metadata`): tránh phải `JOIN` thêm 4–5 bảng phụ mỗi lần tải bản đồ 482 điểm, nhưng vẫn truy vấn chỉ mục nhanh nhờ GIN Index.
+- **PostgreSQL `TEXT[]` + `JSONB` có GIN Index** trên `public.pois` (`vibes`, `eco_features`, `opening_hours`, `social_links`, `ai_metadata`): tránh phải `JOIN` thêm 4–5 bảng phụ mỗi lần tải bản đồ 642 điểm, nhưng vẫn truy vấn chỉ mục nhanh nhờ GIN Index.
 - **Khóa ngoại song song tương thích dữ liệu Guest (`owner_user_id`, `poi_uuid`)**: Bảng `itineraries` giữ cột `user_id TEXT` phục vụ lịch mẫu/chuyến nháp cũ và bổ sung cột `owner_user_id UUID REFERENCES public.users(user_id) ON DELETE CASCADE` (đã backfill 15/40 bản ghi có tài khoản thật; 155/273 điểm dừng hợp lệ đã backfill `poi_uuid`). Cách làm này đạt 100% toàn vẹn tham chiếu cho người dùng thật mà không làm gãy dữ liệu lịch mẫu công khai.
 
 ---
@@ -202,7 +202,7 @@ Kết quả chạy trực tiếp **Migration `018_db_3nf_fk_indexes_and_audit.sq
 | Bảng | Cột khóa / ràng buộc chính | Kiểu dữ liệu | Ràng buộc / Index | Ý nghĩa nghiệp vụ |
 | :--- | :--- | :--- | :--- | :--- |
 | `users` | `user_id`, `email`, `role`, `status` | `UUID`, `VARCHAR` | `PK`, `UNIQUE(email)`, `CHECK role/status` | Tài khoản & phân quyền `USER` / `ADMIN` |
-| `pois` | `poi_id`, `city_id`, `category_id`, `geom`, `name` | `UUID`, `GEOMETRY`, `VARCHAR` | `PK`, `FK city/category`, `CHECK 4 cột`, `GiST`, `GIN pg_trgm`, `B-Tree` | Kho 482 địa điểm du lịch bền vững Đà Nẵng – Huế |
+| `pois` | `poi_id`, `city_id`, `category_id`, `geom`, `name` | `UUID`, `GEOMETRY`, `VARCHAR` | `PK`, `FK city/category`, `CHECK 4 cột`, `GiST`, `GIN pg_trgm`, `B-Tree` | Kho 642 địa điểm du lịch bền vững Đà Nẵng – Huế (482 tham quan/ẩm thực + 160 lưu trú xanh) |
 | `saved_place_collections` | `collection_id`, `user_id` | `UUID` | `PK`, `FK user_id CASCADE`, Partial `UNIQUE(user_id) WHERE is_default` | Bộ sưu tập địa điểm cá nhân |
 | `saved_place_collection_items` | `(collection_id, poi_id)`, `user_id` | `UUID` | Composite `PK`, Composite `FK` tới `collections` & `pois` | Bảng trung gian N–N lưu địa điểm vào bộ sưu tập |
 | `itineraries` | `trip_id`, `owner_user_id` | `TEXT`, `UUID` | `PK`, `FK owner_user_id CASCADE`, Index `owner_user_id` | Chuyến đi mẫu & lịch trình riêng của người dùng |

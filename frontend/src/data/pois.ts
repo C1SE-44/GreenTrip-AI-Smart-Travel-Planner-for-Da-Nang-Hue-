@@ -1,4 +1,4 @@
-export type PoiCategory = 'chua' | 'quan-an' | 'canh-quan' | 'di-tich';
+export type PoiCategory = 'chua' | 'quan-an' | 'canh-quan' | 'di-tich' | 'luu-tru';
 export type CoreCategory = 'food' | 'cafe' | 'nature' | 'culture' | 'spiritual';
 export type PoiCity = 'Đà Nẵng' | 'Huế';
 
@@ -166,6 +166,7 @@ export const categoryLabels: Record<PoiCategory, string> = {
   'quan-an': 'Quán ăn',
   'canh-quan': 'Cảnh quan',
   'di-tich': 'Di tích',
+  'luu-tru': 'Lưu trú',
 };
 
 export const DEFAULT_IMAGES_BY_CATEGORY: Record<PoiCategory, string[]> = {
@@ -219,6 +220,14 @@ export const DEFAULT_IMAGES_BY_CATEGORY: Record<PoiCategory, string[]> = {
     'https://images.unsplash.com/photo-1599707367072-cd6ada2bc375?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1568084680786-a84f91d1153c?auto=format&fit=crop&w=900&q=80',
     'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80',
+  ],
+  'luu-tru': [
+    'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=900&q=80',
   ],
 };
 
@@ -399,6 +408,23 @@ export function getGalleryImages(poi: Poi): string[] {
 export function normalizeCategory(value?: string | null): PoiCategory {
   const normalized = (value ?? '').trim().toLowerCase();
   if (
+    normalized.includes('lưu trú') ||
+    normalized.includes('luu-tru') ||
+    normalized.includes('luu tru') ||
+    normalized.includes('nghỉ dưỡng') ||
+    normalized.includes('homestay') ||
+    normalized.includes('resort') ||
+    normalized.includes('eco_lodge') ||
+    normalized.includes('khách sạn') ||
+    normalized.includes('hotel') ||
+    normalized.includes('villa') ||
+    normalized.includes('hostel') ||
+    normalized === 'stays' ||
+    normalized === 'stay'
+  ) {
+    return 'luu-tru';
+  }
+  if (
     normalized.includes('chùa') ||
     normalized.includes('chua') ||
     normalized.includes('đền') ||
@@ -458,6 +484,7 @@ function sanitizePoiAiMetadata(
   subCategory?: string | null
 ): Poi['ai_metadata'] {
   if (!rawMeta || typeof rawMeta !== 'object') return null;
+  if (category === 'luu-tru') return rawMeta;
   const priceDisplay = typeof rawMeta.price_range_display === 'string' ? rawMeta.price_range_display.trim() : '';
   if (!priceDisplay || !/\/\s*ly\b/i.test(priceDisplay)) {
     return rawMeta;
@@ -571,7 +598,9 @@ export function normalizePoi(item: NormalizablePoiInput | null | undefined, allo
     ? item.ai_metadata.recommended_duration_hours.trim()
     : '';
   let visitDuration: string;
-  if (rawRecHours) {
+  if (category === 'luu-tru') {
+    visitDuration = 'Nghỉ qua đêm';
+  } else if (rawRecHours) {
     const cleanHours = rawRecHours
       .replace(/\.0\b/g, '')
       .replace('-', '–')
@@ -614,7 +643,13 @@ export function normalizePoi(item: NormalizablePoiInput | null | undefined, allo
     isGreen,
     average_visit_minutes: item.average_visit_minutes ?? null,
     ecoScore,
-    openHours: statusOpenHours || item.open_hours?.trim() || (category === 'quan-an' ? '09:30 – 21:30' : '07:30 – 17:30'),
+    openHours: statusOpenHours || item.open_hours?.trim() || (
+      category === 'luu-tru'
+        ? 'Nhận phòng 14:00 – Trả phòng 12:00'
+        : category === 'quan-an'
+          ? '09:30 – 21:30'
+          : '07:30 – 17:30'
+    ),
     estimatedCost,
     isLocalBusiness: item.is_local_business ?? undefined,
     sub_category: item.sub_category ?? null,
@@ -670,6 +705,15 @@ export const SUB_CATEGORY_LABELS: Record<string, string> = {
   forest_hermitage_monasteries: 'Thiền viện rừng sâu',
   cathedrals_heritage_churches: 'Thánh đường Gothic cổ',
   zen_retreats_healing: 'Retreat Chữa lành',
+  // Stays / Accommodation
+  eco_lodge: 'Eco Lodge & Sinh thái',
+  homestay: 'Homestay bản địa',
+  resort: 'Resort nghỉ dưỡng',
+  villa: 'Villa & Biệt thự',
+  hotel: 'Khách sạn xanh',
+  serviced_apartment: 'Căn hộ dịch vụ',
+  guesthouse: 'Nhà nghỉ tiện nghi',
+  hostel: 'Hostel du lịch',
 };
 
 export const CUISINE_LABELS: Record<string, string> = {
@@ -1148,6 +1192,21 @@ export function getSpecificPoiIconClass(poi: Poi | { name?: string; category?: s
   const name = (poi.name || '').toLowerCase();
   const cat = (poi.category || '').toLowerCase();
   const sub = (poi.sub_category || '').toLowerCase();
+
+  // 0. Lưu trú & Nghỉ dưỡng (ưu tiên khớp danh mục để không bị nhầm icon Cafe/Biển theo tên)
+  if (
+    cat === 'luu-tru' ||
+    cat.includes('lưu trú') ||
+    cat.includes('nghỉ dưỡng') ||
+    sub === 'eco_lodge' ||
+    sub === 'homestay' ||
+    sub === 'serviced_apartment' ||
+    sub === 'guesthouse' ||
+    sub === 'hostel' ||
+    sub === 'villa'
+  ) {
+    return 'ph-bold ph-bed';
+  }
 
   // 1. Cầu (Cầu Rồng, Cầu Trường Tiền, Cầu Sông Hàn...) - Loại trừ đặc sản Bê Thui Cầu Mống
   if (

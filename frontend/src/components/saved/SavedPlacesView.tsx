@@ -9,6 +9,7 @@ const MODAL_CATEGORY_TABS = [
   { id: 'experiences', label: 'Trải nghiệm' },
   { id: 'canh-quan', label: 'Địa điểm' },
   { id: 'chua', label: 'Tâm linh' },
+  { id: 'luu-tru', label: 'Lưu trú' },
 ];
 import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
@@ -271,6 +272,8 @@ export default function SavedPlacesView({
       list = list.filter((p) => p.category === 'canh-quan');
     } else if (modalCategory === 'chua') {
       list = list.filter((p) => p.category === 'chua');
+    } else if (modalCategory === 'luu-tru') {
+      list = list.filter((p) => p.category === 'luu-tru');
     }
 
     if (modalSearch.trim()) {

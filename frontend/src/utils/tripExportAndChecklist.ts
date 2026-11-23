@@ -60,10 +60,24 @@ export const ECO_PACKING_ITEMS: EcoPackingItem[] = [
     hint: 'Phù hợp đi bộ dạo phố cổ, bờ sông Hương & leo bậc Ngũ Hành Sơn',
     group: 'culture',
   },
-  // Mùa mưa Miền Trung (Tháng 9 – Tháng 12)
+  // Mùa mưa Miền Trung (Tháng 9 – Tháng 1)
+  {
+    id: 'rain-suit-2piece',
+    label: 'Áo mưa bộ 2 mảnh (áo + quần)',
+    hint: 'Chống ướt tốt hơn áo mưa giấy khi mưa tạt lớn ở Đà Nẵng, Huế hoặc qua đèo Hải Vân',
+    group: 'weather',
+    season: 'rainy',
+  },
+  {
+    id: 'waterproof-shoes',
+    label: 'Giày hoặc sandal chống thấm, chống trượt',
+    hint: 'Giữ khô chân khi đi mưa và bám chắc trên sân gạch rêu ở Đại Nội, Lăng tẩm Huế',
+    group: 'weather',
+    season: 'rainy',
+  },
   {
     id: 'compact-umbrella',
-    label: 'Áo mưa gọn hoặc ô gập chống gió',
+    label: 'Ô gập chống gió dự phòng',
     hint: 'Dự phòng mưa rào bất chợt đặc trưng tại Huế & Đèo Hải Vân',
     group: 'weather',
     season: 'rainy',
@@ -318,8 +332,8 @@ export function inferWeatherSeasonFromTrip(
   const month = monthOnlyMatch
     ? Number(monthOnlyMatch[1])
     : parseStartDateFromTrip(rawMonthSource).month;
-  // Mùa mưa miền Trung (Đà Nẵng – Huế) thường tập trung từ tháng 9 đến tháng 12
-  return month >= 9 && month <= 12 ? 'rainy' : 'sunny';
+  // Mùa mưa miền Trung (Đà Nẵng – Huế) kéo dài từ tháng 9 đến tháng 1
+  return (month >= 9 && month <= 12) || month === 1 ? 'rainy' : 'sunny';
 }
 
 export function getPackingItemsForSeason(season: WeatherSeason): EcoPackingItem[] {

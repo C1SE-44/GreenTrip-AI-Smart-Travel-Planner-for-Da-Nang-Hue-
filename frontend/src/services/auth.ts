@@ -18,6 +18,56 @@ export class ApiError extends Error {
   }
 }
 
+function translateBackendAuthDetail(raw: string): string {
+  const trimmed = raw.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('invalid email or password')) {
+    return 'Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.';
+  }
+  if (lower.includes('email is already registered')) {
+    return 'Email này đã được đăng ký. Vui lòng chuyển sang đăng nhập.';
+  }
+  if (lower.includes('invalid email format')) {
+    return 'Định dạng email không hợp lệ (ví dụ: ten@gmail.com).';
+  }
+  if (lower.includes('at least 8 characters')) {
+    return 'Mật khẩu phải có ít nhất 8 ký tự.';
+  }
+  if (lower.includes('full name cannot be empty')) {
+    return 'Vui lòng nhập họ và tên của bạn.';
+  }
+  if (lower.includes('invalid phone number format')) {
+    return 'Số điện thoại không hợp lệ (gồm 9–15 chữ số).';
+  }
+  if (lower.includes('current password is incorrect')) {
+    return 'Mật khẩu hiện tại không chính xác.';
+  }
+  return trimmed;
+}
+
+export function extractApiErrorMessage(errorData: unknown, fallback: string): string {
+  if (!errorData || typeof errorData !== 'object') {
+    return fallback;
+  }
+  const detail = (errorData as { detail?: unknown }).detail;
+  if (typeof detail === 'string' && detail.trim()) {
+    return translateBackendAuthDetail(detail);
+  }
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0];
+    if (first && typeof first === 'object' && 'msg' in first && typeof (first as { msg?: unknown }).msg === 'string') {
+      return translateBackendAuthDetail((first as { msg: string }).msg);
+    }
+  }
+  return fallback;
+}
+
+export function saveAuthSession(token: string): void {
+  localStorage.setItem('access_token', token);
+  sessionStorage.setItem('access_token', token);
+  window.dispatchEvent(new Event('auth-change'));
+}
+
 export interface SignupPayload {
   full_name: string;
   email: string;
@@ -60,13 +110,11 @@ export async function checkEmail(email: string): Promise<CheckEmailResponse> {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    let errorMessage = 'Kiểm tra email thất bại. Vui lòng thử lại.';
-
-    if (errorData && typeof errorData.detail === 'string') {
-      errorMessage = errorData.detail;
-    }
-
-    throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
+    const errorMessage = extractApiErrorMessage(
+      errorData,
+      'Kiểm tra email thất bại. Vui lòng thử lại.'
+    );
+    throw new ApiError(errorMessage, response.status, errorMessage);
   }
 
   return response.json();
@@ -98,19 +146,16 @@ export async function signup(payload: SignupPayload): Promise<SignupResponse> {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    let errorMessage = 'Đăng ký tài khoản thất bại. Vui lòng thử lại.';
-
-    if (errorData && typeof errorData.detail === 'string') {
-      errorMessage = errorData.detail;
-    }
-
-    throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
+    const errorMessage = extractApiErrorMessage(
+      errorData,
+      'Đăng ký tài khoản thất bại. Vui lòng thử lại.'
+    );
+    throw new ApiError(errorMessage, response.status, errorMessage);
   }
 
   const data: SignupResponse = await response.json();
   if (data.access_token) {
-    localStorage.setItem('access_token', data.access_token);
-    sessionStorage.setItem('access_token', data.access_token);
+    saveAuthSession(data.access_token);
   }
   return data;
 }
@@ -126,13 +171,11 @@ export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    let errorMessage = 'Liên kết xác nhận không hợp lệ hoặc đã hết hạn.';
-
-    if (errorData && typeof errorData.detail === 'string') {
-      errorMessage = errorData.detail;
-    }
-
-    throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
+    const errorMessage = extractApiErrorMessage(
+      errorData,
+      'Liên kết xác nhận không hợp lệ hoặc đã hết hạn.'
+    );
+    throw new ApiError(errorMessage, response.status, errorMessage);
   }
 
   return response.json();
@@ -149,13 +192,11 @@ export async function resendVerification(email: string): Promise<VerifyEmailResp
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    let errorMessage = 'Không thể gửi lại email xác nhận.';
-
-    if (errorData && typeof errorData.detail === 'string') {
-      errorMessage = errorData.detail;
-    }
-
-    throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
+    const errorMessage = extractApiErrorMessage(
+      errorData,
+      'Không thể gửi lại email xác nhận.'
+    );
+    throw new ApiError(errorMessage, response.status, errorMessage);
   }
 
   return response.json();
@@ -172,16 +213,18 @@ export async function login(payload: LoginPayload): Promise<TokenResponse> {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    let errorMessage = 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
-
-    if (errorData && typeof errorData.detail === 'string') {
-      errorMessage = errorData.detail;
-    }
-
-    throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
+    const errorMessage = extractApiErrorMessage(
+      errorData,
+      'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'
+    );
+    throw new ApiError(errorMessage, response.status, errorMessage);
   }
 
-  return response.json();
+  const data: TokenResponse = await response.json();
+  if (data.access_token) {
+    saveAuthSession(data.access_token);
+  }
+  return data;
 }
 
 export interface GoogleLoginResponse {
@@ -221,19 +264,16 @@ export async function googleLogin(credential: string): Promise<GoogleLoginRespon
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    let errorMessage = 'Đăng nhập với Google thất bại. Vui lòng thử lại.';
-
-    if (errorData && typeof errorData.detail === 'string') {
-      errorMessage = errorData.detail;
-    }
-
-    throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
+    const errorMessage = extractApiErrorMessage(
+      errorData,
+      'Đăng nhập với Google thất bại. Vui lòng thử lại.'
+    );
+    throw new ApiError(errorMessage, response.status, errorMessage);
   }
 
   const data: GoogleLoginResponse = await response.json();
   if (data.access_token) {
-    localStorage.setItem('access_token', data.access_token);
-    sessionStorage.setItem('access_token', data.access_token);
+    saveAuthSession(data.access_token);
   }
   return data;
 }
@@ -249,16 +289,18 @@ export async function verifyOtp(payload: VerifyOtpPayload): Promise<TokenRespons
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    let errorMessage = 'Xác thực mã OTP thất bại. Vui lòng thử lại.';
-
-    if (errorData && typeof errorData.detail === 'string') {
-      errorMessage = errorData.detail;
-    }
-
-    throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
+    const errorMessage = extractApiErrorMessage(
+      errorData,
+      'Xác thực mã OTP thất bại. Vui lòng thử lại.'
+    );
+    throw new ApiError(errorMessage, response.status, errorMessage);
   }
 
-  return response.json();
+  const data: TokenResponse = await response.json();
+  if (data.access_token) {
+    saveAuthSession(data.access_token);
+  }
+  return data;
 }
 
 export async function resendOtp(payload: ResendOtpPayload): Promise<ResendOtpResponse> {
@@ -272,13 +314,11 @@ export async function resendOtp(payload: ResendOtpPayload): Promise<ResendOtpRes
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
-    let errorMessage = 'Không thể gửi lại mã OTP lúc này.';
-
-    if (errorData && typeof errorData.detail === 'string') {
-      errorMessage = errorData.detail;
-    }
-
-    throw new ApiError(errorMessage, response.status, typeof errorData?.detail === 'string' ? errorData.detail : undefined);
+    const errorMessage = extractApiErrorMessage(
+      errorData,
+      'Không thể gửi lại mã OTP lúc này.'
+    );
+    throw new ApiError(errorMessage, response.status, errorMessage);
   }
 
   return response.json();

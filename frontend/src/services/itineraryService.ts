@@ -668,7 +668,12 @@ const itineraryWrites = new Map<string, Promise<TripItinerary>>();
 const itineraryReads = new Map<string, Promise<TripItinerary>>();
 
 export function isClientDraftTripId(tripId: string): boolean {
-  return tripId.startsWith('trip-quick-');
+  return (
+    tripId.startsWith('trip-quick-') ||
+    tripId.startsWith('sample-') ||
+    tripId.startsWith('trip_') ||
+    tripId.startsWith('trip-saved-')
+  );
 }
 
 export async function getTripItinerary(tripId: string): Promise<TripItinerary> {

@@ -71,6 +71,7 @@ import {
   optimizeItineraryRouteOrder,
   estimateCarbonFootprint,
   formatCarbonAmount,
+  detectSameDayIntercityConflict,
   checkStopOpeningHours,
   isPoiOutdoor,
   suggestIndoorAlternativesForDay,
@@ -839,9 +840,13 @@ export default function TripItineraryView({
   const tripRouteSummary = useMemo(() => {
     let totalRoadKm = 0;
     let openingConflictCount = 0;
+    let intercityConflictCount = 0;
 
     for (const day of plan.days) {
       totalRoadKm += calculateStopsPathKm(day.stops, poiById, true);
+      if (detectSameDayIntercityConflict(day, poiById)) {
+        intercityConflictCount += 1;
+      }
       for (const stop of day.stops) {
         if (stop.stop_type === 'rest') continue;
         const matched = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
@@ -857,6 +862,7 @@ export default function TripItineraryView({
       totalRoadKm: Math.round(totalRoadKm * 10) / 10,
       carbon,
       openingConflictCount,
+      intercityConflictCount,
     };
   }, [plan.days, poiById, transportMode]);
 
@@ -2015,6 +2021,7 @@ export default function TripItineraryView({
               totalRoadKm={tripRouteSummary.totalRoadKm}
               carbon={tripRouteSummary.carbon}
               openingConflictCount={tripRouteSummary.openingConflictCount}
+              intercityConflictCount={tripRouteSummary.intercityConflictCount}
               transportMode={transportMode}
               onChangeTransportMode={setTransportMode}
               onOptimizeAllDays={handleOptimizeAllDays}

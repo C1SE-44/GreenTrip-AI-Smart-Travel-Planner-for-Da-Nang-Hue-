@@ -148,6 +148,17 @@ def _effective_visit_minutes(poi: dict[str, Any]) -> Decimal:
     return duration
 
 
+def _resolved_cost_vnd(poi: dict[str, Any], default: float = 0.0) -> float:
+    """Return numeric per-person cost while preserving explicit 0 VND (free) POIs."""
+    for key in ("effective_estimated_cost", "estimated_cost"):
+        val = poi.get(key)
+        if val is not None and not isinstance(val, bool):
+            parsed = _decimal_value(val)
+            if parsed is not None and parsed >= 0:
+                return float(parsed)
+    return default
+
+
 def _resolved_green_score(poi: dict[str, Any]) -> float:
     """Return the normalized green score used by the engine."""
     raw = poi.get("resolved_green_score", poi.get("green_score"))
@@ -302,7 +313,7 @@ def _rank_and_format(
             "name": str(poi.get("name") or ""),
             "category_name": poi.get("category_name") or poi.get("category"),
             "match_score": round(score, 1),
-            "estimated_cost": float(poi.get("effective_estimated_cost") or poi.get("estimated_cost") or 50000),
+            "estimated_cost": _resolved_cost_vnd(poi, default=50000.0),
             "satisfaction_score": poi.get("satisfaction_score"),
             "is_local_business": poi.get("is_local_business") is True,
             "green_score": _resolved_green_score(poi),
@@ -576,7 +587,7 @@ def _recommend_by_ideas_and_taxonomy(
             quality_score = sat * 15.0
 
             # Budget alignment
-            cost = float(poi.get("effective_estimated_cost") or poi.get("estimated_cost") or 50000)
+            cost = _resolved_cost_vnd(poi, default=50000.0)
             b_tier = str(poi.get("budget_tier") or "$$").lower()
             budget_adj = 0.0
             if request.budget_tier == "budget":
@@ -626,7 +637,7 @@ def _recommend_by_ideas_and_taxonomy(
         b_req = (request.budget_tier or "standard").lower()
 
         for poi in candidates:
-            cost = float(poi.get("effective_estimated_cost") or poi.get("estimated_cost") or 50000)
+            cost = _resolved_cost_vnd(poi, default=50000.0)
             b_tier = str(poi.get("budget_tier") or "$$").lower()
             sat = float(poi.get("satisfaction_score") or 4.5) / 5.0
             pop = min(1.0, math.log1p(float(poi.get("popularity_score") or 10)) / 4.0)
@@ -663,7 +674,7 @@ def _recommend_by_ideas_and_taxonomy(
             "best_time": poi.get("best_time"),
             "opening_hours": poi.get("opening_hours"),
             "match_score": round(score, 1),
-            "estimated_cost": float(poi.get("effective_estimated_cost") or poi.get("estimated_cost") or 50000),
+            "estimated_cost": _resolved_cost_vnd(poi, default=50000.0),
             "satisfaction_score": poi.get("satisfaction_score"),
             "is_local_business": poi.get("is_local_business") is True,
             "green_score": _resolved_green_score(poi),

@@ -239,20 +239,30 @@ def _query_curated_comparison_pois(
     primary_city: str,
     constraints: list[str],
 ) -> list[CopilotSuggestedPoiItem]:
-    """Fetch 3 iconic POIs (beach/nature + local food + heritage) for consultative comparison."""
+    """Fetch 3 iconic POIs matching primary_city (strict province isolation)."""
     items: list[CopilotSuggestedPoiItem] = []
+    city_lower = (primary_city or "").lower()
+    is_hue_only = ("huế" in city_lower or "hue" in city_lower) and "đà nẵng" not in city_lower and "da nang" not in city_lower
+    is_dn_only = ("đà nẵng" in city_lower or "da nang" in city_lower) and "huế" not in city_lower and "hue" not in city_lower
+    city_filter_sql = "AND ci.name ILIKE '%%Hue%%'" if is_hue_only else ("AND ci.name ILIKE '%%Da Nang%%'" if is_dn_only else "")
+    name_filter_sql = (
+        "(p.name ILIKE '%%Thủy Biều%%' OR p.name ILIKE '%%Tự Đức%%' OR p.name ILIKE '%%Bún Bò%%' OR p.name ILIKE '%%Đại Nội%%')"
+        if is_hue_only
+        else "(p.name ILIKE '%%Mỹ Khê%%' OR p.name ILIKE '%%Mì Quảng%%' OR p.name ILIKE '%%Bà Dưỡng%%' OR p.name ILIKE '%%Sơn Trà%%')"
+    )
     try:
         with connection.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT p.poi_id::text, p.name, c.name, p.sub_category, p.image_url,
                        p.green_score, p.satisfaction_score, p.address, p.estimated_cost, ci.name
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id
                 JOIN public.cities ci ON p.city_id = ci.city_id
                 WHERE p.is_active IS NOT FALSE
-                  AND (p.name ILIKE '%%Mỹ Khê%%' OR p.name ILIKE '%%Mì Quảng%%' OR p.name ILIKE '%%Bà Dưỡng%%' OR p.name ILIKE '%%Sơn Trà%%')
-                ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
+                  {city_filter_sql}
+                  AND {name_filter_sql}
+                ORDER BY p.is_local_business DESC NULLS LAST, p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
                 LIMIT 3;
                 """
             )
@@ -424,20 +434,29 @@ def _query_elderly_friendly_pois(
     is_both: bool,
     constraints: list[str],
 ) -> list[CopilotSuggestedPoiItem]:
-    """Fetch senior-friendly flat-path POIs from DB or curated fallback."""
+    """Fetch senior-friendly flat-path POIs strictly filtered by target province."""
     items: list[CopilotSuggestedPoiItem] = []
+    city_lower = (city_display or "").lower()
+    city_filter_sql = ""
+    if not is_both:
+        if "huế" in city_lower or "hue" in city_lower:
+            city_filter_sql = "AND ci.name ILIKE '%%Hue%%'"
+        else:
+            city_filter_sql = "AND ci.name ILIKE '%%Da Nang%%'"
     try:
         with connection.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT p.poi_id::text, p.name, c.name, p.sub_category, p.image_url,
                        p.green_score, p.satisfaction_score, p.address, p.estimated_cost, ci.name
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id
                 JOIN public.cities ci ON p.city_id = ci.city_id
                 WHERE p.is_active IS NOT FALSE
+                  {city_filter_sql}
                   AND (
                     p.name ILIKE '%%Tự Đức%%'
+                    OR p.name ILIKE '%%Thủy Biều%%'
                     OR p.name ILIKE '%%Linh Ứng%%'
                     OR p.name ILIKE '%%Sơn Trà%%'
                     OR p.name ILIKE '%%Cổ vật%%'

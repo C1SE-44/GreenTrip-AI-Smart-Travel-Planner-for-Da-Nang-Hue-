@@ -2,6 +2,7 @@ import { AlertTriangle, Bike, Bus, Car, Footprints, Leaf, Route as RouteIcon, Wa
 import {
   TRANSPORT_MODES_META,
   formatCarbonAmount,
+  formatCarbonEquivalence,
   type computeTripBudgetSummary,
   type estimateCarbonFootprint,
   type RouteTransportMode,
@@ -11,6 +12,7 @@ interface ItineraryCarbonBudgetPanelProps {
   totalRoadKm: number;
   carbon: ReturnType<typeof estimateCarbonFootprint>;
   openingConflictCount: number;
+  intercityConflictCount?: number;
   transportMode: RouteTransportMode;
   onChangeTransportMode: (mode: RouteTransportMode) => void;
   onOptimizeAllDays: () => void;
@@ -25,6 +27,7 @@ export default function ItineraryCarbonBudgetPanel({
   totalRoadKm,
   carbon,
   openingConflictCount,
+  intercityConflictCount = 0,
   transportMode,
   onChangeTransportMode,
   onOptimizeAllDays,
@@ -34,6 +37,10 @@ export default function ItineraryCarbonBudgetPanel({
   optimizeFeedback,
   onDismissOptimizeFeedback,
 }: ItineraryCarbonBudgetPanelProps) {
+  const safePeople = Math.max(1, peopleCount || 1);
+  const perPersonCost = Math.round(budgetSummary.totalCost / safePeople);
+  const carbonEquiv = totalRoadKm > 0 ? formatCarbonEquivalence(carbon.savedGrams, carbon.savedPercent) : null;
+
   return (
     <div className="no-print mb-2.5 rounded-xl border border-emerald-200/80 bg-[#F7FBF8] px-3 py-2 space-y-1.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -46,9 +53,12 @@ export default function ItineraryCarbonBudgetPanel({
           <span className="font-semibold text-gray-900">
             {formatCarbonAmount(carbon.co2Grams)}
           </span>
-          {carbon.savedPercent > 0 && totalRoadKm > 0 && (
-            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900">
-              -{carbon.savedPercent}% CO₂
+          {carbonEquiv && (
+            <span
+              className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900"
+              title="Quy đổi dựa trên mức ô tô riêng 171 g CO₂/km và khả năng hấp thụ ~60 g CO₂/ngày của 1 cây xanh trưởng thành"
+            >
+              {carbonEquiv}
             </span>
           )}
           <span className="text-gray-400" aria-hidden="true">·</span>
@@ -56,21 +66,22 @@ export default function ItineraryCarbonBudgetPanel({
             className={`inline-flex items-center gap-1 font-semibold ${
               budgetSummary.isOverBudget ? 'text-amber-900' : 'text-emerald-900'
             }`}
+            title={`Dự trù cho cả nhóm ${safePeople} khách (~${formatVnd(perPersonCost)}/người): gồm vé tham quan & ăn uống các điểm trong lịch; chưa gồm lưu trú & di chuyển liên tỉnh.`}
           >
             <Wallet size={12} className="shrink-0" aria-hidden="true" />
             {budgetSummary.maxBudget !== null ? (
               budgetSummary.isOverBudget ? (
                 <span>
-                  Vượt {formatVnd(Math.abs(budgetSummary.remaining || 0))} ({formatVnd(budgetSummary.totalCost)}/{formatVnd(budgetSummary.maxBudget)})
+                  Cả nhóm ({safePeople} khách): {formatVnd(budgetSummary.totalCost)} / {formatVnd(budgetSummary.maxBudget)} · Vượt {formatVnd(Math.abs(budgetSummary.remaining || 0))} (~{formatVnd(perPersonCost)}/người)
                 </span>
               ) : (
                 <span>
-                  {formatVnd(budgetSummary.totalCost)} / {formatVnd(budgetSummary.maxBudget)} ({budgetSummary.percentUsed}%)
+                  Cả nhóm ({safePeople} khách): {formatVnd(budgetSummary.totalCost)} / {formatVnd(budgetSummary.maxBudget)} ({budgetSummary.percentUsed}% · ~{formatVnd(perPersonCost)}/người)
                 </span>
               )
             ) : (
               <span>
-                ~{formatVnd(budgetSummary.totalCost)} ({peopleCount} khách)
+                Cả nhóm ({safePeople} khách): ~{formatVnd(budgetSummary.totalCost)} (~{formatVnd(perPersonCost)}/người)
               </span>
             )}
           </span>
@@ -78,6 +89,15 @@ export default function ItineraryCarbonBudgetPanel({
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-950 border border-amber-300">
               <AlertTriangle size={11} className="shrink-0" />
               <span>{openingConflictCount} giờ mở cửa</span>
+            </span>
+          )}
+          {intercityConflictCount > 0 && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-900 border border-rose-300"
+              title="Đà Nẵng và Huế cách nhau 2–2,5 giờ qua đèo/hầm Hải Vân. Nên tách sang 2 ngày riêng biệt."
+            >
+              <AlertTriangle size={11} className="shrink-0" />
+              <span>{intercityConflictCount} ngày lẫn Đà Nẵng – Huế</span>
             </span>
           )}
         </div>
@@ -124,6 +144,10 @@ export default function ItineraryCarbonBudgetPanel({
           </button>
         </div>
       </div>
+
+      <p className="text-xs text-neutral-600">
+        Dự trù ngân sách tính cho cả nhóm {safePeople} khách (~{formatVnd(perPersonCost)}/người), gồm vé tham quan và ăn uống các điểm dừng trong lịch; chưa gồm lưu trú và di chuyển liên tỉnh.
+      </p>
 
       {optimizeFeedback && (
         <div

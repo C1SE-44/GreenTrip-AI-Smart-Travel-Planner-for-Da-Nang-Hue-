@@ -952,7 +952,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             visitDuration: foundInAll?.visitDuration || '1–2 giờ',
             isGreen: (sp.green_score || 90) >= 80,
             ecoScore: sp.green_score || 90,
-            estimatedCost: sp.estimated_cost || foundInAll?.estimatedCost || 50000,
+            estimatedCost: sp.estimated_cost ?? foundInAll?.estimatedCost ?? 0,
           };
         });
         setRecommendedPois(mappedCopilotPois);

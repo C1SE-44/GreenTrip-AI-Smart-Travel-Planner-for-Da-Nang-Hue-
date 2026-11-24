@@ -1424,6 +1424,39 @@ export function formatCarbonAmount(grams: number): string {
   return `${(safe / 1000).toFixed(2)} kg CO₂`;
 }
 
+/**
+ * Quy đổi lượng CO₂ tiết kiệm sang mốc dễ hình dung:
+ * 1 cây xanh trưởng thành hấp thụ ~22 kg CO₂/năm (~60 g CO₂/ngày).
+ */
+export function formatCarbonEquivalence(savedGrams: number, savedPercent: number): string | null {
+  const safeGrams = Math.max(0, Number.isFinite(savedGrams) ? savedGrams : 0);
+  const safePct = Math.max(0, Math.round(Number.isFinite(savedPercent) ? savedPercent : 0));
+  if (safeGrams < 60 && safePct <= 0) return null;
+  const treeDays = Math.max(1, Math.round(safeGrams / 60));
+  return `Giảm ${safePct}% so với ô tô riêng · ≈ ${treeDays} ngày cây xanh hấp thụ`;
+}
+
+export function detectSameDayIntercityConflict(
+  day: ItineraryDay,
+  poiById?: Map<string, Poi>
+): boolean {
+  const activeStops = day.stops.filter((s) => s.stop_type !== 'rest');
+  let hasDaNang = false;
+  let hasHue = false;
+  for (const stop of activeStops) {
+    const matched = stop.poi_id ? poiById?.get(stop.poi_id) : undefined;
+    const rawCity = (stop.city || matched?.city || '').trim();
+    if (!rawCity) continue;
+    if (/hu[eế]/i.test(rawCity)) {
+      hasHue = true;
+    } else if (/đà nẵng|da nang|danang/i.test(rawCity)) {
+      hasDaNang = true;
+    }
+    if (hasDaNang && hasHue) return true;
+  }
+  return false;
+}
+
 // ─────────────────────────────────────────────────────────────
 // KIỂM TRA RÀNG BUỘC GIỜ MỞ CỬA (OPENING HOURS VALIDATOR)
 // ─────────────────────────────────────────────────────────────
@@ -1721,10 +1754,21 @@ export function optimizeDays(
 
   pending.forEach((poi) => {
     const candidate = stopFromPoi(poi, 'assistant');
+    const candidateProvince = normalizeCityLabel(candidate.city || poi.city);
     const duration = minutesFor(candidate);
     let eligible = next
       .map((day, index) => ({ day, index, stops: day.stops.filter((stop) => stop.stop_type !== 'rest') }))
-      .filter(({ stops }) => stops.reduce((total, stop) => total + minutesFor(stop), 0) + duration <= dailyCapacity);
+      .filter(({ stops }) => stops.reduce((total, stop) => total + minutesFor(stop), 0) + duration <= dailyCapacity)
+      // Khóa cứng mỗi ngày tối đa 1 tỉnh (Đà Nẵng hoặc Huế) để không xếp nhảy đèo Hải Vân trong 30 phút
+      .filter(({ stops }) => {
+        if (stops.length === 0) return true;
+        return stops.every((stop) => {
+          const matched = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
+          const stopCity = stop.city || matched?.city;
+          if (!stopCity) return true;
+          return normalizeCityLabel(stopCity) === candidateProvince;
+        });
+      });
     const isCafe = experienceGroup(poi, candidate) === 'cafe';
     if (isCafe) {
       eligible = eligible.filter(({ stops }) =>

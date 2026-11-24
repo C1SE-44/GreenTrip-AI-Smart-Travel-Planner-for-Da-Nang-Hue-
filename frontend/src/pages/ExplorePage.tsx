@@ -1353,6 +1353,12 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 setActiveTripSubTab('itinerary');
                 setSelectedTripForDetails(target);
               }}
+              onNavigateToTab={(tab) => {
+                const target = activeOverviewTrip || selectedTripForDetails!;
+                setActiveTripSubTab(tab);
+                setActiveOverviewTrip(target);
+                setSelectedTripForDetails(target);
+              }}
               onUpdateTrip={(updatedTrip) => {
                 setActiveOverviewTrip(updatedTrip);
                 setSelectedTripForDetails(updatedTrip);
@@ -1376,6 +1382,14 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                   setActiveOverviewTrip(target);
                 }
               }}
+              onNavigateToTab={(tab) => {
+                const target = activeOverviewTrip || selectedTripForDetails;
+                if (target) {
+                  setActiveTripSubTab(tab);
+                  setActiveOverviewTrip(target);
+                  setSelectedTripForDetails(target);
+                }
+              }}
               onUpdateTrip={(updatedTrip) => {
                 setSelectedTripForDetails(updatedTrip);
                 setActiveOverviewTrip(updatedTrip);
@@ -1393,6 +1407,10 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               }}
               onOpenItineraryDetails={() => {
                 setActiveTripSubTab('itinerary');
+                setSelectedTripForDetails(activeOverviewTrip);
+              }}
+              onNavigateToTab={(tab) => {
+                setActiveTripSubTab(tab);
                 setSelectedTripForDetails(activeOverviewTrip);
               }}
               onUpdateTrip={(updatedTrip) => {

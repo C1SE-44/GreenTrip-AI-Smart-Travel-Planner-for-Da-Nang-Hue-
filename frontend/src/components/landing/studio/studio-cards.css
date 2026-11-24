@@ -1,0 +1,343 @@
+/* Card 2 — Ẩm thực Đà Nẵng – Huế: Studio tabletop 2-beat burst choreography & click bounce */
+.dish-stage-btn {
+  --px: 0;
+  --py: 0;
+}
+
+.dish-shadow-cast {
+  transform: translate3d(
+    calc(var(--px, 0) * 2px + 10px),
+    calc(var(--py, 0) * 1.5px + 12px),
+    0
+  ) scale(0.99);
+  opacity: 0.62;
+  filter: blur(11px);
+  transition:
+    transform 125ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 180ms ease,
+    filter 180ms ease;
+}
+
+.dish-shadow-contact {
+  transform: translate3d(
+    calc(var(--px, 0) * 1.1px + 2px),
+    calc(var(--py, 0) * 1px + 3px),
+    0
+  ) scale(0.96);
+  opacity: 0.56;
+  filter: blur(2.5px);
+  transition:
+    transform 125ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 160ms ease,
+    filter 160ms ease;
+}
+
+.dish-stage-btn.is-lifted .dish-shadow-cast {
+  transform: translate3d(
+    calc(var(--px, 0) * 2.2px + 16px),
+    calc(var(--py, 0) * 1.6px + 19px),
+    0
+  ) scale(1.03);
+  opacity: 0.34;
+  filter: blur(19px);
+}
+
+.dish-stage-btn.is-lifted .dish-shadow-contact {
+  transform: translate3d(
+    calc(var(--px, 0) * 1.3px + 5px),
+    calc(var(--py, 0) * 1.1px + 6px),
+    0
+  ) scale(1.01);
+  opacity: 0.16;
+  filter: blur(7px);
+}
+
+/* Beat 1 (~120ms): Whole bowl / plate rises & scales slightly ahead of ingredients */
+.dish-vessel-lift {
+  transform: translate3d(0, 0, 0) scale(1);
+  transition: transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.dish-stage-btn.is-selected-idle .dish-vessel-lift {
+  transform: translate3d(0, -3px, 0) scale(1.025);
+}
+
+.dish-stage-btn.is-lifted .dish-vessel-lift {
+  transform: translate3d(0, -8px, 0) scale(1.065);
+}
+
+.dish-vessel-parallax {
+  transform: translate3d(
+    calc(var(--px, 0) * 4.5px),
+    calc(var(--py, 0) * 3.8px),
+    0
+  );
+  transition: transform 95ms linear;
+  will-change: transform;
+}
+
+/* Click selection confirmation bounce (~195ms, never replays hover burst) */
+@keyframes dishConfirmBounce {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  38% {
+    transform: translate3d(0, 2px, 0) scale(0.955);
+  }
+  74% {
+    transform: translate3d(0, -4px, 0) scale(1.032);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.dish-vessel-confirm.is-confirm-bounce {
+  animation: dishConfirmBounce 195ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+/* Beat 2 (~120ms+): Multi-directional curved arc burst (nested X ease-out + Y gentle arc) */
+.dish-burst-x {
+  transform: translate3d(0, 0, 0);
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+  will-change: transform;
+}
+
+.dish-burst-y {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0) scale(var(--s0, 0.46)) rotate(0deg);
+  transition:
+    opacity 140ms ease 0ms,
+    transform 200ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+  will-change: transform, opacity;
+}
+
+.dish-stage-btn.is-lifted .dish-burst-x {
+  transform: translate3d(var(--tx, 0px), 0, 0);
+  transition: transform 310ms cubic-bezier(0.16, 1, 0.3, 1) var(--delay, 120ms);
+}
+
+.dish-stage-btn.is-lifted .dish-burst-y {
+  opacity: 1;
+  transform: translate3d(0, var(--ty, -48px), 0) scale(var(--s1, 1)) rotate(var(--rot, 0deg));
+  transition:
+    opacity 150ms ease var(--delay, 120ms),
+    transform 340ms cubic-bezier(0.32, 1.32, 0.6, 1) var(--delay, 120ms);
+}
+
+.dish-ingredient-parallax {
+  transform: translate3d(
+    calc(var(--px, 0) * var(--pmx, 8.5px)),
+    calc(var(--py, 0) * var(--pmy, 7px)),
+    0
+  );
+  transition: transform 95ms linear;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dish-shadow-cast,
+  .dish-shadow-contact,
+  .dish-vessel-lift,
+  .dish-vessel-parallax,
+  .dish-burst-x,
+  .dish-burst-y,
+  .dish-ingredient-parallax {
+    transition: opacity 150ms ease, border-color 150ms ease, box-shadow 150ms ease !important;
+    transform: none !important;
+    animation: none !important;
+  }
+  .dish-vessel-confirm.is-confirm-bounce {
+    animation: none !important;
+  }
+  .dish-stage-btn.is-selected-idle .dish-vessel-lift,
+  .dish-stage-btn.is-lifted .dish-vessel-lift,
+  .dish-stage-btn.is-lifted .dish-burst-x,
+  .dish-stage-btn.is-lifted .dish-burst-y {
+    transform: none !important;
+  }
+  .dish-burst-y,
+  .dish-stage-btn.is-lifted .dish-burst-y {
+    opacity: 0 !important;
+  }
+}
+
+/* Card 1 — Sơn Trà Wildlife Cutout Lift, Shadow & Sequenced "Bạn có biết?" Fact Card */
+@keyframes sontraFactIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.sontra-cutout-lift {
+  transform: translate3d(0, 0, 0) scale(1);
+  transition: transform 190ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.sontra-animal-btn.is-active .sontra-cutout-lift {
+  transform: translate3d(0, -6px, 0) scale(1.06);
+}
+
+.sontra-cutout-shadow {
+  filter:
+    drop-shadow(0 12px 22px rgba(6, 18, 13, 0.52))
+    drop-shadow(0 4px 8px rgba(6, 18, 13, 0.34));
+  transition: filter 190ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sontra-animal-btn.is-active .sontra-cutout-shadow {
+  filter:
+    drop-shadow(0 18px 28px rgba(6, 18, 13, 0.60))
+    drop-shadow(0 5px 10px rgba(6, 18, 13, 0.36));
+}
+
+.sontra-fact-card {
+  opacity: 0;
+  animation: sontraFactIn 180ms cubic-bezier(0.16, 1, 0.3, 1) 90ms forwards;
+}
+
+@keyframes sontraFactChipIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 7px, 0) rotate(var(--fact-rot, 0deg)) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(var(--fact-rot, 0deg)) scale(1);
+  }
+}
+
+.sontra-fact-chip {
+  opacity: 0;
+  animation: sontraFactChipIn 200ms cubic-bezier(0.16, 1, 0.3, 1) var(--fact-delay, 0ms) forwards;
+  will-change: transform, opacity;
+}
+
+.sontra-leaf-peek {
+  opacity: 0;
+  transform: translate3d(var(--leaf-rest-x, 0px), var(--leaf-rest-y, 6px), 0)
+    rotate(var(--leaf-rot, 0deg)) scale(0.92);
+  transition:
+    opacity 195ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 210ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+.sontra-animal-btn.is-active .sontra-leaf-peek {
+  opacity: 0.96;
+  transform: translate3d(var(--leaf-peek-x, -8px), var(--leaf-peek-y, -4px), 0)
+    rotate(var(--leaf-peek-rot, 0deg)) scale(1);
+}
+
+@keyframes foodTrayIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.food-tray-enter {
+  animation: foodTrayIn 210ms cubic-bezier(0.16, 1, 0.3, 1) var(--tray-delay, 0ms) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sontra-cutout-lift {
+    transition: none !important;
+    transform: none !important;
+  }
+  .sontra-animal-btn.is-active .sontra-cutout-lift {
+    transform: none !important;
+  }
+  .sontra-cutout-shadow {
+    transition: none !important;
+  }
+  .sontra-leaf-peek {
+    transition: opacity 150ms ease !important;
+    transform: translate3d(var(--leaf-peek-x, -8px), var(--leaf-peek-y, -4px), 0)
+      rotate(var(--leaf-peek-rot, 0deg)) scale(1) !important;
+  }
+  .sontra-fact-card,
+  .sontra-fact-chip,
+  .food-tray-enter {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  .sontra-fact-card,
+  .food-tray-enter {
+    transform: none !important;
+  }
+  .sontra-fact-chip {
+    transform: rotate(var(--fact-rot, 0deg)) !important;
+  }
+}
+
+/* Card 3 — Windshield Dusk POV Dashboard Printed Photo Interaction */
+.planner-dash-photo {
+  transform: translate3d(0, 0, 0) rotate(var(--photo-tilt, 0deg)) scale(1);
+  transition:
+    transform 190ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 190ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 180ms ease;
+  will-change: transform;
+}
+
+.planner-dash-photo.is-highlighted {
+  transform: translate3d(0, -7px, 0) rotate(var(--photo-tilt, 0deg)) scale(1.045);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-dash-photo {
+    transition: box-shadow 150ms ease, border-color 150ms ease, background-color 150ms ease !important;
+  }
+  .planner-dash-photo.is-highlighted {
+    transform: translate3d(0, 0, 0) rotate(var(--photo-tilt, 0deg)) scale(1) !important;
+  }
+}
+
+/* Shared Editorial Card Text Scroll Reveal (once-only, zero layout shift, safe fallback) */
+.editorial-reveal-item {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 460ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 460ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-reveal-state='pending'] .editorial-reveal-item {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+}
+
+.editorial-reveal-title {
+  transition-delay: 0ms;
+}
+
+.editorial-reveal-body {
+  transition-delay: 95ms;
+}
+
+.editorial-reveal-cta {
+  transition-delay: 170ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editorial-reveal-item,
+  [data-reveal-state='pending'] .editorial-reveal-item {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+.studio-cards{background:#F7F6EE;color:#172820;font-family:Inter,sans-serif}.studio-cards button:focus-visible,.studio-cards a:focus-visible{outline:3px solid #70b69a;outline-offset:4px}.studio-cards section{content-visibility:auto;contain-intrinsic-size:auto 680px}

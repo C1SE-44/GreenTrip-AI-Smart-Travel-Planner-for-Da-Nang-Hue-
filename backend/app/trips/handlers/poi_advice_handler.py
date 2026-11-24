@@ -50,11 +50,11 @@ CURATED_POI_ADVICE: dict[str, dict[str, Any]] = {
         "budget_impact": "Điểm đến hoàn toàn miễn phí vé vào cổng, chỉ phát sinh chi phí di chuyển (~80.000 – 150.000 ₫/chiều).",
         "green_impact": "Hành trình khuyến khích bảo vệ môi trường, ngắm thú hoang dã văn minh không để lại rác thải nhựa.",
         "gallery": [
-            "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1528127269322-539801943592?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=800&auto=format&fit=crop&q=80",
+            "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp",
+            "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp",
+            "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp",
+            "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp",
+            "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp",
         ],
     },
     "cầu rồng": {
@@ -279,7 +279,7 @@ def handle_poi_advice(
         
         green_int = format_green_score(green_score)
         rating_flt = round(float(sat_score or 4.8), 1)
-        fallback_hero = "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80"
+        fallback_hero = "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c4ecef3d-5946-4bd8-974e-fd36c7aa9a7e.webp"
         
         gallery_list = None
         if isinstance(gallery, list) and len(gallery) > 0:

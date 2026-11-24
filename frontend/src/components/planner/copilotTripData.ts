@@ -112,8 +112,8 @@ export const buildDefaultCopilotItinerary = (
         note: isHueOnly ? 'Hoàng thành triều Nguyễn với bề dày lịch sử' : 'Mở đầu văn hóa Chăm pa, tham quan trong nhà mát mẻ',
         estimatedCost: isHueOnly ? '200.000 đ' : '60.000 đ',
         image: isHueOnly
-          ? 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800&auto=format&fit=crop&q=80'
-          : 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=800&auto=format&fit=crop&q=80',
+          ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ce249bef-0477-4a46-a19c-735b3db10498.webp'
+          : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/fcef1de3-bd58-4eb0-ae95-7d6d8f77f93b.webp',
         greenScore: 95,
       },
       {
@@ -124,7 +124,7 @@ export const buildDefaultCopilotItinerary = (
         distanceKm: 1.2,
         note: isHueOnly ? 'Tô bún bò chả cua chuẩn vị Cố Đô' : 'Đặc sản mì Quảng chuẩn vị bản địa Đà Nẵng',
         estimatedCost: isHueOnly ? '45.000 đ' : '50.000 đ',
-        image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80',
+        image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/49256b15-a119-401a-8767-bdd1a5f8bdaa.webp',
         greenScore: 92,
       },
       {
@@ -135,7 +135,7 @@ export const buildDefaultCopilotItinerary = (
         distanceKm: 0.8,
         note: isHueOnly ? 'Dạo mát ngắm sông Hương thư thái' : 'Tản bộ ngắm sông Hàn, tận hưởng không khí trong lành',
         estimatedCost: 'Miễn phí',
-        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+        image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c107817a-7452-4385-b024-462f08e10dad.webp',
         greenScore: 98,
       },
       {
@@ -146,7 +146,7 @@ export const buildDefaultCopilotItinerary = (
         distanceKm: 1.5,
         note: isHueOnly ? 'Khay bánh cung đình trứ danh xứ Huế' : 'Vỏ bánh giòn rụm, tôm đất nhảy và rau mầm tươi xanh',
         estimatedCost: isHueOnly ? '60.000 đ' : '85.000 đ',
-        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop&q=80',
+        image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/3e36c3a8-57a6-45bb-885f-7295b0641072.webp',
         greenScore: 89,
       },
     ],
@@ -173,8 +173,8 @@ export const buildDefaultCopilotItinerary = (
           note: isHueOnly ? 'Tuyệt tác khảm sành sứ độc đáo' : 'Hệ thống hang động thạch anh và chùa Tam Thai cổ kính',
           estimatedCost: isHueOnly ? '150.000 đ' : '55.000 đ',
           image: isHueOnly
-            ? 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80'
-            : 'https://images.unsplash.com/photo-1528127269322-539801943592?w=800&auto=format&fit=crop&q=80',
+            ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/d229571b-14fb-4357-aad6-af1547af7615.webp'
+            : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/bd2020b0-bbb4-4379-a331-d3c7221c2fc1.webp',
           greenScore: 94,
         },
         {
@@ -185,7 +185,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 3.5,
           note: isHueOnly ? 'Ẩm thực thực dưỡng trong khuôn viên nhà rường' : 'Mô hình nhà hàng sinh thái giảm thiểu rác thải nhựa',
           estimatedCost: isHueOnly ? '90.000 đ' : '95.000 đ',
-          image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/96085a2f-6b3f-4d8f-8393-95780d9aec2d.webp',
           greenScore: 93,
         },
         {
@@ -196,7 +196,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: isHueOnly ? 6.1 : 12.0,
           note: isHueOnly ? 'Ngắm khúc uốn sông Hương trong hoàng hôn' : 'Quan sát Voọc chà vá chân nâu từ xa, không để lại rác thải',
           estimatedCost: 'Miễn phí',
-          image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/833b605a-8faf-4872-af4a-706abdae5754.webp',
           greenScore: 96,
         },
       ],
@@ -224,8 +224,8 @@ export const buildDefaultCopilotItinerary = (
           note: isBoth ? 'Tuyến tàu hỏa ven biển vịnh Lăng Cô tuyệt đẹp, giảm phát thải carbon' : 'Không gian xanh mát, đón gió biển',
           estimatedCost: isBoth ? '210.000 đ' : 'Miễn phí',
           image: isBoth
-            ? 'https://images.unsplash.com/photo-1532103054090-a33923a78210?w=800&auto=format&fit=crop&q=80'
-            : 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80',
+            ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a1319702-de6c-469f-8f28-e13dc25de56b.webp'
+            : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp',
           greenScore: 98,
         },
         {
@@ -236,7 +236,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 2.5,
           note: 'Ẩm thực chuẩn vị với nguồn nguyên liệu tươi xanh sạch',
           estimatedCost: '50.000 đ',
-          image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/e250a511-145f-4506-b5ae-782017e3bfe6.webp',
           greenScore: 91,
         },
         {
@@ -247,7 +247,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 1.5,
           note: 'Quần thể di tích Cố Đô triều Nguyễn được UNESCO công nhận',
           estimatedCost: isBoth ? '200.000 đ' : 'Miễn phí',
-          image: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/d55d4580-5d38-48db-9159-7f04db6b4487.webp',
           greenScore: 95,
         },
         {
@@ -258,7 +258,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 1.5,
           note: 'Nước tương béo bùi, nem nướng than hoa thơm nồng vị xứ Huế',
           estimatedCost: '75.000 đ',
-          image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c107817a-7452-4385-b024-462f08e10dad.webp',
           greenScore: 88,
         },
       ],
@@ -285,7 +285,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 4.8,
           note: isBoth ? 'Ngôi chùa cổ kính 400 năm soi bóng dòng sông Hương' : 'Trải nghiệm mua sắm đặc sản bao bì thân thiện môi trường',
           estimatedCost: 'Miễn phí',
-          image: 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/cb528788-7ca3-4d95-a3ec-0fea52ce481e.webp',
           greenScore: 96,
         },
         {
@@ -296,7 +296,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 5.6,
           note: isBoth ? 'Kiến trúc lăng tẩm kết hợp vườn hoa hồ nước thơ mộng' : 'Thưởng thức hương vị cà phê muối đặc trưng miền Trung',
           estimatedCost: isBoth ? '150.000 đ' : '45.000 đ',
-          image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/b0abc908-fe78-4ea0-8c07-48b98b59957f.webp',
           greenScore: 92,
         },
         {
@@ -307,7 +307,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 3.2,
           note: 'Bữa ăn chay thanh tịnh trong nhà rường cổ kính, giảm 60% dấu chân carbon',
           estimatedCost: '95.000 đ',
-          image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/2a9fc4ea-ced9-4156-b2a0-4d0c1efb1494.webp',
           greenScore: 97,
         },
       ],
@@ -334,7 +334,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 5.5,
           note: isBoth ? 'Làng nghề làm hương truyền thống 700 năm bên bờ sông Hương' : 'Trải nghiệm thuyền thúng mộc giữa rừng dừa nước xanh mát',
           estimatedCost: isBoth ? 'Miễn phí' : '150.000 đ / thuyền',
-          image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a133cf28-0ff6-4b37-9457-1c4b3be1f2b6.webp',
           greenScore: 95,
         },
         {
@@ -345,7 +345,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 3.8,
           note: isBoth ? 'Đặc sản cơm hến, bún hến truyền thống xứ Huế' : 'Cao lầu sợi tươi truyền thống trong không gian sân vườn cổ',
           estimatedCost: '45.000 đ / tô',
-          image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5b6cabd6-e49e-4db1-ae41-dd265e29ea4a.webp',
           greenScore: 92,
         },
         {
@@ -356,7 +356,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 12.0,
           note: isBoth ? 'Ngắm hoàng hôn tím trên hệ đầm phá lớn nhất Đông Nam Á' : 'Dạo bộ phố đèn lồng di sản UNESCO hoàn toàn không khói xe',
           estimatedCost: '120.000 đ / vé',
-          image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a1319702-de6c-469f-8f28-e13dc25de56b.webp',
           greenScore: 98,
         },
       ],
@@ -374,7 +374,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 6.2,
           note: 'Kiến trúc nhà rường cổ kính giữa vườn cây trái bản địa',
           estimatedCost: '50.000 đ / vé',
-          image: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp',
           greenScore: 96,
         },
         {
@@ -385,7 +385,7 @@ export const buildDefaultCopilotItinerary = (
           distanceKm: 2.8,
           note: 'Thực đơn chay phong phú hơn 50 món từ rau củ hữu cơ địa phương',
           estimatedCost: '75.000 đ / phần',
-          image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/1a499cb8-37fd-4dfe-9260-e467b8e49494.webp',
           greenScore: 97,
         },
       ],
@@ -476,7 +476,7 @@ export const buildDefaultCopilotConversation = (
           weatherCondition: 'rain',
           experienceCount: 5,
           highlights: 'Arrival and Hotel Check-in • Bảo tàng Điêu khắc Chăm • Cơm Gà Lan • Tản bộ bờ sông Hàn & Cầu Rồng • Bánh Xèo Tôm Nhảy Cô Ba',
-          image: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/27a8ef48-0c1c-494b-964f-965903416654.webp',
           items: [
             {
               slotTitle: '1) Tham quan 🏛️ Bảo tàng Điêu khắc Chăm',
@@ -517,7 +517,7 @@ export const buildDefaultCopilotConversation = (
           weatherCondition: 'sun',
           experienceCount: 5,
           highlights: 'Danh thắng Ngũ Hành Sơn • Bếp Vừng Cơm nhà • Bán đảo Sơn Trà & Chùa Linh Ứng • Ngắm hoàng hôn Biển Mỹ Khê • Chợ Đêm Helio',
-          image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/826d77dd-fc31-4fa7-93cb-4546bfa90e5c.webp',
           items: [
             {
               slotTitle: '1) Buổi sáng ⛰️ Danh thắng Ngũ Hành Sơn',
@@ -551,7 +551,7 @@ export const buildDefaultCopilotConversation = (
           weatherCondition: 'rain',
           experienceCount: 5,
           highlights: 'Tàu hỏa Di sản Đèo Hải Vân • Đại Nội Huế & Tử Cấm Thành • Bánh khoái & Nem lụi Hồng Mai • Ca Huế trên Sông Hương • Phố đi bộ Hoàng Thành',
-          image: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/17c7f7b4-2b14-4939-a1f6-4da042a320a7.webp',
           items: [
             {
               slotTitle: '1) Sáng sớm 🚆 Tàu hỏa du lịch Di sản Đèo Hải Vân',
@@ -585,7 +585,7 @@ export const buildDefaultCopilotConversation = (
           weatherCondition: 'sun',
           experienceCount: 4,
           highlights: 'Chùa Thiên Mụ • Lăng Tự Đức & Vườn thông • Cơm chay thực dưỡng An Nhiên • Thưởng thức Cà phê Muối Cố Đô',
-          image: 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80',
+          image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/49256b15-a119-401a-8767-bdd1a5f8bdaa.webp',
           items: [
             {
               slotTitle: '1) Buổi sáng 🏯 Chùa Thiên Mụ & Lăng Tự Đức',
@@ -661,7 +661,7 @@ export function buildDayNarrativesFromOutline(
     const highlights = stops.map((s: CopilotStop) => s.name).join(' • ');
     const image =
       stops[0]?.image ||
-      'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
+      'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/9190b203-7172-4f7b-8069-cb5ba9c590c1.webp';
 
     return {
       day: dayItem.day,

@@ -95,7 +95,7 @@ def handle_travel_tips(
                 name = r[1]
                 category = r[2]
                 sub_cat = r[3] or "điểm đến"
-                image_url = r[4] or "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80"
+                image_url = r[4] or "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp"
                 green_score = format_green_score(r[5])
                 rating = float(r[6]) if r[6] is not None else 4.8
                 address = r[7] or "Đang cập nhật địa chỉ"

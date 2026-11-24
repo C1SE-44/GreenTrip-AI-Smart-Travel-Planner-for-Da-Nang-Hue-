@@ -84,7 +84,7 @@ def handle_night_eco(
                 name = row[1]
                 category_name = row[2]
                 sub_category = row[3]
-                image_url = row[4] or "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=600&auto=format&fit=crop&q=80"
+                image_url = row[4] or "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp"
                 green_score = format_green_score(row[5])
                 rating = float(row[6]) if row[6] is not None else 4.7
                 address = row[7] or f"{row[10]}, Việt Nam"

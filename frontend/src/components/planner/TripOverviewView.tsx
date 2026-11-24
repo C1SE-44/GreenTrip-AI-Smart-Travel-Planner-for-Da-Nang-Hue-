@@ -456,7 +456,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         city: (hueTrip ? 'Huế' : 'Đà Nẵng') as PoiCity,
         lat: hueTrip ? 16.4637 : 16.0544,
         lng: hueTrip ? 107.5909 : 108.2022,
-        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80',
+        image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ce249bef-0477-4a46-a19c-735b3db10498.webp',
         description: 'Địa điểm bạn đã thêm vào ý tưởng chuyến đi.',
         rating: 4.8,
         visitDuration: '1–2 giờ',
@@ -1146,7 +1146,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-veg-01',
             name: 'An Nhiên Garden Vegetarian',
             category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/49256b15-a119-401a-8767-bdd1a5f8bdaa.webp',
             green_score: 94,
             rating: 4.9,
             address: 'Tỉnh lộ 10, Phú Thượng, Phú Vang, Thừa Thiên Huế',
@@ -1157,7 +1157,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-veg-02',
             name: 'Roots Plant-based Cafe',
             category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/cce05cd8-9e38-460a-b60c-485fb94261e2.webp',
             green_score: 92,
             rating: 4.8,
             address: 'An Thượng 30, Bắc Mỹ Phú, Ngũ Hành Sơn, Đà Nẵng',
@@ -1173,7 +1173,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-indoor-01',
             name: 'Bảo tàng Điêu khắc Chăm',
             category: 'Di tích',
-            image_url: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/eac0aae8-f54f-4661-8a1e-2134f0e5f45d.webp',
             green_score: 95,
             rating: 4.7,
             address: 'Số 2, đường 2 Tháng 9, Hải Châu, Đà Nẵng',
@@ -1184,7 +1184,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-indoor-02',
             name: 'Cà phê Không Gian Xưa',
             category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/d58fe815-4aa1-45b2-831a-11b97e130918.webp',
             green_score: 90,
             rating: 4.6,
             address: '402 Điện Biên Phủ, Thanh Khê, Đà Nẵng',
@@ -1199,7 +1199,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-cafe-01',
             name: 'Đi Lạc Coffee – Specialty Coffee Roastery',
             category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/b0abc908-fe78-4ea0-8c07-48b98b59957f.webp',
             green_score: 92,
             rating: 4.9,
             address: 'Hải Châu, Đà Nẵng',
@@ -1210,7 +1210,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-cafe-02',
             name: 'De.Linh Coffee & Espresso',
             category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1498804103079-a6351b050096?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/646feb12-7f06-4599-8f28-6aae293a29de.webp',
             green_score: 91,
             rating: 5.0,
             address: '09 Lê Hồng Phong, Huế',
@@ -2070,7 +2070,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   {/* Left card: Sea / Beach (Tilted left) */}
                   <div className="absolute w-[110px] h-[135px] bg-white p-2 rounded-2xl shadow-lg border border-gray-100 transform -rotate-12 -translate-x-12 translate-y-3 z-0">
                     <img
-                      src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80"
+                      src="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/3868bb63-75e2-41a7-98fb-1b24501dc40b.webp"
                       alt="Biển Mỹ Khê"
                       className="w-full h-[95px] object-cover rounded-xl"
                     />
@@ -2078,7 +2078,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   {/* Right card: Scenic mountain (Tilted right) */}
                   <div className="absolute w-[110px] h-[135px] bg-white p-2 rounded-2xl shadow-lg border border-gray-100 transform rotate-12 translate-x-12 translate-y-2 z-0">
                     <img
-                      src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=300&q=80"
+                      src="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f0a00581-4ed0-4210-ae87-9cd3484afa11.webp"
                       alt="Cầu Rồng & Núi Non"
                       className="w-full h-[95px] object-cover rounded-xl"
                     />
@@ -2086,7 +2086,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   {/* Center card: Di tích Cố Đô (Straight / Slight tilt) */}
                   <div className="relative z-10 w-[115px] h-[140px] bg-white p-2 rounded-2xl shadow-xl border border-gray-200 transform -rotate-2">
                     <img
-                      src="https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=300&q=80"
+                      src="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/bdbe010b-df8e-452b-978f-6a4318baca2b.webp"
                       alt="Đại Nội Huế"
                       className="w-full h-[100px] object-cover rounded-xl"
                     />

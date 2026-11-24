@@ -423,8 +423,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 t.image ||
                 t.coverImage ||
                 (t.destination === 'Huế'
-                  ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
-                  : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
+                  ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ce249bef-0477-4a46-a19c-735b3db10498.webp'
+                  : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/fcef1de3-bd58-4eb0-ae95-7d6d8f77f93b.webp'),
             };
           });
           const quickTrip = quickLaunchTripRef.current;
@@ -1680,7 +1680,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                       >
                         <div className="relative aspect-[16/10] w-full bg-gray-100 overflow-hidden">
                           <img
-                            src={trip.image || 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'}
+                            src={trip.image || 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp'}
                             alt={trip.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
@@ -2266,8 +2266,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 newTrip.coverImage ||
                 newTrip.image ||
                 (newTrip.destination === 'Huế'
-                  ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
-                  : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
+                  ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c107817a-7452-4385-b024-462f08e10dad.webp'
+                  : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/87930706-8d34-4e16-a21d-6cade6364cf1.webp'),
               tags: newTrip.tags || [
                 newTrip.destination,
                 newTrip.startDate || '4 ngày • Tháng 12',
@@ -2349,8 +2349,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               image:
                 firstPhoto ||
                 (payload.destination === 'Huế'
-                  ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
-                  : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
+                  ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/d229571b-14fb-4357-aad6-af1547af7615.webp'
+                  : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/bd2020b0-bbb4-4379-a331-d3c7221c2fc1.webp'),
               tags: [
                 payload.destination,
                 `${payload.daysCount} ngày`,

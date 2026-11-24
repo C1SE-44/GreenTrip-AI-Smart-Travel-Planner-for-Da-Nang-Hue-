@@ -272,8 +272,31 @@ def handle_smart_concierge(
             "Phần lớn điểm sinh thái & làng nghề miễn phí hoặc vé 20.000 – 100.000 ₫/người.",
         )
 
+    from app.trips.copilot_enrichment import estimate_trip_budget_summary, recommend_transport_for_leg
+
+    budget_calc = estimate_trip_budget_summary(
+        days_count=days,
+        num_people=trip_context.num_people,
+        budget_tier=trip_context.budget_tier,
+        total_budget=trip_context.total_budget,
+    )
+    transport_tip = recommend_transport_for_leg(
+        distance_km=6.0,
+        num_people=trip_context.num_people,
+        constraints=trip_context.active_constraints,
+        is_intercity=is_both,
+    )
+    poi_lines = "\n".join(
+        f"- **{p.name}** ({p.city or dest}) — Green Score **{p.green_score}/100**: {p.swap_reason}"
+        for p in suggested_pois[:3]
+    )
+    poi_section = f"\n\n**Gợi ý điểm đến xanh & cộng đồng nổi bật tại {dest}:**\n{poi_lines}" if poi_lines else ""
+
     reply_text = (
-        f"Dựa trên hành trình **{dest} ({days} ngày)**, mình gợi ý trước một số điểm dừng đạt điểm xanh cao và được đánh giá tốt để bạn cân nhắc thêm vào lịch trình:"
+        f"Dựa trên ngữ cảnh **{dest} · {days} ngày · {budget_calc['num_people']} người · {budget_calc['tier_label']}**, "
+        f"mình đã lọc sẵn các điểm cộng đồng/bản địa chuẩn xanh (xen kẽ làng nghề, quán địa phương thay vì chỉ lặp lại điểm đại trà):{poi_section}\n\n"
+        f"- **Dự trù chi phí**: {budget_calc['summary_text']}\n"
+        f"- **Phương tiện phù hợp**: {transport_tip}."
     )
 
     return (
@@ -282,6 +305,6 @@ def handle_smart_concierge(
         "view_on_map",
         prompts,
         None,
-        None,
-        None,
+        "Ưu tiên điểm bản địa có mật độ khách hợp lý và phương tiện ít phát thải theo nhóm thực tế.",
+        budget_calc["summary_text"],
     )

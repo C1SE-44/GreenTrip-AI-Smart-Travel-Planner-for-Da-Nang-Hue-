@@ -88,10 +88,35 @@ def test_pasted_tiktok_link_is_handled_gracefully_not_as_math():
     from app.trips.schemas import TripContextPayload
 
     ctx = TripContextPayload(destination="Huế", days_count=2, current_day=1)
-    cat, sub_intent, meta = classify_copilot_request(
+    for url in [
         "https://www.tiktok.com/@huefood/video/7412345678901234567?is_from_webapp=1",
-        ctx,
-    )
-    assert cat == "QA_AND_COMPARE"
-    assert sub_intent == "external_link_guidance"
-    assert meta is not None and meta["platform"] == "TikTok"
+        "vt.tiktok.com/ZSY9abc123/",
+    ]:
+        cat, sub_intent, meta = classify_copilot_request(url, ctx)
+        assert cat == "QA_AND_COMPARE"
+        assert sub_intent == "external_link_guidance"
+        assert meta is not None and meta["platform"] == "TikTok"
+
+
+def test_poi_advice_disambiguates_three_linh_ung_pagodas():
+    from app.trips.handlers.poi_advice_handler import extract_advice_target
+
+    assert extract_advice_target("Đi Chùa Linh Ứng Sơn Trà có đẹp không?") == "chùa linh ứng bãi bụt"
+    assert extract_advice_target("Chùa Linh Ứng Bà Nà ở đâu?") == "chùa linh ứng bà nà"
+    assert extract_advice_target("Chùa Linh Ứng Non Nước Ngũ Hành Sơn") == "chùa linh ứng non nước"
+
+
+def test_budget_estimate_and_concise_closing_questions():
+    from app.trips.copilot_enrichment import estimate_trip_budget_summary
+    from app.trips.copilot_consultant import handle_out_of_scope_request
+    from app.trips.schemas import BudgetTier, TripContextPayload
+
+    summary = estimate_trip_budget_summary(days_count=3, num_people=2, budget_tier=BudgetTier.STANDARD)
+    assert summary["tier_label"] == "$$ Tiêu chuẩn"
+    assert summary["group_total_min"] == 1_100_000 * 3 * 2
+    assert "2 người × 3 ngày" in summary["summary_text"]
+
+    ctx = TripContextPayload(destination="Huế", days_count=3, num_people=2, budget_tier=BudgetTier.STANDARD)
+    oos = handle_out_of_scope_request("Hôm nay chứng khoán thế nào?", "chứng khoán", ctx, [])
+    assert oos.reply_text.strip().endswith("?")
+    assert "A —" not in oos.reply_text and "B —" not in oos.reply_text

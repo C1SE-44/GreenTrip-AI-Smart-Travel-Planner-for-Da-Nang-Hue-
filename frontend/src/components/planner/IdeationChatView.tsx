@@ -16,9 +16,11 @@ import {
 import { normalizeCategory, normalizeCity, type Poi } from '@/data/pois';
 import PoiImage from '@/components/ui/PoiImage';
 import PoiMap from '@/components/poi/PoiMap';
+import ExplanationModal from '@/components/poi/ExplanationModal';
 import { streamCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
 import { extractTripIntentFromPrompt } from '@/utils/vietnamesePromptExtractor';
 import { FormattedCopilotMessage } from './TripOverviewView';
+import { sanitizeCopilotReplyText } from './copilotMessageMarkdown';
 import type { CopilotTripMessage } from './copilotTripData';
 
 interface IdeationMessage {
@@ -84,6 +86,7 @@ function mapSuggestedToPoi(s: CopilotSuggestedPoi, allPois: Poi[]): Poi | null {
     visitDuration: '1–2 giờ',
     isGreen: s.green_score >= 75,
     ecoScore: s.green_score || 85,
+    estimatedCost: s.estimated_cost ?? 0,
   };
 }
 
@@ -130,6 +133,11 @@ export default function IdeationChatView({
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
+  const [explanationPoi, setExplanationPoi] = useState<{
+    id: string;
+    name: string;
+    snippet?: string;
+  } | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -179,7 +187,7 @@ export default function IdeationChatView({
   }, [messages, allPois]);
 
   const entityLookup = useMemo(
-    () => mapPois.map((p) => ({ id: p.id, name: p.name })),
+    () => mapPois.map((p) => ({ id: p.id, name: p.name, city: p.city })),
     [mapPois]
   );
 
@@ -257,7 +265,7 @@ export default function IdeationChatView({
       const aiMsg: IdeationMessage = {
         id: `idea-a-${Date.now()}`,
         sender: 'assistant',
-        text: res.reply_text,
+        text: sanitizeCopilotReplyText(res.reply_text, text),
         timestamp: nowHHMM(),
         suggestedPois: res.suggested_pois || [],
         nextSuggestedPrompts: res.next_suggested_prompts || [],
@@ -268,8 +276,29 @@ export default function IdeationChatView({
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
       console.error('Ideation chat error:', err);
-      setErrorMessage('Không thể kết nối tới trợ lý AI lúc này. Vui lòng kiểm tra backend và thử lại.');
-      setLastFailedPrompt(text);
+      const hasSocialLink = /(?:tiktok\.com|vt\.tiktok\.com|facebook\.com|fb\.watch|instagram\.com|youtu\.be|youtube\.com)/i.test(
+        text
+      );
+      if (hasSocialLink) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `idea-a-${Date.now()}`,
+            sender: 'assistant',
+            text: sanitizeCopilotReplyText('Please wait...', text),
+            timestamp: nowHHMM(),
+            suggestedPois: [],
+            nextSuggestedPrompts: [
+              'Tìm quán ăn bản địa ít đông ở Huế',
+              'Gợi ý điểm xanh & làng nghề tại Đà Nẵng',
+              'Lên lịch trình 2 ngày tránh giờ cao điểm',
+            ],
+          },
+        ]);
+      } else {
+        setErrorMessage('Không thể kết nối tới trợ lý AI lúc này. Vui lòng thử lại sau giây lát.');
+        setLastFailedPrompt(text);
+      }
     } finally {
       setStreamingText('');
       setStreamingStatus(null);
@@ -463,6 +492,7 @@ export default function IdeationChatView({
                       <FormattedCopilotMessage
                         text={msg.text}
                         entityLookup={entityLookup}
+                        preferredCity={liveIntent?.destination}
                         onHoverPoi={setHoveredPoiId}
                         onSelectPoi={(poiId) => {
                           setSelectedMapPoiId(poiId);
@@ -516,10 +546,23 @@ export default function IdeationChatView({
                                   city={normalizeCity(poi.city)}
                                   className="w-full h-full object-cover"
                                 />
-                                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-950/85 text-emerald-200 text-xs font-semibold inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExplanationPoi({
+                                      id: poi.id,
+                                      name: poi.name,
+                                      snippet: poi.kg_explanation || poi.swap_reason || undefined,
+                                    });
+                                  }}
+                                  className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-950/90 hover:bg-emerald-900 text-emerald-100 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                                  title="Bấm để xem giải thích 4 trụ cột Điểm xanh"
+                                >
                                   <Leaf size={11} />
-                                  {poi.green_score}/100
-                                </span>
+                                  <span>{poi.green_score}/100</span>
+                                  <span className="underline decoration-emerald-300/70">Vì sao?</span>
+                                </button>
                                 <button
                                   type="button"
                                   aria-label={isSaved ? `Bỏ chọn ${poi.name}` : `Chọn ${poi.name} vào ý tưởng`}
@@ -546,6 +589,11 @@ export default function IdeationChatView({
                                   <p className="text-xs text-neutral-600 line-clamp-1">
                                     {poi.city || poi.address}
                                   </p>
+                                  {(poi.kg_explanation || poi.eco_practices?.[0] || poi.swap_reason) && (
+                                    <p className="text-xs text-emerald-800 line-clamp-2 mt-1 leading-snug">
+                                      {poi.eco_practices?.[0] || poi.kg_explanation || poi.swap_reason}
+                                    </p>
+                                  )}
                                 </div>
                                 <div className="flex items-center justify-between pt-1 text-xs text-neutral-700">
                                   <span className="inline-flex items-center gap-1 font-semibold">
@@ -567,7 +615,8 @@ export default function IdeationChatView({
                     {msgIdx === messages.length - 1 &&
                       msg.nextSuggestedPrompts &&
                       msg.nextSuggestedPrompts.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-1">
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <span className="text-xs font-medium text-neutral-600">Gợi ý nhanh:</span>
                           {msg.nextSuggestedPrompts.slice(0, 3).map((chip) => (
                             <button
                               key={chip}
@@ -593,6 +642,7 @@ export default function IdeationChatView({
                   <FormattedCopilotMessage
                     text={streamingText}
                     entityLookup={entityLookup}
+                    preferredCity={liveIntent?.destination}
                     onHoverPoi={setHoveredPoiId}
                     onSelectPoi={(poiId) => {
                       setSelectedMapPoiId(poiId);
@@ -717,6 +767,15 @@ export default function IdeationChatView({
             </div>
           </div>
         </div>
+      )}
+      {explanationPoi && (
+        <ExplanationModal
+          poiId={explanationPoi.id}
+          poiName={explanationPoi.name}
+          explanationSnippet={explanationPoi.snippet}
+          isOpen={Boolean(explanationPoi)}
+          onClose={() => setExplanationPoi(null)}
+        />
       )}
     </main>
   );

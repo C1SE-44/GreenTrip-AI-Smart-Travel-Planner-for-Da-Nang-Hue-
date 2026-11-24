@@ -223,9 +223,11 @@ def build_kg_explanation_for_poi(
         eco_practices.append("Ưu tiên chuỗi cung ứng nông sản & nguyên liệu tươi sống tại địa phương (Food Miles thấp)")
     else:
         reasons.append(
-            f"Điểm trải nghiệm văn hóa – sinh thái tiêu biểu tại {city}, kết nối thuận tiện trong cụm lịch trình"
+            f"Điểm trải nghiệm văn hóa – bản địa tiêu biểu tại {city}, kết nối thuận tiện trong cụm lịch trình"
         )
-        eco_practices.append("Khuyến khích di chuyển xanh bằng xe điện hoặc tản bộ gom cụm")
+        eco_practices.append(
+            f"Điểm cộng đồng/bản địa tại {city} chú trọng bảo tồn cảnh quan và giảm rác thải nhựa một lần"
+        )
 
     # 2. Append constraint-specific tailoring if not already mentioned
     if "elderly_friendly" in constraints and not any("bằng phẳng" in r or "thang máy" in r or "xe điện" in r or "ô tô" in r for r in reasons):
@@ -269,6 +271,53 @@ def recommend_transport_for_leg(
     if distance_km <= 5.0:
         return "Xe buýt công cộng hoặc xe đạp/taxi điện ngắn chặng tùy thời tiết"
     return "Xe buýt công cộng tuyến nội đô hoặc taxi điện Xanh SM cho chặng dài"
+
+
+def estimate_trip_budget_summary(
+    days_count: int,
+    num_people: int = 2,
+    budget_tier: Any = None,
+    total_budget: float | None = None,
+) -> dict[str, Any]:
+    """Calculate transparent per-person and total-group budget ranges based on trip context."""
+    days = max(1, int(days_count or 3))
+    people = max(1, int(num_people or 1))
+    tier_raw = getattr(budget_tier, "value", budget_tier)
+    tier = str(tier_raw or "standard").lower()
+
+    tier_specs = {
+        "budget": ("$ Tiết kiệm", 550_000, 750_000, "homestay xanh/nhà nghỉ cộng đồng, quán ăn bản địa, xe buýt/đi bộ"),
+        "standard": ("$$ Tiêu chuẩn", 1_100_000, 1_550_000, "khách sạn/eco-lodge 3–4 sao, ẩm thực địa phương + vé tham quan, taxi điện chia nhóm"),
+        "luxury": ("$$$ Cao cấp", 2_400_000, 3_500_000, "eco-resort/boutique 4–5 sao, trải nghiệm riêng tư và xe điện đưa đón"),
+    }
+    tier_label, pp_min, pp_max, scope_desc = tier_specs.get(tier, tier_specs["standard"])
+    group_min = pp_min * days * people
+    group_max = pp_max * days * people
+
+    def _fmt(v: float) -> str:
+        return f"{int(round(v)):,} ₫".replace(",", ".")
+
+    cap_note = ""
+    if total_budget and total_budget > 0:
+        cap_note = f" (ngân sách bạn đặt: **{_fmt(total_budget)}** cho cả đoàn)"
+
+    summary_text = (
+        f"Ước tính hạng **{tier_label}** cho **{people} người × {days} ngày**: "
+        f"**{_fmt(group_min)} – {_fmt(group_max)}** cả đoàn "
+        f"(khoảng **{_fmt(pp_min)} – {_fmt(pp_max)}/người/ngày**){cap_note} — "
+        f"*đã tính gồm lưu trú ({scope_desc}), ăn uống, vé tham quan và đi lại nội tỉnh*."
+    )
+    return {
+        "tier": tier,
+        "tier_label": tier_label,
+        "days": days,
+        "num_people": people,
+        "per_person_day_min": pp_min,
+        "per_person_day_max": pp_max,
+        "group_total_min": group_min,
+        "group_total_max": group_max,
+        "summary_text": summary_text,
+    }
 
 
 def enrich_pois_with_kg_and_filter_city(

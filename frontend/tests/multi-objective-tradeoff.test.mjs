@@ -222,3 +222,37 @@ test('Landing page removes OSRM/Copilot jargon and exposes direct /chat AI Assis
   assert.ok(landing.includes('to="/chat"'), 'LandingPage must expose direct entry to /chat AI Assistant');
   assert.ok(navbar.includes("to: '/chat'"), 'Navbar must include Trợ Lý AI (/chat)');
 });
+
+test('Entity linking disambiguates Linh Ung pagodas, blocks cross-province pins, and sanitizes raw TikTok errors', async () => {
+  const mdSource = await readFile(path.join(root, 'src/components/planner/copilotMessageMarkdown.tsx'), 'utf8');
+  const pureHelpersSource = mdSource
+    .replace("import { MapPin } from 'lucide-react';", 'const MapPin = () => null;')
+    .replace(/export function FormattedCopilotMessage[\s\S]*$/m, '');
+  const compiled = ts.transpileModule(pureHelpersSource, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React },
+  }).outputText;
+  const mod = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+
+  const lookup = [
+    { id: 'dn-muoi-bien', name: 'Nhà hàng Muối Biển Seafood', city: 'Đà Nẵng' },
+    { id: 'dn-linh-ung-bn', name: 'Chùa Linh Ứng Bà Nà', city: 'Đà Nẵng' },
+    { id: 'dn-linh-ung-st', name: 'Chùa Linh Ứng Bãi Bụt Sơn Trà', city: 'Đà Nẵng' },
+    { id: 'hue-cf-muoi', name: 'Cà Phê Muối Nguyễn Lương Bằng', city: 'Huế' },
+  ];
+
+  // 1. Hue context must never match Da Nang seafood restaurant for "Cà phê muối"
+  assert.strictEqual(mod.findMatchingPoiIdForLabel('Cà phê muối', lookup, 'Huế'), null);
+  // 2. Linh Ung Son Tra must match Bai But Son Tra, NEVER Ba Na
+  assert.strictEqual(mod.findMatchingPoiIdForLabel('Chùa Linh Ứng Sơn Trà', lookup, 'Đà Nẵng'), 'dn-linh-ung-st');
+  assert.strictEqual(mod.findMatchingPoiIdForLabel('Chùa Linh Ứng Bà Nà', lookup, 'Đà Nẵng'), 'dn-linh-ung-bn');
+  // 3. Raw Cloudflare/TikTok "Please wait..." must be converted to helpful Vietnamese guidance
+  const sanitized = mod.sanitizeCopilotReplyText('Please wait...', 'https://vt.tiktok.com/ZSY9abc/');
+  assert.strictEqual(sanitized.includes('Please wait'), false);
+  assert.ok(sanitized.includes('tên địa điểm'));
+
+  // 4. Both chat views expose clickable ExplanationModal ("Vì sao?") on POI cards
+  const overviewSrc = await readFile(path.join(root, 'src/components/planner/TripOverviewView.tsx'), 'utf8');
+  const ideationSrc = await readFile(path.join(root, 'src/components/planner/IdeationChatView.tsx'), 'utf8');
+  assert.ok(overviewSrc.includes('Bấm để xem giải thích 4 trụ cột Điểm xanh'));
+  assert.ok(ideationSrc.includes('ExplanationModal') && ideationSrc.includes('Bấm để xem giải thích 4 trụ cột Điểm xanh'));
+});

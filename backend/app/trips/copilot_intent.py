@@ -340,7 +340,7 @@ _MATH_SUB_EVAL_RE = re.compile(
 )
 _MATH_ALGEBRA_RE = re.compile(r"\b(?:tìm|tim)\s+[xyz]\b|\b\d*[xyz]\s*[+\-*/]\s*\d+\s*=")
 _EXTERNAL_SOCIAL_URL_RE = re.compile(
-    r"https?://(?:www\.|vm\.|vt\.|m\.)?(tiktok\.com|youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch)\S*",
+    r"(?:https?://)?(?:www\.|vm\.|vt\.|m\.)?(tiktok\.com|youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch)/\S*",
     re.IGNORECASE,
 )
 

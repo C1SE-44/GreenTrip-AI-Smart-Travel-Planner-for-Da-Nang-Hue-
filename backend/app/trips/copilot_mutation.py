@@ -82,9 +82,7 @@ def handle_city_mismatch_and_mutation(
     )
 
     closing_hook = (
-        f"Để chốt khung giờ cho **Ngày {suggested_day} tại {real_city}**, bạn muốn đi **{canonical_name}** theo phương án "
-        f"**A — Nửa ngày sáng sớm (07:30 – 13:00)** để tránh đông và chiều về dạo biển Mỹ Khê, "
-        f"hay phương án **B — Trọn ngày (Full-day 08:00 – 16:30)** để thong thả khám phá hết khu vực?"
+        f"Ở **Ngày {suggested_day}**, bạn muốn đi **{canonical_name}** nửa ngày sáng sớm hay trọn ngày?"
     )
 
     reasoning_trace = (
@@ -141,23 +139,47 @@ def _ensure_editable_outline(
     for d in range(1, days_count + 1):
         if is_hue_only or (is_both and d > max(2, days_count // 2)):
             city = "Huế"
-            theme = "Di sản Hoàng thành & Lăng tẩm Cố đô Huế" if d % 2 == 1 else "Lăng Tự Đức, Chùa Thiên Mụ & Ẩm thực chay xứ Huế"
+            day_mod = (d - 1) % 3
+            if day_mod == 0:
+                theme = "Di sản Hoàng thành & Làng sinh thái Thủy Biều"
+                morning_name = "Đại Nội Huế (Hoàng Thành)"
+                morning_note = "Di sản triều Nguyễn có đường dạo phẳng và xe điện nội khu (nên đi trước 08:30 để tránh đông)"
+                morning_cost = "200.000 đ"
+                afternoon_name = "Làng sinh thái Thủy Biều"
+                afternoon_note = "Làng cổ ven sông Hương trải nghiệm vườn bưởi Thanh Trà và nhà rường cộng đồng"
+                afternoon_cost = "Miễn phí"
+            elif day_mod == 1:
+                theme = "Làng hương Thủy Xuân, Lăng Tự Đức & Ẩm thực chay xứ Huế"
+                morning_name = "Lăng Tự Đức & Đồi thông"
+                morning_note = "Quần thể di tích đường dạo phẳng quanh hồ sen, không leo dốc cao"
+                morning_cost = "150.000 đ"
+                afternoon_name = "Làng hương Thủy Xuân"
+                afternoon_note = "Làng nghề thủ công truyền thống 700 năm tuổi hỗ trợ nghệ nhân bản địa"
+                afternoon_cost = "Miễn phí"
+            else:
+                theme = "Đầm phá Tam Giang / Rú Chá & Không gian sống chậm Cố đô"
+                morning_name = "Rừng ngập mặn Rú Chá"
+                morning_note = "Hệ sinh thái rừng ngập mặn nguyên sinh ít đông đúc ven phá Tam Giang"
+                morning_cost = "Miễn phí"
+                afternoon_name = "Cồn Hến & Ven sông Hương"
+                afternoon_note = "Trải nghiệm đời sống bản địa và thưởng thức đặc sản Cồn Hến"
+                afternoon_cost = "45.000 đ"
             hue_meal = (
                 "An Nhiên Garden Vegetarian - Nhà Hàng & Cafe"
                 if (want_veg or d % 2 == 0)
-                else "Bún Bò Huế Bà Cam"
+                else ("Cơm Hến Hoa Đông" if day_mod == 2 else "Bún Bò Huế Bà Cam")
             )
             if want_veg and d % 2 == 1:
                 hue_meal = "Nhà Hàng Chay Sân Mây (San May Vegetarian Restaurant)"
             stops = [
                 {
                     "id": f"stop-{d}-1",
-                    "timeSlot": "08:30 - 11:00",
-                    "name": "Đại Nội Huế (Hoàng Thành)" if d % 2 == 1 else "Lăng Tự Đức & Đồi thông",
-                    "category": "di-tich",
+                    "timeSlot": "08:00 - 10:30",
+                    "name": morning_name,
+                    "category": "di-tich" if day_mod < 2 else "canh-quan",
                     "distanceKm": 2.5,
-                    "note": "Di sản triều Nguyễn có đường dạo phẳng và xe điện nội khu",
-                    "estimatedCost": "200.000 đ",
+                    "note": morning_note,
+                    "estimatedCost": morning_cost,
                     "greenScore": 95,
                 },
                 {
@@ -166,19 +188,19 @@ def _ensure_editable_outline(
                     "name": hue_meal,
                     "category": "quan-an",
                     "distanceKm": 1.8,
-                    "note": "Ẩm thực chay thực dưỡng thanh đạm nguyên liệu bản địa sạch" if want_veg else "Ẩm thực truyền thống nguyên liệu bản địa sạch",
-                    "estimatedCost": "85.000 đ" if want_veg else "65.000 đ",
+                    "note": "Ẩm thực chay thực dưỡng thanh đạm nguyên liệu bản địa sạch" if want_veg else "Ẩm thực bản địa gia truyền nguyên liệu địa phương",
+                    "estimatedCost": "85.000 đ" if want_veg else "55.000 đ",
                     "greenScore": 94,
                 },
                 {
                     "id": f"stop-{d}-3",
                     "timeSlot": "15:00 - 17:00",
-                    "name": "Chùa Thiên Mụ & Bờ sông Hương" if d % 2 == 1 else "Lăng Khải Định",
-                    "category": "di-tich",
+                    "name": afternoon_name,
+                    "category": "van-hoa" if day_mod == 1 else "canh-quan",
                     "distanceKm": 4.2,
-                    "note": "Không gian văn hóa tâm linh bên dòng Hương Giang",
-                    "estimatedCost": "150.000 đ",
-                    "greenScore": 93,
+                    "note": afternoon_note,
+                    "estimatedCost": afternoon_cost,
+                    "greenScore": 95,
                 },
             ]
         else:
@@ -284,11 +306,12 @@ def _lookup_poi_by_keyword(
                 JOIN public.poi_categories c ON p.category_id = c.category_id
                 JOIN public.cities ci ON p.city_id = ci.city_id
                 WHERE p.is_active IS NOT FALSE
+                  AND ci.name ILIKE %s
                   AND (p.name ILIKE %s OR p.description ILIKE %s)
-                ORDER BY p.popularity_score DESC NULLS LAST, p.green_score DESC NULLS LAST
+                ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
                 LIMIT 1;
                 """,
-                (f"%{keyword}%", f"%{keyword}%"),
+                ("%Hue%" if "huế" in (target_city or "").lower() or "hue" in (target_city or "").lower() else "%Da Nang%", f"%{keyword}%", f"%{keyword}%"),
             )
             row = cur.fetchone()
             if row:
@@ -500,8 +523,7 @@ def handle_itinerary_mutation_request(
             f"- Tàu chạy dọc sườn núi Đèo Hải Vân và vịnh Lăng Cô từ **08:30 – 11:15**, vừa ngắm trọn biển–núi đúng vibe chill vừa tiết kiệm ~75% lượng khí thải CO₂ so với đi ô tô riêng.\n\n"
             f"🌿 **Thêm trải nghiệm sinh thái tại Huế:** **Làng sinh thái Thủy Biều (Vườn bưởi Thanh Trà & Ngâm chân thảo mộc)**\n"
             f"- Mình xếp khung giờ **13:30 – 15:30** để không xung đột với lịch dạo sông Hương chiều muộn và bữa tối; có sẵn phương án ngâm chân thảo mộc & thưởng trà trong nhà rường nếu trời có mưa.\n\n"
-            f"Ở **Làng sinh thái Thủy Biều**, bạn muốn nghiêng về trải nghiệm **A — Đạp xe / đi xe điện dạo vườn bưởi Thanh Trà & thăm nhà rường cổ**, "
-            f"hay **B — Wellness ngâm chân thảo mộc cung đình & thưởng trà ấm trong nhà**?"
+            f"Ở **Làng sinh thái Thủy Biều**, bạn muốn ưu tiên dạo vườn bưởi Thanh Trà hay ngâm chân thảo mộc?"
         )
 
         reasoning_trace = (
@@ -632,9 +654,7 @@ def handle_itinerary_mutation_request(
             f"**Đã cập nhật lịch trình của bạn thành {dn_nights} đêm ở Đà Nẵng và {hue_nights} đêm ở Huế (tổng cộng {new_total_days} ngày)!**{math_diff_note}{date_range_note}"
         )
         closing_hook = (
-            f"Ở **Ngày {new_total_days} (ngày cuối tại Huế)**, bạn muốn mình thiết kế thành phương án "
-            f"**A — Ngày chậm: checkout + thưởng thức Cà phê Muối & mua quà Chợ Đông Ba**, "
-            f"hay phương án **B — Thêm trải nghiệm nghe Ca Huế trên sông Hương vào đêm áp chót**?"
+            f"Ở **Ngày {new_total_days}** tại Huế, bạn muốn giữ nhịp nhẹ đi cà phê bản địa hay thêm Ca Huế buổi tối?"
         )
         reasoning_trace = (
             f"1. Phân tích yêu cầu chỉnh sửa (ITINERARY_MUTATION): Chia {dn_nights} đêm Đà Nẵng + {hue_nights} đêm Huế.\n"
@@ -720,8 +740,7 @@ def handle_itinerary_mutation_request(
             f"**Đã chuyển lịch đi {place_raw} từ Ngày {from_day} sang Ngày {to_day} và đồng bộ lại toàn bộ lộ trình 2 ngày cho bạn!**"
         )
         closing_hook = (
-            f"Khi đi **{place_raw} vào Ngày {to_day}**, bạn muốn mình xếp đi ghép **A — Danh thắng Ngũ Hành Sơn trên cùng trục đường biển chiều đi**, "
-            f"hay **B — Đi thẳng vào {place_raw} từ 15:00 để có thêm thời gian ngồi thuyền gỗ sông Hoài và uống nước Mót**?"
+            f"Vào **Ngày {to_day}**, bạn muốn ghép thêm Ngũ Hành Sơn trên đường đi {place_raw} không?"
         )
         reasoning_trace = (
             f"1. Phân tích thao tác (ITINERARY_MUTATION): Chuyển '{place_raw}' từ Ngày {from_day} sang Ngày {to_day}.\n"
@@ -809,8 +828,7 @@ def handle_itinerary_mutation_request(
             f"**Mình đã xóa {target_place} ra khỏi Ngày {target_day} và cập nhật lại trạng thái lịch trình Ngày {target_day} gọn nhẹ hơn cho bạn!**"
         )
         closing_hook = (
-            f"Với khoảng thời gian trống vừa tạo ra ở **Ngày {target_day}**, bạn muốn **A — Để trống hoàn toàn làm khung giờ nghỉ ngơi / cà phê nhà vườn tự do**, "
-            f"hay **B — Thay bằng Lăng Tự Đức (đường phẳng quanh hồ sen, rừng thông rất dễ đi)**?"
+            f"Khung giờ trống ở **Ngày {target_day}** bạn muốn giữ để nghỉ ngơi hay thay bằng Lăng Tự Đức?"
         )
         reasoning_trace = (
             f"1. Phân tích thao tác (ITINERARY_MUTATION): Xóa '{target_place}' khỏi Ngày {target_day}.\n"
@@ -840,8 +858,7 @@ def handle_itinerary_mutation_request(
         f"**Đã ghi nhận yêu cầu điều chỉnh lịch trình cho hành trình {trip_context.destination} ({len(outline)} ngày) của bạn!**"
     )
     closing_hook = (
-        f"Bạn muốn mình áp dụng thay đổi này trực tiếp vào **A — Ngày {trip_context.current_day} đang mở**, "
-        f"hay **B — Tái cân bằng lại toàn bộ {len(outline)} ngày theo cụm khoảng cách ngắn nhất**?"
+        f"Bạn muốn mình áp dụng thay đổi này vào Ngày {trip_context.current_day} hay tối ưu lại cả {len(outline)} ngày?"
     )
     return CopilotChatResponse(
         reply_text=f"{opening}\n\n{closing_hook}",

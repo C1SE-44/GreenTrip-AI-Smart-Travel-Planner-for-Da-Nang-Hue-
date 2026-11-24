@@ -132,8 +132,8 @@ def handle_out_of_scope_request(
     )
 
     reply_text = (
-        f"Mình là chuyên gia bản địa chuyên sâu về du lịch xanh khu vực **Đà Nẵng – Huế – Hội An** nên xin phép không trả lời về **{topic_label}** nha! 🌱\n\n"
-        f"Quay lại hành trình **{dest} ({days} ngày)** của bạn: hiện tại bạn muốn mình ưu tiên **A — Tinh chỉnh lại các điểm tham quan & quán ăn bản địa theo từng ngày**, hay **B — Gợi ý các quán cà phê/điểm trú mưa chuẩn xanh** cho chuyến đi?"
+        f"Mình chuyên tư vấn du lịch xanh khu vực **Đà Nẵng – Huế – Hội An** nên chưa hỗ trợ về **{topic_label}**.\n\n"
+        f"Quay lại chuyến đi **{dest} ({days} ngày)**, bạn muốn mình gợi ý điểm bản địa hay tối ưu lịch từng ngày?"
     )
 
     return CopilotChatResponse(
@@ -238,8 +238,7 @@ def handle_city_comparison_consultative(
     )
 
     closing_hook = (
-        f"Bạn muốn mình thiết kế chi tiết lịch trình {days_num} ngày theo phương án **A — Dành trọn {days_num} ngày ở Đà Nẵng & Hội An** để nghỉ dưỡng biển và khám phá ẩm thực thảnh thơi, "
-        f"hay phương án **B — Chia {max(days_num - 2, 3)} ngày Đà Nẵng + {min(2, days_num - 1)} ngày Huế** (trải nghiệm tàu hỏa qua đèo Hải Vân)?"
+        f"Bạn muốn mình lên lịch chi tiết {days_num} ngày tại **{verdict_city}** hay chia kết hợp cả hai thành phố?"
     )
 
     reasoning_trace = (
@@ -380,7 +379,7 @@ def handle_over_scheduling_guardrail(
         "- **Ngày 1 — Cụm Núi Chúa & Biển Đà Nẵng**: Sáng đi **Bà Nà Hills & Cầu Vàng** (07:30 – 14:00) — 🌱 *Đi cáp treo điện giảm khí thải leo đèo*; chiều về nghỉ ngơi và dạo bộ **Bãi biển Mỹ Khê**.\n"
         "- **Ngày 2 — Cụm Di sản Phía Nam (Đà Nẵng → Hội An)**: Chiều mát (14:30) ghé **Danh thắng Ngũ Hành Sơn** (có thang máy kính) rồi đi thẳng xuống **Phố cổ Hội An** dạo bộ phố đèn lồng — 🌱 *Khu phố cổ không tiếng động cơ xe máy*.\n"
         "- **Ngày 3 — Chuyến tàu Di sản vượt Đèo Hải Vân ra Huế**: Sáng đi **Tàu hỏa Di sản Đà Nẵng – Huế** ngắm vịnh Lăng Cô, chiều tham quan **Đại Nội Huế** và **Chùa Thiên Mụ** — 🌱 *Tàu hỏa giảm 75% CO2 so với xe cá nhân*.\n\n"
-        "Bạn muốn mình **A — Cập nhật ngay cấu trúc 3 ngày tách cụm này vào lịch trình của bạn**, hay **B — Giữ nguyên số ngày hiện tại và bỏ bớt Bà Nà Hills để ưu tiên đi sâu Đà Nẵng – Huế**?"
+        "Bạn muốn mình áp dụng cấu trúc 3 ngày tách cụm này vào lịch trình không?"
     )
 
     return CopilotChatResponse(
@@ -432,9 +431,7 @@ def handle_elderly_constraints_consultation(
     )
 
     closing_hook = (
-        "Để mình khóa phương án di chuyển êm ái nhất cho bố mẹ: bạn muốn gia đình đi lại giữa các điểm bằng "
-        "**A — Taxi điện Xanh SM / Ô tô điện đưa đón tận cửa từng điểm**, "
-        "hay **B — Kết hợp thêm trải nghiệm Tàu hỏa Di sản ngắm vịnh Lăng Cô (ghế mềm điều hòa)**?"
+        "Bạn muốn ưu tiên đi taxi điện tận cửa hay kết hợp thêm Tàu hỏa Di sản qua đèo Hải Vân cho bố mẹ?"
     )
 
     reasoning_trace = (
@@ -531,10 +528,13 @@ def _query_elderly_friendly_pois(
 
     if not items:
         fallback_defs = [
-            ("dn-son-tra-elderly", "Bán đảo Sơn Trà & Chùa Linh Ứng", "Cảnh quan và thiên nhiên", "peninsula", "Đà Nẵng", 96, 4.9, "Hoàng Sa, Thọ Quang, Sơn Trà, Đà Nẵng"),
+            ("dn-son-tra-elderly", "Bán đảo Sơn Trà & Chùa Linh Ứng Bãi Bụt", "Cảnh quan và thiên nhiên", "peninsula", "Đà Nẵng", 96, 4.9, "Hoàng Sa, Thọ Quang, Sơn Trà, Đà Nẵng"),
             ("hue-lang-tu-duc", "Lăng Tự Đức (Khiêm Lăng)", "Di tích lịch sử và văn hóa", "royal_mausoleums", "Huế", 95, 4.9, "Thôn Thượng Ba, Thủy Xuân, TP. Huế"),
             ("hue-bao-tang-co-vat", "Bảo tàng Cổ vật Cung đình Huế", "Di tích lịch sử và văn hóa", "museums_galleries", "Huế", 92, 4.7, "03 Lê Trực, Phú Hậu, TP. Huế"),
         ]
+        if not is_both:
+            want_hue = "huế" in city_lower or "hue" in city_lower
+            fallback_defs = [d for d in fallback_defs if (d[4] == "Huế") == want_hue]
         for pid, name, cat, sub, c_disp, g_score, rating, addr in fallback_defs:
             kg_exp, eco_list = build_kg_explanation_for_poi(name, cat, sub, c_disp, constraints)
             items.append(
@@ -806,15 +806,31 @@ def _try_gemini_synthesis(
             f"{m.get('role', 'user')}: {str(m.get('content', ''))[:250]}"
             for m in (trip_context.conversation_history or [])[-4:]
         ]
+        from app.trips.copilot_enrichment import estimate_trip_budget_summary, recommend_transport_for_leg
+
+        budget_info = estimate_trip_budget_summary(
+            days_count=trip_context.days_count,
+            num_people=trip_context.num_people,
+            budget_tier=trip_context.budget_tier,
+            total_budget=trip_context.total_budget,
+        )
+        recommended_transport = recommend_transport_for_leg(
+            distance_km=6.0,
+            num_people=trip_context.num_people,
+            constraints=constraints,
+            is_intercity="đà nẵng" in (trip_context.destination or "").lower() and "huế" in (trip_context.destination or "").lower(),
+        )
         prompt_payload = (
             f"MODE: {getattr(trip_context, 'mode', 'trip')} | "
             f"USER_PROFILE & CONSTRAINTS: destination={trip_context.destination}, days={trip_context.days_count}, "
             f"current_day={trip_context.current_day}, total_budget={trip_context.total_budget}, "
-            f"num_people={trip_context.num_people}, transport_mode={trip_context.transport_mode}, "
-            f"active_constraints={constraints}\n"
+            f"budget_tier={budget_info['tier_label']}, num_people={trip_context.num_people}, "
+            f"transport_mode={trip_context.transport_mode}, active_constraints={constraints}\n"
+            f"BUDGET_ESTIMATE_FOR_GROUP: {budget_info['summary_text']}\n"
+            f"CONTEXTUAL_TRANSPORT_TIP: {recommended_transport}\n"
             f"RECENT_HISTORY: {json.dumps(history_snippet, ensure_ascii=False)}\n"
             f"RETRIEVED_POIS & KG_PATHS: {json.dumps(pois_context, ensure_ascii=False)}\n"
-            f"STRICT_GROUNDING: Tuyệt đối chỉ nhắc tên địa điểm có trong RETRIEVED_POIS & KG_PATHS hoặc REFERENCE_DRAFT; cấm tự bịa thêm địa điểm mới. Nếu REFERENCE_DRAFT có mục Điểm mạnh / Cần cân nhắc thì giữ nguyên cấu trúc đó.\n"
+            f"STRICT_GROUNDING: Tuyệt đối chỉ nhắc tên địa điểm có trong RETRIEVED_POIS & KG_PATHS hoặc REFERENCE_DRAFT; cấm tự bịa thêm địa điểm mới. Lồng ghép số liệu BUDGET_ESTIMATE_FOR_GROUP và CONTEXTUAL_TRANSPORT_TIP thay vì trả lời chung chung; chỉ kết thúc bằng đúng 1 câu hỏi ngắn (<=25 từ).\n"
             f"REFERENCE_DRAFT (giữ nguyên các dữ kiện thực tế và tên địa điểm): {fallback_reply}\n"
             f"USER_MESSAGE: {user_message}"
         )

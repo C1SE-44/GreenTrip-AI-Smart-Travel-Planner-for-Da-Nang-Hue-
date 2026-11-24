@@ -1,4 +1,4 @@
-import type { CopilotTripMessage } from '@/components/planner/copilotTripData';
+import { buildDefaultMindtripItinerary, type CopilotTripMessage } from '@/components/planner/copilotTripData';
 import type { TimeOfDay } from '@/components/poi/ExploreFilterModal';
 import type { Poi, PoiCategory, PoiCity } from '@/data/pois';
 import type { CostBreakdown, DailyItineraryOutline, MatchedPOI } from '@/services/tripService';
@@ -159,38 +159,41 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
     id: 'sample-danang-hue-3d',
     title: 'Hành trình Xanh Đà Nẵng - Huế (3 Ngày)',
     destination: 'Đà Nẵng & Huế',
-    startDate: 'Ngày 10 – 12 tháng 11',
+    startDate: 'Ngày 05 – 07 tháng 12',
     peopleCount: 2,
     daysCount: 3,
     tags: ['Đà Nẵng & Huế', '3 Ngày', 'Lộ trình tối ưu OSRM', 'Xanh'],
-    createdAt: '2026-11-08',
+    createdAt: '2026-11-23',
     image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
     ideas: [
       '029a28df-b091-49d9-a911-738572c72464',
       'd58fe815-4aa1-45b2-831a-11b97e130918',
       'bfed964e-ff10-44f4-8654-2136245ab062',
     ],
+    itineraryOutline: buildDefaultMindtripItinerary('Đà Nẵng & Huế', 3) as unknown as DailyItineraryOutline[],
   },
   {
     id: 'sample-danang-hue-5d',
     title: 'Đà Nẵng - Huế Trọn Vẹn (5 Ngày)',
     destination: 'Đà Nẵng & Huế',
-    startDate: 'Ngày 15 – 19 tháng 11',
+    startDate: 'Ngày 12 – 16 tháng 12',
     peopleCount: 2,
     daysCount: 5,
     tags: ['Đà Nẵng & Huế', '5 Ngày', 'Di sản & Biển xanh'],
-    createdAt: '2026-11-08',
+    createdAt: '2026-11-23',
     image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
+    itineraryOutline: buildDefaultMindtripItinerary('Đà Nẵng & Huế', 5) as unknown as DailyItineraryOutline[],
   },
   {
     id: 'sample-central-vietnam-7d',
     title: 'Khám phá Miền Trung Huyền Diệu (7 Ngày)',
     destination: 'Đà Nẵng & Huế',
-    startDate: 'Ngày 20 – 26 tháng 11',
+    startDate: 'Ngày 20 – 26 tháng 12',
     peopleCount: 4,
     daysCount: 7,
     tags: ['Miền Trung', '7 Ngày', 'Tour gia đình'],
-    createdAt: '2026-11-08',
+    createdAt: '2026-11-23',
     image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800&auto=format&fit=crop&q=80',
+    itineraryOutline: buildDefaultMindtripItinerary('Đà Nẵng & Huế', 7) as unknown as DailyItineraryOutline[],
   },
 ];

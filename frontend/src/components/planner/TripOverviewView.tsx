@@ -223,7 +223,7 @@ export default function TripOverviewView({
   };
 
   const [actionCardIdx, setActionCardIdx] = useState<0 | 1>(0);
-  const [showActionCards, setShowActionCards] = useState<boolean>(true);
+  const [showActionCards, setShowActionCards] = useState<boolean>(false);
   const [showLearnDrawer, setShowLearnDrawer] = useState<boolean>(false);
 
   // ─── TAB ĐIỀU HƯỚNG CỘT GIỮA CHUẨN EXPLORE (CHAT / LỊCH TRÌNH / Ý TƯỞNG) ───

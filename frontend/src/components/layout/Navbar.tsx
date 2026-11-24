@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Compass, CalendarCheck, MapPinned, LogIn, UserPlus, LogOut } from 'lucide-react';
+import { Menu, X, Compass, CalendarCheck, Heart, LogIn, LogOut } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import LoginModal from '@/components/auth/LoginModal';
 import OnboardingModal from '@/components/auth/OnboardingModal';
@@ -8,8 +8,8 @@ import { clearAuthSession } from '@/services/auth';
 
 const navItems = [
   { to: '/explore', label: 'Khám Phá', icon: Compass },
-  { to: '/planner', label: 'Lập Lịch Trình', icon: CalendarCheck },
-  { to: '/my-trips', label: 'Chuyến Đi Của Tôi', icon: MapPinned },
+  { to: '/planner', label: 'Lịch Trình', icon: CalendarCheck },
+  { to: '/saved', label: 'Đã Lưu', icon: Heart },
 ];
 
 export default function Navbar() {
@@ -98,17 +98,14 @@ export default function Navbar() {
 
   const handleLoginSuccess = () => {
     setAuthModal((prev) => ({ ...prev, isOpen: false }));
-    const hasCompleted = localStorage.getItem('greentrip_onboarding_completed') === 'true';
-    if (!hasCompleted) {
-      setIsOnboardingOpen(true);
-    } else {
-      navigate(getReturnTo());
-    }
+    localStorage.setItem('greentrip_onboarding_completed', 'true');
+    navigate(getReturnTo());
   };
 
   const handleRegisterSuccess = () => {
     setAuthModal((prev) => ({ ...prev, isOpen: false }));
-    setIsOnboardingOpen(true);
+    localStorage.setItem('greentrip_onboarding_completed', 'true');
+    navigate(getReturnTo());
   };
 
   const handleCloseOnboarding = () => {
@@ -158,35 +155,19 @@ export default function Navbar() {
             {/* Right side - Wanderlog style pill buttons */}
             <div className="hidden items-center gap-2.5 md:flex">
               {isAuthenticated ? (
-                <>
-                  <NavLink
-                    to="/my-trips"
-                    className="px-4 py-1.5 text-[14px] text-charcoal/80 hover:text-black hover:bg-black/5 font-medium rounded-full transition-all"
-                  >
-                    Chuyến đi của tôi
-                  </NavLink>
-                  <button
-                    onClick={handleLogout}
-                    className="px-4 py-1.5 text-[14px] text-charcoal/60 hover:text-red-600 hover:bg-red-50 font-medium rounded-full transition-all cursor-pointer"
-                  >
-                    Đăng xuất
-                  </button>
-                </>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-1.5 text-[14px] text-charcoal/60 hover:text-red-600 hover:bg-red-50 font-medium rounded-full transition-all cursor-pointer"
+                >
+                  Đăng xuất
+                </button>
               ) : (
-                <>
-                  <Link
-                    to="/login"
-                    className="px-4 py-1.5 text-[14px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-all duration-300 outline-none focus:outline-none cursor-pointer"
-                  >
-                    Đăng nhập
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="px-4 py-1.5 text-[14px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-all duration-300 outline-none focus:outline-none cursor-pointer"
-                  >
-                    Đăng ký
-                  </Link>
-                </>
+                <Link
+                  to="/login"
+                  className="px-4 py-1.5 text-[14px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-all duration-300 outline-none focus:outline-none cursor-pointer"
+                >
+                  Đăng nhập
+                </Link>
               )}
             </div>
 
@@ -243,14 +224,6 @@ export default function Navbar() {
                 >
                   <LogIn size={18} strokeWidth={2.5} />
                   Đăng nhập
-                </Link>
-                <Link
-                  to="/register"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-black/20 text-black hover:bg-black/5 px-4 py-2.5 text-[15px] font-medium transition-colors cursor-pointer"
-                >
-                  <UserPlus size={18} strokeWidth={2.5} />
-                  Đăng ký
                 </Link>
               </div>
             )}

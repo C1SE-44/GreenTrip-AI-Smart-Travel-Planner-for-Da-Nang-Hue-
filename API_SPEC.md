@@ -66,7 +66,7 @@
 | :--- | :--- | :---: | :--- | :--- |
 | `GET` | `/pois/weights` | Public | Slider weight query params (`PB08`, gồm `local_authentic_only`) | `ParsedSliderWeights` |
 | `GET` | `/pois` | Public | `page` (≥ 1), `limit`, `city`, `category`, `sub_category`, `cuisine`, `budget_tier`, `local_authentic_only`, slider weights... | `{ items: POIResponse[], pagination: { page, limit, total, total_pages, has_next, has_previous } }` *(gồm thêm trường tùy chọn `popularity_score`)* |
-| `GET` | `/pois/{poi_id}/explanation-facts` | Public | `poi_id` | `{ poi: { id, name, is_local_business, local_business_type, source }, facts: [{ relationship, target_type, target_key, target_name }] }` |
+| `GET` | `/pois/{poi_id}/explanation-facts` | Public | `poi_id` | `{ poi: { id, name, is_local_business, local_business_type, source }, facts: [{ relationship, target_type, target_key, target_name }], explanation_source?, green_score_breakdown?: [{ key, label, weight_pct, score }] }` |
 
 ---
 
@@ -76,7 +76,7 @@
 
 | Method | Path | Auth | Request Body chính | Response chính |
 | :--- | :--- | :---: | :--- | :--- |
-| `POST` | `/v1/recommendations/poi` | Public | `{ destination?, interests?, budget_band?, budget_tier?, ideas?, trip_days?, green_priority?, top_k?, trip_data?, slider_weights? }` | `{ status, total, data: RecommendationPOI[] }` *(mỗi item gồm `poi_id`, `name`, `category_name`, `sub_category`, `match_score`, `estimated_cost`, `green_score`, `is_local_business`, `best_time`, `opening_hours`...)* |
+| `POST` | `/v1/recommendations/poi` | Public | `{ destination?, interests?, budget_band?, budget_tier?, ideas?, trip_days?, green_priority?, optimization_mode? ('balanced'|'fast'|'budget'|'green_local'), top_k?, trip_data?, slider_weights? }` | `{ status, total, data: RecommendationPOI[] }` *(mỗi item gồm `poi_id`, `name`, `category_name`, `sub_category`, `match_score`, `estimated_cost`, `green_score`, `is_local_business`, `best_time`, `opening_hours`...)* |
 
 ---
 

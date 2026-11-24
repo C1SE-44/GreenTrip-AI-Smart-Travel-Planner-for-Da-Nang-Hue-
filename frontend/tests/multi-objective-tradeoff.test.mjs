@@ -211,3 +211,14 @@ test('optimizeItineraryWithTradeoff swaps crowded spot for local eco alternative
   assert.ok(res.after.emissionReductionPct > res.before.emissionReductionPct);
   assert.strictEqual(res.after.crowdedStopCount, 0);
 });
+
+test('Landing page removes OSRM/Copilot jargon and exposes direct /chat AI Assistant entry', async () => {
+  const valueProps = await readFile(path.join(root, 'src/components/landing/ValuePropsSection.tsx'), 'utf8');
+  const landing = await readFile(path.join(root, 'src/pages/LandingPage.tsx'), 'utf8');
+  const navbar = await readFile(path.join(root, 'src/components/layout/Navbar.tsx'), 'utf8');
+
+  assert.strictEqual(valueProps.includes('OSRM'), false, 'Landing ValuePropsSection must not expose OSRM jargon');
+  assert.strictEqual(valueProps.includes('In-Planner Copilot'), false, 'Landing ValuePropsSection must not expose Copilot jargon');
+  assert.ok(landing.includes('to="/chat"'), 'LandingPage must expose direct entry to /chat AI Assistant');
+  assert.ok(navbar.includes("to: '/chat'"), 'Navbar must include Trợ Lý AI (/chat)');
+});

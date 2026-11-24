@@ -4,6 +4,7 @@ import type {
   CopilotReceiptBooking,
   CopilotSuggestedPoi,
 } from '@/services/copilotService';
+import { normalizeCopilotMessageSingleCta } from './chatAttachmentUtils';
 
 export interface CopilotAttachmentSummary {
   type: 'file' | 'link' | 'receipt';
@@ -103,7 +104,8 @@ export function FormattedCopilotMessage({
   onHoverPoi?: (id: string | null) => void;
   onSelectPoi?: (id: string) => void;
 }) {
-  const lines = text.split('\n');
+  const normalizedText = normalizeCopilotMessageSingleCta(text);
+  const lines = normalizedText.split('\n');
 
   return (
     <div className="space-y-1.5 text-[13px] leading-relaxed text-neutral-800">

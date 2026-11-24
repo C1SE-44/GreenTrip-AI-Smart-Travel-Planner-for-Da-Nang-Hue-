@@ -1,4 +1,4 @@
-import type { CopilotAttachmentPayload } from '@/services/copilotService';
+import type { CopilotAttachmentPayload, CopilotSuggestedPoi } from '@/services/copilotService';
 
 export interface ReadyAttachment {
   payload: CopilotAttachmentPayload;
@@ -177,4 +177,108 @@ export function toAttachmentSummary(attachment: ReadyAttachment) {
     previewUrl: attachment.previewUrl,
     url: attachment.payload.url,
   };
+}
+
+const AB_CHOICE_PARAGRAPH_RE =
+  /(?:\*\*\s*A\s*[—–-]|phương án\s+\*?\*?A\b|\bA\s*[—–-]\s*.+?\bhay\s+\*?\*?B\s*[—–-])/i;
+
+export function normalizeCopilotMessageSingleCta(rawText: string): string {
+  const text = (rawText || '').trim();
+  if (!text) return '';
+  const paragraphs = text.split(/\n{2,}/);
+  if (paragraphs.length >= 2) {
+    const last = paragraphs[paragraphs.length - 1].trim();
+    const prev = paragraphs[paragraphs.length - 2].trim();
+    if (AB_CHOICE_PARAGRAPH_RE.test(last) && prev.endsWith('?')) {
+      return paragraphs.slice(0, -1).join('\n\n').trim();
+    }
+    if (last.endsWith('?') && prev.endsWith('?') && last.toLowerCase() === prev.toLowerCase()) {
+      return paragraphs.slice(0, -1).join('\n\n').trim();
+    }
+  }
+  return text;
+}
+
+function foldComparisonText(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/^[💡✨🧭🌱]+\s*/gu, '')
+    .replace(/^(?:chọn|chốt)\s*(?:phương án\s*)?[ab]\s*[:—–-]\s*/i, '')
+    .replace(/^(?:bạn\s+(?:có\s+)?muốn\s+(?:mình|greentrip\s*ai)\s+)/i, '')
+    .replace(/\s+không\s*\?*$/i, '')
+    .replace(/[?!.,;:*"'()[\]]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function sanitizeQuickReplyChips(
+  chips: string[] | undefined,
+  messageText: string
+): string[] {
+  if (!chips || chips.length === 0) return [];
+  const normalizedMsg = normalizeCopilotMessageSingleCta(messageText);
+  const paragraphs = normalizedMsg
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const trailingQuestion =
+    [...paragraphs].reverse().find((line) => line.endsWith('?')) || '';
+  const foldedQuestion = trailingQuestion ? foldComparisonText(trailingQuestion) : '';
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const rawChip of chips) {
+    const cleaned = (rawChip || '')
+      .replace(/^[💡✨]+\s*/u, '')
+      .replace(/^(?:Chọn|Chốt)\s*(?:phương án\s*)?[AB]\s*[:—–-]\s*/i, '')
+      .trim();
+    if (!cleaned) continue;
+
+    const foldedChip = foldComparisonText(cleaned);
+    if (!foldedChip || seen.has(foldedChip)) continue;
+
+    // Prevent chip from repeating the exact trailing question in message text
+    if (
+      foldedQuestion &&
+      (foldedChip === foldedQuestion ||
+        (cleaned.endsWith('?') &&
+          (foldedQuestion.includes(foldedChip) || foldedChip.includes(foldedQuestion))))
+    ) {
+      continue;
+    }
+
+    seen.add(foldedChip);
+    result.push(cleaned);
+    if (result.length >= 3) break;
+  }
+
+  return result;
+}
+
+export function getPoiGreenScoreExplanation(
+  poi: Pick<
+    CopilotSuggestedPoi,
+    'green_score' | 'eco_practices' | 'category' | 'sub_category' | 'carbon_saved'
+  >
+): string {
+  const firstPractice = poi.eco_practices?.find((item) => item && item.trim().length > 0)?.trim();
+  if (firstPractice) {
+    return firstPractice;
+  }
+  if (poi.carbon_saved && poi.carbon_saved.trim().length > 0) {
+    return poi.carbon_saved.trim();
+  }
+  const cat = `${poi.category || ''} ${poi.sub_category || ''}`.toLowerCase();
+  const score = poi.green_score || 88;
+  if (cat.includes('lưu trú') || cat.includes('hotel') || cat.includes('homestay') || cat.includes('resort')) {
+    return `Điểm xanh ${score}/100: Lưu trú ưu tiên kiến trúc thoáng tự nhiên, tiết kiệm điện nước & giảm nhựa dùng một lần.`;
+  }
+  if (cat.includes('ẩm thực') || cat.includes('quán ăn') || cat.includes('cafe') || cat.includes('food')) {
+    return `Điểm xanh ${score}/100: Ưu tiên nguyên liệu bản địa tươi theo mùa và hạn chế bao bì nhựa dùng một lần.`;
+  }
+  if (cat.includes('di tích') || cat.includes('chùa') || cat.includes('tâm linh') || cat.includes('heritage')) {
+    return `Điểm xanh ${score}/100: Không gian di sản bảo tồn cây xanh lâu năm, khuyến khích tản bộ êm ái ít khói bụi.`;
+  }
+  return `Điểm xanh ${score}/100: Không gian sinh thái mở, mật độ cây xanh tự nhiên cao và thân thiện môi trường.`;
 }

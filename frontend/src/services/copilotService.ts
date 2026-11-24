@@ -20,6 +20,7 @@ export interface TripContextPayload {
   current_stop_name?: string | null;
   current_stop_id?: string | null;
   saved_ideas?: string[];
+  suggested_places?: string[];
   traveler_name?: string | null;
   companions?: string | null;
   preferences?: string[];

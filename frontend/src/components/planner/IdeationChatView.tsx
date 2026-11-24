@@ -31,6 +31,8 @@ import {
   fileToReadyAttachment,
   getAttachmentPlaceholder,
   getDefaultAttachmentPrompt,
+  getPoiGreenScoreExplanation,
+  sanitizeQuickReplyChips,
   toAttachmentSummary,
   type ReadyAttachment,
 } from './chatAttachmentUtils';
@@ -153,6 +155,7 @@ export default function IdeationChatView({
   const [pendingAttachment, setPendingAttachment] = useState<ReadyAttachment | null>(null);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
+  const [openEcoTipPoiId, setOpenEcoTipPoiId] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -206,6 +209,18 @@ export default function IdeationChatView({
     [mapPois]
   );
 
+  const suggestedPlacesHistory = useMemo(() => {
+    const seen = new Set<string>();
+    messages.forEach((msg) => {
+      if (msg.sender === 'assistant') {
+        msg.suggestedPois?.forEach((p) => {
+          if (p.name?.trim()) seen.add(p.name.trim());
+        });
+      }
+    });
+    return Array.from(seen).slice(-30);
+  }, [messages]);
+
   const selectedIdeaIdSet = useMemo(() => new Set(selectedIdeaPoiIds), [selectedIdeaPoiIds]);
 
   const handleToggleIdeaPoi = (poiId: string) => {
@@ -223,6 +238,7 @@ export default function IdeationChatView({
     setLastFailedPrompt(null);
     setTripMemory({});
     setActiveConstraints([]);
+    setOpenEcoTipPoiId(null);
     setIsSplitMapCollapsed(false);
   };
 
@@ -272,7 +288,12 @@ export default function IdeationChatView({
             destination: parsed.destination || 'Đà Nẵng & Huế',
             days_count: parsed.days || 4,
             current_day: 1,
+            num_people: parsed.totalGuests || 2,
+            companions: parsed.whoDisplay || undefined,
+            budget_tier: parsed.budgetTier || 'standard',
+            total_budget: parsed.budgetAmountVnd ?? undefined,
             saved_ideas: selectedIdeaPoiIds,
+            suggested_places: suggestedPlacesHistory,
             active_constraints: activeConstraints,
             trip_memory: tripMemory,
             conversation_history: nextMessages.slice(-8).map((m) => ({
@@ -618,11 +639,13 @@ export default function IdeationChatView({
                       )}
                     </div>
 
-                    {/* Visual POI Cards chuẩn MindTripAI */}
+                    {/* Visual POI Cards */}
                     {msg.suggestedPois && msg.suggestedPois.length > 0 && (
                       <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
                         {msg.suggestedPois.map((poi) => {
                           const isSaved = selectedIdeaIdSet.has(poi.id);
+                          const ecoReason = getPoiGreenScoreExplanation(poi);
+                          const isEcoOpen = openEcoTipPoiId === poi.id;
                           const matchedExtracted = msg.extractedPlaces?.find((ep) => {
                             const epNorm = ep.name.toLowerCase();
                             const poiNorm = poi.name.toLowerCase();
@@ -632,9 +655,12 @@ export default function IdeationChatView({
                             <article
                               key={poi.id}
                               onMouseEnter={() => setHoveredPoiId(poi.id)}
-                              onMouseLeave={() => setHoveredPoiId(null)}
+                              onMouseLeave={() => {
+                                setHoveredPoiId(null);
+                                setOpenEcoTipPoiId((prev) => (prev === poi.id ? null : prev));
+                              }}
                               onClick={() => handleFocusPoiOnMap(poi.id)}
-                              className="w-[235px] shrink-0 snap-start rounded-2xl bg-white border border-neutral-200/90 hover:border-neutral-400 overflow-hidden shadow-2xs transition cursor-pointer flex flex-col"
+                              className="relative w-[235px] shrink-0 snap-start rounded-2xl bg-white border border-neutral-200/90 hover:border-neutral-400 overflow-hidden shadow-2xs transition cursor-pointer flex flex-col"
                             >
                               <div className="relative h-28 bg-neutral-100">
                                 <PoiImage
@@ -646,10 +672,26 @@ export default function IdeationChatView({
                                   city={normalizeCity(poi.city)}
                                   className="w-full h-full object-cover"
                                 />
-                                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-950/85 text-emerald-200 text-xs font-semibold inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  data-testid="poi-green-score-badge"
+                                  aria-label={`Điểm xanh ${poi.green_score}/100: ${ecoReason}`}
+                                  aria-expanded={isEcoOpen}
+                                  title={ecoReason}
+                                  onMouseEnter={() => setOpenEcoTipPoiId(poi.id)}
+                                  onFocus={() => setOpenEcoTipPoiId(poi.id)}
+                                  onBlur={() =>
+                                    setOpenEcoTipPoiId((prev) => (prev === poi.id ? null : prev))
+                                  }
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenEcoTipPoiId((prev) => (prev === poi.id ? null : poi.id));
+                                  }}
+                                  className="absolute top-2 left-2 min-h-[28px] px-2.5 py-0.5 rounded-full bg-emerald-950/90 hover:bg-emerald-900 text-emerald-100 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 z-10"
+                                >
                                   <Leaf size={11} />
-                                  {poi.green_score}/100
-                                </span>
+                                  <span>{poi.green_score}/100</span>
+                                </button>
                                 {matchedExtracted?.timestamp && (
                                   <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/75 text-white text-xs font-medium">
                                     {matchedExtracted.timestamp}
@@ -663,7 +705,7 @@ export default function IdeationChatView({
                                     e.stopPropagation();
                                     handleToggleIdeaPoi(poi.id);
                                   }}
-                                  className={`absolute top-2 right-2 w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                                  className={`absolute top-2 right-2 w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 z-10 ${
                                     isSaved
                                       ? 'bg-emerald-700 text-white'
                                       : 'bg-white/95 text-neutral-900 hover:bg-white'
@@ -673,6 +715,21 @@ export default function IdeationChatView({
                                   {isSaved ? <Check size={16} /> : <Plus size={16} />}
                                 </button>
                               </div>
+
+                              {isEcoOpen && (
+                                <div
+                                  role="tooltip"
+                                  data-testid="poi-green-score-tooltip"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="absolute top-10 left-2 right-2 z-20 rounded-xl bg-neutral-950/95 text-white px-2.5 py-2 text-xs leading-snug shadow-lg border border-emerald-500/30"
+                                >
+                                  <p className="font-semibold text-emerald-300 mb-0.5">
+                                    Điểm xanh {poi.green_score}/100
+                                  </p>
+                                  <p className="text-neutral-100">{ecoReason}</p>
+                                </div>
+                              )}
+
                               <div className="p-3 flex-1 flex flex-col justify-between gap-1">
                                 <div>
                                   <h3 className="text-[13px] font-bold text-neutral-950 line-clamp-1">
@@ -680,6 +737,12 @@ export default function IdeationChatView({
                                   </h3>
                                   <p className="text-xs text-neutral-600 line-clamp-1">
                                     {poi.city || poi.address}
+                                  </p>
+                                  <p
+                                    className="text-xs text-emerald-800 line-clamp-1 mt-0.5"
+                                    title={ecoReason}
+                                  >
+                                    🌱 {ecoReason}
                                   </p>
                                 </div>
                                 <div className="flex items-center justify-between pt-1 text-xs text-neutral-700">
@@ -698,12 +761,14 @@ export default function IdeationChatView({
                       </div>
                     )}
 
-                    {/* Follow-up prompt chips ở tin nhắn AI gần nhất */}
-                    {msgIdx === messages.length - 1 &&
-                      msg.nextSuggestedPrompts &&
-                      msg.nextSuggestedPrompts.length > 0 && (
+                    {/* Follow-up prompt chips ở tin nhắn AI gần nhất (không lặp câu hỏi dẫn) */}
+                    {(() => {
+                      if (msgIdx !== messages.length - 1) return null;
+                      const chips = sanitizeQuickReplyChips(msg.nextSuggestedPrompts, msg.text);
+                      if (chips.length === 0) return null;
+                      return (
                         <div className="flex flex-wrap gap-2 pt-1">
-                          {msg.nextSuggestedPrompts.slice(0, 3).map((chip) => (
+                          {chips.map((chip) => (
                             <button
                               key={chip}
                               type="button"
@@ -714,7 +779,8 @@ export default function IdeationChatView({
                             </button>
                           ))}
                         </div>
-                      )}
+                      );
+                    })()}
                   </div>
                 )}
               </div>

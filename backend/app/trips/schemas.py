@@ -447,6 +447,10 @@ class TripContextPayload(BaseModel):
     current_stop_name: str | None = Field(default=None, description="Tên điểm dừng hiện tại cần đổi")
     current_stop_id: str | None = Field(default=None, description="ID của điểm dừng hiện tại")
     saved_ideas: list[str] = Field(default_factory=list, description="Danh sách địa điểm người dùng đã lưu vào Ý tưởng")
+    suggested_places: list[str] = Field(
+        default_factory=list,
+        description="Danh sách tên hoặc ID các địa điểm AI đã gợi ý trong phiên chat hiện tại (dùng để chống lặp)",
+    )
     traveler_name: str | None = Field(default=None, description="Tên người dùng để cá nhân hóa xưng hô")
     companions: str | None = Field(default=None, description="Đối tượng đi cùng (bố mẹ lớn tuổi, trẻ nhỏ, cặp đôi, solo)")
     preferences: list[str] = Field(default_factory=list, description="Danh sách sở thích ưu tiên")

@@ -50,4 +50,16 @@ test('ChatAttachmentMenu implements 2 core views (file upload + link), staging, 
   assert.ok(overviewSrc.includes('StagedAttachmentChip'), 'TripOverviewView must stage attachments using StagedAttachmentChip');
   assert.ok(overviewSrc.includes('receipt-booking-card'), 'TripOverviewView must render receipt booking card');
   assert.ok(overviewSrc.includes('onPaste='), 'TripOverviewView must support pasting images directly');
+
+  // 5. Sprint Polish: 4 context vars + suggested_places, Green Score tooltip, and deduplicated Quick-Reply Chips
+  assert.ok(copilotSvcSrc.includes('suggested_places?: string[]'), 'TripContextPayload must declare suggested_places');
+  assert.ok(ideationSrc.includes('suggested_places: suggestedPlacesHistory'), 'IdeationChatView must pass suggested_places');
+  assert.ok(ideationSrc.includes('budget_tier: parsed.budgetTier'), 'IdeationChatView must pass budget_tier from context');
+  assert.ok(ideationSrc.includes('num_people: parsed.totalGuests'), 'IdeationChatView must pass travelers count');
+  assert.ok(overviewSrc.includes('suggested_places: suggestedPlacesHistory'), 'TripOverviewView must pass suggested_places');
+  assert.ok(ideationSrc.includes('poi-green-score-badge') && ideationSrc.includes('poi-green-score-tooltip'), 'IdeationChatView POI cards must render interactive Green Score tooltip');
+  assert.ok(overviewSrc.includes('poi-green-score-badge') && overviewSrc.includes('poi-green-score-tooltip'), 'TripOverviewView POI cards must render interactive Green Score tooltip');
+  assert.ok(utilsSrc.includes('sanitizeQuickReplyChips'), 'chatAttachmentUtils must export sanitizeQuickReplyChips');
+  assert.ok(utilsSrc.includes('normalizeCopilotMessageSingleCta'), 'chatAttachmentUtils must export normalizeCopilotMessageSingleCta');
+  assert.ok(utilsSrc.includes('getPoiGreenScoreExplanation'), 'chatAttachmentUtils must export getPoiGreenScoreExplanation');
 });

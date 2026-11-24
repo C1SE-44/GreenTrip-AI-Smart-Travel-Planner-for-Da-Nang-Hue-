@@ -28,13 +28,20 @@ import httpx
 from psycopg import Connection
 
 from app.config import get_settings
-from app.trips.copilot_consultant import finalize_copilot_response
+from app.trips.copilot_consultant import (
+    _format_budget_context,
+    collect_suggested_place_keys,
+    fetch_diverse_unvisited_pois,
+    finalize_copilot_response,
+)
 from app.trips.copilot_enrichment import (
     DEFAULT_POI_COORDS_KB,
     build_kg_explanation_for_poi,
     ensure_closing_ab_hook,
     format_three_layer_poi_bullet,
+    is_poi_allowed_in_city,
     resolve_poi_coordinates,
+    score_homonym_disambiguation,
 )
 from app.trips.copilot_intent import extract_persistent_constraints
 from app.trips.copilot_mutation import _insert_landmark_into_day
@@ -617,16 +624,20 @@ def _fetch_image_as_inline_data(image_url: str) -> dict[str, str] | None:
 
 
 _BOT_CHALLENGE_MARKERS = (
-    "please wait...",
-    "just a moment...",
+    "please wait",
+    "just a moment",
     "attention required!",
     "cloudflare",
     "verify you are human",
+    "verify to continue",
+    "security check",
+    "checking your browser",
     "enable javascript and cookies",
     "access denied",
     "log in to facebook",
     "you must log in to continue",
     "tiktok - make your day",
+    "video currently unavailable",
 )
 
 
@@ -808,18 +819,17 @@ def _analyze_attachment_with_gemini(
 Hãy phân tích dữ liệu đính kèm (metadata video, mô tả/mốc thời gian, phụ đề lời thoại tiếng Việt, ảnh bìa TikTok/video, ảnh chụp địa điểm hoặc hóa đơn đặt chỗ) và trả về DUY NHẤT 1 JSON hợp lệ.
 
 QUY TẮC BẮT BUỘC:
-1. **Kiểm tra khớp nội dung (Semantic Content Guard & Anti-Bot Guard)**:
-   - Nếu nguồn là link bài viết (`html_page`) mà nội dung tải về KHÔNG liên quan tới chủ đề du lịch / thành phố người dùng hỏi (VD: bài báo Showbiz/thể thao thay vì du lịch Huế): mở đầu thẳng thắn báo rõ nội dung tải về không khớp và gợi ý gửi lại link đúng hoặc chụp màn hình bài viết; sau đó vẫn cung cấp danh sách gợi ý du lịch xanh chất lượng cho điểm đến người dùng đang hỏi.
-   - Nếu `METADATA_SOURCE` là `blocked_by_platform` hoặc `url_only` (TikTok/Facebook chặn crawler hoặc yêu cầu đăng nhập): thông báo ngắn gọn rằng nền tảng đang giới hạn đọc tự động và gợi ý người dùng tải ảnh chụp màn hình qua nút `+`; ĐỒNG THỜI nếu có `DETECTED_URL_CITY` (VD `@danangdidau24` -> Đà Nẵng), BẮT BUỘC gợi ý địa điểm xanh thuộc `DETECTED_URL_CITY` chứ không lấy thành phố cũ trong ngữ cảnh!
+1. **Kiểm tra khớp nội dung (Semantic Content Guard & Smooth Link Handling)**:
+   - Nếu nguồn là link bài viết (`html_page`) mà nội dung tải về KHÔNG liên quan tới chủ đề du lịch / thành phố người dùng hỏi: đặt `"content_mismatch": true`, mở đầu gọn gàng 1 câu thân thiện mời người dùng nhập tên địa điểm đang quan tâm (ẩn hoàn toàn chi tiết kỹ thuật), sau đó gợi ý 2–3 điểm mới chưa có trong `SUGGESTED_PLACES_DO_NOT_REPEAT`.
+   - Nếu `METADATA_SOURCE` là `blocked_by_platform` hoặc `url_only`: mở đầu gọn 1 câu thân thiện báo chưa đọc được nội dung chi tiết từ đường dẫn (TUYỆT ĐỐI KHÔNG nhắc từ kỹ thuật như `Please wait...`, `crawler`, `bot`, `oEmbed`, `404`), mời người dùng nhập tên địa điểm và gợi ý 2–3 điểm mới thuộc đúng thành phố mục tiêu.
 2. **Đọc đa tầng & Trung thực nguồn dữ liệu**:
    - Nếu có `VIDEO_CAPTIONS_TRANSCRIPT`: đọc kỹ cả lời thoại (chú ý sửa lỗi chính tả nhận dạng giọng nói, VD "Núi Thành Tài" -> "Núi Thần Tài", "chùa Linh Ứng", "biển Mỹ Khê") để tìm thêm địa điểm reviewer nói bằng miệng mà mô tả bỏ sót.
    - Nếu có ảnh bìa TikTok/video đính kèm (`COVER_IMAGE_VISION_OCR = true`): đọc toàn bộ chữ / bảng giá / danh sách địa điểm in trên khung hình ảnh bìa!
    - Nói rõ ngắn gọn mình đọc được từ nguồn nào (mô tả + mốc giờ + lời thoại / ảnh khung hình / tiêu đề).
-3. **Bản sắc GreenTrip AI (Không ghi đè, không bịa ràng buộc)**:
-   - Luôn liệt kê **ĐẦY ĐỦ 100% địa điểm có trong video/ảnh/bài viết TRƯỚC** bằng danh sách đánh số `1.`, `2.`, `3.` kèm icon (`📍`, `⭐`, `🏨`, `🍴`, `🌉`, `🏛️`, `🏖️`) và **IN ĐẬM `**Tên địa điểm**`** để frontend gắn liên kết bản đồ.
-   - Phân biệt rõ tên riêng cụ thể vs mục chung chung (VD: `**Khách Sạn Đà Nẵng** *(mô tả không nêu tên khách sạn cụ thể)*`).
-   - TUYỆT ĐỐI KHÔNG tự bịa ràng buộc "đi xe máy một mình" hay tự ý xóa bớt địa điểm trong video.
-   - Sau danh sách chính, thêm 1 đoạn ngắn **🌱 Gợi ý xanh & Tối ưu lộ trình từ GreenTrip AI** (1-2 câu thực tế về gom cụm / phương tiện xanh) và kết thúc bằng 1 câu hỏi chốt A/B.
+3. **Bản sắc GreenTrip AI (Cá nhân hóa, Chống lặp & Single CTA)**:
+   - Với video/bài viết hợp lệ: liệt kê **ĐẦY ĐỦ 100% địa điểm có trong video/ảnh/bài viết TRƯỚC** bằng danh sách đánh số `1.`, `2.`, `3.` kèm icon và **IN ĐẬM `**Tên địa điểm**`**.
+   - Với phần gợi ý bổ sung: TUYỆT ĐỐI KHÔNG lặp lại địa điểm trong `SUGGESTED_PLACES_DO_NOT_REPEAT`; ước lượng chi phí theo `travelers` & `budget`; nêu 1 lý do điểm xanh cụ thể cho từng điểm (không lặp câu sáo rỗng khuyên thuê xe đạp/xe điện ở mọi lượt).
+   - **Single CTA**: Kết thúc bằng **DUY NHẤT 1 câu hỏi dẫn ngắn (tối đa 1 dòng)**; TUYỆT ĐỐI KHÔNG viết câu hỏi dạng lựa chọn "A hay B" / "A — ... hay B — ...".
 4. **Với ảnh địa điểm (`file`)**: Chốt thẳng tên địa danh ngay câu đầu tiên, ghi tên chuẩn vào `anchor_place_name`, sau đó gợi ý trải nghiệm & quán ăn gần đó.
 
 JSON SCHEMA:
@@ -854,9 +864,14 @@ JSON SCHEMA:
 Nếu không phải hóa đơn/vé đặt chỗ, đặt `receipt_info = null`. Chỉ trả JSON thuần."""
 
     parts: list[dict[str, Any]] = []
+    travelers_desc = f"{trip_context.num_people} người" + (
+        f" ({trip_context.companions})" if trip_context.companions else ""
+    )
+    budget_desc = _format_budget_context(trip_context)
     text_context_lines = [
         f"ATTACHMENT_TYPE: {attachment.type}",
-        f"TRIP_DESTINATION: {trip_context.destination}, DAYS: {trip_context.days_count}",
+        f"CONTEXT_4_VARS: location={trip_context.destination} | days={trip_context.days_count} | travelers={travelers_desc} | budget={budget_desc}",
+        f"SUGGESTED_PLACES_DO_NOT_REPEAT: {json.dumps(list(trip_context.suggested_places or []), ensure_ascii=False)}",
         f"USER_QUESTION: {user_message.strip() or 'Phân tích nội dung đính kèm và liệt kê các địa điểm nổi bật'}",
     ]
     if attachment.file_name:
@@ -1214,9 +1229,14 @@ def _query_matching_pois(
     limit: int = 8,
     anchor_place_name: str | None = None,
     enable_dynamic_geocoding: bool = True,
+    query_context: str = "",
+    excluded_place_keys: set[str] | None = None,
 ) -> list[CopilotSuggestedPoiItem]:
-    """Step 3: 1-to-1 Entity Linking per extracted place (PostGIS public.pois -> Geo-Anchors -> Nominatim/Google Places),
-    plus Haversine radius-aware nearby ranking when an uploaded photo identifies an anchor landmark."""
+    """Step 3: 1-to-1 Entity Linking per extracted place with hard location filter & homonym disambiguation."""
+    is_both = target_city == "Đà Nẵng & Huế"
+    allow_hoi_an = is_both or "hoi an" in strip_vietnamese_accents(f"{' '.join(keywords)} {query_context}").lower()
+    excluded = excluded_place_keys or set()
+
     city_codes = ["DANANG", "HUE"]
     if target_city == "Đà Nẵng":
         city_codes = ["DANANG"]
@@ -1258,10 +1278,14 @@ def _query_matching_pois(
 
     prepared_rows: list[tuple[str, str, tuple[Any, ...]]] = []
     for row in rows:
-        row_city_norm = strip_vietnamese_accents(str(row[4] or "")).lower()
-        if target_city == "Đà Nẵng" and "hue" in row_city_norm and "da nang" not in row_city_norm:
-            continue
-        if target_city == "Huế" and ("da nang" in row_city_norm or "hoi an" in row_city_norm) and "hue" not in row_city_norm:
+        if not is_poi_allowed_in_city(
+            poi_name=str(row[1] or ""),
+            poi_city=str(row[4] or ""),
+            poi_address=str(row[5] or ""),
+            target_city_display=target_city,
+            is_both_cities=is_both,
+            allow_hoi_an=allow_hoi_an,
+        ):
             continue
         name_norm = strip_vietnamese_accents(str(row[1])).lower().strip()
         haystack = strip_vietnamese_accents(f"{row[1]} {row[2]} {row[3] or ''} {row[5]} {row[6]}").lower()
@@ -1287,7 +1311,7 @@ def _query_matching_pois(
         if len(kw) < 3 or kw in ("da nang", "hue", "hoi an", "viet nam", "pho da nang", "khach san da nang"):
             continue
 
-        # 1a. Strong DB POI name match
+        # 1a. Strong DB POI name match + homonym disambiguation (e.g. Chùa Linh Ứng Sơn Trà vs Bà Nà)
         best_db: tuple[float, str, tuple[Any, ...]] | None = None
         for name_norm, _, row in prepared_rows:
             poi_id = str(row[0])
@@ -1299,10 +1323,11 @@ def _query_matching_pois(
                 cand_score = 95.0 - abs(len(name_norm) - len(kw)) * 0.5
             else:
                 continue
+            cand_score += score_homonym_disambiguation(str(row[1] or ""), str(row[5] or ""), f"{kw_raw} {query_context}")
             if best_db is None or cand_score > best_db[0]:
                 best_db = (cand_score, name_norm, row)
 
-        if best_db is not None:
+        if best_db is not None and best_db[0] >= 40.0:
             _, name_norm, row = best_db
             poi_item = _row_to_suggested_poi(row, constraints, len(results))
             results.append(poi_item)
@@ -1310,10 +1335,19 @@ def _query_matching_pois(
             used_names.add(name_norm)
             continue
 
-        # 1b. Verified Central Vietnam geo-anchor match
+        # 1b. Verified Central Vietnam geo-anchor match (respecting hard target_city filter)
         anchor_matched = False
         for anchor in _CENTRAL_VIETNAM_GEO_ANCHORS:
             if anchor["id"] in used_ids:
+                continue
+            if not is_poi_allowed_in_city(
+                poi_name=anchor["name"],
+                poi_city=anchor["city"],
+                poi_address=anchor["address"],
+                target_city_display=target_city,
+                is_both_cities=is_both,
+                allow_hoi_an=allow_hoi_an,
+            ):
                 continue
             anchor_norm = strip_vietnamese_accents(anchor["name"]).lower()
             if any(anchor_norm in ex or ex in anchor_norm for ex in used_names):
@@ -1331,9 +1365,16 @@ def _query_matching_pois(
         # 1c. Dynamic Geocoding fallback (Google Places if key set, else free OSM Nominatim)
         if geocode_budget > 0 and len(kw) >= 5:
             geocode_budget -= 1
-            city_hint = "Huế" if target_city == "Huế" else ("Hội An" if "hoi an" in kw else "Đà Nẵng")
+            city_hint = "Huế" if target_city == "Huế" else ("Hội An" if ("hoi an" in kw and allow_hoi_an) else "Đà Nẵng")
             geo = _geocode_central_vietnam_place(kw_raw, city_hint)
-            if geo is not None:
+            if geo is not None and is_poi_allowed_in_city(
+                poi_name=geo["name"],
+                poi_city=city_hint,
+                poi_address=geo.get("address"),
+                target_city_display=target_city,
+                is_both_cities=is_both,
+                allow_hoi_an=allow_hoi_an,
+            ):
                 slug_id = re.sub(r"[^a-z0-9]+", "-", kw).strip("-")[:32]
                 geo_id = f"geo-{slug_id}"
                 if geo_id not in used_ids:
@@ -1365,14 +1406,14 @@ def _query_matching_pois(
                     used_ids.add(geo_id)
                     used_names.add(kw)
 
-    # Pass 2: Radius-aware nearby DB POI ranking for uploaded landmark photos (like Mindtrip 0.3-5 km radius!)
+    # Pass 2: Radius-aware nearby DB POI ranking for uploaded landmark photos (excluding suggested_places)
     if anchor_place_name and results and len(results) < min(5, limit) and prepared_rows:
         anchor_lat = results[0].lat
         anchor_lng = results[0].lng
         if anchor_lat is not None and anchor_lng is not None:
             nearby_candidates: list[tuple[float, tuple[Any, ...]]] = []
-            for _, _, row in prepared_rows:
-                if str(row[0]) in used_ids:
+            for name_norm, _, row in prepared_rows:
+                if str(row[0]) in used_ids or name_norm in excluded:
                     continue
                 r_lat, r_lng = row[10], row[11]
                 if r_lat is None or r_lng is None:
@@ -1388,12 +1429,14 @@ def _query_matching_pois(
                 results.append(poi_item)
                 used_ids.add(poi_item.id)
 
-    # Pass 3: Broad DB haystack matches if slots still < 3
+    # Pass 3: Broad DB haystack matches if slots still < 3 (excluding already suggested places)
     if len(results) < min(3, limit) and prepared_rows:
         norm_keywords = [strip_vietnamese_accents(k).lower().strip() for k in keywords if k and len(k.strip()) >= 3]
         broad_scored: list[tuple[float, tuple[Any, ...]]] = []
         for name_norm, haystack, row in prepared_rows:
-            if str(row[0]) in used_ids:
+            if str(row[0]) in used_ids or name_norm in excluded:
+                continue
+            if any(ex and len(ex) >= 5 and (ex in name_norm or name_norm in ex) for ex in excluded):
                 continue
             g_val = float(row[8] or 0.75)
             score = g_val * (10.0 if g_val <= 1.0 else 0.1) + float(row[9] or 4.5) * 2.0
@@ -1414,6 +1457,17 @@ def _query_matching_pois(
             poi_item = _row_to_suggested_poi(row, constraints, len(results))
             results.append(poi_item)
             used_ids.add(poi_item.id)
+
+    if len(results) < min(3, limit):
+        backfill = fetch_diverse_unvisited_pois(
+            target_city_display=target_city,
+            is_both_cities=is_both,
+            excluded_keys=excluded | used_names,
+            constraints=constraints,
+            limit=min(3, limit) - len(results),
+            prefer_stays_or_local=True,
+        )
+        results.extend(backfill)
 
     return results[:limit]
 
@@ -1482,14 +1536,45 @@ def _build_extracted_places_list(
     return places
 
 
+def _build_smooth_unreadable_or_mismatch_reply(
+    platform: str,
+    detected_city: str,
+    suggested_pois: list[CopilotSuggestedPoiItem],
+    days_count: int = 3,
+    is_mismatch: bool = False,
+) -> str:
+    """Friendly 1-sentence notice hiding raw bot/technical errors + 2-3 fresh unvisited POIs + 1-line CTA."""
+    fresh_pois = suggested_pois[:3]
+    bullets = "\n".join(format_three_layer_poi_bullet(p) for p in fresh_pois)
+    if is_mismatch:
+        friendly_opening = (
+            f"Nội dung từ liên kết **{platform}** chưa khớp trực tiếp với hành trình khám phá **{detected_city}** — "
+            f"bạn có thể nhập tên địa điểm đang quan tâm để mình tra cứu và ghim ngay lên bản đồ nhé!"
+        )
+    else:
+        friendly_opening = (
+            f"Mình chưa đọc được trực tiếp nội dung chi tiết từ liên kết **{platform}** này — "
+            f"bạn có thể nhập tên địa điểm trong video để mình tra cứu và ghim ngay lên bản đồ nhé!"
+        )
+    poi_block = (
+        f"\n\n**Gợi ý mới mẻ tại {detected_city} cho hành trình của bạn:**\n{bullets}"
+        if bullets
+        else ""
+    )
+    closing_cta = f"Bạn có muốn mình ghép các địa điểm tại {detected_city} này vào lịch trình {days_count} ngày không?"
+    return f"{friendly_opening}{poi_block}\n\n{closing_cta}"
+
+
 def _build_deterministic_video_reply(
     link_meta: dict[str, str] | None,
     detected_city: str,
     suggested_pois: list[CopilotSuggestedPoiItem],
+    days_count: int = 3,
 ) -> str:
-    """Clean Mindtrip-style fallback reply when Gemini API is unavailable."""
+    """Clean fallback reply when Gemini API is unavailable."""
     platform = link_meta["platform"] if link_meta else "Bài viết du lịch"
-    title_display = (link_meta.get("title") if link_meta else "") or "đường dẫn bạn vừa gửi"
+    title_raw = (link_meta.get("title") if link_meta else "") or ""
+    title_display = title_raw or "đường dẫn bạn vừa gửi"
     chapters = [line.strip() for line in (link_meta.get("chapters") or "").splitlines() if line.strip()] if link_meta else []
     source_kind = link_meta.get("metadata_source", "title_only") if link_meta else "url_only"
 
@@ -1498,27 +1583,26 @@ def _build_deterministic_video_reply(
         poi_section = ""
         if suggested_pois:
             bullets = "\n".join(format_three_layer_poi_bullet(p) for p in suggested_pois)
-            poi_section = f"\n\n**🌱 Gợi ý xanh & Các điểm đã khớp tọa độ lên bản đồ:**\n{bullets}"
+            poi_section = f"\n\n**🌱 Các địa điểm đã khớp tọa độ lên bản đồ:**\n{bullets}"
         return (
             f"Mình đã đọc xong phần mô tả và các mốc thời gian của video **YouTube** (*{title_display[:110]}*):\n\n"
             f"**Các mục / địa điểm có trong video:**\n{chapter_lines}"
             f"{poi_section}\n\n"
-            f"Bạn muốn mình **A — Gom các điểm này thành lịch trình {detected_city} tối ưu theo tuyến gần nhau**, "
-            f"hay **B — Gợi ý thêm quán ăn & trải nghiệm xanh gần từng điểm trên**?"
+            f"Bạn có muốn mình sắp xếp các địa điểm trên thành lịch trình {detected_city} {days_count} ngày theo cụm gần nhau không?"
+        )
+
+    if source_kind in ("blocked_by_platform", "url_only") and not title_raw:
+        return _build_smooth_unreadable_or_mismatch_reply(
+            platform=platform,
+            detected_city=detected_city,
+            suggested_pois=suggested_pois,
+            days_count=days_count,
+            is_mismatch=False,
         )
 
     bullets = "\n".join(format_three_layer_poi_bullet(p) for p in suggested_pois)
-    if source_kind == "blocked_by_platform":
-        return (
-            f"Trang **{platform}** hiện đang bật cơ chế chống đọc tự động / yêu cầu đăng nhập nên mình chưa tải được nội dung chi tiết bên trong video. "
-            f"Bạn có thể **chụp ảnh màn hình** khung hình địa điểm rồi tải lên qua nút **+** để mình đọc trực tiếp giúp bạn!\n\n"
-            f"Trong lúc đó, dựa trên khu vực **{detected_city}**, đây là các điểm đến xanh khớp nhất đã ghim lên bản đồ:\n"
-            f"{bullets if bullets else f'- Gợi ý cụm trải nghiệm bản địa tại **{detected_city}** ít đông đúc và dễ ghép tuyến.'}\n\n"
-            f"Bạn muốn mình **A — Gom ngay các điểm này vào lịch trình {detected_city} theo cụm gần nhau**, "
-            f"hay **B — Gợi ý thêm quán ăn & cà phê bản địa ít đông ở {detected_city}**?"
-        )
     scope_note = (
-        " *(lưu ý: đường dẫn này không công khai mô tả chi tiết nên mình đối chiếu dựa trên thông tin hiện có)*"
+        " *(đối chiếu từ tiêu đề công khai của đường dẫn)*"
         if source_kind == "title_only"
         else ""
     )
@@ -1526,9 +1610,8 @@ def _build_deterministic_video_reply(
         f"Mình đã đọc xong đường dẫn từ **{platform}** (*{title_display[:100]}*){scope_note} "
         f"và đối chiếu với bản đồ du lịch xanh **{detected_city}**.\n\n"
         f"**Các địa điểm khớp nhất đã ghim lên bản đồ:**\n"
-        f"{bullets if bullets else f'- Gợi ý cụm trải nghiệm bản địa tại **{detected_city}** ít đông đúc và dễ ghép tuyến.'}\n\n"
-        f"Bạn muốn mình **A — Gom ngay các điểm này vào lịch trình mới theo cụm gần nhau**, "
-        f"hay **B — Chỉ lưu vào kho Ý tưởng để bạn tự chọn ngày**?"
+        f"{bullets if bullets else f'- Cụm trải nghiệm bản địa tại **{detected_city}** ít đông đúc và dễ ghép tuyến.'}\n\n"
+        f"Bạn có muốn mình ghép ngay các địa điểm này vào lịch trình {days_count} ngày theo cụm gần nhau không?"
     )
 
 
@@ -1624,6 +1707,7 @@ def answer_attached_source_followup(
         constraints=constraints,
         limit=6,
         enable_dynamic_geocoding=False,
+        query_context=f"{title} {' '.join(places)} {request.message or ''}",
     )
 
     if places:
@@ -1631,14 +1715,14 @@ def answer_attached_source_followup(
         reply_text = (
             f"Dựa trên dữ liệu đã trích xuất từ **{platform}** (*{title[:100]}*), toàn bộ các địa điểm gồm:\n\n"
             f"{numbered}\n\n"
-            f"Bạn muốn mình **A — Sắp xếp các điểm này thành lịch trình {ctx.days_count} ngày theo cụm gần nhau**, "
-            f"hay **B — Bổ sung thêm quán ăn bản địa & điểm xanh gần từng địa điểm trên**?"
+            f"Bạn có muốn mình sắp xếp các địa điểm trên thành lịch trình {ctx.days_count} ngày tối ưu theo cụm gần nhau không?"
         )
     else:
         reply_text = _build_deterministic_video_reply(
             {"platform": platform, "title": title, "metadata_source": source_kind, "chapters": ""},
             detected_city,
             suggested_pois,
+            days_count=ctx.days_count,
         )
 
     raw_resp = CopilotChatResponse(
@@ -1660,7 +1744,13 @@ def answer_attached_source_followup(
         ],
         green_impact_summary=f"Đã đồng bộ toàn bộ địa điểm từ {platform} lên bản đồ {detected_city}.",
     )
-    finalized = finalize_copilot_response(raw_resp, ctx, constraints, connection=connection)
+    finalized = finalize_copilot_response(
+        raw_resp,
+        ctx,
+        constraints,
+        connection=connection,
+        protected_keywords=keywords if places else None,
+    )
     finalized.trip_memory["attached_source"] = raw_mem
     return finalized
 
@@ -1669,12 +1759,13 @@ def process_copilot_attachment(
     request: CopilotChatRequest,
     connection: Connection,
 ) -> CopilotChatResponse:
-    """Handle Mindtrip-style '+' attachments: Upload a file, Add a link, or Add a receipt."""
+    """Handle '+' multimodal attachments: Upload a file, Add a link, or Add a receipt."""
     attachment = request.attachment
     assert attachment is not None
 
     ctx = request.trip_context
     constraints = extract_persistent_constraints(request.message or "", ctx)
+    excluded_keys = collect_suggested_place_keys(ctx)
 
     # Step 1: Multi-layer Metadata Extraction (YouTube Description+Chapters+Transcript / TikTok Cover OCR / HTML)
     link_meta: dict[str, str] | None = None
@@ -1689,13 +1780,28 @@ def process_copilot_attachment(
         else ctx
     )
 
-    # Step 2: LLM NER + Semantic Guard + Vision OCR
-    gemini_result = _analyze_attachment_with_gemini(
-        attachment=attachment,
-        user_message=request.message or "",
-        trip_context=ctx_for_gemini,
-        link_meta=link_meta,
+    is_unreadable_link = bool(
+        attachment.type == "link"
+        and link_meta
+        and link_meta.get("metadata_source") in ("blocked_by_platform", "url_only")
+        and not link_meta.get("title")
+        and not link_meta.get("chapters")
+        and not link_meta.get("transcript")
+        and not link_meta.get("thumbnail_url")
     )
+
+    # Step 2: LLM NER + Semantic Guard + Vision OCR (skipped cleanly for unreadable bot-blocked links)
+    gemini_result = (
+        None
+        if is_unreadable_link
+        else _analyze_attachment_with_gemini(
+            attachment=attachment,
+            user_message=request.message or "",
+            trip_context=ctx_for_gemini,
+            link_meta=link_meta,
+        )
+    )
+    is_content_mismatch = bool(isinstance(gemini_result, dict) and gemini_result.get("content_mismatch"))
 
     extracted_names: list[str] = []
     if gemini_result and isinstance(gemini_result.get("extracted_places"), list):
@@ -1740,29 +1846,37 @@ def process_copilot_attachment(
     )
 
     keywords: list[str] = []
-    if gemini_result and isinstance(gemini_result.get("place_keywords"), list):
-        keywords.extend(str(k).strip() for k in gemini_result["place_keywords"] if str(k).strip())
-    for name in extracted_names:
-        if name not in keywords:
-            keywords.append(name)
-    for fb_kw in _extract_fallback_keywords(combined_signal_text):
-        if fb_kw not in keywords:
-            keywords.append(fb_kw)
-    keywords = keywords[:12]
+    if not is_unreadable_link and not is_content_mismatch:
+        if gemini_result and isinstance(gemini_result.get("place_keywords"), list):
+            keywords.extend(str(k).strip() for k in gemini_result["place_keywords"] if str(k).strip())
+        for name in extracted_names:
+            if name not in keywords:
+                keywords.append(name)
+        for fb_kw in _extract_fallback_keywords(combined_signal_text):
+            if fb_kw not in keywords:
+                keywords.append(fb_kw)
+        keywords = keywords[:12]
 
     # Step 3: 2-tier Entity Linking + Geocoding + Radius-aware nearby search (for photo landmarks)
     effective_ctx = ctx.model_copy(update={"destination": detected_city})
+    poi_limit = 3 if (is_unreadable_link or is_content_mismatch) else (8 if attachment.type == "link" else 5)
     suggested_pois = _query_matching_pois(
         connection=connection,
         keywords=keywords,
         target_city=detected_city,
         constraints=constraints,
-        limit=8 if attachment.type == "link" else 5,
+        limit=poi_limit,
         anchor_place_name=anchor_place_name if attachment.type in ("file", "receipt") else None,
-        enable_dynamic_geocoding=attachment.type == "link",
+        enable_dynamic_geocoding=(attachment.type == "link" and not is_unreadable_link and not is_content_mismatch),
+        query_context=combined_signal_text,
+        excluded_place_keys=excluded_keys,
     )
 
-    extracted_places = _build_extracted_places_list(gemini_result, link_meta, suggested_pois)
+    extracted_places = (
+        []
+        if (is_unreadable_link or is_content_mismatch)
+        else _build_extracted_places_list(gemini_result, link_meta, suggested_pois)
+    )
 
     updated_outline: list[dict[str, Any]] | None = None
     mutation_summary: list[str] = []
@@ -1780,23 +1894,43 @@ def process_copilot_attachment(
     if attachment.type == "link":
         platform = link_meta["platform"] if link_meta else detect_link_platform(attachment.url or "")
         source_kind = link_meta.get("metadata_source", "title_only") if link_meta else "url_only"
-        if direct_md and len(direct_md) >= 40:
-            ab_fallback = (
-                f"Bạn muốn mình **A — Gom các địa điểm này thành lịch trình {ctx.days_count} ngày theo cụm gần nhau**, "
-                f"hay **B — Gợi ý thêm quán ăn bản địa & trải nghiệm xanh gần từng điểm**?"
+        if is_unreadable_link or is_content_mismatch:
+            reply_text = _build_smooth_unreadable_or_mismatch_reply(
+                platform=platform,
+                detected_city=detected_city,
+                suggested_pois=suggested_pois,
+                days_count=ctx.days_count,
+                is_mismatch=is_content_mismatch,
             )
-            reply_text = ensure_closing_ab_hook(direct_md, ab_fallback)
+        elif direct_md and len(direct_md) >= 40:
+            single_cta = (
+                f"Bạn có muốn mình sắp xếp các địa điểm trên thành lịch trình {ctx.days_count} ngày theo cụm gần nhau không?"
+            )
+            reply_text = ensure_closing_ab_hook(direct_md, single_cta)
         else:
-            reply_text = _build_deterministic_video_reply(link_meta, detected_city, suggested_pois)
+            reply_text = _build_deterministic_video_reply(
+                link_meta,
+                detected_city,
+                suggested_pois,
+                days_count=ctx.days_count,
+            )
 
-        next_prompts = [
-            f"Xếp các điểm từ {platform} này thành lịch trình {ctx.days_count} ngày",
-            f"Gợi ý thêm quán ăn bản địa gần các điểm này ở {detected_city}",
-            "Ước tính chi phí và phương tiện di chuyển xanh cho tuyến này",
-        ]
+        next_prompts = (
+            [
+                f"Ghép các điểm gợi ý tại {detected_city} vào lịch trình {ctx.days_count} ngày",
+                f"Gợi ý quán ăn bản địa ít đông ở {detected_city}",
+                f"Gợi ý homestay / lưu trú xanh tại {detected_city}",
+            ]
+            if (is_unreadable_link or is_content_mismatch)
+            else [
+                f"Xếp các điểm từ {platform} này thành lịch trình {ctx.days_count} ngày",
+                f"Gợi ý thêm quán ăn bản địa gần các điểm này ở {detected_city}",
+                "Ước tính chi phí và phương tiện di chuyển xanh cho tuyến này",
+            ]
+        )
         reasoning_trace = (
             f"1. Metadata ({platform}, source={source_kind}): Trích xuất đa tầng an toàn (SSRF-guarded).\n"
-            f"2. NER địa điểm ({len(extracted_places)} mục): {keywords[:8] or ['du lịch xanh miền Trung']} -> Khu vực: {detected_city}.\n"
+            f"2. NER địa điểm ({len(extracted_places)} mục): {keywords[:8] or ['gợi ý điểm mới chưa xuất hiện']} -> Khu vực: {detected_city}.\n"
             f"3. Entity Linking & Map Pinning: Ghim thành công {len(suggested_pois)} địa điểm có tọa độ thật lên bản đồ."
         )
 
@@ -1858,8 +1992,7 @@ def process_copilot_attachment(
             reply_text = (
                 f"✅ Mình đã nhận tệp **{attachment.file_name or 'hóa đơn'}** — tuy nhiên xác nhận **{r_title}** ({r_time}{date_line}) "
                 f"đã được ghi nhận trong hành trình trước đó nên mình **không thêm trùng** nữa.\n\n"
-                f"Bạn muốn mình **A — Gợi ý thêm quán ăn xanh quanh {r_title}**, "
-                f"hay **B — Lên phương án di chuyển xanh từ sân bay / nhà ga về đây**?"
+                f"Bạn có muốn mình gợi ý thêm quán ăn bản địa xanh gần {r_title} không?"
             )
         else:
             reply_text = (
@@ -1873,8 +2006,7 @@ def process_copilot_attachment(
                     else "\n"
                 )
                 + (f"\n**🌱 Gợi ý điểm ăn uống / tham quan xanh gần nơi bạn đặt chỗ:**\n{bullets}\n\n" if bullets else "\n")
-                + "Bạn muốn mình **A — Tạo ngay chuyến đi & xếp quán ăn bản địa gần điểm check-in này**, "
-                + "hay **B — Gợi ý phương tiện di chuyển xanh (buýt/taxi điện) từ ga/sân bay tới đây**?"
+                + f"Bạn có muốn mình xếp luôn lịch trình ăn uống và tham quan quanh {r_title} không?"
             )
 
         next_prompts = [
@@ -1890,11 +2022,10 @@ def process_copilot_attachment(
 
     else:  # attachment.type == "file" (photo, screenshot, PDF)
         if direct_md and len(direct_md) >= 40:
-            ab_fallback = (
-                f"Bạn muốn mình **A — Ghép ngay điểm này & các quán gần đây vào lịch trình {ctx.days_count} ngày**, "
-                f"hay **B — Tìm thêm góc chụp / quán bản địa cùng phong cách nhưng ít đông hơn**?"
+            single_cta = (
+                f"Bạn có muốn mình ghép các địa điểm này vào lịch trình {ctx.days_count} ngày theo cụm gần nhau không?"
             )
-            reply_text = ensure_closing_ab_hook(direct_md, ab_fallback)
+            reply_text = ensure_closing_ab_hook(direct_md, single_cta)
         else:
             summary_line = (
                 str(gemini_result["summary"])
@@ -1906,7 +2037,7 @@ def process_copilot_attachment(
                 f"{summary_line}\n\n"
                 f"**Các địa điểm thực tế tại {detected_city} khớp với tệp của bạn:**\n"
                 f"{bullets if bullets else f'- Các điểm trải nghiệm xanh tiêu biểu tại **{detected_city}**.'}\n\n"
-                f"Bạn muốn mình **A — Ghép ngay các điểm này vào lịch trình {ctx.days_count} ngày**, hay **B — Tìm thêm các góc chụp / quán bản địa cùng phong cách nhưng ít đông hơn**?"
+                f"Bạn có muốn mình ghép các địa điểm này vào lịch trình {ctx.days_count} ngày theo cụm gần nhau không?"
             )
         next_prompts = [
             f"Ghép các điểm từ ảnh này vào lịch trình {detected_city}",
@@ -1919,6 +2050,11 @@ def process_copilot_attachment(
             f"3. Entity Linking & Spatial Radius Pinning: Ghim thành công {len(suggested_pois)} thẻ POI thật lên bản đồ."
         )
 
+    explicit_protected = (
+        [p.name for p in extracted_places if p.name]
+        if (extracted_places and not is_unreadable_link and not is_content_mismatch)
+        else None
+    )
     raw_resp = CopilotChatResponse(
         reply_text=reply_text,
         intent=intent,
@@ -1940,6 +2076,7 @@ def process_copilot_attachment(
         effective_ctx,
         constraints,
         connection=connection,
+        protected_keywords=explicit_protected,
     )
     finalized.trip_memory["attached_source"] = _format_source_memory_payload(
         attachment=attachment,

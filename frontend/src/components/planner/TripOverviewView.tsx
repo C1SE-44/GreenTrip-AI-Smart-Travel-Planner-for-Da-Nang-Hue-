@@ -67,6 +67,8 @@ import {
   fileToReadyAttachment,
   getAttachmentPlaceholder,
   getDefaultAttachmentPrompt,
+  getPoiGreenScoreExplanation,
+  sanitizeQuickReplyChips,
   toAttachmentSummary,
   type ReadyAttachment,
 } from './chatAttachmentUtils';
@@ -194,6 +196,7 @@ export default function TripOverviewView({
   const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
   const [activeConstraints, setActiveConstraints] = useState<string[]>([]);
   const [tripMemory, setTripMemory] = useState<Record<string, string>>({});
+  const [openEcoTipPoiId, setOpenEcoTipPoiId] = useState<string | null>(null);
   const [quickPrompts, setQuickPrompts] = useState<string[]>(() => {
     const dest = (trip.destination || '').toLowerCase();
     if (dest.includes('huế') && !dest.includes('đà nẵng')) {
@@ -898,6 +901,26 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       content: m.text,
     }));
 
+    const suggestedPlacesHistory = Array.from(
+      new Set(
+        chatMessages
+          .filter((m) => m.sender === 'ai')
+          .flatMap((m) => (m.suggestedPois || []).map((p) => p.name?.trim() || ''))
+          .filter(Boolean)
+      )
+    ).slice(-30);
+
+    const resolvedBudgetTier: 'budget' | 'standard' | 'luxury' | undefined =
+      trip.budgetTier === 'budget' || trip.budgetTier === 'standard' || trip.budgetTier === 'luxury'
+        ? trip.budgetTier
+        : categoryBudgets.activities === '$$$' || categoryBudgets.dining === '$$$'
+          ? 'luxury'
+          : categoryBudgets.activities === '$' || categoryBudgets.dining === '$'
+            ? 'budget'
+            : categoryBudgets.activities === '$$' || categoryBudgets.dining === '$$'
+              ? 'standard'
+              : undefined;
+
     setChatMessages((prev) => [...prev, newUserMsg]);
     setChatInput('');
     setPendingAttachment(null);
@@ -915,13 +938,17 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             days_count: trip.daysCount || 4,
             current_day: dayTargetForAdd || 1,
             traveler_name: currentUser?.full_name?.trim() || undefined,
+            companions:
+              children + infants > 0
+                ? 'Gia đình có trẻ nhỏ'
+                : (trip.peopleCount || adults) > 2
+                  ? `Nhóm ${trip.peopleCount || adults} người`
+                  : undefined,
             saved_ideas: tripIdeas,
+            suggested_places: suggestedPlacesHistory,
             total_budget: trip.totalBudget && trip.totalBudget > 0 ? trip.totalBudget : undefined,
             num_people: trip.peopleCount || 2,
-            budget_tier:
-              trip.budgetTier === 'budget' || trip.budgetTier === 'standard' || trip.budgetTier === 'luxury'
-                ? trip.budgetTier
-                : undefined,
+            budget_tier: resolvedBudgetTier,
             active_constraints: activeConstraints,
             trip_memory: tripMemory,
             conversation_history: historyForRequest,
@@ -1343,29 +1370,42 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           </div>
 
           {/* MVP #3: Removable Session Memory Badges (Bộ nhớ ngữ cảnh xuyên suốt) */}
-          {Object.keys(tripMemory).length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 mb-2.5 pb-2 border-b border-gray-100 shrink-0">
-              <span className="text-[10.5px] font-bold text-emerald-800 uppercase tracking-wider mr-0.5">
-                AI đang ghi nhớ:
-              </span>
-              {Object.entries(tripMemory).map(([key, label]) => (
-                <span
-                  key={key}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-900 text-[11px] font-medium shadow-2xs"
-                >
-                  <span>{label}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveMemoryConstraint(key)}
-                    className="w-3.5 h-3.5 rounded-full hover:bg-emerald-200/80 flex items-center justify-center text-emerald-700 hover:text-emerald-950 cursor-pointer ml-0.5"
-                    title="Gỡ bỏ ràng buộc này"
-                  >
-                    <X size={10} />
-                  </button>
+          {(() => {
+            const hiddenMemoryKeys = new Set([
+              'attached_source',
+              'attached_source_title',
+              'attached_source_url',
+              'processed_receipts',
+              'suggested_places',
+            ]);
+            const visibleEntries = Object.entries(tripMemory).filter(
+              ([key, label]) => !hiddenMemoryKeys.has(key) && Boolean(label?.trim())
+            );
+            if (visibleEntries.length === 0) return null;
+            return (
+              <div className="flex flex-wrap items-center gap-1.5 mb-2.5 pb-2 border-b border-gray-100 shrink-0">
+                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider mr-0.5">
+                  AI đang ghi nhớ:
                 </span>
-              ))}
-            </div>
-          )}
+                {visibleEntries.map(([key, label]) => (
+                  <span
+                    key={key}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-900 text-xs font-medium shadow-2xs"
+                  >
+                    <span>{label}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMemoryConstraint(key)}
+                      className="w-4 h-4 rounded-full hover:bg-emerald-200/80 flex items-center justify-center text-emerald-700 hover:text-emerald-950 cursor-pointer ml-0.5"
+                      title="Gỡ bỏ ràng buộc này"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Mindtrip Action Cards (1 / 2 & 2 / 2): Gợi ý bước tiếp theo gọn gàng */}
           {showActionCards && !isAiThinking && (
@@ -1650,6 +1690,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <div className="space-y-2 pt-1 w-full">
                     {msg.suggestedPois.map((p, pIdx) => {
                       const isSaved = isPoiSavedInIdeas(p);
+                      const ecoReason = getPoiGreenScoreExplanation(p);
+                      const isEcoOpen = openEcoTipPoiId === p.id;
                       const img = p.image_url || getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
                       const matchedExtracted = msg.extractedPlaces?.find((ep) => {
                         const epNorm = ep.name.toLowerCase();
@@ -1660,9 +1702,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                         <div
                           key={p.id}
                           onMouseEnter={() => handleDebouncedHover(p.id)}
-                          onMouseLeave={() => handleDebouncedHover(null)}
+                          onMouseLeave={() => {
+                            handleDebouncedHover(null);
+                            setOpenEcoTipPoiId((prev) => (prev === p.id ? null : prev));
+                          }}
                           onClick={() => setSelectedMapPoiId(p.id)}
-                          className="p-2.5 rounded-xl border border-gray-200/90 hover:border-black/40 bg-gray-50/70 hover:bg-white transition-all flex flex-col sm:flex-row gap-2.5 items-start sm:items-center justify-between shadow-2xs group w-full cursor-pointer"
+                          className="relative p-2.5 rounded-xl border border-gray-200/90 hover:border-black/40 bg-gray-50/70 hover:bg-white transition-all flex flex-col sm:flex-row gap-2.5 items-start sm:items-center justify-between shadow-2xs group w-full cursor-pointer"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className="relative shrink-0">
@@ -1689,21 +1734,46 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                                     {matchedExtracted.timestamp}
                                   </span>
                                 )}
-                                <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 font-semibold shrink-0">
+                                <button
+                                  type="button"
+                                  data-testid="poi-green-score-badge"
+                                  aria-label={`Điểm xanh ${p.green_score || 90}/100: ${ecoReason}`}
+                                  aria-expanded={isEcoOpen}
+                                  title={ecoReason}
+                                  onMouseEnter={() => setOpenEcoTipPoiId(p.id)}
+                                  onFocus={() => setOpenEcoTipPoiId(p.id)}
+                                  onBlur={() =>
+                                    setOpenEcoTipPoiId((prev) => (prev === p.id ? null : prev))
+                                  }
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenEcoTipPoiId((prev) => (prev === p.id ? null : p.id));
+                                  }}
+                                  className="text-xs px-2 py-0.5 rounded-full bg-emerald-100/90 hover:bg-emerald-200 text-emerald-900 font-semibold shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                                >
                                   🌱 {p.green_score || 90}/100
-                                </span>
+                                </button>
                                 {p.rating && (
-                                  <span className="text-[11px] font-semibold text-amber-600 flex items-center gap-0.5 shrink-0">
+                                  <span className="text-xs font-semibold text-amber-700 flex items-center gap-0.5 shrink-0">
                                     <Star size={11} className="fill-amber-500 text-amber-500" />
                                     {p.rating}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11.5px] text-gray-600 line-clamp-2 mt-0.5">
+                              {isEcoOpen && (
+                                <p
+                                  role="tooltip"
+                                  data-testid="poi-green-score-tooltip"
+                                  className="mt-1 rounded-lg bg-emerald-950 text-emerald-50 px-2.5 py-1.5 text-xs leading-snug"
+                                >
+                                  🌱 {ecoReason}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">
                                 {p.kg_explanation || p.swap_reason || p.address}
                               </p>
                               {(p.price_range_display || p.budget_delta) && (
-                                <p className="text-[10.5px] font-medium text-gray-500 mt-0.5">
+                                <p className="text-xs font-medium text-gray-600 mt-0.5">
                                   💰 {p.price_range_display || p.budget_delta}
                                 </p>
                               )}
@@ -1790,20 +1860,28 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             <div ref={chatEndRef} />
           </div>
 
-          {/* Chip gợi ý câu hỏi (3 chip động bám sát ngữ cảnh hội thoại) */}
-          <div className="flex flex-wrap gap-1.5 w-full pt-2 pb-2 shrink-0">
-            {quickPrompts.slice(0, 3).map((q, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleSendChatMessage(q)}
-                className="text-xs bg-gray-50 hover:bg-gray-100 hover:border-gray-300 border border-gray-200/80 rounded-full px-3 py-1.5 text-gray-700 transition cursor-pointer active:scale-95 truncate max-w-full"
-                title={q}
-              >
-                💡 {q}
-              </button>
-            ))}
-          </div>
+          {/* Chip gợi ý câu hỏi (3 chip động không lặp câu hỏi dẫn) */}
+          {(() => {
+            const lastAiText =
+              [...chatMessages].reverse().find((m) => m.sender === 'ai')?.text || '';
+            const chips = sanitizeQuickReplyChips(quickPrompts, lastAiText);
+            if (chips.length === 0) return null;
+            return (
+              <div className="flex flex-wrap gap-1.5 w-full pt-2 pb-2 shrink-0">
+                {chips.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => handleSendChatMessage(q)}
+                    className="min-h-[36px] text-xs bg-gray-50 hover:bg-gray-100 hover:border-gray-300 border border-gray-200/80 rounded-full px-3 py-1.5 text-gray-700 transition cursor-pointer active:scale-95 truncate max-w-full"
+                    title={q}
+                  >
+                    💡 {q}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Ô nhập tin nhắn floating ghim đáy (+ Pop-up Đính kèm Đa phương thức) */}
           <div className="w-full shrink-0 relative">

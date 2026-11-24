@@ -256,3 +256,43 @@ test('Entity linking disambiguates Linh Ung pagodas, blocks cross-province pins,
   assert.ok(overviewSrc.includes('Bấm để xem giải thích 4 trụ cột Điểm xanh'));
   assert.ok(ideationSrc.includes('ExplanationModal') && ideationSrc.includes('Bấm để xem giải thích 4 trụ cột Điểm xanh'));
 });
+
+test('Guest draft trips merge seamlessly on login, /planner hides duplicate empty CTAs, and map supports area search & mobile scroll lock', async () => {
+  const accountSrc = await readFile(path.join(root, 'src/utils/accountTrips.ts'), 'utf8');
+  const compiledAccount = ts.transpileModule(accountSrc, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const accountMod = await import(`data:text/javascript;base64,${Buffer.from(compiledAccount).toString('base64')}`);
+
+  const backing = new Map();
+  const mockStorage = {
+    getItem: (k) => (backing.has(k) ? backing.get(k) : null),
+    setItem: (k, v) => backing.set(k, String(v)),
+    removeItem: (k) => backing.delete(k),
+  };
+
+  accountMod.writeGuestTrips(mockStorage, [
+    { id: 'trip-guest-1', title: 'Chuyến đi Huế 3 ngày', destination: 'Huế', daysCount: 3, startDate: '', peopleCount: 2, createdAt: '' },
+    { id: 'sample-1', title: 'Sample', destination: 'Đà Nẵng', daysCount: 2, startDate: '', peopleCount: 2, createdAt: '' },
+  ]);
+  assert.strictEqual(accountMod.readGuestTrips(mockStorage).length, 1);
+
+  const loaded = await accountMod.loadAccountTrips(mockStorage, 'user-42', async () => [
+    { trip_id: 'trip-owned-1', title: 'Đà Nẵng', destination: 'Đà Nẵng', days_count: 2 },
+  ]);
+  assert.deepStrictEqual(
+    loaded.map((t) => t.id),
+    ['trip-guest-1', 'trip-owned-1']
+  );
+  assert.strictEqual(accountMod.readGuestTrips(mockStorage).length, 0);
+
+  const exploreSrc = await readFile(path.join(root, 'src/pages/ExplorePage.tsx'), 'utf8');
+  const poiMapSrc = await readFile(path.join(root, 'src/components/poi/PoiMap.tsx'), 'utf8');
+  const bannerSrc = await readFile(path.join(root, 'src/components/planner/CentralVietnamAdvisoryBanner.tsx'), 'utf8');
+
+  assert.ok(exploreSrc.includes("!(tripsSubTab === 'trips' && userTrips.length === 0)"));
+  assert.ok(exploreSrc.includes('hasSavedForPlanner'));
+  assert.ok(poiMapSrc.includes('Tìm trong khu vực này'));
+  assert.ok(poiMapSrc.includes('Chạm để di chuyển bản đồ') && poiMapSrc.includes('Khóa bản đồ để cuộn trang'));
+  assert.ok(bannerSrc.includes('onSwapOutdoorForRain') && bannerSrc.includes('Đổi điểm trong nhà'));
+});

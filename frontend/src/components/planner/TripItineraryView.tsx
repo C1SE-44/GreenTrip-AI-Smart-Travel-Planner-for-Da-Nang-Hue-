@@ -1678,6 +1678,16 @@ export default function TripItineraryView({
           advisories={evaluateCentralVietnamAdvisories(trip, plan, allPois)}
           onOpenChecklist={() => setIsChecklistModalOpen(true)}
           onAddHueDay={handleAddDay}
+          onSwapOutdoorForRain={() => {
+            const targetDay =
+              plan.days.find(
+                (d) =>
+                  suggestIndoorAlternativesForDay(d, allPois, usedPoiIds, trip.destination).length > 0
+              ) || plan.days[0];
+            if (targetDay) {
+              handleSwapRainyDay(targetDay.day_number);
+            }
+          }}
           className="px-4 sm:px-6 py-2 bg-white border-b border-gray-100 shrink-0"
         />
       )}

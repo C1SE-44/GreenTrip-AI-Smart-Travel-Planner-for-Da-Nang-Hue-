@@ -120,3 +120,46 @@ def test_budget_estimate_and_concise_closing_questions():
     oos = handle_out_of_scope_request("Hôm nay chứng khoán thế nào?", "chứng khoán", ctx, [])
     assert oos.reply_text.strip().endswith("?")
     assert "A —" not in oos.reply_text and "B —" not in oos.reply_text
+
+
+def test_pdf_service_uses_bundled_vietnamese_unicode_ttf():
+    from app.trips import pdf_service
+    from app.trips.schemas import ItineraryDay, ItineraryStop, TripItineraryResponse
+
+    assert (pdf_service._BUNDLED_FONT_DIR / "DejaVuSans.ttf").exists()
+    assert (pdf_service._BUNDLED_FONT_DIR / "DejaVuSans-Bold.ttf").exists()
+
+    reg_font, bold_font = pdf_service._ensure_unicode_fonts()
+    assert reg_font == "GT-Unicode"
+    assert bold_font == "GT-Unicode-Bold"
+    assert pdf_service._UNICODE_FONT_REGISTERED is True
+    assert pdf_service._clean_for_pdf("Đại Nội Huế · 150.000 ₫") == "Đại Nội Huế · 150.000 ₫"
+
+    itinerary = TripItineraryResponse(
+        trip_id="trip-vn-pdf",
+        title="Hành trình Xanh Đà Nẵng – Huế (Ước tính 3 ngày)",
+        destination="Huế",
+        days_count=1,
+        days=[
+            ItineraryDay(
+                day_id="day-1",
+                day_number=1,
+                title="Ngày 1: Làng sinh thái Thủy Biều & Đại Nội Huế",
+                stops=[
+                    ItineraryStop(
+                        stop_id="s-1",
+                        title="Làng sinh thái Thủy Biều (Vườn bưởi Thanh Trà)",
+                        city="Huế",
+                        category="Cảnh quan",
+                        sequence=0,
+                        duration_minutes=120,
+                        start_time="08:00",
+                        end_time="10:00",
+                    )
+                ],
+            )
+        ],
+    )
+    pdf_bytes = pdf_service.generate_itinerary_pdf(itinerary)
+    assert pdf_bytes.startswith(b"%PDF-")
+    assert len(pdf_bytes) > 2000

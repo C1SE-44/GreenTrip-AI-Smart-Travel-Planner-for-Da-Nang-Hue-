@@ -81,3 +81,17 @@ def test_neo4j_cooldown_triggers_fast_relational_fallback_with_pillars(monkeypat
     assert len(res1["green_score_breakdown"]) == 4
     assert sum(p["weight_pct"] for p in res1["green_score_breakdown"]) == 100
     neo4j_mod.reset_neo4j_cooldown()
+
+
+def test_pasted_tiktok_link_is_handled_gracefully_not_as_math():
+    from app.trips.copilot_intent import classify_copilot_request
+    from app.trips.schemas import TripContextPayload
+
+    ctx = TripContextPayload(destination="Huế", days_count=2, current_day=1)
+    cat, sub_intent, meta = classify_copilot_request(
+        "https://www.tiktok.com/@huefood/video/7412345678901234567?is_from_webapp=1",
+        ctx,
+    )
+    assert cat == "QA_AND_COMPARE"
+    assert sub_intent == "external_link_guidance"
+    assert meta is not None and meta["platform"] == "TikTok"

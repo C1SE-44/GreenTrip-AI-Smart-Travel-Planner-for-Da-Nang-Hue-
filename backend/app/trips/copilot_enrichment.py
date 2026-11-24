@@ -361,8 +361,8 @@ def format_three_layer_poi_bullet(poi: CopilotSuggestedPoiItem) -> str:
 
 
 def ensure_closing_ab_hook(reply_text: str, default_hook: str) -> str:
-    """Ensure 100% of responses end with a concrete A/B conversational hook (Rule 6)."""
+    """Keep a concise single-sentence closing question without duplicating long A/B templates."""
     stripped = reply_text.strip()
-    if stripped.endswith("?") and (" hay " in stripped[-220:].lower() or "phương án" in stripped[-220:].lower()):
+    if stripped.endswith("?"):
         return stripped
     return f"{stripped}\n\n{default_hook}"

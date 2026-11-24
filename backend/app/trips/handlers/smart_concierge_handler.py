@@ -145,7 +145,7 @@ def handle_smart_concierge(
                         OR p.name ILIKE '%%huyền không%%'
                         OR p.name ILIKE '%%từ hiếu%%'
                       )
-                    ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
+                    ORDER BY CASE WHEN p.sub_category IN ('craft_village', 'craft_villages', 'eco_village', 'eco_lodge', 'homestay', 'green_vegetarian', 'traditional_noodles') THEN 0 ELSE 1 END, p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
                     LIMIT 4;
                 """
                 cur.execute(query, (city_pattern, is_both))
@@ -161,7 +161,7 @@ def handle_smart_concierge(
                         JOIN public.cities ci ON p.city_id = ci.city_id
                         WHERE p.is_active IS NOT FALSE AND (ci.name ILIKE %s OR %s = TRUE)
                           AND (c.name ILIKE '%%cảnh quan%%' OR c.name ILIKE '%%di tích%%')
-                        ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
+                        ORDER BY CASE WHEN p.sub_category IN ('craft_village', 'craft_villages', 'eco_village', 'lagoon_waterway', 'wetland_lagoon_rivers') THEN 0 ELSE 1 END, p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
                         LIMIT 1
                     )
                     UNION ALL
@@ -175,7 +175,7 @@ def handle_smart_concierge(
                         JOIN public.cities ci ON p.city_id = ci.city_id
                         WHERE p.is_active IS NOT FALSE AND (ci.name ILIKE %s OR %s = TRUE)
                           AND c.name ILIKE '%%ẩm thực%%'
-                        ORDER BY p.satisfaction_score DESC NULLS LAST, p.green_score DESC NULLS LAST
+                        ORDER BY CASE WHEN p.sub_category IN ('green_vegetarian', 'traditional_noodles', 'street_bites_rolls') THEN 0 ELSE 1 END, p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
                         LIMIT 1
                     )
                     UNION ALL

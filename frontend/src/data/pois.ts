@@ -1627,3 +1627,162 @@ export function getSpecificPoiIconClass(poi: Poi | { name?: string; category?: s
   return 'ph-bold ph-map-pin';
 }
 
+export interface GreenScorePillarBreakdown {
+  key: 'nature_env' | 'heritage_community' | 'green_ops' | 'green_transit';
+  label: string;
+  weightPct: number;
+  score: number;
+}
+
+export interface GreenScoreExplanation {
+  totalScore: number;
+  pillars: GreenScorePillarBreakdown[];
+  summaryReason: string;
+}
+
+/**
+ * Phân rã Điểm xanh theo 4 trụ cột MCDA đồng bộ với backend/scripts/enrich_poi_scores.py
+ */
+export function computeGreenScoreBreakdown(
+  poi: Pick<Poi, 'name' | 'category' | 'ecoScore' | 'isLocalBusiness' | 'localBusinessType' | 'eco_features' | 'popularityScore' | 'sub_category'>
+): GreenScoreExplanation {
+  const total = Math.max(40, Math.min(98, Math.round(poi.ecoScore || 80)));
+  const text = `${poi.name || ''} ${poi.category || ''} ${poi.sub_category || ''}`.toLowerCase();
+  const hasEcoFeatures = Boolean(poi.eco_features && poi.eco_features.length > 0);
+  const isLocal = Boolean(poi.isLocalBusiness) || poi.localBusinessType === 'craft_workshop';
+  const isLowCrowd = typeof poi.popularityScore === 'number' && Number.isFinite(poi.popularityScore) && poi.popularityScore <= 3.65;
+
+  const nature = Math.min(98, Math.max(50, total + (/cảnh quan|canh-quan|biển|rừng|sơn trà|đầm|vườn|sinh thái|bạch mã/.test(text) ? 6 : -4)));
+  const community = Math.min(98, Math.max(55, (isLocal ? 90 : 68) + (/làng|di-tich|chua|cố đô|craft|homestay|eco_lodge/.test(text) ? 6 : 0)));
+  const ops = Math.min(98, Math.max(55, total + (/chay|vegan|vegetarian|thực dưỡng/.test(text) || hasEcoFeatures ? 8 : -3)));
+  const transit = Math.min(98, Math.max(55, total + (isLowCrowd ? 6 : 0) - 2));
+
+  const reasons: string[] = [];
+  if (isLocal) reasons.push('hỗ trợ cộng đồng địa phương');
+  if (isLowCrowd) reasons.push('không gian ít đông');
+  if (/chay|vegan|vegetarian/.test(text)) reasons.push('ẩm thực ít phát thải carbon');
+  else if (nature >= 85) reasons.push('gần gũi thiên nhiên');
+  if (reasons.length === 0) reasons.push('thuận tiện gom cụm tuyến đường xanh');
+
+  return {
+    totalScore: total,
+    pillars: [
+      { key: 'nature_env', label: 'Môi trường & Sinh thái', weightPct: 40, score: nature },
+      { key: 'heritage_community', label: 'Cộng đồng & Di sản bản địa', weightPct: 25, score: community },
+      { key: 'green_ops', label: 'Vận hành xanh & Ít rác thải', weightPct: 20, score: ops },
+      { key: 'green_transit', label: 'Dễ đi bộ & Giao thông xanh', weightPct: 15, score: transit },
+    ],
+    summaryReason: `Đề xuất vì ${reasons.slice(0, 2).join(', ')}.`,
+  };
+}
+
+export interface CrowdPeakWindow {
+  startMin: number;
+  endMin: number;
+  weekendOnly?: boolean;
+}
+
+export interface CrowdProfile {
+  level: 'low' | 'medium' | 'high';
+  label: string;
+  peakHours: string | null;
+  offPeakTip: string | null;
+  peakWindows: CrowdPeakWindow[];
+}
+
+const HOTSPOT_CROWD_RULES: Array<{
+  pattern: RegExp;
+  peakHours: string;
+  offPeakTip: string;
+  peakWindows: CrowdPeakWindow[];
+}> = [
+  {
+    pattern: /đại nội|hoàng thành/i,
+    peakHours: '09:00 – 11:30 & 14:30 – 16:00',
+    offPeakTip: 'Nên đi sớm 07:30 – 09:00 để mát mẻ và vắng đoàn tour',
+    peakWindows: [{ startMin: 540, endMin: 690 }, { startMin: 870, endMin: 960 }],
+  },
+  {
+    pattern: /cầu rồng/i,
+    peakHours: '19:30 – 21:30 (đặc biệt T6–CN)',
+    offPeakTip: 'Dạo bộ sáng sớm hoặc 17:30 ngắm hoàng hôn đỡ kẹt xe hơn',
+    peakWindows: [{ startMin: 1170, endMin: 1290 }],
+  },
+  {
+    pattern: /bà nà|cầu vàng/i,
+    peakHours: '08:30 – 14:30',
+    offPeakTip: 'Lên cáp treo chuyến đầu 07:30 hoặc cân nhắc Sơn Trà / Hòa Bắc ít đông hơn',
+    peakWindows: [{ startMin: 510, endMin: 870 }],
+  },
+  {
+    pattern: /linh ứng.*(?:sơn trà|bãi bụt)|bán đảo sơn trà/i,
+    peakHours: '09:30 – 11:30 & 15:30 – 17:30',
+    offPeakTip: 'Đi trước 08:30 sáng để thoáng đãng và dễ ngắm voọc chà vá',
+    peakWindows: [{ startMin: 570, endMin: 690 }, { startMin: 930, endMin: 1050 }],
+  },
+  {
+    pattern: /thiên mụ/i,
+    peakHours: '09:30 – 11:30 & 16:00 – 17:30',
+    offPeakTip: 'Ghé sớm trước 08:30 hoặc kết hợp làng Thủy Biều vắng người',
+    peakWindows: [{ startMin: 570, endMin: 690 }, { startMin: 960, endMin: 1050 }],
+  },
+  {
+    pattern: /mỹ khê|ngũ hành sơn|chợ hàn|chợ cồn|chợ đông ba/i,
+    peakHours: '09:30 – 12:00 & 16:30 – 18:30',
+    offPeakTip: 'Nên đi sáng sớm trước 08:30 hoặc đầu giờ chiều để tránh đông đúc',
+    peakWindows: [{ startMin: 570, endMin: 720 }, { startMin: 990, endMin: 1110 }],
+  },
+];
+
+export function evaluateCrowdProfile(
+  poi: Pick<Poi, 'name' | 'popularityScore' | 'localBusinessType' | 'isLocalBusiness'>
+): CrowdProfile {
+  const matchedRule = HOTSPOT_CROWD_RULES.find((rule) => rule.pattern.test(poi.name || ''));
+  if (matchedRule) {
+    return {
+      level: 'high',
+      label: 'Đông giờ cao điểm',
+      peakHours: matchedRule.peakHours,
+      offPeakTip: matchedRule.offPeakTip,
+      peakWindows: matchedRule.peakWindows,
+    };
+  }
+  const pop = typeof poi.popularityScore === 'number' && Number.isFinite(poi.popularityScore) ? poi.popularityScore : null;
+  if (pop !== null && pop >= 3.85) {
+    return {
+      level: 'high',
+      label: 'Đông giờ cao điểm',
+      peakHours: '09:30 – 11:30 & 16:00 – 18:00',
+      offPeakTip: 'Nên ghé khung giờ sớm hoặc đổi sang điểm bản địa lân cận',
+      peakWindows: [{ startMin: 570, endMin: 690 }, { startMin: 960, endMin: 1080 }],
+    };
+  }
+  if (poi.localBusinessType === 'craft_workshop' || (pop !== null && pop <= 3.65)) {
+    return {
+      level: 'low',
+      label: 'Ít đông · Thong thả',
+      peakHours: null,
+      offPeakTip: 'Không gian thoáng, phù hợp trải nghiệm sâu không phải chờ đợi',
+      peakWindows: [],
+    };
+  }
+  return {
+    level: 'medium',
+    label: 'Mật độ vừa phải',
+    peakHours: null,
+    offPeakTip: null,
+    peakWindows: [],
+  };
+}
+
+export function isTimeInCrowdPeakWindow(
+  startTime: string | null | undefined,
+  crowd: CrowdProfile
+): boolean {
+  if (!startTime || crowd.peakWindows.length === 0) return false;
+  const m = startTime.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return false;
+  const mins = Number(m[1]) * 60 + Number(m[2]);
+  return crowd.peakWindows.some((w) => mins >= w.startMin && mins <= w.endMin);
+}
+

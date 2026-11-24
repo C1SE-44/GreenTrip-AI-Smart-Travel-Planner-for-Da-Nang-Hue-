@@ -56,3 +56,28 @@ def test_recommend_transport_for_leg_varies_by_distance_and_group():
 
     intercity = recommend_transport_for_leg(95.0, num_people=2, constraints=[], is_intercity=True)
     assert "tàu hỏa" in intercity.lower()
+
+
+def test_neo4j_cooldown_triggers_fast_relational_fallback_with_pillars(monkeypatch):
+    from app.db import neo4j as neo4j_mod
+    from app.pois import explanation_repository
+
+    neo4j_mod.reset_neo4j_cooldown()
+    call_count = 0
+
+    class FailingDriver:
+        def session(self, **_kwargs):
+            nonlocal call_count
+            call_count += 1
+            raise RuntimeError("Neo4j Aura sleeping")
+
+    monkeypatch.setattr(explanation_repository, "get_driver", lambda: FailingDriver())
+    res1 = explanation_repository.fetch_poi_explanation_facts("Chợ Cồn")
+    res2 = explanation_repository.fetch_poi_explanation_facts("Chợ Cồn")
+
+    assert call_count == 1  # Second call skipped Neo4j immediately due to circuit-breaker cooldown
+    assert res1 is not None and res2 is not None
+    assert res1["explanation_source"] == "relational_fallback"
+    assert len(res1["green_score_breakdown"]) == 4
+    assert sum(p["weight_pct"] for p in res1["green_score_breakdown"]) == 100
+    neo4j_mod.reset_neo4j_cooldown()

@@ -576,6 +576,7 @@ export default function TripItineraryView({
 
   // Thêm ý tưởng vào ngày cụ thể
   const handleAddIdeaToDay = (dayNumber: number, poi: Poi, targetIndex?: number) => {
+    if (poi.category === 'luu-tru') return;
     setDismissedRecommendationIds((current) => current.filter((id) => id !== poi.id));
     const nextDays = plan.days.map((day) => {
       if (day.day_number !== dayNumber) return day;

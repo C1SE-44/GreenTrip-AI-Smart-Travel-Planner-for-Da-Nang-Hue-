@@ -881,6 +881,8 @@ export function selectAutomaticPois(
   pacing: 'Relaxed' | 'Balanced' | 'Fast',
   dailyCapacity: number,
 ): AutomaticPoiSelection {
+  const visitIdeas = ideas.filter((poi) => poi.category !== 'luu-tru');
+  const visitRecommendations = recommendations.filter((poi) => poi.category !== 'luu-tru');
   const people = Math.max(1, trip.peopleCount || 1);
   const dayCount = Math.max(1, days.length);
   const targetPerDay = pacing === 'Relaxed' ? 2 : pacing === 'Fast' ? 5 : 3;
@@ -895,25 +897,25 @@ export function selectAutomaticPois(
     .map((stop) => stop.title.trim().toLocaleLowerCase('vi-VN')));
   const isAlreadyPlaced = (poi: Poi) => placedIds.has(poi.id)
     || (poi.id.startsWith('custom-') && placedCustomNames.has(poi.name.trim().toLocaleLowerCase('vi-VN')));
-  const existingIdeaIds = new Set(ideas.map((poi) => poi.id));
-  const recommendationOnly = recommendations.filter((poi) => !existingIdeaIds.has(poi.id));
-  const placedPois = [...ideas, ...recommendationOnly].filter(isAlreadyPlaced);
+  const existingIdeaIds = new Set(visitIdeas.map((poi) => poi.id));
+  const recommendationOnly = visitRecommendations.filter((poi) => !existingIdeaIds.has(poi.id));
+  const placedPois = [...visitIdeas, ...recommendationOnly].filter(isAlreadyPlaced);
   const estimatedGroupCost = (poi: Poi) => Math.max(0, poi.estimatedCost || 0) * people;
-  let selectedCost = [...ideas, ...recommendationOnly.filter(isAlreadyPlaced)]
+  let selectedCost = [...visitIdeas, ...recommendationOnly.filter(isAlreadyPlaced)]
     .reduce((total, poi) => total + estimatedGroupCost(poi), 0);
-  const selected = [...ideas];
+  const selected = [...visitIdeas];
   const added: Poi[] = [];
-  const seen = new Set([...placedIds, ...ideas.map((poi) => poi.id)]);
+  const seen = new Set([...placedIds, ...visitIdeas.map((poi) => poi.id)]);
   const baseMinutes = existingStops.reduce((total, stop) => total + minutesFor(stop), 0)
-    + ideas.filter((poi) => !isAlreadyPlaced(poi)).reduce((total, poi) => total + minutesFor(stopFromPoi(poi)), 0);
+    + visitIdeas.filter((poi) => !isAlreadyPlaced(poi)).reduce((total, poi) => total + minutesFor(stopFromPoi(poi)), 0);
   let remainingMinutes = Math.max(0, dayCount * dailyCapacity - baseMinutes);
-  let remainingSlots = Math.max(0, targetStops - existingStops.length - ideas.filter((poi) => !isAlreadyPlaced(poi)).length);
+  let remainingSlots = Math.max(0, targetStops - existingStops.length - visitIdeas.filter((poi) => !isAlreadyPlaced(poi)).length);
   const limits = { target: 0, destination: 0, time: 0, budget: 0, category: 0 };
   const categoryCounts = new Map<string, number>();
-  [...placedPois, ...ideas.filter((poi) => !isAlreadyPlaced(poi))].forEach((poi) => {
+  [...placedPois, ...visitIdeas.filter((poi) => !isAlreadyPlaced(poi))].forEach((poi) => {
     categoryCounts.set(poi.category, (categoryCounts.get(poi.category) || 0) + 1);
   });
-  const categoryCount = Math.max(1, new Set([...ideas, ...recommendationOnly].map((poi) => poi.category)).size);
+  const categoryCount = Math.max(1, new Set([...visitIdeas, ...recommendationOnly].map((poi) => poi.category)).size);
   const categoryLimit = Math.max(2, Math.ceil(targetStops / categoryCount));
   const includesDaNang = /đà\s*nẵng|da\s*nang/i.test(trip.destination);
   const includesHue = /huế|hue/i.test(trip.destination);

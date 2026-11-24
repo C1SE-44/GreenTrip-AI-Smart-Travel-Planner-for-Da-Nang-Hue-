@@ -54,6 +54,7 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 * **F-07 — Trợ lý AI Travel Copilot & Cẩm nang Bản địa Xanh (`PB14`):** Chat trực tiếp trong không gian chuyến đi (`TripOverviewView`, `/chat`) qua `POST /trips/copilot/chat` để nhận tư vấn, highlight địa điểm lên bản đồ, thêm vào Ý tưởng hoặc cập nhật lịch trình; tích hợp ngăn **Cẩm nang Bản địa Xanh** (phong thủy Cố đô, trang phục di sản, di chuyển cho người lớn tuổi, dự phòng mùa mưa).
 * **F-08 — Xuất dữ liệu ngoại tuyến (Offline Export):** Xuất lịch trình ra `.ics` (tương thích Google/Apple Calendar), xuất `.pdf` (Backend ReportLab / in PDF) và checklist hành trang du lịch xanh (tự động nhận diện mùa mưa miền Trung tháng 9–1, bổ sung áo mưa bộ và giày chống thấm).
 * **F-09 — Phân quyền RBAC 2 lớp & Cổng quản trị dữ liệu POI (`/admin`):** Kiểm tra vai trò `ADMIN` và trạng thái `ACTIVE` trực tiếp từ cơ sở dữ liệu (`401`/`403`), cung cấp màn hình quản trị `/admin` bảo vệ 2 lớp cho phép thống kê tổng quan, ẩn/hiện địa điểm, chỉnh sửa giá vé/điểm xanh kèm lưu vết kiểm toán ACID (`admin_audit_logs`).
+* **F-10 — Gói hành trình tuyển chọn:** Cung cấp ít nhất hai gói 2–3 ngày cho mỗi chủ đề đang được hỗ trợ (tiết kiệm, cao cấp, gia đình, check-in, thiên nhiên/xanh, di sản/văn hóa, ẩm thực, cà phê, tâm linh, làng nghề/mua sắm, cặp đôi, phiêu lưu, ngày mưa và tuyến Đà Nẵng–Huế). Mỗi gói phải nêu POI cụ thể theo từng ngày; ảnh bìa phải lấy từ POI thuộc chính gói. Nếu không có ảnh POI phù hợp thì dùng ảnh địa phương có sẵn hoặc placeholder, không dùng ảnh ngẫu nhiên theo thể loại. Gói chỉ hiển thị khi mọi điểm dừng cùng nơi lưu trú được đối chiếu với POI đang hoạt động; nơi lưu trú phải có thông tin liên hệ. Cho phép lọc theo điểm đến, chủ đề, thời lượng và mức ngân sách lưu trú; bộ lọc mặc định thu gọn, thanh lọc có một số chip chủ đề nhanh kèm số gói phù hợp để áp dụng bộ lọc trực tiếp; chủ đề không có kết quả trong các bộ lọc còn lại sẽ bị vô hiệu hóa. Khi có bộ lọc, người dùng có thể xóa toàn bộ điều kiện lọc từ thanh công cụ. Khi chọn gói, tạo chuyến đi với điểm tham quan trong lịch theo ngày và POI khách sạn trong Ý tưởng; bộ xếp lịch tự động không xếp khách sạn thành điểm tham quan. Giá lưu trú chỉ hiển thị theo dữ liệu tham khảo theo đêm kèm yêu cầu xác nhận trực tiếp, không giả định là giá đặt phòng hoặc tổng giá gói.
 
 ### 3.2. Ngoài phạm vi MVP / Kế hoạch giai đoạn sau (Out-of-Scope & Planned v1.1)
 * **Không làm trong v1.0:**
@@ -89,6 +90,12 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 3. Khi gặp mưa, bấm chuyển chế độ mưa (Rainy Day Switch) để thay điểm ngoài trời bằng điểm trong nhà (có hỗ trợ Undo) hoặc chọn điểm thay thế lân cận.
 4. Lưu lịch trình (đồng bộ lên Database nếu đã đăng nhập; nếu là Guest sẽ gợi ý đăng nhập để đồng bộ) và bấm xuất `.ics` / `.pdf`.
 
+### Flow 5: Chọn gói hành trình có POI và nơi lưu trú
+1. Tại Trang chủ, người dùng lọc các gói theo điểm đến, chủ đề, số ngày/ngân sách lưu trú và mở chi tiết để xem danh sách POI theo từng ngày, nhãn ngân sách tham khảo, mùa phù hợp và nơi lưu trú.
+2. Người dùng xem ảnh, thông tin liên hệ và giá tham khảo theo đêm (nếu POI có dữ liệu), sau đó chọn dùng gói.
+3. Người dùng hoàn tất thông số chuyến đi; các POI tham quan được đưa vào lịch theo đúng ngày của gói, còn nơi lưu trú được thêm vào Ý tưởng để xem hoặc liên hệ.
+4. Người dùng có thể chỉnh sửa chuyến đi; thao tác xếp lịch tự động chỉ chọn POI tham quan và không tính nơi lưu trú thành một điểm ghé.
+
 ---
 
 ## 5. Ma trận phân quyền & Quy tắc nghiệp vụ (Permissions & Business Rules)
@@ -110,6 +117,7 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 * **Thời gian di chuyển hợp lý:** Chặng liên tỉnh Đà Nẵng ↔ Huế cần tính dư thời gian di chuyển (tối thiểu ~2,0–2,5 tiếng), tránh xếp các điểm dừng chồng lấn giờ mở cửa.
 * **Chống quá tải nhịp độ (Pacing):** Giới hạn mật độ điểm tham quan theo mức nhịp độ (`Relaxed` / `Balanced` / `Fast`) và tự động bố trí khung nghỉ ngơi/ăn uống hợp lý trong ngày.
 * **An toàn khi lỗi dịch vụ ngoài (Neo4j / Gemini):** Khi dịch vụ AI hoặc Neo4j gặp lỗi/timeout, Backend phải trả thông báo lỗi thân thiện (không rò rỉ stack trace hay secret) và giữ nguyên dữ liệu người dùng đang thao tác trên giao diện.
+* **Gói hành trình và dữ liệu POI:** Không hiển thị gói có tên địa điểm không khớp POI đang hoạt động, thiếu phương thức liên hệ nơi lưu trú hoặc ảnh bìa không liên quan đến điểm trong gói. Không dùng ảnh fallback ngẫu nhiên theo thể loại; nếu ảnh POI lỗi thì dùng ảnh thành phố có sẵn hoặc placeholder, và không hiển thị ảnh lưu trú chưa có trong dữ liệu. Không tự tạo giá phòng, giá gói hay chứng nhận xanh; giá tham khảo phải giữ nguyên đơn vị/thời hạn từ dữ liệu nguồn và kèm lưu ý cần xác nhận với cơ sở.
 
 ---
 
@@ -122,6 +130,7 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 - [ ] **Hiệu năng & Trạng thái phản hồi:** Có đầy đủ 4 trạng thái UI (`Loading` Skeleton, `Populated`, `Empty`, `Error` có nút thử lại); không có lỗi runtime trên Console.
 - [ ] **Tương thích màn hình & WCAG 2.2 AA:** Giao diện responsive không tràn ngang trên Desktop (`≥ 1280px`) và Mobile (`320px–480px`), tuân thủ checklist 10 bước trong [AGENTS.md](AGENTS.md).
 - [ ] **Kiểm thử tự động & Phân quyền:** Pass `pytest -v backend/tests`, `npm run lint:ci && npm run typecheck && npm run test:unit && npm run build`, và xác minh các case `401`/`403`/`404`.
+- [ ] **Gói hành trình:** Mỗi thẻ hiển thị các điểm đã đối chiếu theo ngày, khoảng thời lượng 2–3 ngày, nơi lưu trú có ít nhất một cách liên hệ và giá phòng chỉ ở mức tham khảo; chọn gói tạo đúng lịch theo ngày, giữ nơi lưu trú trong Ý tưởng và loại nơi lưu trú khỏi xếp lịch tự động. Gói không đủ dữ liệu không được hiển thị như gói hoàn chỉnh.
 
 ### 6.2. Checklist kiểm tra `PRD.md` trước mỗi task mới
 - [ ] Tính năng này phục vụ **vai trò người dùng** nào ở Mục 2?

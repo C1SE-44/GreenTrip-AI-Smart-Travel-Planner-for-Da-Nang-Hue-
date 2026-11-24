@@ -29,6 +29,7 @@ import BuildTripFromCollectionModal from '@/components/saved/BuildTripFromCollec
 import AddToTripModal from '@/components/planner/AddToTripModal';
 import { saveTripItinerary } from '@/services/itineraryService';
 import HomeDashboardView from '@/components/home/HomeDashboardView';
+import { mergeTripPackagePois, type TripPackageLaunch } from '@/components/home/tripPackages';
 import AccountMenu from '@/components/account/AccountMenu';
 import ProfileSettingsPage from '@/components/account/ProfileSettingsPage';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
@@ -97,6 +98,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   } | null>(null);
   const [addToTripSelection, setAddToTripSelection] = useState<AddToTripSelection | null>(null);
   const [pendingAddToTripPoiIds, setPendingAddToTripPoiIds] = useState<string[] | null>(null);
+  const [pendingPackageLaunch, setPendingPackageLaunch] = useState<TripPackageLaunch | null>(null);
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
   const [selectedTripForDetails, setSelectedTripForDetails] = useState<UserTrip | null>(null);
   const [activeTripSubTab, setActiveTripSubTab] = useState<'ideas' | 'itinerary' | 'calendar'>('ideas');
@@ -261,7 +263,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [allPois, setAllPois] = useState<Poi[]>(pois);
+  const [allPois, setAllPois] = useState<Poi[]>(() => mergeTripPackagePois(pois));
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -487,12 +489,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
         const normalized = normalizePois(response.items);
         if (!active) return;
-        setAllPois(normalized.length > 0 ? normalized : pois);
+        setAllPois(mergeTripPackagePois(normalized.length > 0 ? normalized : pois));
       } catch (loadError) {
         if (!active) return;
         console.warn('Backend POIs fetch failed, using fallback data:', loadError);
         setError(pois && pois.length > 0 ? null : (loadError instanceof Error ? loadError.message : 'Failed to load POIs'));
-        setAllPois(pois);
+        setAllPois(mergeTripPackagePois(pois));
       } finally {
         if (active) {
           setLoading(false);
@@ -1326,9 +1328,18 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             setViewMode('saved');
             navigate('/saved');
           }}
-          onCreateTrip={(defaultDest, defaultTitle) => {
+          onCreateTrip={(defaultDest, defaultTitle, packageLaunch) => {
+            setPendingPackageLaunch(packageLaunch ?? null);
+            setPendingAddToTripPoiIds(packageLaunch?.poiIds ?? null);
+            setIdeationDraft(packageLaunch ? {
+              initialPrompt: `Tạo chuyến đi ${defaultDest} ${packageLaunch.daysCount} ngày theo gói “${defaultTitle}”. Giữ lịch trình các điểm theo đúng từng ngày của gói.`,
+              chatHistory: [],
+            } : null);
             setIsCreateTripModalOpen(true);
           }}
+          pois={allPois}
+          poisLoading={loading}
+          poisError={error}
           currentUser={currentUser}
         />
       ) : viewMode === 'trips' ? (
@@ -2147,12 +2158,15 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           onClose={() => {
             setIsCreateTripModalOpen(false);
             setPendingAddToTripPoiIds(null);
+            setPendingPackageLaunch(null);
             setIdeationDraft(null);
           }}
+          defaultOpenItinerary={Boolean(pendingPackageLaunch)}
           onCreateTrip={(newTrip, options) => {
             const rawTitle = (newTrip.title || '').trim();
             const isBadTitle = !rawTitle || rawTitle.length <= 3 || ['ư', 'a', 'ơi', 'alo'].includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().startsWith('bắt đầu');
-            const safeTitle = isBadTitle ? `Chuyến đi ${newTrip.destination || 'Đà Nẵng & Huế'}` : rawTitle;
+            const safeTitle = pendingPackageLaunch?.title
+              || (isBadTitle ? `Chuyến đi ${newTrip.destination || 'Đà Nẵng & Huế'}` : rawTitle);
 
             const savedPlaces = pendingAddToTripPoiIds
               ? Array.from(new Set([...(newTrip.savedPlaces ?? []), ...pendingAddToTripPoiIds]))
@@ -2164,18 +2178,21 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             const trip: UserTrip = {
               ...newTrip,
               title: safeTitle,
+              destination: pendingPackageLaunch?.destination ?? newTrip.destination,
+              daysCount: pendingPackageLaunch?.daysCount ?? newTrip.daysCount,
+              itineraryOutline: pendingPackageLaunch?.itineraryOutline ?? newTrip.itineraryOutline,
               id: newTrip.id || `trip-${Date.now()}`,
               savedPlaces,
               ideas,
-              image:
-                newTrip.coverImage ||
+              image: pendingPackageLaunch?.coverImage ||
                 newTrip.image ||
                 (newTrip.destination === 'Huế'
                   ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
                   : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
+              coverImage: pendingPackageLaunch?.coverImage ?? newTrip.coverImage,
               tags: newTrip.tags || [
-                newTrip.destination,
-                newTrip.startDate || '4 ngày • Tháng 12',
+                pendingPackageLaunch?.destination ?? newTrip.destination,
+                `${pendingPackageLaunch?.daysCount ?? newTrip.daysCount ?? 4} ngày`,
                 `${newTrip.peopleCount} du khách`,
                 'Ngân sách',
               ],
@@ -2191,6 +2208,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             }
             setViewMode('trips');
             setPendingAddToTripPoiIds(null);
+            setPendingPackageLaunch(null);
             setIdeationDraft(null);
             setIsCreateTripModalOpen(false);
           }}

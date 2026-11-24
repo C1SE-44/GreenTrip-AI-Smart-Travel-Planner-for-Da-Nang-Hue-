@@ -26,8 +26,6 @@ import {
   Star,
   ChevronDown,
   MessageSquare,
-  Image as ImageIcon,
-  Link2,
   ReceiptText,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
@@ -64,7 +62,14 @@ import {
   type ItineraryStop,
 } from '@/services/itineraryService';
 import { FormattedCopilotMessage, type CopilotAttachmentSummary, type CopilotChatMessageItem } from './copilotMessageMarkdown';
-import MindtripAttachmentMenu, { type ReadyAttachment } from './MindtripAttachmentMenu';
+import ChatAttachmentMenu, { AttachmentThumbnail, StagedAttachmentChip } from './ChatAttachmentMenu';
+import {
+  fileToReadyAttachment,
+  getAttachmentPlaceholder,
+  getDefaultAttachmentPrompt,
+  toAttachmentSummary,
+  type ReadyAttachment,
+} from './chatAttachmentUtils';
 import {
   MODAL_CATEGORY_TABS,
   parseCategoryBudgets,
@@ -872,18 +877,11 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     return { copilotRouteCoordinates: coords, copilotNumberedOrderMap: orderMap };
   }, [chatMessages, relevantPois]);
 
-  // Xử lý gửi tin nhắn trò chuyện với Trợ lý AI Copilot (PB14 - 6 Core Mindtrip MVPs + Multimodal Attachments)
+  // Xử lý gửi tin nhắn trò chuyện với Trợ lý AI Copilot (PB14 + Multimodal Attachments)
   const handleSendChatMessage = async (overridePrompt?: string, readyAttachment?: ReadyAttachment) => {
     const activeAttachment = readyAttachment ?? pendingAttachment ?? undefined;
     const typedPrompt = (overridePrompt ?? chatInput).trim();
-    const defaultAttachmentPrompt = activeAttachment
-      ? activeAttachment.payload.type === 'link'
-        ? `Phân tích đường dẫn ${activeAttachment.subtitle} này và liệt kê các địa điểm nổi bật`
-        : activeAttachment.payload.type === 'receipt'
-          ? `Đọc vé / xác nhận đặt chỗ "${activeAttachment.displayTitle}" và đồng bộ vào lịch trình`
-          : `Phân tích tệp "${activeAttachment.displayTitle}" và nhận diện địa điểm xanh phù hợp`
-      : '';
-    const promptToSend = typedPrompt || defaultAttachmentPrompt;
+    const promptToSend = typedPrompt || (activeAttachment ? getDefaultAttachmentPrompt(activeAttachment) : '');
     if ((!promptToSend && !activeAttachment) || isAiThinking) return;
 
     const userMsgId = `user-${Date.now()}`;
@@ -892,15 +890,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       sender: 'user',
       text: promptToSend,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      attachment: activeAttachment
-        ? {
-            type: activeAttachment.payload.type,
-            displayTitle: activeAttachment.displayTitle,
-            subtitle: activeAttachment.subtitle,
-            previewUrl: activeAttachment.previewUrl,
-            url: activeAttachment.payload.url,
-          }
-        : undefined,
+      attachment: activeAttachment ? toAttachmentSummary(activeAttachment) : undefined,
     };
 
     const historyForRequest = chatMessages.slice(-8).map((m) => ({
@@ -1096,6 +1086,13 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         setTimeout(() => setToastMessage(null), 3500);
       }
 
+      const rawResolvedTitle = res.trip_memory?.attached_source_title?.trim();
+      const titleMatchesCurrentAttachment =
+        Boolean(rawResolvedTitle) &&
+        Boolean(activeAttachment) &&
+        (activeAttachment?.payload.type !== 'link' ||
+          res.trip_memory?.attached_source_url === activeAttachment?.payload.url);
+
       const aiMsgId = `ai-${Date.now()}`;
       const newAiMsg: CopilotChatMessageItem = {
         id: aiMsgId,
@@ -1103,6 +1100,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         text: res.reply_text,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         suggestedPois: res.suggested_pois || [],
+        extractedPlaces: res.extracted_places || [],
+        receiptBooking: res.receipt_booking ?? null,
         avoidNotice: res.avoid_notice || null,
         greenImpact: res.green_impact_summary || null,
         budgetImpact: res.budget_impact_summary || null,
@@ -1115,7 +1114,17 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         reasoningTrace: res.reasoning_trace,
       };
 
-      setChatMessages((prev) => [...prev, newAiMsg]);
+      setChatMessages((prev) => {
+        const enriched =
+          titleMatchesCurrentAttachment && rawResolvedTitle
+            ? prev.map((m) =>
+                m.id === userMsgId && m.attachment
+                  ? { ...m, attachment: { ...m.attachment, displayTitle: rawResolvedTitle } }
+                  : m
+              )
+            : prev;
+        return [...enriched, newAiMsg];
+      });
 
       if (res.next_suggested_prompts && res.next_suggested_prompts.length > 0) {
         setQuickPrompts(res.next_suggested_prompts);
@@ -1494,28 +1503,17 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   <div className="space-y-2">
                     {msg.attachment && (
                       <div className="rounded-xl bg-white/15 border border-white/20 p-2 flex items-center gap-2.5">
-                        {msg.attachment.previewUrl ? (
-                          <img
-                            src={msg.attachment.previewUrl}
-                            alt={msg.attachment.displayTitle}
-                            className="w-10 h-10 rounded-lg object-cover shrink-0"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
-                            {msg.attachment.type === 'link' ? (
-                              <Link2 size={14} />
-                            ) : msg.attachment.type === 'receipt' ? (
-                              <ReceiptText size={14} />
-                            ) : (
-                              <ImageIcon size={14} />
-                            )}
-                          </div>
-                        )}
+                        <AttachmentThumbnail
+                          previewUrl={msg.attachment.previewUrl}
+                          alt={msg.attachment.displayTitle}
+                          type={msg.attachment.type}
+                          tone="dark"
+                        />
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-white truncate max-w-[220px]">
                             {msg.attachment.displayTitle}
                           </p>
-                          <p className="text-[11px] text-white/75 truncate">{msg.attachment.subtitle}</p>
+                          <p className="text-xs text-white/85 truncate">{msg.attachment.subtitle}</p>
                         </div>
                       </div>
                     )}
@@ -1621,12 +1619,43 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   </div>
                 )}
 
+                {/* Thẻ xác nhận đặt chỗ / vé (từ Hóa đơn đính kèm) */}
+                {msg.receiptBooking && (
+                  <div
+                    data-testid="receipt-booking-card"
+                    className="rounded-xl border border-emerald-200 bg-emerald-50/75 p-3 flex items-start gap-2.5 text-xs"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-emerald-800 text-white flex items-center justify-center shrink-0">
+                      <ReceiptText size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-emerald-950">
+                        {msg.receiptBooking.is_duplicate
+                          ? 'Hóa đơn đã có trong hành trình (không thêm trùng)'
+                          : 'Đã trích xuất xác nhận đặt chỗ'}
+                      </p>
+                      <p className="font-semibold text-neutral-900 truncate">{msg.receiptBooking.title}</p>
+                      <p className="text-neutral-700">
+                        {msg.receiptBooking.city}
+                        {msg.receiptBooking.time_str ? ` · ${msg.receiptBooking.time_str}` : ''}
+                        {msg.receiptBooking.date_str ? ` · ${msg.receiptBooking.date_str}` : ''}
+                        {msg.receiptBooking.checkout_str ? ` → ${msg.receiptBooking.checkout_str}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Thẻ gợi ý địa điểm từ Copilot (MVP #5: KG Explanation + Giá chuẩn đơn vị + Nút đôi [+ Ý tưởng] & [+ Ngày X]) */}
                 {msg.suggestedPois && msg.suggestedPois.length > 0 && (
                   <div className="space-y-2 pt-1 w-full">
                     {msg.suggestedPois.map((p, pIdx) => {
                       const isSaved = isPoiSavedInIdeas(p);
                       const img = p.image_url || getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
+                      const matchedExtracted = msg.extractedPlaces?.find((ep) => {
+                        const epNorm = ep.name.toLowerCase();
+                        const poiNorm = p.name.toLowerCase();
+                        return epNorm.includes(poiNorm) || poiNorm.includes(epNorm);
+                      });
                       return (
                         <div
                           key={p.id}
@@ -1646,7 +1675,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                                 city={normalizeCity(trip.destination)}
                                 className="w-12 h-12 rounded-lg object-cover shrink-0 border border-gray-200/60"
                               />
-                              <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-black text-white text-[10px] font-extrabold flex items-center justify-center shadow-xs">
+                              <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-black text-white text-xs font-extrabold flex items-center justify-center shadow-xs">
                                 {pIdx + 1}
                               </span>
                             </div>
@@ -1655,7 +1684,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                                 <h5 className="font-bold text-[13px] text-gray-900 truncate group-hover:text-emerald-800 transition-colors">
                                   {p.name}
                                 </h5>
-                                <span className="text-[10.5px] px-1.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 font-semibold shrink-0">
+                                {matchedExtracted?.timestamp && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-neutral-900 text-white font-medium shrink-0">
+                                    {matchedExtracted.timestamp}
+                                  </span>
+                                )}
+                                <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 font-semibold shrink-0">
                                   🌱 {p.green_score || 90}/100
                                 </span>
                                 {p.rating && (
@@ -1771,9 +1805,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             ))}
           </div>
 
-          {/* Ô nhập tin nhắn floating ghim đáy (+ Pop-up Đính kèm Đa phương thức chuẩn Mindtrip AI) */}
+          {/* Ô nhập tin nhắn floating ghim đáy (+ Pop-up Đính kèm Đa phương thức) */}
           <div className="w-full shrink-0 relative">
-            <MindtripAttachmentMenu
+            <ChatAttachmentMenu
               isOpen={isAttachMenuOpen}
               onClose={() => setIsAttachMenuOpen(false)}
               onSelectAttachment={(ready) => {
@@ -1782,77 +1816,70 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               }}
             />
 
-            <div className="w-full rounded-[24px] border border-gray-200/90 p-3 shadow-sm bg-white hover:border-gray-300 focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all flex flex-col justify-between">
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                const file = e.dataTransfer.files?.[0];
+                if (!file) return;
+                e.preventDefault();
+                void fileToReadyAttachment(file, 'file')
+                  .then((ready) => {
+                    setPendingAttachment(ready);
+                    setTimeout(() => chatInputRef.current?.focus(), 0);
+                  })
+                  .catch((err) => {
+                    setToastMessage(err instanceof Error ? err.message : 'Không thể đọc tệp đính kèm.');
+                    setTimeout(() => setToastMessage(null), 3500);
+                  });
+              }}
+              className="w-full rounded-[24px] border border-gray-200/90 p-3 shadow-sm bg-white hover:border-gray-300 focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all flex flex-col justify-between"
+            >
               {pendingAttachment && (
-                <div className="mb-2 inline-flex items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-1.5 pr-2 max-w-full">
-                  {pendingAttachment.previewUrl ? (
-                    <img
-                      src={pendingAttachment.previewUrl}
-                      alt={pendingAttachment.displayTitle}
-                      className="w-10 h-10 rounded-xl object-cover border border-neutral-200 shrink-0"
-                    />
-                  ) : (
-                    <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
-                      {pendingAttachment.payload.type === 'link' ? (
-                        <Link2 size={15} />
-                      ) : pendingAttachment.payload.type === 'receipt' ? (
-                        <ReceiptText size={15} />
-                      ) : (
-                        <ImageIcon size={15} />
-                      )}
-                    </div>
-                  )}
-                  <div className="min-w-0 text-left">
-                    <p className="text-xs font-semibold text-neutral-950 truncate max-w-[200px]">
-                      {pendingAttachment.displayTitle}
-                    </p>
-                    <p className="text-xs text-neutral-600 truncate">
-                      {pendingAttachment.subtitle}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setPendingAttachment(null)}
-                    aria-label="Gỡ tệp đính kèm"
-                    className="w-7 h-7 rounded-full hover:bg-neutral-200 flex items-center justify-center text-neutral-700 shrink-0 cursor-pointer transition"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
+                <StagedAttachmentChip
+                  attachment={pendingAttachment}
+                  onRemove={() => setPendingAttachment(null)}
+                />
               )}
 
               <input
                 ref={chatInputRef}
                 type="text"
-                placeholder={
-                  pendingAttachment?.payload.type === 'link'
-                    ? 'Bạn muốn làm gì với đường dẫn này?...'
-                    : pendingAttachment?.payload.type === 'file'
-                      ? 'Bạn muốn làm gì với tệp / ảnh này?...'
-                      : pendingAttachment?.payload.type === 'receipt'
-                        ? 'Bạn muốn đồng bộ hóa đơn / vé này vào ngày nào?...'
-                        : 'Bắt đầu một cuộc trò chuyện mới cho chuyến đi này...'
-                }
+                placeholder={getAttachmentPlaceholder(
+                  pendingAttachment,
+                  'Bắt đầu một cuộc trò chuyện mới cho chuyến đi này...'
+                )}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
+                onPaste={(e) => {
+                  const file = e.clipboardData?.files?.[0];
+                  if (!file) return;
+                  e.preventDefault();
+                  void fileToReadyAttachment(file, 'file')
+                    .then((ready) => setPendingAttachment(ready))
+                    .catch((err) => {
+                      setToastMessage(err instanceof Error ? err.message : 'Không thể đọc ảnh đã dán.');
+                      setTimeout(() => setToastMessage(null), 3500);
+                    });
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void handleSendChatMessage();
                 }}
-                className="w-full text-[13.5px] text-gray-900 placeholder:text-gray-400 focus:outline-none bg-transparent pt-0.5"
+                aria-label="Nhập câu hỏi cho Trợ lý GreenTrip AI"
+                className="w-full text-[13.5px] text-gray-900 placeholder:text-neutral-600 focus:outline-none bg-transparent pt-0.5"
               />
 
               <div className="flex items-center justify-between pt-2.5 border-t border-gray-100/70 mt-2.5">
                 <button
                   type="button"
                   onClick={() => setIsAttachMenuOpen((prev) => !prev)}
-                  aria-label="Đính kèm ảnh, đường dẫn hoặc vé đặt chỗ"
+                  aria-label="Đính kèm ảnh, tệp hoặc đường dẫn"
                   aria-expanded={isAttachMenuOpen}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
                     isAttachMenuOpen
                       ? 'bg-neutral-900 text-white rotate-45'
-                      : 'text-gray-600 hover:text-black hover:bg-gray-100'
+                      : 'text-gray-700 hover:text-black hover:bg-gray-100'
                   }`}
-                  title="Tải ảnh/tệp, thêm đường dẫn hoặc vé đặt chỗ"
+                  title="Tải ảnh/tệp hoặc thêm đường dẫn"
                 >
                   <Plus size={18} />
                 </button>
@@ -1863,7 +1890,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     onClick={() => {
                       handleSendChatMessage('Tư vấn phương tiện di chuyển xanh tiết kiệm CO2 cho chuyến đi');
                     }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                    aria-label="Tư vấn phương tiện di chuyển xanh"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                     title="Phương tiện di chuyển xanh"
                   >
                     <Car size={17} />
@@ -1874,20 +1902,22 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     onClick={() => {
                       handleSendChatMessage('Gợi ý trải nghiệm văn hóa và đặc sản bản địa hôm nay');
                     }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                    title="Ghi chú giọng nói"
+                    aria-label="Gợi ý trải nghiệm văn hóa bản địa"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-gray-600 hover:text-black hover:bg-gray-100 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    title="Gợi ý bản địa"
                   >
                     <Mic size={17} />
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleSendChatMessage()}
-                    disabled={isAiThinking}
-                    className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                    onClick={() => void handleSendChatMessage()}
+                    disabled={(!chatInput.trim() && !pendingAttachment) || isAiThinking}
+                    aria-label="Gửi tin nhắn"
+                    className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                     title="Gửi"
                   >
-                    <Send size={14} className="ml-0.5" />
+                    <Send size={15} className="ml-0.5" />
                   </button>
                 </div>
               </div>

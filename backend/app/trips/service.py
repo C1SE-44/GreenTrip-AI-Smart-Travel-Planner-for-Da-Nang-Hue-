@@ -808,8 +808,17 @@ def process_copilot_chat(
 
     from app.trips.copilot_attachments import (
         answer_attached_source_followup,
+        extract_inline_link_attachment,
         is_attached_source_followup,
+        process_copilot_attachment,
     )
+
+    inline_link = extract_inline_link_attachment(request.message)
+    if inline_link is not None:
+        return process_copilot_attachment(
+            request.model_copy(update={"attachment": inline_link}),
+            connection,
+        )
 
     if is_attached_source_followup(request):
         return answer_attached_source_followup(request, connection)

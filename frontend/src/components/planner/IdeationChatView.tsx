@@ -4,9 +4,7 @@ import {
   ArrowUp,
   Check,
   Compass,
-  Image as ImageIcon,
   Leaf,
-  Link2,
   Loader2,
   Luggage,
   Map as MapIcon,
@@ -28,7 +26,14 @@ import {
 } from '@/services/copilotService';
 import { extractTripIntentFromPrompt } from '@/utils/vietnamesePromptExtractor';
 import { FormattedCopilotMessage, type CopilotAttachmentSummary } from './TripOverviewView';
-import MindtripAttachmentMenu, { type ReadyAttachment } from './MindtripAttachmentMenu';
+import ChatAttachmentMenu, { AttachmentThumbnail, StagedAttachmentChip } from './ChatAttachmentMenu';
+import {
+  fileToReadyAttachment,
+  getAttachmentPlaceholder,
+  getDefaultAttachmentPrompt,
+  toAttachmentSummary,
+  type ReadyAttachment,
+} from './chatAttachmentUtils';
 import type { CopilotTripMessage } from './copilotTripData';
 
 interface IdeationMessage {
@@ -233,14 +238,7 @@ export default function IdeationChatView({
   const handleSend = async (rawText?: string, readyAttachment?: ReadyAttachment) => {
     const activeAttachment = readyAttachment ?? pendingAttachment ?? undefined;
     const typedText = (rawText ?? input).trim();
-    const defaultAttachmentMessage = activeAttachment
-      ? activeAttachment.payload.type === 'link'
-        ? `Phân tích đường dẫn ${activeAttachment.subtitle} này và liệt kê các địa điểm nổi bật`
-        : activeAttachment.payload.type === 'receipt'
-          ? `Đọc vé / xác nhận đặt chỗ "${activeAttachment.displayTitle}" và đồng bộ gợi ý chuyến đi`
-          : `Phân tích tệp "${activeAttachment.displayTitle}" và nhận diện các điểm đến xanh phù hợp`
-      : '';
-    const text = typedText || defaultAttachmentMessage;
+    const text = typedText || (activeAttachment ? getDefaultAttachmentPrompt(activeAttachment) : '');
     if ((!text && !activeAttachment) || isSending) return;
 
     const userMsgId = `idea-u-${Date.now()}`;
@@ -249,15 +247,7 @@ export default function IdeationChatView({
       sender: 'user',
       text,
       timestamp: nowHHMM(),
-      attachment: activeAttachment
-        ? {
-            type: activeAttachment.payload.type,
-            displayTitle: activeAttachment.displayTitle,
-            subtitle: activeAttachment.subtitle,
-            previewUrl: activeAttachment.previewUrl,
-            url: activeAttachment.payload.url,
-          }
-        : undefined,
+      attachment: activeAttachment ? toAttachmentSummary(activeAttachment) : undefined,
     };
 
     const nextMessages = [...messages, userMsg];
@@ -507,7 +497,7 @@ export default function IdeationChatView({
               </h2>
               <p className="text-sm sm:text-[15px] text-neutral-600 max-w-lg leading-relaxed mb-8">
                 Mình ở đây để giúp bạn lên kế hoạch trải nghiệm xanh tại Đà Nẵng – Huế.
-                Hỏi bất cứ điều gì, hoặc bấm dấu <strong className="text-neutral-900">+</strong> để tải ảnh, dán link TikTok/YouTube hay vé đặt chỗ.
+                Hỏi bất cứ điều gì, hoặc bấm dấu <strong className="text-neutral-900">+</strong> để tải ảnh, tệp hay dán link TikTok/YouTube.
               </p>
 
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
@@ -539,23 +529,11 @@ export default function IdeationChatView({
                   <div className="max-w-[85%] sm:max-w-[75%] space-y-2 flex flex-col items-end">
                     {msg.attachment && (
                       <div className="rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-2xs flex items-center gap-3 max-w-full">
-                        {msg.attachment.previewUrl ? (
-                          <img
-                            src={msg.attachment.previewUrl}
-                            alt={msg.attachment.displayTitle}
-                            className="w-12 h-12 rounded-xl object-cover border border-neutral-200 shrink-0"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
-                            {msg.attachment.type === 'link' ? (
-                              <Link2 size={17} />
-                            ) : msg.attachment.type === 'receipt' ? (
-                              <ReceiptText size={17} />
-                            ) : (
-                              <ImageIcon size={17} />
-                            )}
-                          </div>
-                        )}
+                        <AttachmentThumbnail
+                          previewUrl={msg.attachment.previewUrl}
+                          alt={msg.attachment.displayTitle}
+                          type={msg.attachment.type}
+                        />
                         <div className="min-w-0 text-left">
                           <p className="text-xs font-bold text-neutral-950 truncate max-w-[260px]">
                             {msg.attachment.displayTitle}
@@ -789,10 +767,10 @@ export default function IdeationChatView({
         </div>
       </div>
 
-      {/* Bottom Floating Input Bar chuẩn MindTripAI (+ Multimodal Attach Menu + Staged Preview) */}
+      {/* Bottom Floating Input Bar (+ Multimodal Attach Menu + Staged Preview) */}
       <footer className="shrink-0 px-4 sm:px-8 pb-4 pt-2 bg-gradient-to-t from-[#FCFAF5] via-[#FCFAF5] to-transparent">
         <div className="max-w-[744px] mx-auto relative">
-          <MindtripAttachmentMenu
+          <ChatAttachmentMenu
             isOpen={isAttachMenuOpen}
             onClose={() => setIsAttachMenuOpen(false)}
             onSelectAttachment={(ready) => {
@@ -801,46 +779,26 @@ export default function IdeationChatView({
             }}
           />
 
-          <div className="rounded-[28px] border border-neutral-300/90 bg-white px-4 pt-3 pb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.06)] focus-within:border-neutral-900 focus-within:ring-1 focus-within:ring-neutral-900/15 transition">
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              const file = e.dataTransfer.files?.[0];
+              if (!file) return;
+              e.preventDefault();
+              void fileToReadyAttachment(file, 'file')
+                .then((ready) => {
+                  setPendingAttachment(ready);
+                  setTimeout(() => textareaRef.current?.focus(), 0);
+                })
+                .catch((err) => setErrorMessage(err instanceof Error ? err.message : 'Không thể đọc tệp đính kèm.'));
+            }}
+            className="rounded-[28px] border border-neutral-300/90 bg-white px-4 pt-3 pb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.06)] focus-within:border-neutral-900 focus-within:ring-1 focus-within:ring-neutral-900/15 transition"
+          >
             {pendingAttachment && (
-              <div
-                data-testid="staged-attachment-chip"
-                className="mb-2.5 inline-flex items-center gap-2.5 rounded-2xl border border-neutral-200 bg-neutral-50 p-1.5 pr-2.5 max-w-full"
-              >
-                {pendingAttachment.previewUrl ? (
-                  <img
-                    src={pendingAttachment.previewUrl}
-                    alt={pendingAttachment.displayTitle}
-                    className="w-12 h-12 rounded-xl object-cover border border-neutral-200 shrink-0"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800 shrink-0">
-                    {pendingAttachment.payload.type === 'link' ? (
-                      <Link2 size={17} />
-                    ) : pendingAttachment.payload.type === 'receipt' ? (
-                      <ReceiptText size={17} />
-                    ) : (
-                      <ImageIcon size={17} />
-                    )}
-                  </div>
-                )}
-                <div className="min-w-0 text-left">
-                  <p className="text-xs font-semibold text-neutral-950 truncate max-w-[240px]">
-                    {pendingAttachment.displayTitle}
-                  </p>
-                  <p className="text-xs text-neutral-600 truncate">
-                    {pendingAttachment.subtitle} · Nhập câu hỏi rồi bấm gửi
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPendingAttachment(null)}
-                  aria-label="Gỡ tệp đính kèm"
-                  className="w-7 h-7 rounded-full hover:bg-neutral-200 flex items-center justify-center text-neutral-700 shrink-0 cursor-pointer transition"
-                >
-                  <X size={14} />
-                </button>
-              </div>
+              <StagedAttachmentChip
+                attachment={pendingAttachment}
+                onRemove={() => setPendingAttachment(null)}
+              />
             )}
 
             <textarea
@@ -848,37 +806,40 @@ export default function IdeationChatView({
               rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onPaste={(e) => {
+                const file = e.clipboardData?.files?.[0];
+                if (!file) return;
+                e.preventDefault();
+                void fileToReadyAttachment(file, 'file')
+                  .then((ready) => setPendingAttachment(ready))
+                  .catch((err) => setErrorMessage(err instanceof Error ? err.message : 'Không thể đọc ảnh đã dán.'));
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   void handleSend();
                 }
               }}
-              placeholder={
-                pendingAttachment?.payload.type === 'link'
-                  ? 'Bạn muốn làm gì với đường dẫn này? (VD: Liệt kê tất cả các địa điểm trong video)...'
-                  : pendingAttachment?.payload.type === 'file'
-                    ? 'Bạn muốn làm gì với tệp / ảnh này? (VD: Đây là địa điểm nào, gợi ý quán ăn gần đây)...'
-                    : pendingAttachment?.payload.type === 'receipt'
-                      ? 'Bạn muốn đồng bộ hóa đơn / xác nhận đặt chỗ này như thế nào?...'
-                      : 'Hỏi GreenTrip AI về Đà Nẵng – Huế, hoặc bấm + để tải ảnh, dán link, vé đặt chỗ...'
-              }
+              placeholder={getAttachmentPlaceholder(
+                pendingAttachment,
+                'Hỏi GreenTrip AI về Đà Nẵng – Huế, hoặc bấm + để tải ảnh, tệp hoặc dán link...'
+              )}
               aria-label="Nhập câu hỏi khởi tạo ý tưởng chuyến đi"
-              className="w-full resize-none overflow-y-auto bg-transparent text-[14.5px] text-neutral-900 placeholder:text-neutral-500 focus:outline-none max-h-36 leading-relaxed"
+              className="w-full resize-none overflow-y-auto bg-transparent text-[14.5px] text-neutral-900 placeholder:text-neutral-600 focus:outline-none max-h-36 leading-relaxed"
             />
 
             <div className="flex items-center justify-between pt-2">
               <button
                 type="button"
                 onClick={() => setIsAttachMenuOpen((prev) => !prev)}
-                aria-label="Đính kèm ảnh, đường dẫn hoặc vé đặt chỗ"
+                aria-label="Đính kèm ảnh, tệp hoặc đường dẫn"
                 aria-expanded={isAttachMenuOpen}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
                   isAttachMenuOpen
                     ? 'bg-neutral-900 text-white rotate-45'
                     : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-900'
                 }`}
-                title="Đính kèm tệp, đường dẫn hoặc hóa đơn"
+                title="Đính kèm ảnh, tệp hoặc đường dẫn"
               >
                 <Plus size={18} strokeWidth={2.2} />
               </button>
@@ -888,10 +849,10 @@ export default function IdeationChatView({
                 onClick={() => void handleSend()}
                 disabled={(!input.trim() && !pendingAttachment) || isSending}
                 aria-label="Gửi tin nhắn"
-                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
                   (input.trim() || pendingAttachment) && !isSending
                     ? 'bg-neutral-950 hover:bg-neutral-800 text-white cursor-pointer active:scale-95'
-                    : 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
+                    : 'bg-neutral-200 text-neutral-600 cursor-not-allowed'
                 }`}
               >
                 {isSending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={17} />}
@@ -899,7 +860,7 @@ export default function IdeationChatView({
             </div>
           </div>
 
-          <p className="mt-2 text-center text-xs text-neutral-500">
+          <p className="mt-2 text-center text-xs text-neutral-600">
             GreenTrip AI có thể nhầm lẫn. Hãy kiểm tra lại thông tin quan trọng.
           </p>
         </div>

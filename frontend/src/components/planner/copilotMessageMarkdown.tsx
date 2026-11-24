@@ -1,5 +1,9 @@
 import { MapPin } from 'lucide-react';
-import type { CopilotSuggestedPoi } from '@/services/copilotService';
+import type {
+  CopilotExtractedPlace,
+  CopilotReceiptBooking,
+  CopilotSuggestedPoi,
+} from '@/services/copilotService';
 
 export interface CopilotAttachmentSummary {
   type: 'file' | 'link' | 'receipt';
@@ -16,6 +20,8 @@ export interface CopilotChatMessageItem {
   timestamp?: string;
   attachment?: CopilotAttachmentSummary;
   suggestedPois?: CopilotSuggestedPoi[];
+  extractedPlaces?: CopilotExtractedPlace[];
+  receiptBooking?: CopilotReceiptBooking | null;
   avoidNotice?: string | null;
   greenImpact?: string | null;
   budgetImpact?: string | null;

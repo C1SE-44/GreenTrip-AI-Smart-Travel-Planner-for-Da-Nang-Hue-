@@ -375,3 +375,65 @@ def test_receipt_deduplication_and_non_bleeding_source_title() -> None:
 
     assert resp_tt.trip_memory.get("attached_source_title") == ""
     assert resp_tt.trip_memory.get("attached_source_url") == "https://www.tiktok.com/@test/video/123"
+
+
+def test_inline_social_url_detection_routes_direct_pasted_links() -> None:
+    from app.trips.copilot_attachments import extract_inline_link_attachment
+
+    yt = extract_inline_link_attachment("Liệt kê địa điểm trong video này giúp mình https://youtu.be/em1IU_h1ZY4.")
+    assert yt is not None
+    assert yt.type == "link"
+    assert yt.url == "https://youtu.be/em1IU_h1ZY4"
+
+    tt = extract_inline_link_attachment("Xem clip TikTok https://www.tiktok.com/@danang/video/7123456!")
+    assert tt is not None
+    assert tt.url == "https://www.tiktok.com/@danang/video/7123456"
+
+    assert extract_inline_link_attachment("Gợi ý lịch trình Đà Nẵng 3 ngày") is None
+    assert extract_inline_link_attachment("http://localhost:5173/youtube.com/watch?v=abc") is None
+
+
+def test_tiktok_bot_challenge_preserves_url_city_and_blocks_please_wait_overwrite() -> None:
+    from unittest.mock import MagicMock
+    from app.trips.copilot_attachments import fetch_link_metadata
+    from app.trips.copilot_enrichment import ensure_closing_ab_hook
+
+    mock_oembed_fail = MagicMock(status_code=400)
+    mock_html_challenge = MagicMock(
+        status_code=200,
+        headers={"content-type": "text/html; charset=utf-8"},
+        text="<html><head><title>Please wait...</title></head><body>Please wait...</body></html>",
+    )
+
+    with (
+        patch("app.trips.copilot_attachments._resolve_public_redirects", side_effect=lambda u: u),
+        patch(
+            "app.trips.copilot_attachments.httpx.get",
+            side_effect=[mock_oembed_fail, mock_oembed_fail, mock_html_challenge],
+        ),
+    ):
+        meta = fetch_link_metadata("https://www.tiktok.com/@danangdidau24/video/7671123456")
+
+    assert meta["metadata_source"] == "blocked_by_platform"
+    assert meta["title"] == ""
+    assert "danangdidau24" in meta["snippet"]
+    assert meta["url_city"] == "Đà Nẵng"
+
+    # Even if prior trip_context had stale "Huế", blocked TikTok from @danangdidau24 must stay in Đà Nẵng
+    req = CopilotChatRequest(
+        message="hãy liệt kê tất cả các địa điểm",
+        trip_context=TripContextPayload(mode="ideation", destination="Huế", days_count=3),
+        attachment=CopilotAttachmentPayload(type="link", url="https://www.tiktok.com/@danangdidau24/video/7671123456"),
+    )
+    with (
+        patch("app.trips.copilot_attachments.fetch_link_metadata", return_value=meta),
+        patch("app.trips.copilot_attachments._analyze_attachment_with_gemini", return_value=None),
+    ):
+        resp = process_copilot_attachment(req, _DummyConn(SAMPLE_POI_ROWS))  # type: ignore[arg-type]
+
+    assert "Đà Nẵng" in resp.reply_text
+    assert "Đại Nội Huế" not in resp.reply_text
+
+    # Single closing question (no stacked double question)
+    already_asking = "Nội dung chi tiết...\n\nBạn có muốn GreenTrip AI lên chi tiết lịch trình 3 ngày tại Đà Nẵng không?"
+    assert ensure_closing_ab_hook(already_asking, "Bạn muốn mình A — ... hay B — ...?") == already_asking

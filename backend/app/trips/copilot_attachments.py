@@ -1,6 +1,6 @@
 """Multimodal attachment analyzer for GreenTrip Copilot ('+' Upload file / Add link / Add receipt).
 
-Implements Mindtrip-grade 4-step processing (enhanced with YouTube Vietnamese transcript & TikTok Vision OCR):
+Implements a 4-step multimodal pipeline (with YouTube Vietnamese transcript & TikTok Vision OCR):
 1. Multi-layer metadata extraction:
    - YouTube: oEmbed + watch shortDescription/chapters + Innertube Android Vietnamese/English transcript
    - TikTok / Social: oEmbed + cover thumbnail Vision OCR when captions lack place names
@@ -616,14 +616,63 @@ def _fetch_image_as_inline_data(image_url: str) -> dict[str, str] | None:
         return None
 
 
+_BOT_CHALLENGE_MARKERS = (
+    "please wait...",
+    "just a moment...",
+    "attention required!",
+    "cloudflare",
+    "verify you are human",
+    "enable javascript and cookies",
+    "access denied",
+    "log in to facebook",
+    "you must log in to continue",
+    "tiktok - make your day",
+)
+
+
+def _is_bot_challenge_text(text: str) -> bool:
+    norm = (text or "").strip().lower()
+    if not norm:
+        return False
+    return any(marker in norm for marker in _BOT_CHALLENGE_MARKERS)
+
+
+def _resolve_public_redirects(url: str, max_hops: int = 4) -> str:
+    """Safely follow public HTTP redirects (e.g. vt.tiktok.com, fb.watch) with SSRF guard."""
+    current = url
+    try:
+        for _ in range(max_hops):
+            if not is_safe_public_url(current):
+                return url
+            resp = httpx.get(current, headers=_BROWSER_HEADERS, timeout=3.5, follow_redirects=False)
+            if resp.status_code in (301, 302, 303, 307, 308) and resp.headers.get("location"):
+                next_url = str(resp.url.join(resp.headers["location"]))
+                if not is_safe_public_url(next_url):
+                    break
+                current = next_url
+                continue
+            break
+    except Exception:
+        return current
+    return current
+
+
 def fetch_link_metadata(url: str) -> dict[str, str]:
     """Step 1: Fetch public page metadata, YouTube shortDescription/chapters/transcript, or TikTok cover."""
     platform = detect_link_platform(url)
-    parsed = urlparse(url)
+    resolved_url = (
+        _resolve_public_redirects(url)
+        if platform in ("TikTok", "Facebook", "Pinterest", "Instagram")
+        else url
+    )
+    if resolved_url != url:
+        platform = detect_link_platform(resolved_url)
+    parsed = urlparse(resolved_url)
     slug_hint = unquote(f"{parsed.path} {parsed.query}").replace("-", " ").replace("_", " ").replace("/", " ").strip()
+    url_city = _detect_city_from_text(f"{resolved_url} {slug_hint}", "")
     result = {
         "platform": platform,
-        "url": url,
+        "url": resolved_url,
         "title": "",
         "author": "",
         "description": "",
@@ -631,18 +680,19 @@ def fetch_link_metadata(url: str) -> dict[str, str]:
         "transcript": "",
         "snippet": slug_hint[:400],
         "thumbnail_url": "",
+        "url_city": url_city,
         "metadata_source": "url_only",
     }
 
-    if not is_safe_public_url(url):
+    if not is_safe_public_url(resolved_url):
         return result
 
     if platform == "YouTube":
-        video_id = extract_youtube_video_id(url)
+        video_id = extract_youtube_video_id(resolved_url)
         try:
             oe = httpx.get(
                 "https://www.youtube.com/oembed",
-                params={"url": url, "format": "json"},
+                params={"url": resolved_url, "format": "json"},
                 headers=_BROWSER_HEADERS,
                 timeout=3.5,
             )
@@ -676,27 +726,32 @@ def fetch_link_metadata(url: str) -> dict[str, str]:
             return result
 
     if platform == "TikTok":
-        try:
-            oe = httpx.get(
-                "https://www.tiktok.com/oembed",
-                params={"url": url},
-                headers=_BROWSER_HEADERS,
-                timeout=4.0,
-            )
-            if oe.status_code == 200:
-                oe_json = oe.json()
-                result["title"] = str(oe_json.get("title") or "")[:240]
-                result["author"] = str(oe_json.get("author_name") or "")[:120]
-                result["thumbnail_url"] = str(oe_json.get("thumbnail_url") or "")
-                result["description"] = result["title"] or f"Video TikTok bởi {result['author']}".strip()
-                result["metadata_source"] = "tiktok_oembed_and_cover" if result["thumbnail_url"] else "title_only"
-                if result["title"] or result["thumbnail_url"]:
-                    return result
-        except Exception as exc:
-            logger.debug("TikTok oEmbed lookup skipped: %s", exc)
+        clean_tiktok_url = parsed._replace(query="", fragment="").geturl()
+        for candidate_tt in (clean_tiktok_url, resolved_url):
+            try:
+                oe = httpx.get(
+                    "https://www.tiktok.com/oembed",
+                    params={"url": candidate_tt},
+                    headers=_BROWSER_HEADERS,
+                    timeout=4.0,
+                )
+                if oe.status_code == 200:
+                    oe_json = oe.json()
+                    tt_title = str(oe_json.get("title") or "").strip()[:240]
+                    tt_thumb = str(oe_json.get("thumbnail_url") or "").strip()
+                    tt_author = str(oe_json.get("author_name") or "").strip()[:120]
+                    if (tt_title and not _is_bot_challenge_text(tt_title)) or tt_thumb:
+                        result["title"] = "" if _is_bot_challenge_text(tt_title) else tt_title
+                        result["author"] = tt_author
+                        result["thumbnail_url"] = tt_thumb
+                        result["description"] = result["title"] or f"Video TikTok bởi {tt_author}".strip()
+                        result["metadata_source"] = "tiktok_oembed_and_cover" if tt_thumb else "title_only"
+                        return result
+            except Exception as exc:
+                logger.debug("TikTok oEmbed lookup skipped: %s", exc)
 
     # Generic HTML pages / articles / blogs with manual SSRF-safe redirect checks
-    current_url = url
+    current_url = resolved_url
     try:
         for _ in range(3):
             resp = httpx.get(current_url, headers=_BROWSER_HEADERS, timeout=4.5, follow_redirects=False)
@@ -708,6 +763,10 @@ def fetch_link_metadata(url: str) -> dict[str, str]:
                 continue
             if resp.status_code == 200 and "text/html" in (resp.headers.get("content-type") or "").lower():
                 parsed_meta = _extract_html_metadata(resp.text)
+                if _is_bot_challenge_text(parsed_meta["title"]) or _is_bot_challenge_text(parsed_meta["snippet"]):
+                    # Keep clean URL slug_hint (e.g. @danangdidau24) and mark blocked_by_platform
+                    result["metadata_source"] = "blocked_by_platform"
+                    break
                 result["title"] = parsed_meta["title"] or result["title"]
                 result["description"] = parsed_meta["description"] or result["description"]
                 if parsed_meta["snippet"]:
@@ -715,9 +774,11 @@ def fetch_link_metadata(url: str) -> dict[str, str]:
                 if parsed_meta["thumbnail_url"] and not result["thumbnail_url"]:
                     result["thumbnail_url"] = parsed_meta["thumbnail_url"]
                 result["metadata_source"] = "html_page"
+            elif resp.status_code in (401, 403, 429):
+                result["metadata_source"] = "blocked_by_platform"
             break
     except Exception as exc:
-        logger.debug("Direct HTML metadata fetch skipped for %s: %s", url, exc)
+        logger.debug("Direct HTML metadata fetch skipped for %s: %s", resolved_url, exc)
 
     return result
 
@@ -747,8 +808,9 @@ def _analyze_attachment_with_gemini(
 Hãy phân tích dữ liệu đính kèm (metadata video, mô tả/mốc thời gian, phụ đề lời thoại tiếng Việt, ảnh bìa TikTok/video, ảnh chụp địa điểm hoặc hóa đơn đặt chỗ) và trả về DUY NHẤT 1 JSON hợp lệ.
 
 QUY TẮC BẮT BUỘC:
-1. **Kiểm tra khớp nội dung (Semantic Content Guard)**:
-   - Nếu nguồn là link bài viết (`html_page`) mà nội dung tải về KHÔNG liên quan tới chủ đề du lịch / thành phố người dùng hỏi (VD: bài báo Showbiz/thể thao thay vì du lịch Huế): mở đầu thẳng thắn báo rõ nội dung tải về không khớp và gợi ý gửi lại link đúng hoặc chụp màn hình bài viết; sau đó vẫn cung cấp danh sách gợi ý du lịch xanh chất lượng cho điểm đến người dùng đang hỏi (không bỏ rơi người dùng).
+1. **Kiểm tra khớp nội dung (Semantic Content Guard & Anti-Bot Guard)**:
+   - Nếu nguồn là link bài viết (`html_page`) mà nội dung tải về KHÔNG liên quan tới chủ đề du lịch / thành phố người dùng hỏi (VD: bài báo Showbiz/thể thao thay vì du lịch Huế): mở đầu thẳng thắn báo rõ nội dung tải về không khớp và gợi ý gửi lại link đúng hoặc chụp màn hình bài viết; sau đó vẫn cung cấp danh sách gợi ý du lịch xanh chất lượng cho điểm đến người dùng đang hỏi.
+   - Nếu `METADATA_SOURCE` là `blocked_by_platform` hoặc `url_only` (TikTok/Facebook chặn crawler hoặc yêu cầu đăng nhập): thông báo ngắn gọn rằng nền tảng đang giới hạn đọc tự động và gợi ý người dùng tải ảnh chụp màn hình qua nút `+`; ĐỒNG THỜI nếu có `DETECTED_URL_CITY` (VD `@danangdidau24` -> Đà Nẵng), BẮT BUỘC gợi ý địa điểm xanh thuộc `DETECTED_URL_CITY` chứ không lấy thành phố cũ trong ngữ cảnh!
 2. **Đọc đa tầng & Trung thực nguồn dữ liệu**:
    - Nếu có `VIDEO_CAPTIONS_TRANSCRIPT`: đọc kỹ cả lời thoại (chú ý sửa lỗi chính tả nhận dạng giọng nói, VD "Núi Thành Tài" -> "Núi Thần Tài", "chùa Linh Ứng", "biển Mỹ Khê") để tìm thêm địa điểm reviewer nói bằng miệng mà mô tả bỏ sót.
    - Nếu có ảnh bìa TikTok/video đính kèm (`COVER_IMAGE_VISION_OCR = true`): đọc toàn bộ chữ / bảng giá / danh sách địa điểm in trên khung hình ảnh bìa!
@@ -805,6 +867,8 @@ Nếu không phải hóa đơn/vé đặt chỗ, đặt `receipt_info = null`. C
         text_context_lines.append(f"PLATFORM: {link_meta.get('platform')}")
         text_context_lines.append(f"URL: {link_meta.get('url')}")
         text_context_lines.append(f"METADATA_SOURCE: {link_meta.get('metadata_source', 'title_only')}")
+        if link_meta.get("url_city"):
+            text_context_lines.append(f"DETECTED_URL_CITY: {link_meta['url_city']}")
         if link_meta.get("title"):
             text_context_lines.append(f"PAGE_TITLE: {link_meta['title']}")
         if link_meta.get("author"):
@@ -1194,6 +1258,11 @@ def _query_matching_pois(
 
     prepared_rows: list[tuple[str, str, tuple[Any, ...]]] = []
     for row in rows:
+        row_city_norm = strip_vietnamese_accents(str(row[4] or "")).lower()
+        if target_city == "Đà Nẵng" and "hue" in row_city_norm and "da nang" not in row_city_norm:
+            continue
+        if target_city == "Huế" and ("da nang" in row_city_norm or "hoi an" in row_city_norm) and "hue" not in row_city_norm:
+            continue
         name_norm = strip_vietnamese_accents(str(row[1])).lower().strip()
         haystack = strip_vietnamese_accents(f"{row[1]} {row[2]} {row[3] or ''} {row[5]} {row[6]}").lower()
         prepared_rows.append((name_norm, haystack, row))
@@ -1439,6 +1508,15 @@ def _build_deterministic_video_reply(
         )
 
     bullets = "\n".join(format_three_layer_poi_bullet(p) for p in suggested_pois)
+    if source_kind == "blocked_by_platform":
+        return (
+            f"Trang **{platform}** hiện đang bật cơ chế chống đọc tự động / yêu cầu đăng nhập nên mình chưa tải được nội dung chi tiết bên trong video. "
+            f"Bạn có thể **chụp ảnh màn hình** khung hình địa điểm rồi tải lên qua nút **+** để mình đọc trực tiếp giúp bạn!\n\n"
+            f"Trong lúc đó, dựa trên khu vực **{detected_city}**, đây là các điểm đến xanh khớp nhất đã ghim lên bản đồ:\n"
+            f"{bullets if bullets else f'- Gợi ý cụm trải nghiệm bản địa tại **{detected_city}** ít đông đúc và dễ ghép tuyến.'}\n\n"
+            f"Bạn muốn mình **A — Gom ngay các điểm này vào lịch trình {detected_city} theo cụm gần nhau**, "
+            f"hay **B — Gợi ý thêm quán ăn & cà phê bản địa ít đông ở {detected_city}**?"
+        )
     scope_note = (
         " *(lưu ý: đường dẫn này không công khai mô tả chi tiết nên mình đối chiếu dựa trên thông tin hiện có)*"
         if source_kind == "title_only"
@@ -1478,6 +1556,34 @@ def _format_source_memory_payload(
         "places": places_compact[:15],
     }
     return json.dumps(payload, ensure_ascii=False)[:1800]
+
+
+_INLINE_SOCIAL_URL_RE = re.compile(
+    r"https?://(?:www\.|m\.|vt\.)?(?:youtube\.com|youtu\.be|tiktok\.com|instagram\.com|facebook\.com|fb\.watch|pinterest\.com|pin\.it)/[^\s<>\"']+",
+    re.IGNORECASE,
+)
+
+
+def extract_inline_link_attachment(message: str) -> CopilotAttachmentPayload | None:
+    """Detect a pasted social/video URL inside plain message text when '+' menu wasn't used."""
+    match = _INLINE_SOCIAL_URL_RE.search(message or "")
+    if not match:
+        return None
+    candidate = match.group(0).rstrip(".,);!?")
+    if not is_safe_public_url(candidate):
+        return None
+    return CopilotAttachmentPayload(type="link", url=candidate)
+
+
+def _build_receipt_fingerprint(
+    title: str,
+    date_str: str | None,
+    time_str: str | None,
+    confirmation_code: str | None,
+) -> str:
+    return strip_vietnamese_accents(
+        f"{title}|{date_str or ''}|{time_str or ''}|{confirmation_code or ''}"
+    ).lower()
 
 
 def is_attached_source_followup(request: CopilotChatRequest) -> bool:
@@ -1575,11 +1681,19 @@ def process_copilot_attachment(
     if attachment.type == "link" and attachment.url:
         link_meta = fetch_link_metadata(attachment.url)
 
+    # Override stale trip destination early if URL slug explicitly names a city (e.g. @danangdidau24 -> Đà Nẵng)
+    url_city_hint = (link_meta.get("url_city") or "") if link_meta else ""
+    ctx_for_gemini = (
+        ctx.model_copy(update={"destination": url_city_hint})
+        if url_city_hint in ("Đà Nẵng", "Huế")
+        else ctx
+    )
+
     # Step 2: LLM NER + Semantic Guard + Vision OCR
     gemini_result = _analyze_attachment_with_gemini(
         attachment=attachment,
         user_message=request.message or "",
-        trip_context=ctx,
+        trip_context=ctx_for_gemini,
         link_meta=link_meta,
     )
 
@@ -1616,9 +1730,13 @@ def process_copilot_attachment(
     )
 
     detected_city = (
-        str(gemini_result.get("detected_city"))
+        url_city_hint
+        if url_city_hint in ("Đà Nẵng", "Huế")
+        and link_meta
+        and link_meta.get("metadata_source") in ("blocked_by_platform", "url_only")
+        else str(gemini_result.get("detected_city"))
         if gemini_result and gemini_result.get("detected_city") in ("Đà Nẵng", "Huế", "Đà Nẵng & Huế")
-        else _detect_city_from_text(combined_signal_text, ctx.destination)
+        else _detect_city_from_text(combined_signal_text, ctx_for_gemini.destination)
     )
 
     keywords: list[str] = []
@@ -1698,8 +1816,8 @@ def process_copilot_attachment(
         r_cost = int(r_cost_raw) if isinstance(r_cost_raw, (int, float)) and r_cost_raw > 0 else None
         r_code = str(receipt_info.get("confirmation_code")) if receipt_info.get("confirmation_code") else None
 
-        # Deduplication check against processed_receipts in trip_memory (matches Mindtrip Receipt dedup)
-        fingerprint = strip_vietnamese_accents(f"{r_title}|{r_date or ''}|{r_time}|{r_code or ''}").lower()
+        # Deduplication check against processed_receipts in trip_memory
+        fingerprint = _build_receipt_fingerprint(r_title, r_date, r_time, r_code)
         prior_fingerprints = [
             f.strip() for f in str((ctx.trip_memory or {}).get("processed_receipts") or "").split(";;") if f.strip()
         ]
@@ -1834,9 +1952,12 @@ def process_copilot_attachment(
     finalized.trip_memory["attached_source_title"] = resolved_title[:160]
     finalized.trip_memory["attached_source_url"] = attachment.url or ""
     if receipt_booking is not None:
-        fingerprint = strip_vietnamese_accents(
-            f"{receipt_booking.title}|{receipt_booking.date_str or ''}|{receipt_booking.time_str or ''}|{receipt_booking.confirmation_code or ''}"
-        ).lower()
+        fingerprint = _build_receipt_fingerprint(
+            receipt_booking.title,
+            receipt_booking.date_str,
+            receipt_booking.time_str,
+            receipt_booking.confirmation_code,
+        )
         prior = [
             f.strip() for f in str((ctx.trip_memory or {}).get("processed_receipts") or "").split(";;") if f.strip()
         ]

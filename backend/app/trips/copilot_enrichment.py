@@ -309,8 +309,15 @@ def format_three_layer_poi_bullet(poi: CopilotSuggestedPoiItem) -> str:
 
 
 def ensure_closing_ab_hook(reply_text: str, default_hook: str) -> str:
-    """Ensure 100% of responses end with a concrete A/B conversational hook (Rule 6)."""
+    """Ensure 100% of responses end with a single concrete closing question (avoiding double hooks)."""
     stripped = reply_text.strip()
-    if stripped.endswith("?") and (" hay " in stripped[-220:].lower() or "phương án" in stripped[-220:].lower()):
+    tail = stripped[-240:].lower()
+    if stripped.endswith("?") and (
+        " hay " in tail
+        or "phương án" in tail
+        or "bạn có muốn" in tail
+        or "bạn muốn" in tail
+        or "bạn thích" in tail
+    ):
         return stripped
     return f"{stripped}\n\n{default_hook}"

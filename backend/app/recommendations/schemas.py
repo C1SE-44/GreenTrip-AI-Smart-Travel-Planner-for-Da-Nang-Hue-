@@ -18,6 +18,10 @@ class RecommendationRequest(BaseModel):
     ideas: list[str] = Field(default_factory=list, description="POI names or IDs user added to ideas")
     trip_days: int | None = Field(default=None, ge=1, le=30, description="Duration of the trip in days")
     green_priority: float = Field(default=0.7, ge=0.0, le=1.0)
+    optimization_mode: Literal["balanced", "fast", "budget", "green_local"] = Field(
+        default="balanced",
+        description="Multi-objective trade-off preset: balanced, fast, budget, or green_local",
+    )
     top_k: int = Field(default=10, ge=1, le=50)
     trip_data: ValidatedTripData | None = Field(
         default=None,

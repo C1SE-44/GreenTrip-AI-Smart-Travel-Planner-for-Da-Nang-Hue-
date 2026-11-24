@@ -40,12 +40,16 @@ import {
   type Poi,
   type PoiCategory,
   type PoiCity,
+  computeGreenScoreBreakdown,
+  evaluateCrowdProfile,
   evaluateLocalAuthentic,
   getDeterministicImage,
+  isTimeInCrowdPeakWindow,
   normalizeCategory,
   normalizeCity,
   normalizePoi,
 } from '@/data/pois';
+import ExplanationModal from '@/components/poi/ExplanationModal';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
 import CentralVietnamAdvisoryBanner from '@/components/planner/CentralVietnamAdvisoryBanner';
@@ -79,12 +83,15 @@ import {
   getStopShortReason,
   computeTripBudgetSummary,
   computeDayFatigue,
+  computeItineraryResearchMetrics,
+  optimizeItineraryWithTradeoff,
   clearOverlappingVisitTimes,
   dailyVisitCapacity,
   pacingForTrip,
   selectAutomaticPois,
   optimizeDays,
   buildFallbackRoadCorridor,
+  type OptimizationTradeoffMode,
   type RouteTransportMode,
   type TripItinerary,
   type ItineraryDay,
@@ -866,10 +873,27 @@ export default function TripItineraryView({
     };
   }, [plan.days, poiById, transportMode]);
 
-  // Tối ưu cụm điểm giảm zig-zag cho toàn bộ các ngày
+  const [tradeoffMode, setTradeoffMode] = useState<OptimizationTradeoffMode>('fast');
+  const [lastOptimizeUndo, setLastOptimizeUndo] = useState<{
+    days: ItineraryDay[];
+    transportMode: RouteTransportMode;
+  } | null>(null);
+  const [explainPoiTarget, setExplainPoiTarget] = useState<Poi | null>(null);
+
+  const researchMetrics = useMemo(
+    () => computeItineraryResearchMetrics(plan.days, poiById, transportMode),
+    [plan.days, poiById, transportMode]
+  );
+
+  // Tối ưu cụm điểm giảm zig-zag cho toàn bộ các ngày (có lưu snapshot Hoàn tác)
   const handleOptimizeAllDays = () => {
+    const prevSnapshot = {
+      days: plan.days.map((d) => ({ ...d, stops: d.stops.map((s) => ({ ...s })) })),
+      transportMode,
+    };
     const res = optimizeItineraryRouteOrder(plan.days, poiById);
     if (res.reorderedDaysCount > 0) {
+      setLastOptimizeUndo(prevSnapshot);
       persistPlan({ ...plan, days: res.days });
       const savedCarbon = estimateCarbonFootprint(res.totalSavedKm * 1000, transportMode);
       setOptimizeFeedback(
@@ -878,6 +902,59 @@ export default function TripItineraryView({
     } else {
       setOptimizeFeedback('Thứ tự các điểm hiện tại đã tối ưu theo cụm gần nhất, chưa phát hiện đoạn vòng lặp.');
     }
+  };
+
+  // Tối ưu đa mục tiêu theo chế độ đánh đổi (Nhanh nhất / Tiết kiệm / Xanh & Ít đông) + Hoàn tác
+  const handleApplyTradeoffOptimize = (mode: OptimizationTradeoffMode) => {
+    setTradeoffMode(mode);
+    const prevSnapshot = {
+      days: plan.days.map((d) => ({ ...d, stops: d.stops.map((s) => ({ ...s })) })),
+      transportMode,
+    };
+    const res = optimizeItineraryWithTradeoff(
+      plan.days,
+      allPois,
+      mode,
+      transportMode,
+      trip.peopleCount || 2
+    );
+    setLastOptimizeUndo(prevSnapshot);
+    if (res.recommendedTransportMode !== transportMode) {
+      setTransportMode(res.recommendedTransportMode);
+    }
+    persistPlan({ ...plan, days: res.days });
+    setOptimizeFeedback(res.summaryText);
+  };
+
+  const handleUndoOptimize = () => {
+    if (!lastOptimizeUndo) return;
+    persistPlan({ ...plan, days: lastOptimizeUndo.days });
+    setTransportMode(lastOptimizeUndo.transportMode);
+    setLastOptimizeUndo(null);
+    setOptimizeFeedback('Đã hoàn tác về phương án lịch trình và phương tiện trước đó.');
+  };
+
+  // Dời nhanh điểm trùng giờ cao điểm sang khung sáng sớm vắng khách (07:30)
+  const handleShiftStopOffPeak = (dayNumber: number, stopId: string) => {
+    const nextDays = plan.days.map((d) => {
+      if (d.day_number !== dayNumber) return d;
+      const updatedStops = d.stops.map((s) => {
+        if (s.stop_id !== stopId) return s;
+        const dur = Math.max(45, s.duration_minutes || 90);
+        const endMins = 7 * 60 + 30 + dur;
+        const hh = String(Math.floor(endMins / 60)).padStart(2, '0');
+        const mm = String(endMins % 60).padStart(2, '0');
+        return {
+          ...s,
+          start_time: '07:30',
+          end_time: `${hh}:${mm}`,
+          comment: s.comment ? `${s.comment} · Đã dời sớm tránh giờ cao điểm` : 'Đã dời sớm 07:30 để tránh giờ cao điểm',
+        };
+      });
+      return { ...d, stops: updatedStops };
+    });
+    persistPlan({ ...plan, days: nextDays });
+    setOptimizeFeedback('Đã dời điểm tham quan sang khung 07:30 sáng sớm để tránh giờ cao điểm.');
   };
 
   // Tối ưu cụm điểm giảm zig-zag cho một ngày cụ thể
@@ -2025,6 +2102,11 @@ export default function TripItineraryView({
               transportMode={transportMode}
               onChangeTransportMode={setTransportMode}
               onOptimizeAllDays={handleOptimizeAllDays}
+              tradeoffMode={tradeoffMode}
+              onApplyTradeoffOptimize={handleApplyTradeoffOptimize}
+              canUndoOptimize={Boolean(lastOptimizeUndo)}
+              onUndoOptimize={handleUndoOptimize}
+              researchMetrics={researchMetrics}
               budgetSummary={budgetSummary}
               peopleCount={trip.peopleCount || 1}
               formatVnd={formatVnd}
@@ -2366,26 +2448,62 @@ export default function TripItineraryView({
                                             </div>
                                           )}
 
-                                        {!isRest && matchedPoi && evaluateLocalAuthentic(matchedPoi).isCrowded && (
-                                          <div className="no-print mt-1.5 flex flex-wrap items-center gap-2">
-                                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900">
-                                              Khu vực đông khách
-                                            </span>
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setPreferLocalAuthentic(true);
-                                                setNearbyPickerTarget({
-                                                  dayNumber: day.day_number,
-                                                  stopId: stop.stop_id,
-                                                });
-                                              }}
-                                              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline underline-offset-2 cursor-pointer"
-                                            >
-                                              Đổi điểm bản địa ít đông
-                                            </button>
-                                          </div>
-                                        )}
+                                        {!isRest && matchedPoi && (() => {
+                                          const crowd = evaluateCrowdProfile(matchedPoi);
+                                          const inPeak = isTimeInCrowdPeakWindow(stop.start_time, crowd);
+                                          const isCrowded = crowd.level === 'high' || evaluateLocalAuthentic(matchedPoi).isCrowded;
+                                          return (
+                                            <div className="no-print mt-1.5 flex flex-wrap items-center gap-2">
+                                              {isCrowded && (
+                                                <span
+                                                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                                                    inPeak
+                                                      ? 'border-rose-300 bg-rose-50 text-rose-900'
+                                                      : 'border-amber-200 bg-amber-50 text-amber-900'
+                                                  }`}
+                                                  title={crowd.offPeakTip || 'Điểm phổ biến thường đông vào khung giờ cao điểm'}
+                                                >
+                                                  {inPeak
+                                                    ? `Quá tải giờ cao điểm (${crowd.peakHours})`
+                                                    : crowd.peakHours
+                                                      ? `Đông khách (${crowd.peakHours})`
+                                                      : 'Khu vực đông khách'}
+                                                </span>
+                                              )}
+                                              {inPeak && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleShiftStopOffPeak(day.day_number, stop.stop_id)}
+                                                  className="text-xs font-bold text-amber-900 hover:text-black underline underline-offset-2 cursor-pointer"
+                                                >
+                                                  Dời sang 07:30 (giờ vắng)
+                                                </button>
+                                              )}
+                                              {isCrowded && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setPreferLocalAuthentic(true);
+                                                    setNearbyPickerTarget({
+                                                      dayNumber: day.day_number,
+                                                      stopId: stop.stop_id,
+                                                    });
+                                                  }}
+                                                  className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline underline-offset-2 cursor-pointer"
+                                                >
+                                                  Đổi điểm bản địa ít đông
+                                                </button>
+                                              )}
+                                              <button
+                                                type="button"
+                                                onClick={() => setExplainPoiTarget(matchedPoi)}
+                                                className="text-xs font-semibold text-neutral-600 hover:text-emerald-900 underline underline-offset-2 cursor-pointer"
+                                              >
+                                                Vì sao chọn?
+                                              </button>
+                                            </div>
+                                          );
+                                        })()}
                                       </div>
 
                                       {/* Ghi chú Note */}
@@ -2826,6 +2944,16 @@ export default function TripItineraryView({
           onChangeValue={setDayEditorValue}
           onClose={() => setDayEditor(null)}
           onSave={saveDayEditor}
+        />
+      )}
+
+      {explainPoiTarget && (
+        <ExplanationModal
+          poiId={explainPoiTarget.id}
+          poiName={explainPoiTarget.name}
+          explanationSnippet={computeGreenScoreBreakdown(explainPoiTarget).summaryReason}
+          isOpen={Boolean(explainPoiTarget)}
+          onClose={() => setExplainPoiTarget(null)}
         />
       )}
     </div>

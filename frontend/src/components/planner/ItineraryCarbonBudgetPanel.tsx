@@ -1,10 +1,12 @@
-import { AlertTriangle, Bike, Bus, Car, Footprints, Leaf, Route as RouteIcon, Wallet, X } from 'lucide-react';
+import { AlertTriangle, Bike, Bus, Car, Footprints, Leaf, RotateCcw, Route as RouteIcon, Wallet, X } from 'lucide-react';
 import {
   TRANSPORT_MODES_META,
   formatCarbonAmount,
   formatCarbonEquivalence,
   type computeTripBudgetSummary,
   type estimateCarbonFootprint,
+  type ItineraryResearchMetrics,
+  type OptimizationTradeoffMode,
   type RouteTransportMode,
 } from '@/services/itineraryService';
 
@@ -16,12 +18,23 @@ interface ItineraryCarbonBudgetPanelProps {
   transportMode: RouteTransportMode;
   onChangeTransportMode: (mode: RouteTransportMode) => void;
   onOptimizeAllDays: () => void;
+  tradeoffMode?: OptimizationTradeoffMode;
+  onApplyTradeoffOptimize?: (mode: OptimizationTradeoffMode) => void;
+  canUndoOptimize?: boolean;
+  onUndoOptimize?: () => void;
+  researchMetrics?: ItineraryResearchMetrics | null;
   budgetSummary: ReturnType<typeof computeTripBudgetSummary>;
   peopleCount: number;
   formatVnd: (amount: number) => string;
   optimizeFeedback: string | null;
   onDismissOptimizeFeedback: () => void;
 }
+
+const TRADEOFF_PRESETS: ReadonlyArray<{ id: OptimizationTradeoffMode; label: string; title: string }> = [
+  { id: 'fast', label: 'Nhanh nhất', title: 'Ưu tiên rút gọn quãng đường và thời gian di chuyển' },
+  { id: 'budget', label: 'Tiết kiệm', title: 'Ưu tiên giảm chi phí vé/ăn uống và dùng xe công cộng' },
+  { id: 'green_local', label: 'Xanh & Ít đông', title: 'Ưu tiên giảm CO₂, tránh giờ cao điểm và đổi sang điểm cộng đồng' },
+];
 
 export default function ItineraryCarbonBudgetPanel({
   totalRoadKm,
@@ -31,6 +44,11 @@ export default function ItineraryCarbonBudgetPanel({
   transportMode,
   onChangeTransportMode,
   onOptimizeAllDays,
+  tradeoffMode = 'fast',
+  onApplyTradeoffOptimize,
+  canUndoOptimize = false,
+  onUndoOptimize,
+  researchMetrics = null,
   budgetSummary,
   peopleCount,
   formatVnd,
@@ -145,6 +163,67 @@ export default function ItineraryCarbonBudgetPanel({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 border-t border-emerald-200/60">
+        {onApplyTradeoffOptimize && (
+          <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Chọn mức đánh đổi tối ưu hành trình">
+            <span className="text-xs font-semibold text-neutral-700 mr-0.5">Ưu tiên:</span>
+            {TRADEOFF_PRESETS.map((preset) => {
+              const active = tradeoffMode === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  aria-pressed={active}
+                  title={preset.title}
+                  onClick={() => onApplyTradeoffOptimize(preset.id)}
+                  className={`inline-flex min-h-[32px] items-center rounded-full border px-2.5 text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                    active
+                      ? 'border-emerald-800 bg-emerald-800 text-white'
+                      : 'border-emerald-200 bg-white text-emerald-950 hover:bg-emerald-50'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+            {canUndoOptimize && onUndoOptimize && (
+              <button
+                type="button"
+                onClick={onUndoOptimize}
+                className="inline-flex min-h-[32px] items-center gap-1 rounded-full border border-neutral-300 bg-white px-2.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                title="Quay lại phương án trước khi tối ưu"
+              >
+                <RotateCcw size={12} aria-hidden="true" />
+                <span>Hoàn tác</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {researchMetrics && (
+          <div
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-700"
+            aria-label="5 chỉ số đánh giá hành trình xanh"
+          >
+            <span title="Route feasibility: Độ hợp lý tuyến (không lẫn tỉnh, không lệch giờ mở cửa/cao điểm)">
+              Khả thi: <strong className="text-emerald-900">{researchMetrics.routeFeasibilityPct}%</strong>
+            </span>
+            <span title="User satisfaction: Điểm hài lòng trung bình của các điểm dừng">
+              Hài lòng: <strong className="text-emerald-900">{researchMetrics.userSatisfactionScore}/5</strong>
+            </span>
+            <span title="Diversity: Độ đa dạng nhóm trải nghiệm (di sản, thiên nhiên, ẩm thực, bản địa)">
+              Đa dạng: <strong className="text-emerald-900">{researchMetrics.diversityPct}%</strong>
+            </span>
+            <span title="Estimated emission reduction: Tỷ lệ giảm phát thải CO₂ so với ô tô riêng">
+              Giảm CO₂: <strong className="text-emerald-900">{researchMetrics.emissionReductionPct}%</strong>
+            </span>
+            <span title="Local-business exposure: Tỷ lệ cơ sở cộng đồng địa phương trong hành trình">
+              Cộng đồng: <strong className="text-emerald-900">{researchMetrics.localBusinessExposurePct}%</strong>
+            </span>
+          </div>
+        )}
+      </div>
+
       <p className="text-xs text-neutral-600">
         Dự trù ngân sách tính cho cả nhóm {safePeople} khách (~{formatVnd(perPersonCost)}/người), gồm vé tham quan và ăn uống các điểm dừng trong lịch; chưa gồm lưu trú và di chuyển liên tỉnh.
       </p>
@@ -156,14 +235,26 @@ export default function ItineraryCarbonBudgetPanel({
           className="flex items-start justify-between gap-2 rounded-lg bg-white border border-emerald-200 px-2.5 py-1.5 text-xs text-emerald-950 font-medium"
         >
           <span>{optimizeFeedback}</span>
-          <button
-            type="button"
-            onClick={onDismissOptimizeFeedback}
-            aria-label="Đóng thông báo tối ưu"
-            className="text-gray-500 hover:text-gray-900 cursor-pointer shrink-0 p-0.5"
-          >
-            <X size={13} />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {canUndoOptimize && onUndoOptimize && (
+              <button
+                type="button"
+                onClick={onUndoOptimize}
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-bold text-emerald-900 hover:bg-emerald-100 cursor-pointer"
+              >
+                <RotateCcw size={11} aria-hidden="true" />
+                Hoàn tác
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onDismissOptimizeFeedback}
+              aria-label="Đóng thông báo tối ưu"
+              className="text-gray-500 hover:text-gray-900 cursor-pointer p-0.5"
+            >
+              <X size={13} />
+            </button>
+          </div>
         </div>
       )}
     </div>

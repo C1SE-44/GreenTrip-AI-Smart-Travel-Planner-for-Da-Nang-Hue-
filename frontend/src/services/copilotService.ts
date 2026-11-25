@@ -5,9 +5,21 @@ export interface SseParsedEvent {
   data: string;
 }
 
+export interface RagSourceItem {
+  title: string;
+  city: string;
+  category: string;
+  snippet: string;
+  source: string;
+  score?: number;
+}
+
 export interface CopilotStreamCallbacks {
   onStatus?: (message: string) => void;
   onDelta?: (chunk: string) => void;
+  onToken?: (token: string) => void;
+  onSources?: (sources: RagSourceItem[]) => void;
+  onToolResult?: (toolsUsed: string[]) => void;
   signal?: AbortSignal;
 }
 
@@ -127,6 +139,11 @@ export interface CopilotChatResponse {
   updated_days_count?: number | null;
   updated_destination?: string | null;
   mutation_summary?: string[];
+  tools_used?: string[];
+  sources?: RagSourceItem[];
+  session_id?: string | null;
+  data?: Record<string, unknown> | null;
+  created_at?: string | null;
 }
 
 export async function sendCopilotChat(
@@ -217,9 +234,17 @@ export async function streamCopilotChat(
       }
       if (item.event === 'status' && typeof parsed.message === 'string') {
         callbacks?.onStatus?.(parsed.message);
-      } else if (item.event === 'delta' && typeof parsed.text === 'string') {
+      } else if (
+        (item.event === 'token' || item.event === 'delta') &&
+        typeof parsed.text === 'string'
+      ) {
+        callbacks?.onToken?.(parsed.text);
         callbacks?.onDelta?.(parsed.text);
-      } else if (item.event === 'done') {
+      } else if (item.event === 'sources' && Array.isArray(parsed.sources)) {
+        callbacks?.onSources?.(parsed.sources as RagSourceItem[]);
+      } else if (item.event === 'tool_result' && Array.isArray(parsed.tools_used)) {
+        callbacks?.onToolResult?.(parsed.tools_used as string[]);
+      } else if (item.event === 'complete' || item.event === 'done') {
         finalPayload = parsed as unknown as CopilotChatResponse;
       } else if (item.event === 'error') {
         throw new Error(

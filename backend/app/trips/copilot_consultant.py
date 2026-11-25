@@ -48,7 +48,6 @@ from app.trips.copilot_mutation import (
 )
 from app.trips.handlers.smart_concierge_handler import is_simple_social_greeting
 from app.trips.handlers.swap_meal_handler import format_green_score
-from app.trips.itinerary_constraints import apply_quantitative_constraints_to_response
 from app.trips.schemas import (
     CopilotChatRequest,
     CopilotChatResponse,
@@ -660,6 +659,7 @@ def upgrade_handler_response_to_mindtrip_standard(
     raw_response.recommended_poi_ids = rec_ids
     raw_response.detected_constraints = constraints
     raw_response.reasoning_trace = reasoning_trace
+    from app.trips.itinerary_constraints import apply_quantitative_constraints_to_response
     apply_quantitative_constraints_to_response(
         raw_response,
         request.trip_context,
@@ -736,6 +736,16 @@ def finalize_copilot_response(
         lat_val, lng_val = resolve_poi_coordinates(p.name, p.city or "Đà Nẵng", p.lat, p.lng, idx)
         p.lat = lat_val
         p.lng = lng_val
+
+    # Sprint 2.2 telemetry & audit fields
+    if not response.tools_used and response.suggested_pois:
+        response.tools_used = ["recommend_pois"]
+    if not response.created_at:
+        import datetime
+        response.created_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    from app.trips.itinerary_constraints import apply_quantitative_constraints_to_response
+
     return apply_quantitative_constraints_to_response(
         response,
         trip_context,

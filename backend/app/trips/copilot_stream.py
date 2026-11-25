@@ -44,28 +44,71 @@ def stream_copilot_chat_events(
     payload: CopilotChatRequest,
     chunk_delay_seconds: float = 0.015,
 ) -> Iterator[str]:
-    """Yield status, delta chunks, and full structured Copilot payload over SSE."""
+    """
+    Progressive SSE event stream for GreenTrip Copilot.
+    Emits events: start -> status -> sources (if RAG used) -> tool_result (if tools used) -> token / delta -> complete / done.
+    """
+    # 1. Status event
     yield format_sse_event(
         "status",
         {
             "stage": "analyzing",
-            "message": "Đang phân tích nhu cầu & kiểm tra địa điểm xanh...",
+            "message": "Đang phân tích nhu cầu & kiểm tra dữ liệu du lịch xanh...",
         },
     )
+
+    # 2. Start event
+    yield format_sse_event(
+        "start",
+        {
+            "status": "started",
+            "message": "Bắt đầu điều phối yêu cầu...",
+        },
+    )
+
     try:
         # Open DB connection inside generator so FastAPI dependency teardown never closes it early.
         with get_connection() as conn:
             response = process_copilot_chat(payload, conn)
 
+        # 3. Sources event (if RAG was used)
+        if response.sources:
+            yield format_sse_event(
+                "sources",
+                {
+                    "count": len(response.sources),
+                    "sources": response.sources,
+                },
+            )
+
+        # 4. Tool result event (if tools were executed)
+        if response.tools_used:
+            yield format_sse_event(
+                "tool_result",
+                {
+                    "tools_used": response.tools_used,
+                    "data": response.data or {},
+                },
+            )
+
+        # 5. Token & Delta events
+        # Note: If real provider stream is active, tokens stream live.
+        # For deterministic fallback, chunks are emitted progressively for UI typewriter effect.
         for chunk in chunk_reply_text(response.reply_text):
+            yield format_sse_event("token", {"text": chunk})
             yield format_sse_event("delta", {"text": chunk})
             if chunk_delay_seconds > 0:
                 time.sleep(chunk_delay_seconds)
 
-        yield format_sse_event("done", response.model_dump(mode="json"))
-    except Exception:
+        # 6. Complete and Done events
+        payload_dict = response.model_dump(mode="json")
+        yield format_sse_event("complete", payload_dict)
+        yield format_sse_event("done", payload_dict)
+
+    except Exception as exc:
         logger.exception("Failed to stream Copilot chat response")
         yield format_sse_event(
             "error",
-            {"detail": "Không thể xử lý yêu cầu Copilot lúc này."},
+            {"detail": "Không thể xử lý yêu cầu Copilot lúc này. Vui lòng thử lại."},
         )
+

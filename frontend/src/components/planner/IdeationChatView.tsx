@@ -1,12 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUp,
+  Calendar,
   Check,
+  ChevronDown,
+  ChevronUp,
+  Clock,
   Compass,
   Leaf,
   Loader2,
   Luggage,
   Map as MapIcon,
+  MapPin,
   Plus,
   RotateCcw,
   Sparkles,
@@ -16,10 +21,42 @@ import {
 import { normalizeCategory, normalizeCity, type Poi } from '@/data/pois';
 import PoiImage from '@/components/ui/PoiImage';
 import PoiMap from '@/components/poi/PoiMap';
-import { streamCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
+import { streamCopilotChat, type CopilotSuggestedPoi, type RagSourceItem } from '@/services/copilotService';
+import RagSourceList from '@/components/planner/RagSourceList';
 import { extractTripIntentFromPrompt } from '@/utils/vietnamesePromptExtractor';
 import { FormattedCopilotMessage } from './TripOverviewView';
 import type { CopilotTripMessage } from './copilotTripData';
+
+interface ItineraryPreviewStop {
+  order?: number;
+  poi_id?: string;
+  name?: string;
+  category?: string;
+  green_score?: number;
+  time_slot?: string;
+  cost_vnd?: number;
+  selection_reason?: string;
+  kg_explanation?: string;
+  lat?: number;
+  lng?: number;
+  address?: string;
+  travel_time_from_prev_mins?: number;
+  travel_distance_from_prev_km?: number;
+  cost_status?: string;
+  schedule_status?: string;
+}
+
+interface ItineraryPreviewDay {
+  day_number?: number;
+  day?: number;
+  theme?: string;
+  focus_city?: string;
+  day_distance_km?: number;
+  day_cost_vnd?: number;
+  day_carbon_kg?: number;
+  routing_type?: string;
+  stops?: ItineraryPreviewStop[];
+}
 
 interface IdeationMessage {
   id: string;
@@ -31,6 +68,10 @@ interface IdeationMessage {
   avoidNotice?: string | null;
   greenImpactSummary?: string | null;
   budgetImpactSummary?: string | null;
+  sources?: RagSourceItem[];
+  toolsUsed?: string[];
+  updatedItineraryState?: ItineraryPreviewDay[];
+  mutationSummary?: string[];
 }
 
 export interface IdeationChatViewProps {
@@ -87,6 +128,201 @@ function mapSuggestedToPoi(s: CopilotSuggestedPoi, allPois: Poi[]): Poi | null {
   };
 }
 
+function ItineraryPreviewCard({
+  days,
+  selectedPoiIds,
+  onTogglePoi,
+  onSelectAllStops,
+  onCreateTrip,
+}: {
+  days: ItineraryPreviewDay[];
+  selectedPoiIds: string[];
+  onTogglePoi: (poiId: string) => void;
+  onSelectAllStops: (stopIds: string[]) => void;
+  onCreateTrip: () => void;
+}) {
+  const [openDays, setOpenDays] = useState<Record<number, boolean>>(() => {
+    const init: Record<number, boolean> = {};
+    days.forEach((_, idx) => {
+      init[idx] = true;
+    });
+    return init;
+  });
+
+  const allStopIds = useMemo(() => {
+    const ids: string[] = [];
+    days.forEach((d) => {
+      d.stops?.forEach((s) => {
+        if (s.poi_id) ids.push(s.poi_id);
+      });
+    });
+    return ids;
+  }, [days]);
+
+  const selectedSet = useMemo(() => new Set(selectedPoiIds), [selectedPoiIds]);
+
+  return (
+    <div className="w-full bg-linear-to-br from-emerald-50/60 to-neutral-50/80 border border-emerald-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="w-8 h-8 rounded-lg bg-emerald-800 text-white flex items-center justify-center shadow-2xs">
+            <Calendar size={16} />
+          </span>
+          <div>
+            <h4 className="text-sm font-bold text-neutral-950 flex items-center gap-2">
+              Lịch trình Du lịch Xanh Đề xuất
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold">
+                {days.length} ngày
+              </span>
+            </h4>
+            <p className="text-xs text-neutral-600">
+              Đã tối ưu hóa thứ tự di chuyển, thời gian mở cửa & phát thải CO2
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onSelectAllStops(allStopIds)}
+            className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 px-3 py-1.5 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 transition cursor-pointer"
+          >
+            Lưu tất cả {allStopIds.length} điểm
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {days.map((dayItem, dayIdx) => {
+          const dayNum = dayItem.day_number || dayItem.day || dayIdx + 1;
+          const isOpen = openDays[dayIdx] !== false;
+          return (
+            <div
+              key={dayIdx}
+              className="bg-white rounded-xl border border-neutral-200/80 overflow-hidden shadow-2xs"
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenDays((prev) => ({ ...prev, [dayIdx]: !isOpen }))
+                }
+                className="w-full px-4 py-3 flex items-center justify-between bg-neutral-50/70 hover:bg-neutral-100/70 transition text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-neutral-900 text-white text-xs font-bold">
+                    Ngày {dayNum}
+                  </span>
+                  <span className="text-xs font-bold text-neutral-900">
+                    {dayItem.theme || `Khám phá ${dayItem.focus_city || 'điểm đến'}`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-neutral-600">
+                  {dayItem.day_distance_km !== undefined && (
+                    <span>{dayItem.day_distance_km} km</span>
+                  )}
+                  {dayItem.day_carbon_kg !== undefined && (
+                    <span className="inline-flex items-center gap-1 text-emerald-800 font-medium">
+                      <Leaf size={11} />
+                      {dayItem.day_carbon_kg} kg CO2
+                    </span>
+                  )}
+                  {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                </div>
+              </button>
+
+              {isOpen && (
+                <div className="p-3 sm:p-4 divide-y divide-neutral-100">
+                  {dayItem.stops && dayItem.stops.length > 0 ? (
+                    dayItem.stops.map((stop, sIdx) => {
+                      const isSaved = stop.poi_id ? selectedSet.has(stop.poi_id) : false;
+                      return (
+                        <div
+                          key={sIdx}
+                          className="py-2.5 first:pt-0 last:pb-0 flex items-start justify-between gap-3"
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                              {stop.order || sIdx + 1}
+                            </span>
+                            <div className="space-y-0.5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-bold text-neutral-950">
+                                  {stop.name}
+                                </span>
+                                {stop.time_slot && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-neutral-100 text-neutral-700 text-[11px] font-medium">
+                                    <Clock size={10} />
+                                    {stop.time_slot}
+                                  </span>
+                                )}
+                                {Boolean(stop.travel_time_from_prev_mins && stop.travel_time_from_prev_mins > 0) && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-blue-50 text-blue-800 border border-blue-200/60 text-[11px] font-medium">
+                                    ~{stop.travel_time_from_prev_mins}p ({stop.travel_distance_from_prev_km} km)
+                                  </span>
+                                )}
+                                {stop.green_score !== undefined && (
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200/60 text-[11px] font-semibold">
+                                    <Leaf size={10} />
+                                    {stop.green_score}/100
+                                  </span>
+                                )}
+                              </div>
+                              {stop.selection_reason && (
+                                <p className="text-[11px] text-neutral-600 line-clamp-1">
+                                  {stop.selection_reason}
+                                </p>
+                              )}
+                              {stop.kg_explanation && (
+                                <p className="text-[11px] text-emerald-900 bg-emerald-50/80 px-2 py-0.5 rounded border border-emerald-200/50 line-clamp-1">
+                                  💡 {stop.kg_explanation}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {stop.poi_id && (
+                            <button
+                              type="button"
+                              onClick={() => onTogglePoi(stop.poi_id!)}
+                              className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center border transition cursor-pointer ${
+                                isSaved
+                                  ? 'bg-emerald-700 text-white border-emerald-700'
+                                  : 'bg-white text-neutral-700 border-neutral-300 hover:border-emerald-600'
+                              }`}
+                              title={isSaved ? 'Đã thêm' : 'Thêm điểm này'}
+                            >
+                              {isSaved ? <Check size={14} /> : <Plus size={14} />}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-xs text-neutral-500 py-2">
+                      Chưa có điểm dừng nào được xếp cho ngày này.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="pt-2 flex flex-wrap items-center justify-end gap-2 border-t border-emerald-100">
+        <button
+          type="button"
+          onClick={onCreateTrip}
+          className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs transition cursor-pointer active:scale-95"
+        >
+          <Luggage size={14} />
+          <span>Tạo chuyến đi từ lịch trình này</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function IdeationChatView({
   allPois,
   initialPrompt,
@@ -119,10 +355,12 @@ export default function IdeationChatView({
     return [];
   });
 
+  const [currentItineraryState, setCurrentItineraryState] = useState<ItineraryPreviewDay[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
+  const [streamingSources, setStreamingSources] = useState<RagSourceItem[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastFailedPrompt, setLastFailedPrompt] = useState<string | null>(null);
   const [tripMemory, setTripMemory] = useState<Record<string, string>>({});
@@ -239,11 +477,13 @@ export default function IdeationChatView({
               role: m.sender,
               content: m.text,
             })),
+            current_itinerary_state: currentItineraryState as unknown as Array<Record<string, unknown>>,
           },
         },
         {
           onStatus: (statusMsg) => setStreamingStatus(statusMsg),
           onDelta: (chunk) => setStreamingText((prev) => prev + chunk),
+          onSources: (incomingSources) => setStreamingSources(incomingSources),
         }
       );
 
@@ -252,6 +492,9 @@ export default function IdeationChatView({
       }
       if (res.trip_memory) {
         setTripMemory((prev) => ({ ...prev, ...res.trip_memory }));
+      }
+      if (res.updated_itinerary_state && Array.isArray(res.updated_itinerary_state)) {
+        setCurrentItineraryState(res.updated_itinerary_state as unknown as ItineraryPreviewDay[]);
       }
 
       const aiMsg: IdeationMessage = {
@@ -264,6 +507,10 @@ export default function IdeationChatView({
         avoidNotice: res.avoid_notice,
         greenImpactSummary: res.green_impact_summary,
         budgetImpactSummary: res.budget_impact_summary,
+        sources: res.sources && res.sources.length > 0 ? res.sources : streamingSources,
+        toolsUsed: res.tools_used,
+        updatedItineraryState: (res.updated_itinerary_state as unknown as ItineraryPreviewDay[]) || undefined,
+        mutationSummary: res.mutation_summary || undefined,
       };
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
@@ -273,6 +520,7 @@ export default function IdeationChatView({
     } finally {
       setStreamingText('');
       setStreamingStatus(null);
+      setStreamingSources([]);
       setIsSending(false);
     }
   };
@@ -490,7 +738,28 @@ export default function IdeationChatView({
                           )}
                         </div>
                       )}
+
+                      {msg.sources && msg.sources.length > 0 && (
+                        <RagSourceList sources={msg.sources} />
+                      )}
                     </div>
+
+                    {/* Itinerary Preview Card when itinerary was generated or updated */}
+                    {msg.updatedItineraryState && msg.updatedItineraryState.length > 0 && (
+                      <ItineraryPreviewCard
+                        days={msg.updatedItineraryState}
+                        selectedPoiIds={selectedIdeaPoiIds}
+                        onTogglePoi={handleToggleIdeaPoi}
+                        onSelectAllStops={(stopIds) => {
+                          setSelectedIdeaPoiIds((prev) => {
+                            const next = new Set(prev);
+                            stopIds.forEach((id) => next.add(id));
+                            return Array.from(next);
+                          });
+                        }}
+                        onCreateTrip={handleCreateTripClick}
+                      />
+                    )}
 
                     {/* Visual POI Cards chuẩn MindTripAI */}
                     {msg.suggestedPois && msg.suggestedPois.length > 0 && (
@@ -603,6 +872,9 @@ export default function IdeationChatView({
                     aria-hidden="true"
                     className="inline-block w-1.5 h-4 align-middle bg-emerald-600 rounded-xs animate-pulse"
                   />
+                  {streamingSources.length > 0 && (
+                    <RagSourceList sources={streamingSources} />
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-2xl px-4 py-3 w-fit shadow-2xs">

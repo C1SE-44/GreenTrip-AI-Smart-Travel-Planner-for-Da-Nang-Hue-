@@ -400,6 +400,7 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
 _POSTGRES_RETRY_COOLDOWN_SECONDS = 30.0
 _POSTGRES_RETRY_AFTER: float = 0.0
 _PG_COORDS_PATCHED = False
+_PG_MIGRATION_019_PATCHED = False
 
 
 def get_connection() -> Any:
@@ -408,7 +409,7 @@ def get_connection() -> Any:
     Nếu không có PostgreSQL (hoặc người dùng không bật Docker),
     hệ thống tự động sử dụng CSDL SQLite cục bộ giúp tính năng Đăng nhập/Đăng ký hoạt động mượt mà.
     """
-    global _POSTGRES_RETRY_AFTER, _PG_COORDS_PATCHED
+    global _POSTGRES_RETRY_AFTER, _PG_COORDS_PATCHED, _PG_MIGRATION_019_PATCHED
     settings = get_settings()
 
     if settings.DATABASE_URL and time.monotonic() >= _POSTGRES_RETRY_AFTER:
@@ -433,6 +434,19 @@ def get_connection() -> Any:
                 except Exception:
                     if hasattr(pg_conn, "rollback"):
                         pg_conn.rollback()
+
+            if not _PG_MIGRATION_019_PATCHED and hasattr(pg_conn, "cursor"):
+                try:
+                    with pg_conn.cursor() as cur:
+                        cur.execute("ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS transport_mode VARCHAR(50);")
+                        cur.execute("ALTER TABLE public.itinerary_days ADD COLUMN IF NOT EXISTS custom_segment_modes TEXT;")
+                    pg_conn.commit()
+                    _PG_MIGRATION_019_PATCHED = True
+                except Exception as m_exc:
+                    logger.warning("Postgres migration 019 check: %s", m_exc)
+                    if hasattr(pg_conn, "rollback"):
+                        pg_conn.rollback()
+
             return pg_conn
         except Exception:
             _POSTGRES_RETRY_AFTER = time.monotonic() + _POSTGRES_RETRY_COOLDOWN_SECONDS

@@ -12,12 +12,14 @@ OSRM_ROUTE_BASE_URL = "https://router.project-osrm.org/route/v1/driving"
 OSRM_TIMEOUT_SECONDS = 7.0
 
 # In-memory route cache to eliminate repeated OSRM latencies
-_ROUTE_CACHE: dict[str, tuple[RouteGeometry, float, float, bool, str]] = {}
+_ROUTE_CACHE: dict[str, tuple[RouteGeometry, float, float, bool, str, list[dict[str, float]]]] = {}
 
 # Road detour factor to approximate driving distance when straight-line fallback is necessary
 FALLBACK_DETOUR_FACTOR = 1.25
 # Estimated average vehicle speed in urban/coastal Da Nang - Hue corridor: ~35 km/h (9.72 m/s)
 FALLBACK_SPEED_MPS = 9.72
+# Unified threshold for inter-city classification (40 km = 40,000 meters)
+INTERCITY_DISTANCE_THRESHOLD_METERS = 40_000.0
 
 # High-fidelity road corridor waypoints [lon, lat] along QL1A hugging the land/coastline, never crossing sea or bay
 CORRIDOR_DA_NANG_HUE_GEOJSON: list[list[float]] = [
@@ -166,7 +168,8 @@ def compute_route_geometry(
     stops: list[RouteStop],
     osrm_url: str = OSRM_ROUTE_BASE_URL,
     client: httpx.Client | None = None,
-) -> tuple[RouteGeometry, float, float, bool, str]:
+    return_legs: bool = False,
+) -> tuple[RouteGeometry, float, float, bool, str] | tuple[RouteGeometry, float, float, bool, str, list[dict[str, float]]]:
     """
     Generate ordered route geometry for a list of sequential stops.
 
@@ -185,17 +188,25 @@ def compute_route_geometry(
         coords = [[round(stops[0].longitude, 6), round(stops[0].latitude, 6)]]
         return RouteGeometry(type="LineString", coordinates=coords), 0.0, 0.0, False, "direct"
 
-    # 1. Check in-memory route cache for instantaneous zero-latency responses (bypass if mocked in tests)
+    # Check in-memory route cache for instantaneous zero-latency responses (bypass if mocked in tests)
     is_mocked = hasattr(fetch_osrm_json, "assert_called") or "mock" in type(fetch_osrm_json).__name__.lower()
     cache_key = ";".join(f"{stop.longitude:.5f},{stop.latitude:.5f}" for stop in stops)
     if not is_mocked and cache_key in _ROUTE_CACHE:
-        return _ROUTE_CACHE[cache_key]
+        cached = _ROUTE_CACHE[cache_key]
+        if return_legs:
+            return cached
+        return cached[0], cached[1], cached[2], cached[3], cached[4]
 
     # Format OSRM coordinate string: {lon1},{lat1};{lon2},{lat2};...
     coord_string = ";".join(f"{stop.longitude:.6f},{stop.latitude:.6f}" for stop in stops)
     request_url = f"{osrm_url}/{coord_string}?overview=full&geometries=geojson"
 
-    payload = fetch_osrm_json(request_url, client)
+    try:
+        payload = fetch_osrm_json(request_url, client)
+    except Exception as exc:
+        logger.warning("Error fetching OSRM JSON (%s), triggering fallback route.", exc)
+        payload = None
+
     if payload and payload.get("code") == "Ok" and payload.get("routes"):
         best_route = payload["routes"][0]
         geometry_data = best_route.get("geometry", {})
@@ -211,23 +222,37 @@ def compute_route_geometry(
             distance_m = float(best_route.get("distance", 0.0))
             duration_s = float(best_route.get("duration", 0.0))
 
-            result = (
+            # Extract leg distances if available from OSRM
+            legs_data: list[dict[str, float]] = []
+            for leg in best_route.get("legs", []):
+                legs_data.append({
+                    "distance_meters": float(leg.get("distance", 0.0)),
+                    "duration_seconds": float(leg.get("duration", 0.0)),
+                })
+
+            full_result = (
                 RouteGeometry(type="LineString", coordinates=clean_coords),
                 round(distance_m, 1),
                 round(duration_s, 1),
                 False,
                 "osrm",
+                legs_data,
             )
             if len(_ROUTE_CACHE) > 1000:
                 _ROUTE_CACHE.clear()
-            _ROUTE_CACHE[cache_key] = result
-            return result
+            _ROUTE_CACHE[cache_key] = full_result
+            if return_legs:
+                return full_result
+            return full_result[0], full_result[1], full_result[2], full_result[3], full_result[4]
         else:
             logger.warning("OSRM returned invalid geometry coordinates format: %s", raw_coords)
     elif payload:
         logger.warning("OSRM response code not Ok: %s", payload.get("code"))
 
     # Graceful fallback adhering strictly to road corridors when OSRM routing is unavailable
-    fallback_result = build_fallback_route(stops)
+    fb = build_fallback_route(stops)
+    fallback_result = (fb[0], fb[1], fb[2], fb[3], fb[4], [])
     _ROUTE_CACHE[cache_key] = fallback_result
-    return fallback_result
+    if return_legs:
+        return fallback_result
+    return fb

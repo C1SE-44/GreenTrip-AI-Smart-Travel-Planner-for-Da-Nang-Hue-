@@ -30,12 +30,18 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _POIS_CSV_PATH = _PROJECT_ROOT / "data" / "processed" / "all_pois_cleaned.csv"
 _CONTACTS_CACHE_PATH = _PROJECT_ROOT / "data" / "processed" / "poi_contacts_cache.json"
 
-# Urban Vietnam passenger-km emissions baseline (g CO2e/km), aligned with frontend Part 1
+from app.emission_factors import (
+    EMISSION_FACTORS_CONFIG,
+    get_emission_factor_g_pkm,
+    calculate_carbon_footprint,
+)
+
+# Urban Vietnam passenger-km emissions baseline (g CO2e/km), derived from unified config
 TRANSPORT_EMISSION_FACTORS_G_PER_KM: dict[str, int] = {
-    "driving": 171,
-    "motorcycle": 72,
-    "transit": 40,
-    "walking": 0,
+    "driving": int(get_emission_factor_g_pkm("taxi_car")),
+    "motorcycle": int(get_emission_factor_g_pkm("motorcycle")),
+    "transit": int(get_emission_factor_g_pkm("public_bus")),
+    "walking": int(get_emission_factor_g_pkm("walking")),
 }
 
 TRANSPORT_LABELS_VI: dict[str, str] = {

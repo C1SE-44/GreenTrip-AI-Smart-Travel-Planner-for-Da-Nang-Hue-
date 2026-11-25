@@ -2648,10 +2648,22 @@ export default function TripItineraryView({
                                             : Footprints;
                                     return (
                                       <div className="min-h-[44px] ml-7 pl-6 border-l-2 border-[#ddd] flex flex-wrap items-center gap-2.5 text-xs text-gray-700 font-semibold animate-fadeIn">
-                                        <LegIcon size={13} className="text-emerald-700 shrink-0" aria-hidden="true" />
-                                        <span>~{transitDistKm.toFixed(1)} km</span>
-                                        <span className="text-gray-400" aria-hidden="true">·</span>
-                                        <span className="text-emerald-800">{formatCarbonAmount(legCarbon.co2Grams)}</span>
+                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold shadow-2xs">
+                                          <LegIcon size={13} className="text-emerald-700 shrink-0" aria-hidden="true" />
+                                          <span>
+                                            {transportMode === 'driving'
+                                              ? 'Ô tô'
+                                              : transportMode === 'motorcycle'
+                                                ? 'Xe máy'
+                                                : transportMode === 'transit'
+                                                  ? 'Xe buýt điện'
+                                                  : 'Đi bộ'}
+                                          </span>
+                                          <span className="text-gray-300">·</span>
+                                          <span>~{transitDistKm.toFixed(1)} km</span>
+                                          <span className="text-gray-300">·</span>
+                                          <span className="text-emerald-800">{formatCarbonAmount(legCarbon.co2Grams)}</span>
+                                        </div>
                                         <a
                                           href={getGoogleMapsDirectionsUrl(
                                             stop.latitude ?? matchedPoi?.lat,
@@ -2743,6 +2755,7 @@ export default function TripItineraryView({
         ════════════════════════════════════════════════════════ */}
         {!isDrawerMode && (
           <ItineraryMapPanel
+            tripId={trip.id}
             isMapExpanded={isMapExpanded}
             onToggleExpand={() => {
               setIsMapExpanded((prev) => !prev);

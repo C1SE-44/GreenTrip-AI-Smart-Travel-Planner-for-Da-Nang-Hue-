@@ -42,6 +42,43 @@ export interface RouteGeometry {
   coordinates: [number, number][]; // GeoJSON format: [longitude, latitude]
 }
 
+export interface TransportModeOption {
+  mode: string;
+  label: string;
+  icon: string;
+  duration_seconds: number;
+  duration_text: string;
+  transit_duration_seconds?: number;
+  transfer_duration_seconds?: number;
+  distance_meters: number;
+  estimated_cost_vnd: number;
+  carbon_g: number;
+  carbon_kg: number;
+  score: number;
+  is_feasible: boolean;
+  feasibility_note: string;
+  recommendation_type: 'best_match' | 'cost_saving' | 'eco_friendly' | 'alternative';
+  reason: string;
+  is_verified_schedule?: boolean;
+  is_estimated_cost?: boolean;
+  fare_tier_note?: string;
+  data_source?: string;
+}
+
+export interface RouteSegment {
+  segment_index: number;
+  from_stop: RouteStop;
+  to_stop: RouteStop;
+  distance_meters: number;
+  duration_seconds: number;
+  transit_duration_seconds?: number;
+  transfer_duration_seconds?: number;
+  is_intercity: boolean;
+  recommended_mode: string;
+  selected_mode: string;
+  options: TransportModeOption[];
+}
+
 export interface DayRouteResponse {
   itinerary_id: string;
   day_number: number;
@@ -51,8 +88,13 @@ export interface DayRouteResponse {
   route: RouteGeometry;
   distance_meters: number;
   duration_seconds: number;
+  total_trip_duration_seconds?: number;
   is_fallback?: boolean;
   routing_provider?: string;
+  segments?: RouteSegment[];
+  day_total_cost_vnd?: number;
+  day_total_carbon_kg?: number;
+  priority_profile?: 'balanced' | 'eco_priority' | 'budget_constrained';
 }
 
 /**
@@ -62,14 +104,41 @@ export interface DayRouteResponse {
 export async function fetchDayRoute(
   itineraryId: string,
   dayNumber: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  priorityProfile: 'balanced' | 'eco_priority' | 'budget_constrained' = 'balanced'
 ): Promise<DayRouteResponse> {
   const cleanItinId = encodeURIComponent(itineraryId.trim());
   return fetchJson<DayRouteResponse>(
-    `/itineraries/${cleanItinId}/days/${dayNumber}/route`,
+    `/itineraries/${cleanItinId}/days/${dayNumber}/route?profile=${encodeURIComponent(priorityProfile)}`,
     { signal }
   );
 }
+
+/**
+ * Update transport mode for a specific segment on an itinerary day.
+ * Backend endpoint: POST /itineraries/{itinerary_id}/days/{day_number}/segment-transport
+ */
+export async function updateSegmentTransport(
+  itineraryId: string,
+  dayNumber: number,
+  segmentIndex: number,
+  selectedMode: string,
+  priorityProfile: 'balanced' | 'eco_priority' | 'budget_constrained' = 'balanced'
+): Promise<DayRouteResponse> {
+  const cleanItinId = encodeURIComponent(itineraryId.trim());
+  return fetchJson<DayRouteResponse>(
+    `/itineraries/${cleanItinId}/days/${dayNumber}/segment-transport`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        segment_index: segmentIndex,
+        selected_mode: selectedMode,
+        priority_profile: priorityProfile,
+      }),
+    }
+  );
+}
+
 
 export function formatDuration(seconds: number): string {
   if (seconds <= 0) return '0 phút';

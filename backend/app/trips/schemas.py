@@ -534,3 +534,21 @@ class CopilotChatResponse(BaseModel):
     updated_days_count: int | None = None
     updated_destination: str | None = None
     mutation_summary: list[str] = Field(default_factory=list)
+
+    # Sprint 2.2 Orchestrator Extensions (Fully backward-compatible)
+    tools_used: list[str] = Field(
+        default_factory=list,
+        description="Danh sách các tool thực tế đã gọi trong lượt thoại (e.g. search_pois, get_poi_explanation)",
+    )
+    sources: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Danh sách tài liệu trích dẫn kiểm chứng từ RAG",
+    )
+    session_id: str | None = Field(default=None, description="Mã phiên hội thoại")
+    data: dict[str, Any] | None = Field(default=None, description="Dữ liệu có cấu trúc bổ trợ cho frontend")
+    created_at: str | None = Field(default=None, description="Thời điểm tạo phản hồi ISO-8601")
+
+    @property
+    def answer(self) -> str:
+        """Alias for reply_text to support standard assistant contract."""
+        return self.reply_text

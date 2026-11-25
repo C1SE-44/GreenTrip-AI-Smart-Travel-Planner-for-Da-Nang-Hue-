@@ -766,6 +766,28 @@ def _dispatch_copilot_intent(
             effective_req, raw_resp, intent_category, constraints, connection=connection
         )
 
+    # Sprint 2.2: Advanced Orchestrator for RAG, Tool Calling and Knowledge Graph
+    from app.orchestrator.orchestrator import get_chatbot_orchestrator
+    from app.orchestrator.policy import decide_orchestration_plan
+
+    plan = decide_orchestration_plan(request.message, effective_ctx)
+    if plan.case_type in [
+        "knowledge_rag",
+        "explanation",
+        "itinerary_cost_route",
+        "poi_details_price",
+        "multi_turn_itinerary_mutation",
+        "recommendation",
+    ]:
+        orch = get_chatbot_orchestrator()
+        orch_resp = orch.orchestrate(effective_req, connection)
+        return finalize_copilot_response(
+            orch_resp,
+            effective_ctx,
+            constraints,
+            connection=connection,
+        )
+
     # Universal Smart Concierge
     (
         reply_text,

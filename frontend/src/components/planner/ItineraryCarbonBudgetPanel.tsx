@@ -84,6 +84,7 @@ export default function ItineraryCarbonBudgetPanel({
 
         <div className="flex flex-wrap items-center gap-1">
           <div className="flex items-center gap-1" role="group" aria-label="Chọn phương tiện ước tính phát thải CO2">
+            <span className="text-[11px] font-bold text-gray-500 mr-1 hidden sm:inline">Phương tiện:</span>
             {TRANSPORT_MODES_META.map((mode) => {
               const active = transportMode === mode.id;
               const ModeIcon =

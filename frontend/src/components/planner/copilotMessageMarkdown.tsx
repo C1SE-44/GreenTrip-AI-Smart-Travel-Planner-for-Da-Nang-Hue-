@@ -1,12 +1,28 @@
 import { MapPin } from 'lucide-react';
-import type { CopilotSuggestedPoi } from '@/services/copilotService';
+import type {
+  CopilotExtractedPlace,
+  CopilotReceiptBooking,
+  CopilotSuggestedPoi,
+} from '@/services/copilotService';
+import { normalizeCopilotMessageSingleCta } from './chatAttachmentUtils';
+
+export interface CopilotAttachmentSummary {
+  type: 'file' | 'link' | 'receipt';
+  displayTitle: string;
+  subtitle: string;
+  previewUrl?: string;
+  url?: string;
+}
 
 export interface CopilotChatMessageItem {
   id: string;
   sender: 'user' | 'ai';
   text: string;
   timestamp?: string;
+  attachment?: CopilotAttachmentSummary;
   suggestedPois?: CopilotSuggestedPoi[];
+  extractedPlaces?: CopilotExtractedPlace[];
+  receiptBooking?: CopilotReceiptBooking | null;
   avoidNotice?: string | null;
   greenImpact?: string | null;
   budgetImpact?: string | null;
@@ -203,7 +219,8 @@ export function FormattedCopilotMessage({
   onHoverPoi?: (id: string | null) => void;
   onSelectPoi?: (id: string) => void;
 }) {
-  const lines = text.split('\n');
+  const normalizedText = normalizeCopilotMessageSingleCta(text);
+  const lines = normalizedText.split('\n');
 
   return (
     <div className="space-y-1.5 text-[13px] leading-relaxed text-neutral-800">
@@ -213,13 +230,35 @@ export function FormattedCopilotMessage({
           return <div key={idx} className="h-1" />;
         }
 
+        // Numbered list item (takes precedence so '1. 📍 **Đà Nẵng**' renders as a crisp numbered row)
+        const numMatch = trimmed.match(/^(\d+)\.\s*(.*)/);
+        if (numMatch) {
+          const num = numMatch[1];
+          const content = numMatch[2];
+          return (
+            <div key={idx} className="flex items-start gap-2.5 pl-1 my-1.5">
+              <span className="font-bold text-[13px] text-neutral-900 shrink-0">
+                {num}.
+              </span>
+              <div className="flex-1 leading-normal text-neutral-800">
+                {renderInlineMarkdown(content, entityLookup, onHoverPoi, onSelectPoi, preferredCity)}
+              </div>
+            </div>
+          );
+        }
+
         // Special Badges: Di chuyển, Chi phí, Lý do
-        if (trimmed.includes('📍') || trimmed.includes('Di chuyển:')) {
+        if (
+          trimmed.startsWith('📍') ||
+          trimmed.startsWith('- 📍') ||
+          trimmed.startsWith('* 📍') ||
+          trimmed.includes('Di chuyển:')
+        ) {
           return (
             <div key={idx} className="flex items-start gap-1.5 pl-2 my-1 text-[12px] text-neutral-700 bg-neutral-100/70 p-2 rounded-xl border border-neutral-200/50">
               <span className="shrink-0 text-xs">📍</span>
               <div className="flex-1 leading-normal">
-                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''), entityLookup, onHoverPoi, onSelectPoi, preferredCity)}
+                {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, '').replace(/^📍\s*/, ''), entityLookup, onHoverPoi, onSelectPoi, preferredCity)}
               </div>
             </div>
           );
@@ -242,23 +281,6 @@ export function FormattedCopilotMessage({
               <span className="shrink-0 text-xs">✅</span>
               <div className="flex-1 leading-normal">
                 {renderInlineMarkdown(trimmed.replace(/^[-*]\s*/, ''), entityLookup, onHoverPoi, onSelectPoi, preferredCity)}
-              </div>
-            </div>
-          );
-        }
-
-        // Numbered list item
-        const numMatch = trimmed.match(/^(\d+)\.\s*(.*)/);
-        if (numMatch) {
-          const num = numMatch[1];
-          const content = numMatch[2];
-          return (
-            <div key={idx} className="flex items-start gap-2.5 pl-1 my-1.5">
-              <span className="font-bold text-[13px] text-neutral-900 shrink-0">
-                {num}.
-              </span>
-              <div className="flex-1 leading-normal text-neutral-800">
-                {renderInlineMarkdown(content, entityLookup, onHoverPoi, onSelectPoi, preferredCity)}
               </div>
             </div>
           );

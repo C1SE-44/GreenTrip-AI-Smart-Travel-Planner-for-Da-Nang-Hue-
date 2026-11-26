@@ -26,6 +26,7 @@ import {
   Star,
   ChevronDown,
   MessageSquare,
+  ReceiptText,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import type { UserProfile } from '@/services/auth';
@@ -63,9 +64,20 @@ import {
 import {
   FormattedCopilotMessage,
   sanitizeCopilotReplyText,
+  type CopilotAttachmentSummary,
   type CopilotChatMessageItem,
   type CopilotEntityLookupItem,
 } from './copilotMessageMarkdown';
+import ChatAttachmentMenu, { AttachmentThumbnail, StagedAttachmentChip } from './ChatAttachmentMenu';
+import {
+  fileToReadyAttachment,
+  getAttachmentPlaceholder,
+  getDefaultAttachmentPrompt,
+  getPoiGreenScoreExplanation,
+  sanitizeQuickReplyChips,
+  toAttachmentSummary,
+  type ReadyAttachment,
+} from './chatAttachmentUtils';
 import {
   MODAL_CATEGORY_TABS,
   parseCategoryBudgets,
@@ -79,7 +91,7 @@ import ExpiredTripBanner from './ExpiredTripBanner';
 import TripHeader from './TripHeader';
 import PoiImage from '@/components/ui/PoiImage';
 
-export { FormattedCopilotMessage, type CopilotChatMessageItem };
+export { FormattedCopilotMessage, type CopilotAttachmentSummary, type CopilotChatMessageItem };
 export { parseCategoryBudgets, type CategoryBudgets };
 
 export interface TripOverviewViewProps {
@@ -173,6 +185,8 @@ export default function TripOverviewView({
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<ReadyAttachment | null>(null);
   const [isPlannerDesktopViewport, setIsPlannerDesktopViewport] = useState<boolean>(() =>
     typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true,
   );
@@ -188,6 +202,7 @@ export default function TripOverviewView({
   const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
   const [activeConstraints, setActiveConstraints] = useState<string[]>([]);
   const [tripMemory, setTripMemory] = useState<Record<string, string>>({});
+  const [openEcoTipPoiId, setOpenEcoTipPoiId] = useState<string | null>(null);
   const [quickPrompts, setQuickPrompts] = useState<string[]>(() => {
     const dest = (trip.destination || '').toLowerCase();
     if (dest.includes('huế') && !dest.includes('đà nẵng')) {
@@ -892,10 +907,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     return { copilotRouteCoordinates: coords, copilotNumberedOrderMap: orderMap };
   }, [chatMessages, relevantPois]);
 
-  // Xử lý gửi tin nhắn trò chuyện với Trợ lý AI Copilot (PB14 - 6 Core Mindtrip MVPs)
-  const handleSendChatMessage = async (overridePrompt?: string) => {
-    const promptToSend = (overridePrompt ?? chatInput).trim();
-    if (!promptToSend || isAiThinking) return;
+  // Xử lý gửi tin nhắn trò chuyện với Trợ lý AI Copilot (PB14 + Multimodal Attachments)
+  const handleSendChatMessage = async (overridePrompt?: string, readyAttachment?: ReadyAttachment) => {
+    const activeAttachment = readyAttachment ?? pendingAttachment ?? undefined;
+    const typedPrompt = (overridePrompt ?? chatInput).trim();
+    const promptToSend = typedPrompt || (activeAttachment ? getDefaultAttachmentPrompt(activeAttachment) : '');
+    if ((!promptToSend && !activeAttachment) || isAiThinking) return;
 
     const userMsgId = `user-${Date.now()}`;
     const newUserMsg: CopilotChatMessageItem = {
@@ -903,6 +920,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       sender: 'user',
       text: promptToSend,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      attachment: activeAttachment ? toAttachmentSummary(activeAttachment) : undefined,
     };
 
     const historyForRequest = chatMessages.slice(-8).map((m) => ({
@@ -910,8 +928,29 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       content: m.text,
     }));
 
+    const suggestedPlacesHistory = Array.from(
+      new Set(
+        chatMessages
+          .filter((m) => m.sender === 'ai')
+          .flatMap((m) => (m.suggestedPois || []).map((p) => p.name?.trim() || ''))
+          .filter(Boolean)
+      )
+    ).slice(-30);
+
+    const resolvedBudgetTier: 'budget' | 'standard' | 'luxury' | undefined =
+      trip.budgetTier === 'budget' || trip.budgetTier === 'standard' || trip.budgetTier === 'luxury'
+        ? trip.budgetTier
+        : categoryBudgets.activities === '$$$' || categoryBudgets.dining === '$$$'
+          ? 'luxury'
+          : categoryBudgets.activities === '$' || categoryBudgets.dining === '$'
+            ? 'budget'
+            : categoryBudgets.activities === '$$' || categoryBudgets.dining === '$$'
+              ? 'standard'
+              : undefined;
+
     setChatMessages((prev) => [...prev, newUserMsg]);
     setChatInput('');
+    setPendingAttachment(null);
     setStreamingText('');
     setStreamingStatus(null);
     setIsAiThinking(true);
@@ -920,18 +959,23 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       const res = await streamCopilotChat(
         {
           message: promptToSend,
+          attachment: activeAttachment?.payload,
           trip_context: {
             destination: trip.destination || 'Đà Nẵng & Huế',
             days_count: trip.daysCount || 4,
             current_day: dayTargetForAdd || 1,
             traveler_name: currentUser?.full_name?.trim() || undefined,
+            companions:
+              children + infants > 0
+                ? 'Gia đình có trẻ nhỏ'
+                : (trip.peopleCount || adults) > 2
+                  ? `Nhóm ${trip.peopleCount || adults} người`
+                  : undefined,
             saved_ideas: tripIdeas,
+            suggested_places: suggestedPlacesHistory,
             total_budget: trip.totalBudget && trip.totalBudget > 0 ? trip.totalBudget : undefined,
             num_people: trip.peopleCount || 2,
-            budget_tier:
-              trip.budgetTier === 'budget' || trip.budgetTier === 'standard' || trip.budgetTier === 'luxury'
-                ? trip.budgetTier
-                : undefined,
+            budget_tier: resolvedBudgetTier,
             active_constraints: activeConstraints,
             trip_memory: tripMemory,
             conversation_history: historyForRequest,
@@ -1098,6 +1142,13 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         setTimeout(() => setToastMessage(null), 3500);
       }
 
+      const rawResolvedTitle = res.trip_memory?.attached_source_title?.trim();
+      const titleMatchesCurrentAttachment =
+        Boolean(rawResolvedTitle) &&
+        Boolean(activeAttachment) &&
+        (activeAttachment?.payload.type !== 'link' ||
+          res.trip_memory?.attached_source_url === activeAttachment?.payload.url);
+
       const aiMsgId = `ai-${Date.now()}`;
       const newAiMsg: CopilotChatMessageItem = {
         id: aiMsgId,
@@ -1105,6 +1156,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         text: sanitizeCopilotReplyText(res.reply_text, promptToSend),
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         suggestedPois: res.suggested_pois || [],
+        extractedPlaces: res.extracted_places || [],
+        receiptBooking: res.receipt_booking ?? null,
         avoidNotice: res.avoid_notice || null,
         greenImpact: res.green_impact_summary || null,
         budgetImpact: res.budget_impact_summary || null,
@@ -1117,7 +1170,17 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         reasoningTrace: res.reasoning_trace,
       };
 
-      setChatMessages((prev) => [...prev, newAiMsg]);
+      setChatMessages((prev) => {
+        const enriched =
+          titleMatchesCurrentAttachment && rawResolvedTitle
+            ? prev.map((m) =>
+                m.id === userMsgId && m.attachment
+                  ? { ...m, attachment: { ...m.attachment, displayTitle: rawResolvedTitle } }
+                  : m
+              )
+            : prev;
+        return [...enriched, newAiMsg];
+      });
 
       if (res.next_suggested_prompts && res.next_suggested_prompts.length > 0) {
         setQuickPrompts(res.next_suggested_prompts);
@@ -1341,29 +1404,42 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           </div>
 
           {/* MVP #3: Removable Session Memory Badges (Bộ nhớ ngữ cảnh xuyên suốt) */}
-          {Object.keys(tripMemory).length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 mb-2.5 pb-2 border-b border-gray-100 shrink-0">
-              <span className="text-[10.5px] font-bold text-emerald-800 uppercase tracking-wider mr-0.5">
-                AI đang ghi nhớ:
-              </span>
-              {Object.entries(tripMemory).map(([key, label]) => (
-                <span
-                  key={key}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-900 text-[11px] font-medium shadow-2xs"
-                >
-                  <span>{label}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveMemoryConstraint(key)}
-                    className="w-3.5 h-3.5 rounded-full hover:bg-emerald-200/80 flex items-center justify-center text-emerald-700 hover:text-emerald-950 cursor-pointer ml-0.5"
-                    title="Gỡ bỏ ràng buộc này"
-                  >
-                    <X size={10} />
-                  </button>
+          {(() => {
+            const hiddenMemoryKeys = new Set([
+              'attached_source',
+              'attached_source_title',
+              'attached_source_url',
+              'processed_receipts',
+              'suggested_places',
+            ]);
+            const visibleEntries = Object.entries(tripMemory).filter(
+              ([key, label]) => !hiddenMemoryKeys.has(key) && Boolean(label?.trim())
+            );
+            if (visibleEntries.length === 0) return null;
+            return (
+              <div className="flex flex-wrap items-center gap-1.5 mb-2.5 pb-2 border-b border-gray-100 shrink-0">
+                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider mr-0.5">
+                  AI đang ghi nhớ:
                 </span>
-              ))}
-            </div>
-          )}
+                {visibleEntries.map(([key, label]) => (
+                  <span
+                    key={key}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-900 text-xs font-medium shadow-2xs"
+                  >
+                    <span>{label}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMemoryConstraint(key)}
+                      className="w-4 h-4 rounded-full hover:bg-emerald-200/80 flex items-center justify-center text-emerald-700 hover:text-emerald-950 cursor-pointer ml-0.5"
+                      title="Gỡ bỏ ràng buộc này"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Mindtrip Action Cards (1 / 2 & 2 / 2): Gợi ý bước tiếp theo gọn gàng */}
           {showActionCards && !isAiThinking && (
@@ -1498,7 +1574,25 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 }`}
               >
                 {msg.sender === 'user' ? (
-                  <div className="whitespace-pre-line">{msg.text}</div>
+                  <div className="space-y-2">
+                    {msg.attachment && (
+                      <div className="rounded-xl bg-white/15 border border-white/20 p-2 flex items-center gap-2.5">
+                        <AttachmentThumbnail
+                          previewUrl={msg.attachment.previewUrl}
+                          alt={msg.attachment.displayTitle}
+                          type={msg.attachment.type}
+                          tone="dark"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white truncate max-w-[220px]">
+                            {msg.attachment.displayTitle}
+                          </p>
+                          <p className="text-xs text-white/85 truncate">{msg.attachment.subtitle}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="whitespace-pre-line">{msg.text}</div>
+                  </div>
                 ) : (
                   <>
                     {msg.reasoningTrace && (
@@ -1600,19 +1694,55 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   </div>
                 )}
 
+                {/* Thẻ xác nhận đặt chỗ / vé (từ Hóa đơn đính kèm) */}
+                {msg.receiptBooking && (
+                  <div
+                    data-testid="receipt-booking-card"
+                    className="rounded-xl border border-emerald-200 bg-emerald-50/75 p-3 flex items-start gap-2.5 text-xs"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-emerald-800 text-white flex items-center justify-center shrink-0">
+                      <ReceiptText size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-emerald-950">
+                        {msg.receiptBooking.is_duplicate
+                          ? 'Hóa đơn đã có trong hành trình (không thêm trùng)'
+                          : 'Đã trích xuất xác nhận đặt chỗ'}
+                      </p>
+                      <p className="font-semibold text-neutral-900 truncate">{msg.receiptBooking.title}</p>
+                      <p className="text-neutral-700">
+                        {msg.receiptBooking.city}
+                        {msg.receiptBooking.time_str ? ` · ${msg.receiptBooking.time_str}` : ''}
+                        {msg.receiptBooking.date_str ? ` · ${msg.receiptBooking.date_str}` : ''}
+                        {msg.receiptBooking.checkout_str ? ` → ${msg.receiptBooking.checkout_str}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Thẻ gợi ý địa điểm từ Copilot (MVP #5: KG Explanation + Giá chuẩn đơn vị + Nút đôi [+ Ý tưởng] & [+ Ngày X]) */}
                 {msg.suggestedPois && msg.suggestedPois.length > 0 && (
                   <div className="space-y-2 pt-1 w-full">
                     {msg.suggestedPois.map((p, pIdx) => {
                       const isSaved = isPoiSavedInIdeas(p);
+                      const ecoReason = getPoiGreenScoreExplanation(p);
+                      const isEcoOpen = openEcoTipPoiId === p.id;
                       const img = p.image_url || getDeterministicImage(p.name, p.id, normalizeCategory(p.category), trip.destination);
+                      const matchedExtracted = msg.extractedPlaces?.find((ep) => {
+                        const epNorm = ep.name.toLowerCase();
+                        const poiNorm = p.name.toLowerCase();
+                        return epNorm.includes(poiNorm) || poiNorm.includes(epNorm);
+                      });
                       return (
                         <div
                           key={p.id}
                           onMouseEnter={() => handleDebouncedHover(p.id)}
-                          onMouseLeave={() => handleDebouncedHover(null)}
+                          onMouseLeave={() => {
+                            handleDebouncedHover(null);
+                            setOpenEcoTipPoiId((prev) => (prev === p.id ? null : prev));
+                          }}
                           onClick={() => setSelectedMapPoiId(p.id)}
-                          className="p-2.5 rounded-xl border border-gray-200/90 hover:border-black/40 bg-gray-50/70 hover:bg-white transition-all flex flex-col sm:flex-row gap-2.5 items-start sm:items-center justify-between shadow-2xs group w-full cursor-pointer"
+                          className="relative p-2.5 rounded-xl border border-gray-200/90 hover:border-black/40 bg-gray-50/70 hover:bg-white transition-all flex flex-col sm:flex-row gap-2.5 items-start sm:items-center justify-between shadow-2xs group w-full cursor-pointer"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className="relative shrink-0">
@@ -1625,7 +1755,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                                 city={normalizeCity(trip.destination)}
                                 className="w-12 h-12 rounded-lg object-cover shrink-0 border border-gray-200/60"
                               />
-                              <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-black text-white text-[10px] font-extrabold flex items-center justify-center shadow-xs">
+                              <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-black text-white text-xs font-extrabold flex items-center justify-center shadow-xs">
                                 {pIdx + 1}
                               </span>
                             </div>
@@ -1634,21 +1764,34 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                                 <h5 className="font-bold text-[13px] text-gray-900 truncate group-hover:text-emerald-800 transition-colors">
                                   {p.name}
                                 </h5>
+                                {matchedExtracted?.timestamp && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-neutral-900 text-white font-medium shrink-0">
+                                    {matchedExtracted.timestamp}
+                                  </span>
+                                )}
                                 <button
                                   type="button"
+                                  data-testid="poi-green-score-badge"
+                                  aria-label={`Điểm xanh ${p.green_score || 90}/100: ${ecoReason}`}
+                                  aria-expanded={isEcoOpen}
+                                  title="Bấm để xem giải thích 4 trụ cột Điểm xanh"
+                                  onMouseEnter={() => setOpenEcoTipPoiId(p.id)}
+                                  onFocus={() => setOpenEcoTipPoiId(p.id)}
+                                  onBlur={() =>
+                                    setOpenEcoTipPoiId((prev) => (prev === p.id ? null : prev))
+                                  }
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    setOpenEcoTipPoiId((prev) => (prev === p.id ? null : p.id));
                                     setExplanationPoi({
                                       id: p.id,
                                       name: p.name,
                                       snippet: p.kg_explanation || p.swap_reason || undefined,
                                     });
                                   }}
-                                  className="text-xs px-2 py-0.5 rounded-full bg-emerald-100/90 hover:bg-emerald-200/90 text-emerald-900 font-semibold shrink-0 inline-flex items-center gap-1 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-                                  title="Bấm để xem giải thích 4 trụ cột Điểm xanh"
+                                  className="text-xs px-2 py-0.5 rounded-full bg-emerald-100/90 hover:bg-emerald-200 text-emerald-900 font-semibold shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                                 >
-                                  <span>🌱 {p.green_score || 90}/100</span>
-                                  <span className="underline decoration-emerald-700/50">Vì sao?</span>
+                                  🌱 {p.green_score || 90}/100
                                 </button>
                                 {p.rating && (
                                   <span className="text-xs font-semibold text-amber-700 flex items-center gap-0.5 shrink-0">
@@ -1657,6 +1800,15 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                                   </span>
                                 )}
                               </div>
+                              {isEcoOpen && (
+                                <p
+                                  role="tooltip"
+                                  data-testid="poi-green-score-tooltip"
+                                  className="mt-1 rounded-lg bg-emerald-950 text-emerald-50 px-2.5 py-1.5 text-xs leading-snug"
+                                >
+                                  🌱 {ecoReason}
+                                </p>
+                              )}
                               <p className="text-xs text-neutral-600 line-clamp-2 mt-0.5">
                                 {p.kg_explanation || p.swap_reason || p.address}
                               </p>
@@ -1754,43 +1906,104 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             <div ref={chatEndRef} />
           </div>
 
-          {/* Chip gợi ý câu hỏi (3 chip động bám sát ngữ cảnh hội thoại) */}
-          <div className="flex flex-wrap items-center gap-1.5 w-full pt-2 pb-2 shrink-0">
-            <span className="text-xs font-medium text-neutral-600 mr-0.5">Gợi ý nhanh:</span>
-            {quickPrompts.slice(0, 3).map((q, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleSendChatMessage(q)}
-                className="text-xs bg-gray-50 hover:bg-gray-100 hover:border-gray-300 border border-gray-200/80 rounded-full px-3 py-1.5 text-gray-700 transition cursor-pointer active:scale-95 truncate max-w-full"
-                title={q}
-              >
-                💡 {q}
-              </button>
-            ))}
-          </div>
+          {/* Chip gợi ý câu hỏi (3 chip động không lặp câu hỏi dẫn) */}
+          {(() => {
+            const lastAiText =
+              [...chatMessages].reverse().find((m) => m.sender === 'ai')?.text || '';
+            const chips = sanitizeQuickReplyChips(quickPrompts, lastAiText);
+            if (chips.length === 0) return null;
+            return (
+              <div className="flex flex-wrap gap-1.5 w-full pt-2 pb-2 shrink-0">
+                {chips.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => handleSendChatMessage(q)}
+                    className="min-h-[36px] text-xs bg-gray-50 hover:bg-gray-100 hover:border-gray-300 border border-gray-200/80 rounded-full px-3 py-1.5 text-gray-700 transition cursor-pointer active:scale-95 truncate max-w-full"
+                    title={q}
+                  >
+                    💡 {q}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
-          {/* Ô nhập tin nhắn floating ghim đáy */}
-          <div className="w-full shrink-0">
-            <div className="w-full rounded-[24px] border border-gray-200/90 p-3 shadow-sm bg-white hover:border-gray-300 focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all flex flex-col justify-between">
+          {/* Ô nhập tin nhắn floating ghim đáy (+ Pop-up Đính kèm Đa phương thức) */}
+          <div className="w-full shrink-0 relative">
+            <ChatAttachmentMenu
+              isOpen={isAttachMenuOpen}
+              onClose={() => setIsAttachMenuOpen(false)}
+              onSelectAttachment={(ready) => {
+                setPendingAttachment(ready);
+                setTimeout(() => chatInputRef.current?.focus(), 0);
+              }}
+            />
+
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                const file = e.dataTransfer.files?.[0];
+                if (!file) return;
+                e.preventDefault();
+                void fileToReadyAttachment(file, 'file')
+                  .then((ready) => {
+                    setPendingAttachment(ready);
+                    setTimeout(() => chatInputRef.current?.focus(), 0);
+                  })
+                  .catch((err) => {
+                    setToastMessage(err instanceof Error ? err.message : 'Không thể đọc tệp đính kèm.');
+                    setTimeout(() => setToastMessage(null), 3500);
+                  });
+              }}
+              className="w-full rounded-[24px] border border-gray-200/90 p-3 shadow-sm bg-white hover:border-gray-300 focus-within:border-black focus-within:ring-2 focus-within:ring-black/5 transition-all flex flex-col justify-between"
+            >
+              {pendingAttachment && (
+                <StagedAttachmentChip
+                  attachment={pendingAttachment}
+                  onRemove={() => setPendingAttachment(null)}
+                />
+              )}
+
               <input
                 ref={chatInputRef}
                 type="text"
-                placeholder="Bắt đầu một cuộc trò chuyện mới cho chuyến đi này..."
+                placeholder={getAttachmentPlaceholder(
+                  pendingAttachment,
+                  'Bắt đầu một cuộc trò chuyện mới cho chuyến đi này...'
+                )}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSendChatMessage();
+                onPaste={(e) => {
+                  const file = e.clipboardData?.files?.[0];
+                  if (!file) return;
+                  e.preventDefault();
+                  void fileToReadyAttachment(file, 'file')
+                    .then((ready) => setPendingAttachment(ready))
+                    .catch((err) => {
+                      setToastMessage(err instanceof Error ? err.message : 'Không thể đọc ảnh đã dán.');
+                      setTimeout(() => setToastMessage(null), 3500);
+                    });
                 }}
-                className="w-full text-[13.5px] text-gray-900 placeholder:text-gray-400 focus:outline-none bg-transparent pt-0.5"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleSendChatMessage();
+                }}
+                aria-label="Nhập câu hỏi cho Trợ lý GreenTrip AI"
+                className="w-full text-[13.5px] text-gray-900 placeholder:text-neutral-600 focus:outline-none bg-transparent pt-0.5"
               />
 
               <div className="flex items-center justify-between pt-2.5 border-t border-gray-100/70 mt-2.5">
                 <button
                   type="button"
-                  onClick={() => setShowAddIdeasModal(true)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                  title="Thêm địa điểm vào ý tưởng chuyến đi"
+                  onClick={() => setIsAttachMenuOpen((prev) => !prev)}
+                  aria-label="Đính kèm ảnh, tệp hoặc đường dẫn"
+                  aria-expanded={isAttachMenuOpen}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                    isAttachMenuOpen
+                      ? 'bg-neutral-900 text-white rotate-45'
+                      : 'text-gray-700 hover:text-black hover:bg-gray-100'
+                  }`}
+                  title="Tải ảnh/tệp hoặc thêm đường dẫn"
                 >
                   <Plus size={18} />
                 </button>
@@ -1801,7 +2014,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     onClick={() => {
                       handleSendChatMessage('Tư vấn phương tiện di chuyển xanh tiết kiệm CO2 cho chuyến đi');
                     }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                    aria-label="Tư vấn phương tiện di chuyển xanh"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                     title="Phương tiện di chuyển xanh"
                   >
                     <Car size={17} />
@@ -1812,20 +2026,22 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     onClick={() => {
                       handleSendChatMessage('Gợi ý trải nghiệm văn hóa và đặc sản bản địa hôm nay');
                     }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition cursor-pointer"
-                    title="Ghi chú giọng nói"
+                    aria-label="Gợi ý trải nghiệm văn hóa bản địa"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-gray-600 hover:text-black hover:bg-gray-100 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    title="Gợi ý bản địa"
                   >
                     <Mic size={17} />
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleSendChatMessage()}
-                    disabled={isAiThinking}
-                    className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                    onClick={() => void handleSendChatMessage()}
+                    disabled={(!chatInput.trim() && !pendingAttachment) || isAiThinking}
+                    aria-label="Gửi tin nhắn"
+                    className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                     title="Gửi"
                   >
-                    <Send size={14} className="ml-0.5" />
+                    <Send size={15} className="ml-0.5" />
                   </button>
                 </div>
               </div>

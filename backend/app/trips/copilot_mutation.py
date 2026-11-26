@@ -12,6 +12,8 @@ from psycopg import Connection
 from app.trips.copilot_enrichment import (
     build_kg_explanation_for_poi,
     format_three_layer_poi_bullet,
+    is_poi_allowed_in_city,
+    score_homonym_disambiguation,
 )
 from app.trips.copilot_intent import LANDMARK_CITY_KB
 from app.trips.handlers.swap_meal_handler import format_green_score
@@ -108,8 +110,8 @@ def handle_city_mismatch_and_mutation(
         updated_itinerary_state=updated_outline,
         mutation_summary=mutation_notes,
         next_suggested_prompts=[
-            f"Chốt phương án A: Đi {canonical_name} nửa ngày sáng Ngày {suggested_day}",
-            f"Chốt phương án B: Dành trọn Ngày {suggested_day} cho {canonical_name}",
+            f"Đi {canonical_name} nửa ngày sáng Ngày {suggested_day}",
+            f"Dành trọn Ngày {suggested_day} cho {canonical_name}",
             f"Gợi ý quán ăn trưa ngon sau khi tham quan {canonical_name}",
         ],
         green_impact_summary=f"Ghép {canonical_name} đúng vào cụm Ngày {suggested_day} tại {real_city} giúp tiết kiệm ~200km di chuyển ngược tuyến qua đèo Hải Vân.",
@@ -295,7 +297,9 @@ def _lookup_poi_by_keyword(
     target_city: str,
     constraints: list[str],
 ) -> list[CopilotSuggestedPoiItem]:
-    """Lookup a single POI by keyword from DB or construct a grounded item."""
+    """Lookup a single POI by keyword from DB with hard city & homonym disambiguation."""
+    is_both = "đà nẵng" in target_city.lower() and "huế" in target_city.lower()
+    allow_hoi_an = "hội an" in keyword.lower() or "hoi an" in strip_vietnamese_accents(keyword.lower())
     try:
         with connection.cursor() as cur:
             cur.execute(
@@ -313,8 +317,26 @@ def _lookup_poi_by_keyword(
                 """,
                 ("%Hue%" if "huế" in (target_city or "").lower() or "hue" in (target_city or "").lower() else "%Da Nang%", f"%{keyword}%", f"%{keyword}%"),
             )
-            row = cur.fetchone()
-            if row:
+            rows = cur.fetchall() if hasattr(cur, "fetchall") else ([cur.fetchone()] if cur.fetchone() else [])
+            valid_rows = [
+                r
+                for r in rows
+                if r
+                and is_poi_allowed_in_city(
+                    poi_name=str(r[1] or ""),
+                    poi_city=str(r[9] or ""),
+                    poi_address=str(r[7] or ""),
+                    target_city_display=target_city,
+                    is_both_cities=is_both,
+                    allow_hoi_an=allow_hoi_an,
+                )
+            ]
+            if valid_rows:
+                valid_rows.sort(
+                    key=lambda r: score_homonym_disambiguation(str(r[1] or ""), str(r[7] or ""), keyword),
+                    reverse=True,
+                )
+                row = valid_rows[0]
                 g_score = format_green_score(row[5])
                 kg_exp, eco_list = build_kg_explanation_for_poi(
                     row[1], row[2], row[3], target_city, constraints
@@ -546,8 +568,8 @@ def handle_itinerary_mutation_request(
             updated_itinerary_state=outline,
             mutation_summary=checklist,
             next_suggested_prompts=[
-                "Chọn A: Đạp xe / đi xe điện dạo vườn bưởi Thanh Trà",
-                "Chọn B: Wellness ngâm chân thảo mộc & thưởng trà ấm",
+                "Đạp xe / đi xe điện dạo vườn bưởi Thanh Trà",
+                "Ngâm chân thảo mộc & thưởng trà ấm tại Thủy Biều",
                 "Gợi ý quán cơm chay nhà rường gần Thủy Biều",
             ],
             green_impact_summary="Đi Tàu hỏa Di sản qua Đèo Hải Vân kết hợp xe điện/xe đạp tại Thủy Biều giúp giảm ~75% khí thải CO₂ (~6.4 kg CO₂ tiết kiệm).",
@@ -675,8 +697,8 @@ def handle_itinerary_mutation_request(
             updated_destination="Đà Nẵng & Huế",
             mutation_summary=checklist,
             next_suggested_prompts=[
-                f"Chọn A: Ngày {new_total_days} đi cafe nhẹ nhàng và mua quà",
-                "Chọn B: Thêm trải nghiệm Ca Huế trên sông Hương",
+                f"Ngày {new_total_days} đi cafe nhẹ nhàng và mua quà",
+                "Thêm trải nghiệm Ca Huế trên sông Hương",
                 "Xem chi tiết các quán ăn trong lịch trình mới",
             ],
             green_impact_summary="Kết nối chặng Đà Nẵng – Huế bằng Tàu hỏa Di sản và gom cụm điểm tham quan theo ngày giúp tiết kiệm tối đa quãng đường di chuyển.",
@@ -759,8 +781,8 @@ def handle_itinerary_mutation_request(
             updated_itinerary_state=outline,
             mutation_summary=checklist,
             next_suggested_prompts=[
-                f"Chọn A: Ghép Ngũ Hành Sơn trên đường đi {place_raw} Ngày {to_day}",
-                f"Chọn B: Đi thẳng vào {place_raw} để dạo phố cổ & đi thuyền",
+                f"Ghép Ngũ Hành Sơn trên đường đi {place_raw} Ngày {to_day}",
+                f"Đi thẳng vào {place_raw} để dạo phố cổ & đi thuyền",
                 f"Xem lại lịch trình Ngày {from_day} sau khi đổi",
             ],
         )
@@ -847,8 +869,8 @@ def handle_itinerary_mutation_request(
             updated_itinerary_state=outline,
             mutation_summary=checklist,
             next_suggested_prompts=[
-                f"Chọn A: Giữ khung giờ trống nghỉ ngơi ở Ngày {target_day}",
-                f"Chọn B: Thay bằng Lăng Tự Đức đường phẳng ở Ngày {target_day}",
+                f"Giữ khung giờ trống nghỉ ngơi ở Ngày {target_day}",
+                f"Thay bằng Lăng Tự Đức đường phẳng ở Ngày {target_day}",
                 "Xem lại toàn bộ lịch trình sau khi cập nhật",
             ],
         )

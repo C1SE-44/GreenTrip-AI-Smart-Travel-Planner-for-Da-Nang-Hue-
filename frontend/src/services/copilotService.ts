@@ -20,6 +20,7 @@ export interface TripContextPayload {
   current_stop_name?: string | null;
   current_stop_id?: string | null;
   saved_ideas?: string[];
+  suggested_places?: string[];
   traveler_name?: string | null;
   companions?: string | null;
   preferences?: string[];
@@ -61,9 +62,44 @@ export interface CopilotSuggestedPoi {
   open_range_label?: string | null;
 }
 
+export interface CopilotAttachmentPayload {
+  type: 'file' | 'link' | 'receipt';
+  url?: string;
+  file_name?: string;
+  mime_type?: string;
+  content_base64?: string;
+  extracted_text?: string;
+}
+
 export interface CopilotChatRequest {
   message: string;
   trip_context: TripContextPayload;
+  attachment?: CopilotAttachmentPayload;
+}
+
+export interface CopilotExtractedPlace {
+  name: string;
+  timestamp?: string | null;
+  place_type: string;
+  context?: string;
+  is_specific?: boolean;
+  city?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  source?: string;
+}
+
+export interface CopilotReceiptBooking {
+  booking_type: string;
+  title: string;
+  city: string;
+  date_str?: string | null;
+  checkout_str?: string | null;
+  time_str?: string | null;
+  estimated_cost_vnd?: number | null;
+  confirmation_code?: string | null;
+  is_duplicate?: boolean;
+  auto_synced_day?: number | null;
 }
 
 export interface CopilotChatResponse {
@@ -77,6 +113,8 @@ export interface CopilotChatResponse {
   fact_check_warning?: string | null;
   target_slot?: string | null;
   suggested_pois: CopilotSuggestedPoi[];
+  extracted_places?: CopilotExtractedPlace[];
+  receipt_booking?: CopilotReceiptBooking | null;
   action_type: 'replace_stop' | 'add_stop' | 'mutate_itinerary' | 'view_on_map' | 'none' | string;
   next_suggested_prompts?: string[];
   avoid_notice?: string | null;

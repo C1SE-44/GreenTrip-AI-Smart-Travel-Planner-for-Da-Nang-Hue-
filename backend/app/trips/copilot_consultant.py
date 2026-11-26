@@ -22,6 +22,7 @@ from app.trips.copilot_enrichment import (
     enrich_pois_with_kg_and_filter_city,
     ensure_closing_ab_hook,
     format_three_layer_poi_bullet,
+    is_poi_allowed_in_city,
     resolve_poi_coordinates,
 )
 from app.trips.copilot_grounding import verify_and_ground_reply_text
@@ -39,16 +40,6 @@ from app.trips.copilot_intent import (
     is_out_of_scope_query,
     resolve_effective_city,
 )
-from app.trips.copilot_mutation import (
-    _ensure_editable_outline,
-    _insert_landmark_into_day,
-    _lookup_poi_by_keyword,
-    handle_city_mismatch_and_mutation,
-    handle_itinerary_mutation_request,
-)
-from app.trips.handlers.smart_concierge_handler import is_simple_social_greeting
-from app.trips.handlers.swap_meal_handler import format_green_score
-from app.trips.itinerary_constraints import apply_quantitative_constraints_to_response
 from app.trips.schemas import (
     CopilotChatRequest,
     CopilotChatResponse,
@@ -61,6 +52,19 @@ from app.trips.text_utils import (
     normalize_vietnamese_query,
     strip_vietnamese_accents,
 )
+from app.trips.copilot_mutation import (
+    _ensure_editable_outline,
+    _insert_landmark_into_day,
+    _lookup_poi_by_keyword,
+    handle_city_mismatch_and_mutation,
+    handle_itinerary_mutation_request,
+)
+from app.trips.handlers.smart_concierge_handler import is_simple_social_greeting
+from app.trips.handlers.swap_meal_handler import format_green_score
+from app.trips.itinerary_constraints import (
+    _load_poi_reference_index,
+    apply_quantitative_constraints_to_response,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,12 +75,12 @@ Phong cách giao tiếp: Tự nhiên, thân thiện như người bản địa, 
 # QUY TẮC CỐT LÕI (BẮT BUỘC TUÂN THỦ)
 1. Trả lời trực diện ngay câu đầu tiên: KHÔNG lặp lại lời chào máy móc từ tin nhắn thứ 2 trở đi.
 2. Khóa địa lý & tính khả thi: Tuyệt đối không lẫn địa điểm Đà Nẵng/Hội An vào lịch Huế và ngược lại; phân biệt rõ 3 Chùa Linh Ứng (Sơn Trà, Bà Nà, Ngũ Hành Sơn); không xếp đi Đà Nẵng và Huế trong cùng 1 ngày khi chưa tính 2–2,5 giờ qua đèo/hầm Hải Vân.
-3. Ghi nhớ ràng buộc xuyên suốt: Đi cùng người lớn tuổi/trẻ nhỏ (ưu tiên đường phẳng như Lăng Tự Đức, xe điện Đại Nội), mùa mưa tháng 9–1 (kèm phương án trong nhà).
+3. Ghi nhớ ràng buộc xuyên suốt & chống lặp (`suggested_places`): Đi cùng người lớn tuổi/trẻ nhỏ (ưu tiên đường phẳng như Lăng Tự Đức, xe điện Đại Nội), mùa mưa tháng 9–1 (kèm phương án trong nhà); TUYỆT ĐỐI KHÔNG lặp lại địa điểm trong `SUGGESTED_PLACES_DO_NOT_REPEAT`.
 4. Giải thích Đồ thị Tri thức & Điểm xanh: Nêu rõ vì sao địa điểm phù hợp (tiện tuyến, ít phát thải, hỗ trợ cộng đồng địa phương hay hợp sở thích) kèm Điểm xanh.
 5. Ưu tiên cộng đồng địa phương & tránh lặp điểm đại trà: Xen kẽ tối thiểu 40–50% làng nghề, quán ăn bản địa, cơ sở lưu trú sinh thái có trong RETRIEVED_POIS thay vì chỉ lặp lại Đại Nội, Chùa Thiên Mụ, Lăng Khải Định.
 6. Cảnh báo quá tải giờ cao điểm & gợi ý phương tiện linh hoạt: Khi nhắc điểm phổ biến (Đại Nội, Cầu Rồng, Bà Nà Hills, Chùa Linh Ứng Sơn Trà, Chùa Thiên Mụ, Mỹ Khê), luôn nhắc khung giờ cao điểm và gợi ý giờ vắng hoặc điểm bản địa thay thế. Đề xuất phương tiện dựa theo quãng đường thực tế và số lượng người đi (không lặp máy móc xe đạp/xe điện ở mọi câu).
 7. Bảo vệ phạm vi & trung thực dữ liệu: Từ chối ngắn gọn câu hỏi ngoài Đà Nẵng – Huế; TUYỆT ĐỐI chỉ nhắc tên địa điểm có trong RETRIEVED_POIS hoặc REFERENCE_DRAFT.
-8. Câu kết gọn gàng: Kết thúc bằng đúng 1 câu hỏi ngắn tự nhiên (tối đa 25 từ) kết thúc bằng dấu `?`, không viết đoạn A/B dài dòng.
+8. Câu kết gọn gàng: Kết thúc bằng đúng 1 câu hỏi ngắn tự nhiên (tối đa 25 từ) kết thúc bằng dấu `?`, không viết đoạn A hay B dài dòng.
 """
 
 
@@ -379,7 +383,7 @@ def handle_over_scheduling_guardrail(
         "- **Ngày 1 — Cụm Núi Chúa & Biển Đà Nẵng**: Sáng đi **Bà Nà Hills & Cầu Vàng** (07:30 – 14:00) — 🌱 *Đi cáp treo điện giảm khí thải leo đèo*; chiều về nghỉ ngơi và dạo bộ **Bãi biển Mỹ Khê**.\n"
         "- **Ngày 2 — Cụm Di sản Phía Nam (Đà Nẵng → Hội An)**: Chiều mát (14:30) ghé **Danh thắng Ngũ Hành Sơn** (có thang máy kính) rồi đi thẳng xuống **Phố cổ Hội An** dạo bộ phố đèn lồng — 🌱 *Khu phố cổ không tiếng động cơ xe máy*.\n"
         "- **Ngày 3 — Chuyến tàu Di sản vượt Đèo Hải Vân ra Huế**: Sáng đi **Tàu hỏa Di sản Đà Nẵng – Huế** ngắm vịnh Lăng Cô, chiều tham quan **Đại Nội Huế** và **Chùa Thiên Mụ** — 🌱 *Tàu hỏa giảm 75% CO2 so với xe cá nhân*.\n\n"
-        "Bạn muốn mình áp dụng cấu trúc 3 ngày tách cụm này vào lịch trình không?"
+        "Bạn muốn mình áp dụng ngay cấu trúc 3 ngày tách cụm này vào lịch trình không?"
     )
 
     return CopilotChatResponse(
@@ -575,6 +579,167 @@ def _default_ab_hook_for_intent(sub_intent: str, city_display: str, current_day:
     return f"Bạn muốn mình thêm điểm nào vào lịch Ngày {current_day} tại {city_display}?"
 
 
+def collect_suggested_place_keys(trip_context: TripContextPayload) -> set[str]:
+    """Gather normalized names/IDs of POIs already suggested in this chat session."""
+    keys: set[str] = set()
+    raw_items: list[str] = list(trip_context.suggested_places or [])
+    mem_str = str((trip_context.trip_memory or {}).get("suggested_places") or "")
+    if mem_str:
+        raw_items.extend(part.strip() for part in mem_str.split(";;") if part.strip())
+    for item in raw_items:
+        norm = strip_vietnamese_accents(item.lower()).strip()
+        if norm:
+            keys.add(norm)
+    return keys
+
+
+def fetch_diverse_unvisited_pois(
+    target_city_display: str,
+    is_both_cities: bool,
+    excluded_keys: set[str],
+    constraints: list[str],
+    limit: int = 3,
+    prefer_stays_or_local: bool = True,
+) -> list[CopilotSuggestedPoiItem]:
+    """Pull fresh, high-Green-Score local authentic spots & curated Eco Stays not yet suggested."""
+    _, _, all_records = _load_poi_reference_index()
+    scored_candidates: list[tuple[float, dict[str, Any]]] = []
+
+    for rec in all_records:
+        pid = str(rec.get("poi_id") or "").strip()
+        name = str(rec.get("name") or "").strip()
+        city_val = str(rec.get("city") or "")
+        addr_val = str(rec.get("address") or "")
+        if not name:
+            continue
+        norm_name = strip_vietnamese_accents(name.lower()).strip()
+        norm_id = strip_vietnamese_accents(pid.lower()).strip()
+        if norm_name in excluded_keys or norm_id in excluded_keys:
+            continue
+        if any(ex and len(ex) >= 5 and (ex in norm_name or norm_name in ex) for ex in excluded_keys):
+            continue
+        if not is_poi_allowed_in_city(
+            poi_name=name,
+            poi_city=city_val,
+            poi_address=addr_val,
+            target_city_display=target_city_display,
+            is_both_cities=is_both_cities,
+            allow_hoi_an=is_both_cities,
+        ):
+            continue
+
+        gs = int(rec.get("green_score") or 85)
+        cat = str(rec.get("category") or "")
+        sub = str(rec.get("sub_category") or "")
+        cat_low = cat.lower()
+        sub_low = sub.lower()
+        score = float(gs)
+        if prefer_stays_or_local:
+            if sub_low in ("craft_villages", "craft_village", "eco_lodge", "homestay", "lagoon_waterway", "garden_eco_cafe", "quiet_alley_cafe"):
+                score += 18.0
+            elif "lưu trú" in cat_low or "làng" in name.lower() or "sinh thái" in name.lower():
+                score += 12.0
+        scored_candidates.append((score, rec))
+
+    scored_candidates.sort(key=lambda item: item[0], reverse=True)
+
+    picked: list[CopilotSuggestedPoiItem] = []
+    seen_cats: set[str] = set()
+    # Pass 1: diversify across categories (e.g. hidden local gem + local food/cafe + eco stay)
+    for _, rec in scored_candidates:
+        if len(picked) >= limit:
+            break
+        cat = str(rec.get("category") or "Điểm tham quan")
+        if cat in seen_cats and len(scored_candidates) > limit * 2:
+            continue
+        seen_cats.add(cat)
+        city_disp = str(rec.get("city") or ("Huế" if "huế" in target_city_display.lower() else "Đà Nẵng"))
+        gs = int(rec.get("green_score") or 88)
+        kg_exp, eco_list = build_kg_explanation_for_poi(
+            rec["name"], cat, rec.get("sub_category"), city_disp, constraints
+        )
+        cost_val = float(rec.get("estimated_cost") or 0.0)
+        price_disp = normalize_poi_price_display(
+            poi_name=rec["name"],
+            category=cat,
+            sub_category=rec.get("sub_category"),
+            raw_price_display=None,
+            estimated_cost=cost_val,
+        )
+        lat_val, lng_val = resolve_poi_coordinates(
+            rec["name"], city_disp, rec.get("lat"), rec.get("lng"), len(picked)
+        )
+        picked.append(
+            CopilotSuggestedPoiItem(
+                id=str(rec["poi_id"]),
+                name=rec["name"],
+                category=cat,
+                sub_category=rec.get("sub_category") or None,
+                city=city_disp,
+                lat=lat_val,
+                lng=lng_val,
+                image_url=rec.get("image_url") or "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c4ecef3d-5946-4bd8-974e-fd36c7aa9a7e.webp",
+                green_score=gs,
+                rating=4.8,
+                address=rec.get("address") or city_disp,
+                swap_reason=f"{kg_exp} • 🌱 Green Score {gs}/100 ({eco_list[0] if eco_list else 'Chuẩn xanh'})",
+                kg_explanation=kg_exp,
+                eco_practices=eco_list,
+                estimated_cost=cost_val if cost_val > 0 else None,
+                price_range_display=price_disp,
+            )
+        )
+    return picked
+
+
+def deduplicate_pois_against_session(
+    pois: list[CopilotSuggestedPoiItem],
+    trip_context: TripContextPayload,
+    target_city_display: str,
+    is_both_cities: bool,
+    constraints: list[str],
+    user_message: str = "",
+) -> list[CopilotSuggestedPoiItem]:
+    """Exclude POIs already suggested in the current chat session and backfill with diverse local/eco options."""
+    excluded = collect_suggested_place_keys(trip_context)
+    if not excluded or not pois:
+        return pois
+
+    msg_folded = strip_vietnamese_accents((user_message or "").lower())
+    saved_folded = {strip_vietnamese_accents(s.lower()).strip() for s in (trip_context.saved_ideas or [])}
+
+    kept: list[CopilotSuggestedPoiItem] = []
+    for p in pois:
+        p_name_folded = strip_vietnamese_accents(p.name.lower()).strip()
+        p_id_folded = strip_vietnamese_accents(p.id.lower()).strip()
+        # Keep if user explicitly asked about this POI in current message or it's a prioritized saved idea
+        if (p_name_folded and p_name_folded in msg_folded) or p_name_folded in saved_folded or p_id_folded in saved_folded:
+            kept.append(p)
+            continue
+        is_repeat = (
+            p_name_folded in excluded
+            or p_id_folded in excluded
+            or any(ex and len(ex) >= 5 and (ex in p_name_folded or p_name_folded in ex) for ex in excluded)
+        )
+        if not is_repeat:
+            kept.append(p)
+
+    desired_count = min(len(pois), 4)
+    if len(kept) < desired_count:
+        current_keys = excluded | {strip_vietnamese_accents(k.name.lower()).strip() for k in kept}
+        backfill = fetch_diverse_unvisited_pois(
+            target_city_display=target_city_display,
+            is_both_cities=is_both_cities,
+            excluded_keys=current_keys,
+            constraints=constraints,
+            limit=desired_count - len(kept),
+            prefer_stays_or_local=True,
+        )
+        kept.extend(backfill)
+
+    return kept
+
+
 def upgrade_handler_response_to_mindtrip_standard(
     request: CopilotChatRequest,
     raw_response: CopilotChatResponse,
@@ -606,8 +771,10 @@ def upgrade_handler_response_to_mindtrip_standard(
         raw_response.trip_memory = build_trip_memory_dict(constraints, request.trip_context)
         return raw_response
 
-    # 1. Strictly filter and enrich POIs with Knowledge Graph explanations
+    # 1. Strictly filter and enrich POIs with Knowledge Graph explanations + session deduplication
     query_vibe = "quiet" if "quiet_vibe" in constraints else ""
+    had_prior_suggestions = bool(collect_suggested_place_keys(request.trip_context))
+    before_dedup_names = [p.name for p in (raw_response.suggested_pois or [])]
     filtered_pois = enrich_pois_with_kg_and_filter_city(
         pois=list(raw_response.suggested_pois or []),
         target_city_display=city_display,
@@ -615,6 +782,15 @@ def upgrade_handler_response_to_mindtrip_standard(
         constraints=constraints,
         query_vibe=query_vibe,
     )
+    if raw_response.intent != "poi_advice":
+        filtered_pois = deduplicate_pois_against_session(
+            pois=filtered_pois,
+            trip_context=request.trip_context,
+            target_city_display=city_display,
+            is_both_cities=is_both,
+            constraints=constraints,
+            user_message=request.message,
+        )
 
     # Guarantee fallback quiet Da Nang cafes if DB is empty/offline during slang cafe query
     if raw_response.intent == "cafe_culture" and not filtered_pois and "đà nẵng" in city_display.lower():
@@ -646,13 +822,20 @@ def upgrade_handler_response_to_mindtrip_standard(
 
     reply_text = raw_response.reply_text.strip()
 
-    # 2. Special handling for quiet/chill cafe queries ("rcm quán cf nào chill chill ở đn đi bro, ko ồn ào nha")
+    # 2. Special handling for quiet/chill cafe queries or diversified non-repeating turn
+    swapped_repeats = had_prior_suggestions and [p.name for p in filtered_pois] != before_dedup_names
     if raw_response.intent == "cafe_culture" and "quiet_vibe" in constraints:
         poi_bullets = "\n".join(format_three_layer_poi_bullet(p) for p in filtered_pois[:4])
         reply_text = (
             f"Với tiêu chí **quán cà phê chill, yên tĩnh, tách biệt tiếng ồn xe cộ tại {city_display}**, "
             f"mình lọc ngay cho bạn các quán ẩn mình trong hẻm và không gian vườn xanh mát chuẩn gu dưới đây:\n\n"
             f"**Danh sách quán cà phê yên tĩnh tại {city_display} (kèm lý giải Đồ thị Tri thức & Điểm Xanh):**\n"
+            f"{poi_bullets}"
+        )
+    elif swapped_repeats and filtered_pois and raw_response.intent != "poi_advice":
+        poi_bullets = "\n".join(format_three_layer_poi_bullet(p) for p in filtered_pois[:4])
+        reply_text = (
+            f"Để tránh lặp lại các điểm đã gợi ý trước đó, mình chọn thêm cho bạn các tọa độ **bản địa ít đông & lưu trú xanh** mới mẻ tại **{city_display}**:\n\n"
             f"{poi_bullets}"
         )
     else:
@@ -735,7 +918,11 @@ def upgrade_handler_response_to_mindtrip_standard(
     raw_response.reasoning_trace = reasoning_trace
     raw_response.recommended_poi_ids = rec_ids
     raw_response.detected_constraints = constraints
-    raw_response.trip_memory = build_trip_memory_dict(constraints, request.trip_context)
+    mem_dict = build_trip_memory_dict(constraints, request.trip_context)
+    merged_suggested = list(dict.fromkeys([*(request.trip_context.suggested_places or []), *(p.name for p in filtered_pois)]))
+    if merged_suggested:
+        mem_dict["suggested_places"] = ";;".join(merged_suggested[-24:])
+    raw_response.trip_memory = mem_dict
     raw_response.suggested_pois = filtered_pois
     return raw_response
 
@@ -747,9 +934,26 @@ def finalize_copilot_response(
     connection: Connection | None = None,
     protected_keywords: list[str] | None = None,
 ) -> CopilotChatResponse:
-    """Ensure every CopilotChatResponse carries trip_memory, normalized prices, coordinates, and Part-2 constraints."""
+    """Ensure every CopilotChatResponse carries trip_memory, hard city filter, normalized prices, coordinates, and Part-2 constraints."""
     response.detected_constraints = constraints
-    response.trip_memory = build_trip_memory_dict(constraints, trip_context)
+    mem_dict = build_trip_memory_dict(constraints, trip_context)
+
+    dest = (trip_context.destination or "").strip()
+    is_both = ("đà nẵng" in dest.lower() or "da nang" in dest.lower()) and ("huế" in dest.lower() or "hue" in dest.lower())
+    if not protected_keywords and not is_both and dest:
+        response.suggested_pois = [
+            p
+            for p in (response.suggested_pois or [])
+            if is_poi_allowed_in_city(
+                poi_name=p.name,
+                poi_city=p.city,
+                poi_address=p.address,
+                target_city_display=dest,
+                is_both_cities=False,
+                allow_hoi_an="hội an" in dest.lower(),
+            )
+        ]
+
     for idx, p in enumerate(response.suggested_pois or []):
         p.price_range_display = normalize_poi_price_display(
             poi_name=p.name,
@@ -761,7 +965,8 @@ def finalize_copilot_response(
         lat_val, lng_val = resolve_poi_coordinates(p.name, p.city or "Đà Nẵng", p.lat, p.lng, idx)
         p.lat = lat_val
         p.lng = lng_val
-    return apply_quantitative_constraints_to_response(
+
+    final_resp = apply_quantitative_constraints_to_response(
         response,
         trip_context,
         connection=connection,
@@ -769,6 +974,26 @@ def finalize_copilot_response(
         coords_resolver=resolve_poi_coordinates,
         protected_keywords=protected_keywords,
     )
+    merged_suggested = list(dict.fromkeys([*(trip_context.suggested_places or []), *(p.name for p in (final_resp.suggested_pois or []))]))
+    if merged_suggested:
+        mem_dict["suggested_places"] = ";;".join(merged_suggested[-24:])
+    final_resp.trip_memory = {**mem_dict, **(final_resp.trip_memory or {})}
+    final_resp.recommended_poi_ids = [p.id for p in (final_resp.suggested_pois or [])]
+    return final_resp
+
+
+def _format_budget_context(trip_context: TripContextPayload) -> str:
+    tier_val = str(trip_context.budget_tier.value if trip_context.budget_tier else "standard")
+    tier_map = {
+        "budget": "$ Tiết kiệm",
+        "standard": "$$ Tiêu chuẩn",
+        "luxury": "$$$ Cao cấp",
+    }
+    label = tier_map.get(tier_val, "$$ Tiêu chuẩn")
+    if trip_context.total_budget and trip_context.total_budget > 0:
+        formatted = f"{int(trip_context.total_budget):,} ₫".replace(",", ".")
+        return f"{label} ({formatted})"
+    return label
 
 
 def _try_gemini_synthesis(
@@ -781,8 +1006,8 @@ def _try_gemini_synthesis(
     settings: Any,
 ) -> str | None:
     """
-    Call Gemini API with GREENTRIP_COPILOT_SYSTEM_PROMPT and retrieved KG POIs
-    if GEMINI_API_KEY is present. Falls back cleanly on timeout or error.
+    Call Gemini API (gemini-2.5-flash) with GREENTRIP_COPILOT_SYSTEM_PROMPT, 4 context vars,
+    and suggested_places anti-repeat guard. Falls back cleanly on timeout or error.
     """
     try:
         pois_context = [
@@ -793,6 +1018,7 @@ def _try_gemini_synthesis(
                 "category": p.category,
                 "address": p.address,
                 "green_score": p.green_score,
+                "price_range_display": p.price_range_display,
                 "estimated_cost": p.estimated_cost,
                 "opening_hours_status": p.opening_hours_status,
                 "open_range_label": p.open_range_label,
@@ -808,6 +1034,7 @@ def _try_gemini_synthesis(
         ]
         from app.trips.copilot_enrichment import estimate_trip_budget_summary, recommend_transport_for_leg
 
+        prior_suggested = list(trip_context.suggested_places or [])
         budget_info = estimate_trip_budget_summary(
             days_count=trip_context.days_count,
             num_people=trip_context.num_people,
@@ -826,27 +1053,43 @@ def _try_gemini_synthesis(
             f"current_day={trip_context.current_day}, total_budget={trip_context.total_budget}, "
             f"budget_tier={budget_info['tier_label']}, num_people={trip_context.num_people}, "
             f"transport_mode={trip_context.transport_mode}, active_constraints={constraints}\n"
+            f"SUGGESTED_PLACES_DO_NOT_REPEAT: {json.dumps(prior_suggested, ensure_ascii=False)}\n"
             f"BUDGET_ESTIMATE_FOR_GROUP: {budget_info['summary_text']}\n"
             f"CONTEXTUAL_TRANSPORT_TIP: {recommended_transport}\n"
             f"RECENT_HISTORY: {json.dumps(history_snippet, ensure_ascii=False)}\n"
             f"RETRIEVED_POIS & KG_PATHS: {json.dumps(pois_context, ensure_ascii=False)}\n"
-            f"STRICT_GROUNDING: Tuyệt đối chỉ nhắc tên địa điểm có trong RETRIEVED_POIS & KG_PATHS hoặc REFERENCE_DRAFT; cấm tự bịa thêm địa điểm mới. Lồng ghép số liệu BUDGET_ESTIMATE_FOR_GROUP và CONTEXTUAL_TRANSPORT_TIP thay vì trả lời chung chung; chỉ kết thúc bằng đúng 1 câu hỏi ngắn (<=25 từ).\n"
+            f"STRICT_GROUNDING: Tuyệt đối chỉ nhắc tên địa điểm có trong RETRIEVED_POIS & KG_PATHS hoặc REFERENCE_DRAFT; cấm lặp lại điểm trong SUGGESTED_PLACES_DO_NOT_REPEAT; cấm tự bịa thêm địa điểm mới. Lồng ghép số liệu BUDGET_ESTIMATE_FOR_GROUP và CONTEXTUAL_TRANSPORT_TIP; chỉ kết thúc bằng đúng 1 câu hỏi ngắn (<=25 từ).\n"
             f"REFERENCE_DRAFT (giữ nguyên các dữ kiện thực tế và tên địa điểm): {fallback_reply}\n"
             f"USER_MESSAGE: {user_message}"
         )
+        model_name = settings.GEMINI_MODEL or "gemini-2.5-flash"
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+            f"{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
         )
         resp = httpx.post(
             url,
             json={
                 "system_instruction": {"parts": [{"text": GREENTRIP_COPILOT_SYSTEM_PROMPT}]},
                 "contents": [{"role": "user", "parts": [{"text": prompt_payload}]}],
-                "generationConfig": {"temperature": 0.35, "maxOutputTokens": 900},
+                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 900},
             },
             timeout=6.0,
         )
+        if resp.status_code != 200 and model_name != "gemini-2.5-flash":
+            fallback_url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"gemini-2.5-flash:generateContent?key={settings.GEMINI_API_KEY}"
+            )
+            resp = httpx.post(
+                fallback_url,
+                json={
+                    "system_instruction": {"parts": [{"text": GREENTRIP_COPILOT_SYSTEM_PROMPT}]},
+                    "contents": [{"role": "user", "parts": [{"text": prompt_payload}]}],
+                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 900},
+                },
+                timeout=6.0,
+            )
         if resp.status_code == 200:
             data = resp.json()
             candidates = data.get("candidates") or []

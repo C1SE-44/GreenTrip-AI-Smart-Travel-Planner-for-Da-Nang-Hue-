@@ -1778,6 +1778,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
       ) : viewMode === 'chat' ? (
         <IdeationChatView
           allPois={allPois}
+          currentUserName={currentUser?.full_name}
           initialPrompt={pendingChatPrompt}
           onConsumedInitialPrompt={() => setPendingChatPrompt(null)}
           onCreateTripFromIdea={({ initialPrompt, selectedPoiIds, chatHistory }) => {

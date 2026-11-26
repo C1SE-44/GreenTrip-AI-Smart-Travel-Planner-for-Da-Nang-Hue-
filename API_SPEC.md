@@ -109,7 +109,7 @@
 | `POST` | `/trips/validate-parameters` | Public | `{ destination, days, total_budget?, budget_tier?, dining_tier?, lodging_tier?, activities_tier?, num_people, start_date?, preferences? }` | `{ valid, message, data: ValidatedTripData }` |
 | `GET` | `/trips/{trip_id}/itinerary` | Optional JWT (owner check nếu trip gắn user) | Path `trip_id` | `TripItineraryResponse` (`trip_id`, `title`, `destination`, `start_date`, `days_count`, `days`, `updated_at`) |
 | `PUT` | `/trips/{trip_id}/itinerary` | Optional JWT (owner check nếu trip gắn user) | `TripItinerarySyncRequest`: `{ trip_id, title, destination, start_date, days_count, days: ItineraryDay[] }` | `TripItineraryResponse` |
-| `POST` | `/trips/copilot/chat` | Public + Rate Limit (20/60s) | `{ message, trip_context: TripContextPayload }` | `CopilotChatResponse`: `{ reply_text, intent, intent_category, reasoning_trace, recommended_poi_ids, detected_constraints, trip_memory, fact_check_warning, target_slot, suggested_pois, action_type, next_suggested_prompts }` |
+| `POST` | `/trips/copilot/chat` | Public + Rate Limit (20/60s) | `{ message, trip_context: TripContextPayload (gồm destination, days_count, num_people, budget_tier, suggested_places...), attachment? }` | `CopilotChatResponse`: `{ reply_text, intent, intent_category, reasoning_trace, recommended_poi_ids, detected_constraints, trip_memory, fact_check_warning, target_slot, suggested_pois, extracted_places, receipt_booking, action_type, next_suggested_prompts }` |
 
 ---
 

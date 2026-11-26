@@ -45,11 +45,20 @@ def stream_copilot_chat_events(
     chunk_delay_seconds: float = 0.015,
 ) -> Iterator[str]:
     """Yield multi-stage progress statuses, delta chunks, and full structured Copilot payload over SSE."""
+    status_msg = (
+        "Đang phân tích đường dẫn & trích xuất điểm đến xanh..."
+        if payload.attachment and payload.attachment.type == "link"
+        else "Đang đọc vé / hóa đơn đặt chỗ & đồng bộ lịch trình..."
+        if payload.attachment and payload.attachment.type == "receipt"
+        else "Đang đọc ảnh / tệp đính kèm & nhận diện địa điểm..."
+        if payload.attachment
+        else "Đang phân tích nhu cầu & khóa phạm vi địa lý..."
+    )
     yield format_sse_event(
         "status",
         {
             "stage": "analyzing",
-            "message": "Đang phân tích nhu cầu & khóa phạm vi địa lý...",
+            "message": status_msg,
         },
     )
     try:

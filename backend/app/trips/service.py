@@ -807,8 +807,30 @@ def process_copilot_chat(
 ) -> CopilotChatResponse:
     """
     Main entrypoint for In-Planner Copilot Chat (PB14 - MindTrip-grade Eco-Travel Consultant).
-    Uses Hybrid NLU (Gemini Structured JSON + Regex Fallback) and Corrective Grounding.
+    Uses Hybrid NLU (Gemini Structured JSON + Regex Fallback), Multimodal Attachments, and Corrective Grounding.
     """
+    if request.attachment is not None:
+        from app.trips.copilot_attachments import process_copilot_attachment
+
+        return process_copilot_attachment(request, connection)
+
+    from app.trips.copilot_attachments import (
+        answer_attached_source_followup,
+        extract_inline_link_attachment,
+        is_attached_source_followup,
+        process_copilot_attachment,
+    )
+
+    inline_link = extract_inline_link_attachment(request.message)
+    if inline_link is not None:
+        return process_copilot_attachment(
+            request.model_copy(update={"attachment": inline_link}),
+            connection,
+        )
+
+    if is_attached_source_followup(request):
+        return answer_attached_source_followup(request, connection)
+
     intent_category, intent, fact_check, constraints, effective_ctx, nlu_meta = (
         classify_copilot_request_hybrid(request.message, request.trip_context)
     )

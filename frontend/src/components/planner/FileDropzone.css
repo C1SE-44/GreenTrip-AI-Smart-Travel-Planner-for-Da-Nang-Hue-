@@ -1,0 +1,85 @@
+.gt-dz {
+  position: relative;
+  width: 100%;
+  min-height: 112px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: #faf8f5;
+  cursor: pointer;
+  transform: scale(var(--dz-scale, 1));
+  transition:
+    background-color 0.25s var(--ux-ease, cubic-bezier(0.2, 0.8, 0.2, 1)),
+    transform 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.gt-dz::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1.5px dashed rgba(10, 10, 10, 0.2);
+  transition: border-color 0.25s;
+}
+
+.gt-dz:hover::before {
+  border-color: rgba(6, 95, 70, 0.5);
+}
+
+.gt-dz.is-drag {
+  --dz-scale: 1.02;
+  background: rgba(6, 95, 70, 0.08);
+}
+
+.gt-dz.is-drag::before {
+  border-style: solid;
+  border-color: #065f46;
+}
+
+.gt-dz:focus-visible {
+  outline: 2px solid #065f46;
+  outline-offset: 2px;
+}
+
+.gt-dz-ar {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  color: #065f46;
+  box-shadow:
+    0 0 0 1px rgba(10, 10, 10, 0.07),
+    0 8px 18px -10px rgba(15, 23, 42, 0.25);
+  animation: gt-dz-bob 2.6s ease-in-out infinite;
+  transition: transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.gt-dz.is-drag .gt-dz-ar {
+  animation: none;
+  transform: translateY(-4px) scale(1.08);
+}
+
+@keyframes gt-dz-bob {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.gt-dz-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: #0a0a0a;
+}
+
+.gt-dz-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #525252;
+}

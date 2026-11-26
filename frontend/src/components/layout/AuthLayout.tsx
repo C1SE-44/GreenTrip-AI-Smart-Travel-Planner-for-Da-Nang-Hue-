@@ -23,33 +23,37 @@ export default function AuthLayout({
   children,
 }: AuthLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
-      {/* Left: image + branding */}
+    <div className="flex min-h-screen flex-col bg-white lg:flex-row">
+      {/* Left: scenic imagery + GreenTrip eco brand */}
       <div className="relative flex min-h-[240px] flex-col justify-between overflow-hidden p-6 lg:w-[45%] lg:min-h-screen lg:p-12">
         <img
           src={image}
           alt={imageAlt}
+          width={1200}
+          height={1600}
           className="absolute inset-0 h-full w-full object-cover"
         />
-        {/* Soft bottom-to-top gradient so the image stays bright at the top */}
-        <div className="absolute inset-0 bg-gradient-to-t from-forest-900/95 via-forest-900/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/92 via-emerald-950/45 to-neutral-950/20" />
 
-        <div className="relative z-10 flex justify-between items-start">
-          <Link to="/" className="outline-none focus:outline-none hover:opacity-85 transition-opacity">
-            <Logo size="md" textClassName="text-cream" />
+        <div className="relative z-10 flex justify-between items-start gap-3">
+          <Link
+            to="/"
+            className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white hover:opacity-90 transition-opacity"
+          >
+            <Logo size="md" textClassName="text-white" />
           </Link>
-          <div className="hidden lg:flex items-center gap-1.5 rounded-full bg-cream/20 px-3 py-1.5 backdrop-blur-md">
-            <Users size={14} className="text-cream" />
-            <span className="text-xs font-medium text-cream">1.200+ chuyến đã lên lịch</span>
+          <div className="hidden lg:inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/20 px-3.5 py-1.5 backdrop-blur-md">
+            <Users size={14} className="text-white" aria-hidden="true" />
+            <span className="text-xs font-medium text-white">1.200+ chuyến đã lên lịch</span>
           </div>
         </div>
 
         <div className="relative z-10 space-y-6 lg:space-y-8">
           <div>
-            <p className="mb-2 text-sm font-medium text-sun-500 drop-shadow-sm">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-200">
               Đà Nẵng ⇄ Huế · 100 km
             </p>
-            <h1 className="font-display text-2xl leading-tight text-ivory lg:text-[2.5rem] lg:leading-tight">
+            <h1 className="font-display text-2xl font-bold leading-tight text-white lg:text-[2.25rem] lg:leading-tight">
               {slogan}
             </h1>
           </div>
@@ -58,36 +62,36 @@ export default function AuthLayout({
             {benefits.map((b, i) => {
               const Icon = benefitIcons[i % benefitIcons.length];
               return (
-                <li key={i} className="flex items-center gap-3 text-sm text-cream/90 lg:text-base">
-                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-forest-500 text-ivory shadow-sm">
-                    <Icon size={14} />
+                <li key={i} className="flex items-center gap-3 text-sm text-white/95 lg:text-[15px]">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-white shadow-xs">
+                    <Icon size={14} aria-hidden="true" />
                   </span>
-                  {b}
+                  <span>{b}</span>
                 </li>
               );
             })}
           </ul>
 
-          <div className="inline-flex items-center gap-4 rounded-2xl bg-forest-500 px-5 py-3.5 shadow-lg">
-            <div className="flex items-center gap-2">
-              <Leaf size={20} className="text-sun-100" />
+          <div className="inline-flex items-center gap-5 rounded-2xl bg-emerald-900/90 border border-white/15 px-5 py-3.5 shadow-lg backdrop-blur-xs">
+            <div className="flex items-center gap-2.5">
+              <Leaf size={20} className="text-emerald-300 shrink-0" aria-hidden="true" />
               <div>
-                <p className="text-[11px] font-medium text-forest-100 uppercase tracking-wider">Eco score</p>
-                <p className="text-xl font-bold text-ivory">{ecoStat.score}</p>
+                <p className="text-xs font-medium text-emerald-200">Điểm xanh</p>
+                <p className="text-xl font-bold text-white tabular-nums">{ecoStat.score}</p>
               </div>
             </div>
-            <div className="h-10 w-px bg-forest-400" />
+            <div className="h-10 w-px bg-white/20" />
             <div>
-              <p className="text-[11px] font-medium text-forest-100 uppercase tracking-wider">Tiết kiệm CO₂</p>
-              <p className="text-xl font-bold text-ivory">{ecoStat.co2}</p>
+              <p className="text-xs font-medium text-emerald-200">Tiết kiệm CO₂</p>
+              <p className="text-xl font-bold text-white tabular-nums">{ecoStat.co2}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Right: form */}
-      <div className="flex flex-1 items-center justify-center bg-ivory p-6 lg:p-12">
-        <div className="w-full max-w-[420px] animate-slideUp">
+      {/* Right: clean Airbnb-inspired auth card */}
+      <div className="flex flex-1 items-center justify-center bg-neutral-50/70 p-5 sm:p-8 lg:p-12">
+        <div className="w-full max-w-[440px] rounded-[24px] border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-[0_8px_32px_rgba(28,25,23,0.06)] animate-slideUp">
           {children}
         </div>
       </div>

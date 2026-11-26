@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Check, Heart, Loader2, Plus, X } from 'lucide-react';
 import type { Poi } from '@/data/pois';
 import Button from '@/components/ui/Button';
+import PoiImage from '@/components/ui/PoiImage';
 import {
   addPlaceToCollection,
   createSavedCollection,
@@ -96,7 +97,7 @@ export default function SaveToCollectionModal({ poi, onClose, onChanged }: SaveT
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/45 p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 backdrop-blur-[2px] p-4 animate-fadeIn"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !pendingCollectionId && !creatingCollection) onClose();
       }}
@@ -122,43 +123,69 @@ export default function SaveToCollectionModal({ poi, onClose, onChanged }: SaveT
             first.focus();
           }
         }}
-        className="w-full max-w-lg overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-card"
+        className="w-full max-w-lg overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-2xl"
       >
-        <header className="relative border-b border-neutral-200 px-5 pb-4 pt-5 text-center sm:px-7">
+        {/* Airbnb-style Centered Modal Header */}
+        <header className="relative border-b border-neutral-200 px-6 py-4 text-center">
           <button
             ref={closeRef}
             type="button"
             aria-label="Đóng"
             onClick={onClose}
             disabled={Boolean(pendingCollectionId) || creatingCollection}
-            className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full text-neutral-700 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 disabled:opacity-50"
+            className="absolute left-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full text-neutral-800 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:opacity-50 cursor-pointer"
           >
             <X size={20} aria-hidden="true" />
           </button>
-          <h2 id="save-collection-title" className="px-8 text-xl font-semibold tracking-tight text-neutral-950">
+          <h2 id="save-collection-title" className="px-10 text-base font-bold tracking-tight text-neutral-950">
             Lưu vào bộ sưu tập
           </h2>
-          <p className="mt-1 text-sm text-neutral-700">{poi.name}</p>
-          {poi.address && <p className="mt-0.5 text-sm text-neutral-600">{poi.address}</p>}
         </header>
 
-        <div className="max-h-[min(62vh,480px)] overflow-y-auto px-4 py-3 sm:px-5">
+        {/* Context strip for target POI */}
+        <div className="px-6 py-3 bg-neutral-50/80 border-b border-neutral-200/80 flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl overflow-hidden bg-neutral-200 shrink-0">
+            <PoiImage
+              src={poi.image}
+              alt={poi.name}
+              poiId={poi.id}
+              poiName={poi.name}
+              category={poi.category}
+              city={poi.city}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-neutral-950 truncate">{poi.name}</p>
+            <p className="text-xs text-neutral-600 truncate">
+              {poi.address || `${poi.city}, Việt Nam`}
+            </p>
+          </div>
+        </div>
+
+        {/* Collections List */}
+        <div className="max-h-[min(56vh,440px)] overflow-y-auto overscroll-contain px-4 py-3 sm:px-5">
           {loading ? (
             <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-neutral-700" aria-live="polite">
-              <Loader2 size={18} className="animate-spin" aria-hidden="true" />
-              Đang tải bộ sưu tập…
+              <Loader2 size={18} className="animate-spin text-emerald-700" aria-hidden="true" />
+              <span>Đang tải bộ sưu tập…</span>
             </div>
           ) : error && collections.length === 0 ? (
-            <div role="alert" className="rounded-xl bg-neutral-50 p-4 text-sm text-neutral-700">
+            <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-950">
               <p>{error}</p>
-              <button type="button" onClick={() => void loadCollections()} className="mt-3 min-h-10 font-semibold text-neutral-950 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800">
+              <button
+                type="button"
+                onClick={() => void loadCollections()}
+                className="mt-3 min-h-[40px] px-4 rounded-full bg-neutral-950 text-white text-xs font-semibold hover:bg-neutral-800 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+              >
                 Thử tải lại
               </button>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {collections.map((collection) => {
                 const isPending = pendingCollectionId === collection.collection_id;
+                const coverImage = collection.cover_images?.[0];
                 return (
                   <button
                     key={collection.collection_id}
@@ -167,17 +194,46 @@ export default function SaveToCollectionModal({ poi, onClose, onChanged }: SaveT
                     aria-busy={isPending}
                     disabled={Boolean(pendingCollectionId) || creatingCollection}
                     onClick={() => void toggleCollection(collection)}
-                    className="flex min-h-[68px] w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 disabled:opacity-60"
+                    className={`flex min-h-[72px] w-full items-center gap-3.5 rounded-2xl px-3 py-2 text-left transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:opacity-60 ${
+                      collection.contains_poi
+                        ? 'bg-emerald-50/70 hover:bg-emerald-50 border border-emerald-200/80'
+                        : 'hover:bg-neutral-50 border border-transparent'
+                    }`}
                   >
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700" aria-hidden="true">
-                      <Heart size={20} />
+                    <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-neutral-100 border border-neutral-200/80 text-neutral-600">
+                      {coverImage ? (
+                        <PoiImage
+                          src={coverImage}
+                          alt=""
+                          fallbackSeed={collection.collection_id}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Heart size={20} aria-hidden="true" />
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-neutral-950">{collection.name}</span>
-                      <span className="block text-sm text-neutral-600">{collection.place_count} địa điểm</span>
+                      <span className="block truncate text-sm font-semibold text-neutral-950">
+                        {collection.name}
+                      </span>
+                      <span className="block text-xs text-neutral-600 mt-0.5">
+                        {collection.place_count} địa điểm đã lưu
+                      </span>
                     </span>
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${collection.contains_poi ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 text-neutral-600'}`}>
-                      {isPending ? <Loader2 size={17} className="animate-spin" aria-label="Đang cập nhật" /> : collection.contains_poi ? <Check size={18} aria-label="Đã chọn" /> : <Heart size={18} aria-label="Chưa chọn" />}
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition ${
+                        collection.contains_poi
+                          ? 'border-emerald-800 bg-emerald-800 text-white'
+                          : 'border-neutral-300 bg-white text-neutral-700'
+                      }`}
+                    >
+                      {isPending ? (
+                        <Loader2 size={16} className="animate-spin" aria-label="Đang cập nhật" />
+                      ) : collection.contains_poi ? (
+                        <Check size={17} strokeWidth={2.5} aria-label="Đã chọn" />
+                      ) : (
+                        <Heart size={16} aria-label="Chưa chọn" />
+                      )}
                     </span>
                   </button>
                 );
@@ -185,30 +241,50 @@ export default function SaveToCollectionModal({ poi, onClose, onChanged }: SaveT
             </div>
           )}
 
-          {error && collections.length > 0 && <p className="px-3 pt-2 text-sm text-red-800" role="alert">{error}</p>}
-          {message && <p className="px-3 pt-2 text-sm text-neutral-700" role="status" aria-live="polite">{message}</p>}
+          {error && collections.length > 0 && (
+            <p className="px-3 pt-2 text-xs font-medium text-rose-700" role="alert">
+              {error}
+            </p>
+          )}
+          {message && (
+            <p className="px-3 pt-2 text-xs font-medium text-emerald-900" role="status" aria-live="polite">
+              {message}
+            </p>
+          )}
         </div>
 
-        <footer className="border-t border-neutral-200 px-4 py-4 sm:px-5">
+        {/* Footer: Create New Wishlist */}
+        <footer className="border-t border-neutral-200 px-5 py-4 bg-white">
           {creating ? (
             <form onSubmit={(event) => void createAndSave(event)} className="flex flex-col gap-3 sm:flex-row">
-              <label className="sr-only" htmlFor="new-saved-collection">Tên bộ sưu tập mới</label>
+              <label className="sr-only" htmlFor="new-saved-collection">
+                Tên bộ sưu tập mới
+              </label>
               <input
                 id="new-saved-collection"
-                autoFocus
+                name="collection_name"
                 value={collectionName}
                 onChange={(event) => setCollectionName(event.target.value)}
                 maxLength={80}
-                placeholder="Tên bộ sưu tập"
-                className="min-h-11 min-w-0 flex-1 rounded-xl border border-neutral-300 px-3 text-sm text-neutral-950 outline-none focus-visible:ring-2 focus-visible:ring-neutral-800"
+                placeholder="Ví dụ: Cuối tuần Đà Nẵng, Quán ngon Huế…"
+                className="min-h-11 min-w-0 flex-1 rounded-xl border border-neutral-300 px-3.5 text-sm text-neutral-950 placeholder:text-neutral-500 outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
               />
               <div className="flex gap-2">
-                <Button type="button" variant="ghost" onClick={() => setCreating(false)} disabled={creatingCollection}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setCreating(false)}
+                  disabled={creatingCollection}
+                >
                   Hủy
                 </Button>
-                <button type="submit" disabled={creatingCollection || !collectionName.trim()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-neutral-900 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 focus-visible:ring-offset-2 disabled:opacity-50">
+                <button
+                  type="submit"
+                  disabled={creatingCollection || !collectionName.trim()}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:opacity-50"
+                >
                   {creatingCollection && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
-                  Tạo và lưu
+                  <span>Tạo &amp; lưu</span>
                 </button>
               </div>
             </form>
@@ -217,10 +293,10 @@ export default function SaveToCollectionModal({ poi, onClose, onChanged }: SaveT
               type="button"
               onClick={() => setCreating(true)}
               disabled={loading || creatingCollection}
-              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 text-left text-neutral-900 transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-800 disabled:opacity-50"
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 hover:bg-neutral-800 px-4 text-sm font-semibold text-white transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:opacity-50"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300" aria-hidden="true"><Plus size={20} /></span>
-              <span className="text-sm font-semibold">Tạo bộ sưu tập</span>
+              <Plus size={18} aria-hidden="true" />
+              <span>Tạo bộ sưu tập mới</span>
             </button>
           )}
         </footer>

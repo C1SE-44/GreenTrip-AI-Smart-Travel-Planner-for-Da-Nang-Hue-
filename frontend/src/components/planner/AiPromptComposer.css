@@ -1,0 +1,270 @@
+@property --gt-prompt-a {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.gt-prompt-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.gt-prompt-box {
+  position: relative;
+  width: 100%;
+  padding: 13px 14px 10px 16px;
+  border-radius: 26px;
+  background: var(--ux-surface, #ffffff);
+  box-shadow:
+    0 0 0 1px rgba(10, 10, 10, 0.12),
+    0 12px 30px -18px rgba(15, 23, 42, 0.22),
+    0 2px 6px -2px rgba(15, 23, 42, 0.08);
+  cursor: text;
+  transition: box-shadow 0.25s var(--ux-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+.gt-prompt-box:focus-within {
+  box-shadow:
+    0 0 0 1.5px #065f46,
+    0 0 0 4px rgba(6, 95, 70, 0.12),
+    0 14px 32px -18px rgba(15, 23, 42, 0.24);
+}
+
+.gt-prompt-box.is-drag {
+  box-shadow:
+    0 0 0 2px #059669,
+    0 0 0 6px rgba(5, 150, 105, 0.15);
+}
+
+.gt-prompt-glow {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--gt-prompt-a),
+    transparent 0 58%,
+    #14b8a6 76%,
+    #065f46 88%,
+    transparent 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s var(--ux-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+  animation: gt-prompt-spin 2.4s linear infinite paused;
+}
+
+.gt-prompt-wrap.is-gen .gt-prompt-glow {
+  opacity: 1;
+  animation-play-state: running;
+}
+
+@keyframes gt-prompt-spin {
+  to {
+    --gt-prompt-a: 360deg;
+  }
+}
+
+.gt-prompt-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.gt-prompt-ta,
+.gt-prompt-ov {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 400;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.gt-prompt-ta {
+  position: relative;
+  z-index: 1;
+  min-height: 24px;
+  max-height: 120px;
+  resize: none;
+  background: transparent;
+  outline: none;
+  color: #0a0a0a;
+  caret-color: #065f46;
+  overflow-y: auto;
+  scrollbar-width: none;
+  transition: height 0.28s cubic-bezier(0.3, 1.25, 0.5, 1);
+}
+
+.gt-prompt-ta::-webkit-scrollbar {
+  display: none;
+}
+
+.gt-prompt-ta::placeholder {
+  color: #6b7280;
+  opacity: 1;
+}
+
+.gt-prompt-ov {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: transparent;
+}
+
+.gt-prompt-gh {
+  opacity: 0;
+  filter: blur(3px);
+  transition:
+    opacity 0.28s var(--ux-ease, cubic-bezier(0.2, 0.8, 0.2, 1)),
+    filter 0.28s var(--ux-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+.gt-prompt-wrap.is-ghost .gt-prompt-gh {
+  opacity: 1;
+  filter: none;
+}
+
+.gt-prompt-gt {
+  background: linear-gradient(90deg, #0a0a0a 0 44%, #737373 56% 100%);
+  background-size: 240% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gt-prompt-wrap.is-take .gt-prompt-gt {
+  background-position: 0 0;
+  transition: background-position 0.38s cubic-bezier(0.45, 0, 0.25, 1);
+}
+
+.gt-prompt-kb {
+  display: inline-block;
+  height: 22px;
+  margin-left: 7px;
+  padding: 0 6px;
+  border-radius: 5px;
+  vertical-align: 1px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 20px;
+  color: #525252;
+  background: #f5f3ef;
+  box-shadow:
+    inset 0 0 0 1px rgba(10, 10, 10, 0.14),
+    0 1.5px 0 rgba(10, 10, 10, 0.14);
+  transform: translateY(2px) scale(0.7);
+  opacity: 0;
+  transition:
+    transform 0.45s cubic-bezier(0.34, 1.7, 0.5, 1) 0.1s,
+    opacity 0.2s ease 0.1s;
+}
+
+.gt-prompt-wrap.is-ghost .gt-prompt-kb {
+  transform: none;
+  opacity: 1;
+}
+
+.gt-prompt-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(10, 10, 10, 0.06);
+}
+
+.gt-prompt-send {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 0;
+  padding: 0;
+  border-radius: 9999px;
+  background: #065f46;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    transform 0.4s var(--ux-spring, cubic-bezier(0.34, 1.45, 0.64, 1)),
+    opacity 0.2s;
+}
+
+.gt-prompt-send:hover:not(:disabled) {
+  background: #064e3b;
+}
+
+.gt-prompt-send:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.gt-prompt-send:disabled {
+  background: #e5e5e5;
+  color: #737373;
+  cursor: not-allowed;
+}
+
+.gt-prompt-send:focus-visible {
+  outline: 2px solid #065f46;
+  outline-offset: 2px;
+}
+
+.gt-prompt-send svg,
+.gt-prompt-sq {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transition:
+    transform 0.45s cubic-bezier(0.34, 1.6, 0.5, 1),
+    opacity 0.2s;
+}
+
+.gt-prompt-send svg {
+  width: 17px;
+  height: 17px;
+  margin: -8.5px 0 0 -8.5px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gt-prompt-sq {
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border-radius: 3px;
+  background: currentColor;
+  opacity: 0;
+  transform: scale(0.2) rotate(-90deg);
+}
+
+.gt-prompt-wrap.is-gen .gt-prompt-send svg {
+  opacity: 0;
+  transform: translateY(-7px) scale(0.3);
+}
+
+.gt-prompt-wrap.is-gen .gt-prompt-sq {
+  opacity: 1;
+  transform: none;
+}

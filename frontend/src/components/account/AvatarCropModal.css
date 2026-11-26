@@ -1,0 +1,296 @@
+.gt-crop-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 10, 10, 0.56);
+  backdrop-filter: blur(3px);
+  overscroll-behavior: contain;
+}
+
+.gt-crop-card {
+  position: relative;
+  width: min(372px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 22px 22px;
+  border-radius: 26px;
+  background: var(--ux-surface, #ffffff);
+  box-shadow:
+    0 0 0 1px var(--ux-line, rgba(10, 10, 10, 0.08)),
+    0 30px 60px -30px rgba(15, 23, 42, 0.35);
+  overflow: hidden;
+}
+
+.gt-crop-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.gt-crop-top h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--ux-ink, #0a0a0a);
+}
+
+.gt-crop-top p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--ux-ink-2, #525252);
+}
+
+.gt-crop-close {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: #525252;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.gt-crop-close:hover {
+  background: #f5f5f5;
+  color: #0a0a0a;
+}
+
+.gt-crop-close:focus-visible {
+  outline: 2px solid #065f46;
+  outline-offset: 2px;
+}
+
+.gt-crop-stage {
+  position: relative;
+  width: min(280px, 100%);
+  aspect-ratio: 1 / 1;
+  margin-top: 16px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #0d0c14;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+}
+
+.gt-crop-stage.drag {
+  cursor: grabbing;
+}
+
+.gt-crop-stage:focus-visible {
+  box-shadow: 0 0 0 3px #065f46;
+}
+
+.gt-crop-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+  transition: transform 0.45s var(--ux-spring, cubic-bezier(0.34, 1.45, 0.64, 1));
+}
+
+.gt-crop-stage.drag .gt-crop-img,
+.gt-crop-stage.now .gt-crop-img {
+  transition: none;
+}
+
+.gt-crop-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle 42.8% at 50% 50%,
+    transparent 99.3%,
+    rgba(8, 6, 16, 0.64) 100%
+  );
+}
+
+.gt-crop-ring {
+  position: absolute;
+  inset: 7.15%;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.88);
+  pointer-events: none;
+}
+
+.gt-crop-grid {
+  position: absolute;
+  inset: 7.15%;
+  border-radius: 50%;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s;
+  background:
+    linear-gradient(
+      90deg,
+      transparent calc(33.33% - 0.5px),
+      rgba(255, 255, 255, 0.5) calc(33.33% - 0.5px) calc(33.33% + 0.5px),
+      transparent calc(33.33% + 0.5px) calc(66.66% - 0.5px),
+      rgba(255, 255, 255, 0.5) calc(66.66% - 0.5px) calc(66.66% + 0.5px),
+      transparent calc(66.66% + 0.5px)
+    ),
+    linear-gradient(
+      0deg,
+      transparent calc(33.33% - 0.5px),
+      rgba(255, 255, 255, 0.5) calc(33.33% - 0.5px) calc(33.33% + 0.5px),
+      transparent calc(33.33% + 0.5px) calc(66.66% - 0.5px),
+      rgba(255, 255, 255, 0.5) calc(66.66% - 0.5px) calc(66.66% + 0.5px),
+      transparent calc(66.66% + 0.5px)
+    );
+}
+
+.gt-crop-stage.drag .gt-crop-grid {
+  opacity: 1;
+}
+
+.gt-crop-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(280px, 100%);
+  margin-top: 14px;
+}
+
+.gt-crop-tools svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: #525252;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.gt-crop-z {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 28px;
+  background: none;
+  cursor: pointer;
+}
+
+.gt-crop-z::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #065f46 var(--f, 0%), #e5e5e5 var(--f, 0%));
+}
+
+.gt-crop-z::-moz-range-track {
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #065f46 var(--f, 0%), #e5e5e5 var(--f, 0%));
+}
+
+.gt-crop-z::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -7.5px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.25s var(--ux-spring, cubic-bezier(0.34, 1.45, 0.64, 1));
+}
+
+.gt-crop-z::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.gt-crop-z:focus-visible {
+  outline: 2px solid #065f46;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.gt-crop-rot {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 0;
+  padding: 0;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #f5f3ef;
+  color: #0a0a0a;
+  cursor: pointer;
+  transition: transform 0.3s var(--ux-spring, cubic-bezier(0.34, 1.45, 0.64, 1));
+}
+
+.gt-crop-rot:active {
+  transform: scale(0.92);
+}
+
+.gt-crop-rot:focus-visible {
+  outline: 2px solid #065f46;
+  outline-offset: 2px;
+}
+
+.gt-crop-acts {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 18px;
+}
+
+.gt-crop-btn {
+  flex: 1;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    transform 0.3s var(--ux-spring, cubic-bezier(0.34, 1.45, 0.64, 1)),
+    background-color 0.2s;
+}
+
+.gt-crop-btn:active {
+  transform: scale(0.97);
+}
+
+.gt-crop-btn:focus-visible {
+  outline: 2px solid #065f46;
+  outline-offset: 2px;
+}
+
+.gt-crop-btn.ghost {
+  background: #f5f3ef;
+  color: #0a0a0a;
+}
+
+.gt-crop-btn.ghost:hover {
+  background: #eae7e1;
+}
+
+.gt-crop-btn.main {
+  background: #065f46;
+  color: #ffffff;
+}
+
+.gt-crop-btn.main:hover {
+  background: #064e3b;
+}

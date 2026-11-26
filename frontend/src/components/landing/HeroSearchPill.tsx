@@ -79,7 +79,7 @@ export function HeroSearchPill({
           }`}
           aria-expanded={destOpen}
         >
-          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#56645C]">
+          <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#56645C]">
             <MapPin size={14} className="text-[#286247]" />
             Bạn muốn đi đâu?
           </span>
@@ -99,7 +99,7 @@ export function HeroSearchPill({
         {/* Popover Chọn Điểm Đến */}
         {destOpen && (
           <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[280px] origin-top-left rounded-2xl border border-[#1C2520]/10 bg-[#FDFBF6] p-2 shadow-[0_20px_40px_rgba(28,37,32,0.12)] animate-in fade-in zoom-in-95 duration-150 sm:w-[320px]">
-            <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#56645C]/80">
+            <div className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[#56645C]/80">
               Chọn điểm khởi hành
             </div>
             <div className="space-y-1">
@@ -124,7 +124,7 @@ export function HeroSearchPill({
                         <span className="text-[14px]">{item.label}</span>
                         {item.badge && (
                           <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                               isSelected
                                 ? 'bg-[#286247] text-white'
                                 : 'bg-[#EAE8DE] text-[#56645C]'
@@ -161,7 +161,7 @@ export function HeroSearchPill({
           }`}
           aria-expanded={daysOpen}
         >
-          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#56645C]">
+          <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#56645C]">
             <Calendar size={14} className="text-[#286247]" />
             Bạn có bao lâu?
           </span>
@@ -179,7 +179,7 @@ export function HeroSearchPill({
         {/* Popover Chọn Số Ngày */}
         {daysOpen && (
           <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[260px] origin-top-left rounded-2xl border border-[#1C2520]/10 bg-[#FDFBF6] p-2 shadow-[0_20px_40px_rgba(28,37,32,0.12)] animate-in fade-in zoom-in-95 duration-150 sm:w-[300px]">
-            <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#56645C]/80">
+            <div className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[#56645C]/80">
               Thời lượng chuyến đi
             </div>
             <div className="space-y-1">
@@ -218,7 +218,7 @@ export function HeroSearchPill({
         <button
           type="button"
           onClick={onSubmit}
-          className="group flex min-h-[50px] w-full items-center justify-center gap-2.5 rounded-[9999px] bg-[#1C2520] px-6 py-3.5 text-[14px] font-semibold text-[#FDFBF6] shadow-sm transition-all hover:bg-[#286247] hover:shadow-md active:scale-[0.98] sm:w-auto"
+          className="group flex min-h-[50px] w-full items-center justify-center gap-2.5 rounded-[9999px] !bg-[#1C2520] hover:!bg-[#286247] px-6 py-3.5 text-[14px] font-semibold !text-[#FDFBF6] shadow-sm transition-[background-color,box-shadow,transform] hover:shadow-md active:scale-[0.98] sm:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
         >
           <Sparkles size={15} className="text-[#DCEDE0]" />
           <span>Thử lịch mẫu</span>

@@ -3,6 +3,7 @@ import { Sparkles, Leaf, MapPin, ArrowRight } from 'lucide-react';
 import { loadLandingCatalogue } from '@/services/landingCatalogue';
 import type { PlaceCatalogItem } from '@/data/landingSampleModel';
 import { Link } from 'react-router-dom';
+import SmoothSegmentedTabs from '@/components/ui/SmoothSegmentedTabs';
 
 interface HiddenGemsSectionProps {
   onOpenSampleForCity: (city: 'danang' | 'hue' | 'danang_hue', days: number) => void;
@@ -35,7 +36,7 @@ export function HiddenGemsSection({ onOpenSampleForCity }: HiddenGemsSectionProp
 
   return (
     <section ref={section} className="py-20 sm:py-28 bg-[#FAF8F5]">
-      <div className="section-width mx-auto px-4 sm:px-6 lg:px-8 max-w-[1240px]">
+      <div className="section-width mx-auto px-4 sm:px-6 lg:px-8 max-w-[1400px]">
         {/* Section Heading */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
           <div>
@@ -51,42 +52,18 @@ export function HiddenGemsSection({ onOpenSampleForCity }: HiddenGemsSectionProp
             </p>
           </div>
 
-          {/* Minimal Filter Pills */}
-          <div className="flex items-center flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setFilter('danang')}
-              className={`px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                filter === 'danang'
-                  ? 'bg-[#111111] text-white shadow-2xs'
-                  : 'bg-white text-neutral-600 border border-neutral-200/80 hover:bg-neutral-50'
-              }`}
-            >
-              Đà Nẵng
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilter('hue')}
-              className={`px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                filter === 'hue'
-                  ? 'bg-[#111111] text-white shadow-2xs'
-                  : 'bg-white text-neutral-600 border border-neutral-200/80 hover:bg-neutral-50'
-              }`}
-            >
-              Huế Cố Đô
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilter('hidden_gem')}
-              className={`px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                filter === 'hidden_gem'
-                  ? 'bg-[#111111] text-white shadow-2xs'
-                  : 'bg-white text-neutral-600 border border-neutral-200/80 hover:bg-neutral-50'
-              }`}
-            >
-              Điểm xanh trong dữ liệu
-            </button>
-          </div>
+          {/* Smooth Segmented Filter Tabs */}
+          <SmoothSegmentedTabs
+            variant="pill"
+            ariaLabel="Lọc địa điểm theo thành phố"
+            value={filter}
+            onChange={(next) => setFilter(next)}
+            options={[
+              { id: 'danang', label: 'Đà Nẵng' },
+              { id: 'hue', label: 'Huế Cố Đô' },
+              { id: 'hidden_gem', label: 'Điểm xanh trong dữ liệu' },
+            ]}
+          />
         </div>
 
         {/* Editorial Cards Grid — Exactly 1 Row of 4 Cards */}
@@ -98,18 +75,18 @@ export function HiddenGemsSection({ onOpenSampleForCity }: HiddenGemsSectionProp
             return (
               <div
                 key={spot.id}
-                className="group bg-white rounded-[24px] overflow-hidden border border-neutral-200/80 hover:border-neutral-300 hover:shadow-xl hover:shadow-black/5 transition-all duration-300 flex flex-col justify-between"
+                className="group bg-white rounded-[24px] overflow-hidden border border-neutral-200/80 hover:border-neutral-300 hover:-translate-y-1 hover:shadow-[0_18px_38px_-18px_rgba(15,23,42,0.18)] transition-[transform,box-shadow,border-color] duration-300 flex flex-col justify-between"
               >
                 <div>
                   {/* Aspect 4/3 Photo */}
-                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-neutral-100">
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-neutral-900">
                     {spot.imageUrl && <img decoding="async"
                       src={spot.imageUrl}
                       alt={spot.name}
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                     />}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-black/10" />
 
                     {/* Tag Badge */}
                     <div className="absolute top-3 left-3">
@@ -152,10 +129,10 @@ export function HiddenGemsSection({ onOpenSampleForCity }: HiddenGemsSectionProp
                   <button
                     type="button"
                     onClick={() => onOpenSampleForCity(spot.targetCityKey, spot.recommendedDays)}
-                    className="w-full py-2.5 px-3 rounded-full bg-white hover:bg-[#FAF8F5] text-[#111111] border border-neutral-200 hover:border-neutral-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full min-h-[42px] py-2.5 px-3 rounded-full bg-white hover:bg-emerald-950 text-[#111111] hover:text-white border border-neutral-200 hover:border-emerald-950 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                   >
                     Xem lịch {spot.recommendedDays} ngày
-                    <ArrowRight size={13} />
+                    <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -167,7 +144,7 @@ export function HiddenGemsSection({ onOpenSampleForCity }: HiddenGemsSectionProp
         <div className="mt-10 text-center">
           <Link
             to="/explore"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#111111] hover:underline"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-2 rounded-full text-xs font-semibold text-[#111111] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
           >
             Tìm thêm địa điểm tại Đà Nẵng & Huế
             <ArrowRight size={14} />

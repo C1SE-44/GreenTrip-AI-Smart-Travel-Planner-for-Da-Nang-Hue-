@@ -5,6 +5,7 @@ import { DanangMiniMapCard } from '@/components/landing/studio/DanangMiniMapCard
 import { DaNangHueFoodCard } from '@/components/landing/studio/DaNangHueFoodCard';
 import { TripPlannerCard } from '@/components/landing/studio/TripPlannerCard';
 import '@/components/landing/studio/studio-cards.css';
+import InterestChipsSelector from '@/components/ui/InterestChipsSelector';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -681,26 +682,13 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
 
                 <div className="space-y-8">
                   <div>
-                    <label className="mb-4 block text-[13.5px] font-bold text-black">
-                      Bạn thích giải trí như thế nào vào cuối tuần?
-                    </label>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {['Ngoài trời', 'Nhạc sống', 'Nghệ thuật và bảo tàng', 'Quán bar & cuộc sống về đêm', 'Trò chơi thể thao', 'Sự thích hợp', 'Mua sắm', 'Phim & rạp chiếu phim', 'Chương trình hài kịch', 'Chăm sóc sức khỏe & spa', 'Khác'].map(a => {
-                        const isSelected = activities.includes(a);
-                        return (
-                          <button
-                            key={a}
-                            onClick={() => {
-                              if (isSelected) setActivities(activities.filter(i => i !== a));
-                              else setActivities([...activities, a]);
-                            }}
-                            className={`px-5 py-2 rounded-full text-[13px] transition-all ${isSelected ? 'bg-white border-2 border-black font-bold text-black' : 'bg-white border border-gray-200 text-gray-700 hover:border-gray-400'}`}
-                          >
-                            {a}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <InterestChipsSelector
+                      label="Bạn thích giải trí như thế nào vào cuối tuần?"
+                      options={['Ngoài trời', 'Nhạc sống', 'Nghệ thuật và bảo tàng', 'Quán bar & cuộc sống về đêm', 'Trò chơi thể thao', 'Sự thích hợp', 'Mua sắm', 'Phim & rạp chiếu phim', 'Chương trình hài kịch', 'Chăm sóc sức khỏe & spa', 'Khác']}
+                      selected={activities}
+                      maxSelect={5}
+                      onChange={setActivities}
+                    />
                     {activities.includes('Khác') && (
                       <input
                         type="text"

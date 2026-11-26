@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
+import PasswordStrengthField from '@/components/auth/PasswordStrengthField';
 import { changePassword } from '@/services/profile';
 
 interface ChangePasswordFormProps {
@@ -10,7 +9,6 @@ interface ChangePasswordFormProps {
 
 export default function ChangePasswordForm({ hasPassword }: ChangePasswordFormProps) {
   const [expanded, setExpanded] = useState(false);
-  const [showPasswords, setShowPasswords] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -20,7 +18,7 @@ export default function ChangePasswordForm({ hasPassword }: ChangePasswordFormPr
 
   if (!hasPassword) {
     return (
-      <p className="rounded-xl bg-neutral-50 px-4 py-3 text-sm leading-5 text-neutral-700">
+      <p className="rounded-2xl border border-neutral-200/80 bg-neutral-50 px-4 py-3.5 text-sm leading-5 text-neutral-700">
         Tài khoản này đăng nhập bằng Google nên chưa có mật khẩu riêng để đổi tại đây.
       </p>
     );
@@ -61,55 +59,75 @@ export default function ChangePasswordForm({ hasPassword }: ChangePasswordFormPr
   return (
     <div>
       {!expanded ? (
-        <Button
-          type="button"
-          variant="ghostDark"
-          className="min-h-11 w-full max-w-xl justify-between"
-          onClick={() => { setExpanded(true); setSuccess(null); }}
-        >
-          Đổi mật khẩu
-          <span aria-hidden="true">›</span>
-        </Button>
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-neutral-200/90 bg-white px-4 py-4 sm:px-5">
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-semibold text-neutral-950">Mật khẩu</p>
+            <p className="mt-0.5 text-sm text-neutral-600">
+              Dùng mật khẩu tối thiểu 8 ký tự để bảo vệ tài khoản của bạn.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghostDark"
+            className="min-h-11 rounded-full border-neutral-300 hover:border-neutral-950 px-5 shrink-0"
+            onClick={() => {
+              setExpanded(true);
+              setSuccess(null);
+            }}
+          >
+            Đổi mật khẩu
+          </Button>
+        </div>
       ) : (
-        <form className="max-w-xl space-y-4" onSubmit={onSubmit}>
-          {([
-            ['current-password', 'Mật khẩu hiện tại', currentPassword, setCurrentPassword],
-            ['new-password', 'Mật khẩu mới', newPassword, setNewPassword],
-            ['confirm-password', 'Xác nhận mật khẩu mới', confirmPassword, setConfirmPassword],
-          ] as const).map(([id, label, value, setValue]) => (
-            <div key={id} className="relative">
-              <Input
-                id={id}
-                label={label}
-                type={showPasswords ? 'text' : 'password'}
-                autoComplete={id === 'current-password' ? 'current-password' : 'new-password'}
-                value={value}
-                onChange={(event) => setValue(event.target.value)}
-                required
-                maxLength={128}
-                className="pr-14 bg-white border-neutral-300 focus:ring-emerald-800 focus:border-emerald-800"
-              />
-              <button
-                type="button"
-                aria-label={showPasswords ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                aria-pressed={showPasswords}
-                onClick={() => setShowPasswords((visible) => !visible)}
-                className="absolute right-1 top-7 flex h-11 w-11 items-center justify-center rounded-lg text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
-              >
-                {showPasswords ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-              </button>
-            </div>
-          ))}
-          {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="dark" loading={loading} className="min-h-11 rounded-full px-5">{loading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}</Button>
-            <Button type="button" variant="ghostDark" className="min-h-11 rounded-full px-5" onClick={() => { setExpanded(false); setError(null); }}>
+        <form className="rounded-2xl border border-neutral-200/90 bg-neutral-50/50 p-4 sm:p-6 space-y-4" onSubmit={onSubmit}>
+          <PasswordStrengthField
+            id="current-password"
+            name="current-password"
+            label="Mật khẩu hiện tại"
+            autoComplete="current-password"
+            value={currentPassword}
+            onChange={setCurrentPassword}
+            required
+          />
+          <PasswordStrengthField
+            id="new-password"
+            name="new-password"
+            label="Mật khẩu mới"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={setNewPassword}
+            required
+            showStrength
+          />
+          <PasswordStrengthField
+            id="confirm-password"
+            name="confirm-password"
+            label="Xác nhận mật khẩu mới"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            required
+          />
+          {error && <p role="alert" className="text-sm font-medium text-rose-700">{error}</p>}
+          <div className="flex flex-wrap gap-2.5 pt-1">
+            <Button type="submit" variant="dark" loading={loading} className="min-h-11 rounded-full px-6">
+              {loading ? 'Đang cập nhật…' : 'Cập nhật mật khẩu'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghostDark"
+              className="min-h-11 rounded-full border-neutral-300 bg-white px-5"
+              onClick={() => {
+                setExpanded(false);
+                setError(null);
+              }}
+            >
               Hủy
             </Button>
           </div>
         </form>
       )}
-      {success && <p role="status" className="mt-2 text-sm font-medium text-emerald-800">{success}</p>}
+      {success && <p role="status" className="mt-3 text-sm font-medium text-emerald-800">{success}</p>}
     </div>
   );
 }

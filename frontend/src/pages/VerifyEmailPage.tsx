@@ -53,7 +53,7 @@ export default function VerifyEmailPage() {
 
   return (
     <AuthLayout
-      image="https://picsum.photos/seed/danang_hue_green/1200/1600"
+      image="/images/empty-trips/front-sea.jpg"
       imageAlt="Phong cảnh du lịch xanh Đà Nẵng - Huế"
       slogan="Khám phá di sản và thiên nhiên xanh bền vững."
       benefits={[
@@ -63,66 +63,69 @@ export default function VerifyEmailPage() {
       ]}
       ecoStat={{ score: 95, co2: '6,4 kg' }}
     >
-      <div className="py-4">
+      <div className="py-2">
         {state === 'loading' && (
-          <div className="text-center py-8">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-forest-50 text-forest-600">
-              <Loader2 size={36} className="animate-spin text-forest-600" />
+          <div className="text-center py-6" role="status" aria-live="polite">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700">
+              <Loader2 size={32} className="animate-spin text-emerald-700" aria-hidden="true" />
             </div>
-            <h2 className="font-display text-2xl font-semibold text-charcoal">
-              Đang xác thực tài khoản...
+            <h2 className="font-heading text-2xl font-bold tracking-tight text-neutral-950">
+              Đang xác thực tài khoản…
             </h2>
-            <p className="mt-2 text-sm text-muted">
+            <p className="mt-2 text-sm text-neutral-600 leading-relaxed">
               Vui lòng đợi giây lát trong khi GreenTrip AI kiểm tra liên kết của bạn.
             </p>
           </div>
         )}
 
         {state === 'success' && (
-          <div className="text-center py-4" data-testid="verification-success">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-forest-600 shadow-sm border border-emerald-200">
-              <CheckCircle2 size={36} />
+          <div className="text-center py-2" data-testid="verification-success">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <CheckCircle2 size={34} aria-hidden="true" />
             </div>
-            <h2 className="font-display text-2xl font-semibold text-charcoal">
+            <h2 className="font-heading text-2xl font-bold tracking-tight text-neutral-950">
               Kích hoạt thành công!
             </h2>
-            <p className="mt-2 text-sm text-charcoal/80">
+            <p className="mt-2 text-sm text-neutral-700 leading-relaxed">
               {message}
             </p>
             {userEmail && (
-              <div className="my-4 inline-block rounded-lg bg-emerald-50 px-4 py-2 border border-emerald-200">
-                <span className="text-xs text-muted">Email đã kích hoạt: </span>
-                <span className="font-semibold text-forest-700">{userEmail}</span>
+              <div className="my-4 inline-flex flex-wrap items-center justify-center gap-1 rounded-xl bg-emerald-50/80 px-4 py-2 border border-emerald-200/80 text-xs">
+                <span className="text-neutral-600">Email đã kích hoạt:</span>
+                <span className="font-semibold text-emerald-900">{userEmail}</span>
               </div>
             )}
-            <p className="text-xs text-muted mb-6">
+            <p className="text-xs text-neutral-600 mb-6 leading-relaxed">
               Bạn có thể đăng nhập ngay bây giờ để bắt đầu lên kế hoạch cho chuyến đi của mình.
             </p>
 
             <Button
               variant="primary"
               size="lg"
-              className="w-full"
+              className="w-full min-h-12 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white"
               onClick={() => navigate('/login', { state: { verifiedEmail: userEmail } })}
             >
-              Đăng nhập ngay
-              <ArrowRight size={16} className="ml-2" />
+              <span>Đăng nhập ngay</span>
+              <ArrowRight size={16} className="ml-1" aria-hidden="true" />
             </Button>
           </div>
         )}
 
         {state === 'error' && (
-          <div className="text-center py-4" data-testid="verification-error">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-600 shadow-sm border border-red-200">
-              <XCircle size={36} />
+          <div className="text-center py-2" data-testid="verification-error">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+              <XCircle size={34} aria-hidden="true" />
             </div>
-            <h2 className="font-display text-2xl font-semibold text-charcoal">
+            <h2 className="font-heading text-2xl font-bold tracking-tight text-neutral-950">
               Xác thực không thành công
             </h2>
-            <div className="my-4 rounded-xl bg-red-50 p-3.5 text-sm text-red-700 border border-red-200">
+            <div
+              role="alert"
+              className="my-4 rounded-xl bg-rose-50 p-3.5 text-sm font-medium text-rose-800 border border-rose-200"
+            >
               {message}
             </div>
-            <p className="text-xs text-muted mb-6">
+            <p className="text-xs text-neutral-600 mb-6 leading-relaxed">
               Liên kết có thể đã hết hạn sau 24 giờ hoặc đã được sử dụng trước đó.
             </p>
 
@@ -130,17 +133,17 @@ export default function VerifyEmailPage() {
               <Button
                 variant="primary"
                 size="lg"
-                className="w-full"
+                className="w-full min-h-12 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white"
                 onClick={() => navigate('/register')}
               >
-                <RefreshCw size={16} className="mr-2" />
-                Đăng ký tài khoản mới
+                <RefreshCw size={16} className="mr-1" aria-hidden="true" />
+                <span>Đăng ký tài khoản mới</span>
               </Button>
 
               <Button
-                variant="ghost"
+                variant="ghostDark"
                 size="lg"
-                className="w-full"
+                className="w-full min-h-12 rounded-xl border-neutral-300"
                 onClick={() => navigate('/login')}
               >
                 Về trang Đăng nhập
@@ -150,20 +153,20 @@ export default function VerifyEmailPage() {
         )}
 
         {state === 'missing_token' && (
-          <div className="text-center py-4">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700 shadow-sm border border-amber-200">
-              <XCircle size={36} />
+          <div className="text-center py-2">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+              <XCircle size={34} aria-hidden="true" />
             </div>
-            <h2 className="font-display text-2xl font-semibold text-charcoal">
+            <h2 className="font-heading text-2xl font-bold tracking-tight text-neutral-950">
               Thiếu mã xác nhận
             </h2>
-            <p className="mt-2 text-sm text-muted mb-6">
+            <p className="mt-2 text-sm text-neutral-600 mb-6 leading-relaxed">
               Không tìm thấy mã xác nhận trong đường dẫn. Vui lòng mở lại email và nhấn vào nút kích hoạt tài khoản.
             </p>
-            <Link to="/">
-              <Button variant="ghost" size="lg" className="w-full">
-                <Home size={16} className="mr-2" />
-                Về Trang chủ
+            <Link to="/" className="block">
+              <Button variant="ghostDark" size="lg" className="w-full min-h-12 rounded-xl border-neutral-300">
+                <Home size={16} className="mr-1" aria-hidden="true" />
+                <span>Về Trang chủ</span>
               </Button>
             </Link>
           </div>

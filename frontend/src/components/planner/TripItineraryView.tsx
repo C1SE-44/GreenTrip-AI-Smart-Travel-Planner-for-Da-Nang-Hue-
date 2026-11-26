@@ -1550,26 +1550,28 @@ export default function TripItineraryView({
             <button
               type="button"
               onClick={onClose || onBack}
-              className="w-9 h-9 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer"
+              aria-label="Đóng lịch trình"
+              className="w-10 h-10 rounded-full border border-neutral-200 hover:border-neutral-950 flex items-center justify-center text-neutral-700 hover:text-neutral-950 hover:bg-neutral-50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
               title="Đóng lịch trình"
             >
-              <X size={17} />
+              <X size={17} aria-hidden="true" />
             </button>
             <button
               type="button"
               onClick={onClose || onBack}
-              className="w-9 h-9 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer"
+              aria-label="Quay lại"
+              className="w-10 h-10 rounded-full border border-neutral-200 hover:border-neutral-950 flex items-center justify-center text-neutral-700 hover:text-neutral-950 hover:bg-neutral-50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
               title="Quay lại"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={18} aria-hidden="true" />
             </button>
           </div>
 
           <div className="flex items-center gap-2.5">
-            <div className="text-xs text-gray-500 hidden sm:flex items-center gap-1 font-medium">
+            <div className="text-xs text-neutral-600 hidden sm:flex items-center gap-1 font-medium">
               {isSaving ? (
-                <span className="flex items-center gap-1 text-amber-700">
-                  <RefreshCw size={12} className="animate-spin" /> Đang lưu...
+                <span className="flex items-center gap-1 text-amber-800">
+                  <RefreshCw size={12} className="animate-spin" aria-hidden="true" /> Đang lưu…
                 </span>
               ) : hasUnsavedChanges ? (
                 <span className="text-gray-400">Chưa lưu</span>
@@ -1774,7 +1776,7 @@ export default function TripItineraryView({
         {/* ════════════════════════════════════════════════════════
             CỘT: Ý TƯỞNG + LỊCH THEO NGÀY (THỦ CÔNG CHUẨN)
         ════════════════════════════════════════════════════════ */}
-        <div className={`${isDrawerMode ? 'w-full' : (isMapExpanded ? 'hidden' : 'w-full md:w-[560px] lg:w-[620px] xl:w-[660px] shrink-0')} flex flex-col h-full bg-white overflow-y-auto px-4 sm:px-6 py-4 ${isDrawerMode ? '' : 'pb-24 md:pb-4'} border-r border-gray-100 auto-hide-scrollbar select-none transition-[width] duration-300 ease-in-out print-scroll-unlock print-full-width`}>
+        <div className={`${isDrawerMode ? 'w-full' : (isMapExpanded ? 'hidden' : 'w-full md:w-[560px] lg:w-[620px] xl:w-[660px] shrink-0')} flex flex-col h-full bg-white overflow-y-auto px-4 sm:px-6 py-4 ${isDrawerMode ? '' : 'pb-24 md:pb-4'} border-r border-neutral-200/80 auto-hide-scrollbar select-none transition-[width] duration-300 ease-in-out print-scroll-unlock print-full-width`}>
           {/* Header chỉ hiển thị khi In / Lưu PDF */}
           <div className="hidden print:block mb-5 pb-3 border-b-2 border-neutral-900">
             <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">
@@ -1813,10 +1815,11 @@ export default function TripItineraryView({
                 {/* Icon Layout */}
                 <button
                   type="button"
-                  className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-black transition cursor-pointer"
+                  aria-label="Chế độ xem thẻ ý tưởng"
+                  className="w-9 h-9 rounded-full hover:bg-neutral-100 flex items-center justify-center text-neutral-600 hover:text-neutral-950 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                   title="Chế độ xem thẻ ý tưởng"
                 >
-                  <LayoutGrid size={15} />
+                  <LayoutGrid size={15} aria-hidden="true" />
                 </button>
 
                 {/* Dropdown Lọc 4 danh mục chuẩn GreenTrip bên phải ở trên */}
@@ -1883,14 +1886,16 @@ export default function TripItineraryView({
                 <div className="relative">
                   <button
                     type="button"
+                    aria-label="Tùy chọn kho Ý tưởng"
+                    aria-expanded={showIdeasMoreMenu}
                     onClick={() => {
                       setShowIdeasMoreMenu(!showIdeasMoreMenu);
                       setShowIdeasFilterMenu(false);
                     }}
-                    className="w-8 h-8 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black cursor-pointer transition"
+                    className="w-9 h-9 rounded-full border border-neutral-200 hover:border-neutral-950 flex items-center justify-center text-neutral-700 hover:text-neutral-950 cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                     title="Tùy chọn kho Ý tưởng"
                   >
-                    <MoreHorizontal size={15} />
+                    <MoreHorizontal size={15} aria-hidden="true" />
                   </button>
 
                   {showIdeasMoreMenu && (
@@ -1979,23 +1984,23 @@ export default function TripItineraryView({
           ──────────────────────────────────────────────────────── */}
           <section ref={itinerarySectionRef} className="flex-1 flex flex-col min-h-0 mt-5">
             {/* Header Lịch trình */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <h2 className="font-extrabold text-[17px] text-gray-950 flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="font-bold text-lg text-neutral-950 tracking-tight flex items-center gap-2">
                   <span>Lịch trình</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-neutral-100 text-neutral-700">
                     {plan.days.length} ngày
                   </span>
                 </h2>
 
                 {/* Nút gạt Khoảng cách (Distances Toggle) */}
-                <div className="flex items-center gap-2 ml-2 pl-3 border-l border-gray-200">
-                  <span className="text-xs font-semibold text-gray-600">Khoảng cách</span>
+                <div className="flex items-center gap-2 pl-2.5 border-l border-neutral-200">
+                  <span className="text-xs font-semibold text-neutral-700">Khoảng cách</span>
                   <button
                     type="button"
                     onClick={() => setShowDistances(!showDistances)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      showDistances ? 'bg-black' : 'bg-gray-300'
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                      showDistances ? 'bg-neutral-950' : 'bg-neutral-300'
                     }`}
                     role="switch"
                     aria-checked={showDistances}
@@ -2013,10 +2018,10 @@ export default function TripItineraryView({
                   type="button"
                   aria-pressed={preferLocalAuthentic}
                   onClick={() => setPreferLocalAuthentic((prev) => !prev)}
-                  className={`min-h-[36px] px-3 rounded-full border text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                  className={`min-h-10 px-3.5 rounded-full border text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
                     preferLocalAuthentic
                       ? 'border-emerald-800 bg-emerald-50 text-emerald-950'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
+                      : 'border-neutral-300 bg-white text-neutral-800 hover:border-neutral-950'
                   }`}
                   title="Ưu tiên gợi ý quán bản địa phía Tây sông Hàn, làng nghề và điểm ít đông"
                 >
@@ -2031,7 +2036,7 @@ export default function TripItineraryView({
                   disabled={isLoading || isSaving || isScheduleRecommendationsLoading || (!ideaPois.length && !scheduleRecommendations.length && !plan.days.some((day) => day.stops.length))}
                   aria-describedby="smart-schedule-help"
                   aria-busy={isScheduleRecommendationsLoading}
-                  className="flex min-h-10 items-center gap-1.5 rounded-full bg-gray-950 px-3 text-xs font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  className="flex min-h-10 items-center gap-1.5 rounded-full bg-neutral-950 px-4 text-xs font-semibold text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                 >
                   {isScheduleRecommendationsLoading ? <RefreshCw size={14} className="animate-spin" aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
                   <span>{isScheduleRecommendationsLoading ? 'Đang lấy gợi ý' : 'Sắp xếp thông minh'}</span>
@@ -2041,23 +2046,23 @@ export default function TripItineraryView({
                   <button
                     type="button"
                     onClick={() => setShowItinerarySettingsMenu(!showItinerarySettingsMenu)}
-                    className="w-9 h-9 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    className="w-10 h-10 rounded-full border border-neutral-300 hover:border-neutral-950 flex items-center justify-center text-neutral-700 hover:text-neutral-950 cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                     title="Tùy chọn lịch trình"
                     aria-label="Tùy chọn lịch trình"
                     aria-expanded={showItinerarySettingsMenu}
                   >
-                    <MoreHorizontal size={15} />
+                    <MoreHorizontal size={16} />
                   </button>
 
                   {showItinerarySettingsMenu && (
                     <div
-                      className="absolute right-0 top-10 w-48 bg-white rounded-2xl shadow-xl border border-gray-200 p-1.5 z-40 text-sm animate-fadeIn"
+                      className="absolute right-0 top-11 w-48 bg-white rounded-2xl shadow-xl border border-neutral-200 p-1.5 z-40 text-sm animate-fadeIn"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
                         type="button"
                         onClick={handleAddDay}
-                        className="min-h-10 w-full text-left px-3 rounded-xl hover:bg-gray-100 font-semibold text-gray-900 flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                        className="min-h-10 w-full text-left px-3 rounded-xl hover:bg-neutral-100 font-semibold text-neutral-900 flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                       >
                         <Plus size={14} /> Thêm ngày mới
                       </button>
@@ -2068,10 +2073,10 @@ export default function TripItineraryView({
             </div>
 
             {/* Trợ lý sắp xếp lịch trình & nhịp độ — Gọn 1 hàng để ưu tiên hiển thị lịch theo ngày */}
-            <section className="mb-2.5 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2" aria-label="Trợ lý sắp xếp lịch trình">
+            <section className="mb-3 rounded-2xl border border-neutral-200/90 bg-neutral-50/75 px-3.5 py-2.5" aria-label="Trợ lý sắp xếp lịch trình">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Chọn nhịp chuyến đi">
-                  <span className="text-xs font-bold text-gray-800 mr-1">Nhịp:</span>
+                  <span className="text-xs font-bold text-neutral-800 mr-1">Nhịp:</span>
                   {([
                     ['Relaxed', '🌿 Thong thả', '~2 điểm'],
                     ['Balanced', '⚖️ Cân bằng', '~3 điểm'],
@@ -2083,10 +2088,10 @@ export default function TripItineraryView({
                       aria-pressed={pacingLevel === level}
                       disabled={isLoading || isSaving || isScheduleRecommendationsLoading || (!ideaPois.length && !scheduleRecommendations.length && !plan.days.some((day) => day.stops.length))}
                       onClick={() => runSmartSchedule(level)}
-                      className={`min-h-8 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 ${pacingLevel === level ? 'border-emerald-800 bg-emerald-100 text-emerald-950' : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-100'}`}
+                      className={`min-h-9 rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 ${pacingLevel === level ? 'border-emerald-800 bg-emerald-50 text-emerald-950 shadow-2xs' : 'border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-100'}`}
                     >
                       <span>{label}</span>
-                      <span className="ml-1 font-normal text-gray-600">({target})</span>
+                      <span className="ml-1 font-normal text-neutral-600">({target})</span>
                     </button>
                   ))}
                 </div>
@@ -2098,7 +2103,7 @@ export default function TripItineraryView({
                   onBeforePrint={() => setCollapsedDays(new Set())}
                 />
               </div>
-              {isScheduleRecommendationsLoading && <p className="mt-1.5 text-xs text-gray-700" role="status">Đang tối ưu lịch trình...</p>}
+              {isScheduleRecommendationsLoading && <p className="mt-1.5 text-xs text-neutral-700" role="status">Đang tối ưu lịch trình…</p>}
               {!isScheduleRecommendationsLoading && recommendationFetchError && <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-950" role="status"><span>Đang dùng danh sách địa điểm sẵn có tại điểm đến.</span><button type="button" onClick={() => setRecommendationRetryKey((value) => value + 1)} className="min-h-8 rounded-full px-2.5 font-semibold text-amber-950 underline underline-offset-2 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800">Thử lại</button></div>}
               {assistantInsight && <p className="mt-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs leading-5 text-emerald-950" aria-live="polite"><strong>Vì sao GreenTrip xếp như vậy?</strong> {assistantInsight}</p>}
             </section>
@@ -2139,32 +2144,35 @@ export default function TripItineraryView({
                 );
 
                 return (
-                  <div key={day.day_id || `day-${day.day_number}`} className="border-b border-gray-100 pb-3">
-                    {/* Header Ngày */}
+                  <div key={day.day_id || `day-${day.day_number}`} className="border-b border-neutral-100 pb-4">
+                    {/* Header Ngày kiểu Mindtrip */}
                     <div
                       onClick={() => toggleDayCollapse(day.day_number)}
-                      className="flex flex-wrap items-center justify-between gap-2 py-2 cursor-pointer group select-none"
+                      className="flex flex-wrap items-center justify-between gap-2 py-2.5 cursor-pointer group select-none"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <button
                           type="button"
                           onClick={(event) => { event.stopPropagation(); toggleDayCollapse(day.day_number); }}
-                          className="text-neutral-600 group-hover:text-black transition cursor-pointer"
+                          aria-label={isCollapsed ? `Mở rộng Ngày ${day.day_number}` : `Thu gọn Ngày ${day.day_number}`}
+                          className="h-8 w-8 rounded-full text-neutral-600 hover:bg-neutral-100 group-hover:text-neutral-950 inline-flex items-center justify-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                           title={isCollapsed ? 'Mở rộng ngày' : 'Thu gọn ngày'}
                           aria-expanded={!isCollapsed}
                         >
-                          {isCollapsed ? <ChevronRight size={17} /> : <ChevronDown size={17} />}
+                          {isCollapsed ? <ChevronRight size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
                         </button>
-                        <h3 className="font-extrabold text-[15px] text-gray-950 flex flex-wrap items-center gap-2">
-                          <span>Ngày {day.day_number}</span>
-                          {day.title && <span className="font-medium text-gray-700">{day.title}</span>}
+                        <h3 className="font-bold text-[15px] text-neutral-950 flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-neutral-950 text-white text-xs font-bold">
+                            Ngày {day.day_number}
+                          </span>
+                          {day.title && <span className="font-semibold text-neutral-900">{day.title}</span>}
                           {!day.title && (
-                            <button type="button" onClick={(event) => { event.stopPropagation(); openDayEditor(day.day_number, 'title'); }} className="font-normal text-gray-500 underline decoration-gray-300 underline-offset-4 hover:text-gray-900">
+                            <button type="button" onClick={(event) => { event.stopPropagation(); openDayEditor(day.day_number, 'title'); }} className="font-medium text-xs text-neutral-600 underline decoration-neutral-300 underline-offset-4 hover:text-neutral-950">
                               Thêm tiêu đề
                             </button>
                           )}
                           {day.date && (
-                            <span className="font-normal text-xs text-neutral-600">
+                            <span className="font-medium text-xs text-neutral-600">
                               {displayDateVi(day.date)}
                             </span>
                           )}
@@ -2174,10 +2182,10 @@ export default function TripItineraryView({
                       <div className="flex flex-wrap items-center gap-1.5">
                         {day.stops.length > 0 && (
                           <span
-                            className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                            className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
                               dayFatigue.needsRest && !dayFatigue.hasRestBlock
                                 ? 'bg-amber-50 border-amber-300 text-amber-950'
-                                : 'bg-neutral-100 border-neutral-200 text-neutral-800'
+                                : 'bg-neutral-100/90 border-neutral-200/80 text-neutral-800'
                             }`}
                             title="Chỉ số nhịp độ trong ngày F(d) = giờ hoạt động + 0.5 × điểm ngoài trời"
                           >
@@ -2191,7 +2199,7 @@ export default function TripItineraryView({
                               e.stopPropagation();
                               handleAddLunchBreak(day.day_number);
                             }}
-                            className="no-print min-h-[40px] inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 hover:bg-amber-100 px-3 text-xs font-bold text-amber-950 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                            className="no-print min-h-10 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 hover:bg-amber-100 px-3 text-xs font-bold text-amber-950 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                             title="Thêm khoảng nghỉ trưa 90 phút để giảm mệt mỏi"
                           >
                             <Coffee size={12} aria-hidden="true" />
@@ -2199,18 +2207,18 @@ export default function TripItineraryView({
                           </button>
                         )}
                         {dayRoadKm > 0 && (
-                          <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded-full">
+                          <span className="text-xs font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-full">
                             ~{dayRoadKm.toFixed(1)} km · {formatCarbonAmount(dayCarbon.co2Grams)}
                           </span>
                         )}
-                        <span className="text-xs text-neutral-600 font-medium">
+                        <span className="text-xs text-neutral-600 font-semibold px-1">
                           {day.stops.length > 0 ? `${day.stops.length} điểm` : ''}
                         </span>
                         <div className="relative" onClick={(event) => event.stopPropagation()}>
                           <button
                             type="button"
                             onClick={() => setActiveDayMenuNumber(activeDayMenuNumber === day.day_number ? null : day.day_number)}
-                            className="w-9 h-9 rounded-full text-gray-600 hover:bg-gray-100 flex items-center justify-center transition cursor-pointer"
+                            className="w-10 h-10 rounded-full text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 flex items-center justify-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                             title={`Tùy chọn Ngày ${day.day_number}`}
                             aria-label={`Tùy chọn Ngày ${day.day_number}`}
                             aria-expanded={activeDayMenuNumber === day.day_number}
@@ -2347,69 +2355,80 @@ export default function TripItineraryView({
 
                               return (
                                 <React.Fragment key={stop.stop_id || `stop-${sIdx}`}>
-                                  {/* Thẻ lịch trình trong ngày */}
+                                  {/* Thẻ lịch trình trong ngày (Mindtrip + Airbnb tinh gọn) */}
                                   <div
                                     onMouseEnter={() => setHoveredStopId(stop.poi_id || stop.stop_id)}
                                     onMouseLeave={() => setHoveredStopId(null)}
-                                    className={`print-avoid-break min-h-[110px] rounded-[22px] border border-[#e6e6e6] p-3 flex items-start gap-3.5 transition-all relative group ${
-                                      isRest ? 'bg-amber-50/70 border-amber-200' : 'bg-white hover:border-gray-400 shadow-2xs'
+                                    className={`print-avoid-break min-h-[108px] rounded-[20px] border p-3.5 flex items-start gap-3.5 transition-[border-color,box-shadow] relative group ${
+                                      isRest
+                                        ? 'bg-amber-50/65 border-amber-200/90'
+                                        : 'bg-white border-neutral-200/90 hover:border-neutral-400 shadow-[0_1px_3px_rgba(28,25,23,0.03)] hover:shadow-[0_6px_20px_rgba(28,25,23,0.06)]'
                                     }`}
                                   >
-                                    {/* Ảnh nhỏ trong thẻ: 84 x 84px */}
+                                    {/* Ảnh nhỏ trong thẻ: 84 x 84px + huy hiệu số thứ tự đồng bộ pin bản đồ */}
                                     {isRest ? (
                                       <div className="w-[84px] h-[84px] rounded-[14px] bg-amber-100 flex items-center justify-center text-amber-800 shrink-0">
-                                        <Coffee size={28} />
+                                        <Coffee size={26} />
                                       </div>
                                     ) : (
-                                      <div className="w-[84px] h-[84px] rounded-[14px] overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-                                        <PoiImage
-                                          src={getPoiImage(matchedPoi)}
-                                          alt={stop.title}
-                                          poiId={stop.poi_id || stop.stop_id}
-                                          poiName={stop.title}
-                                          category={matchedPoi?.category}
-                                          city={matchedPoi?.city}
-                                          className="w-full h-full object-cover pointer-events-none"
-                                        />
+                                      <div className="relative w-[84px] h-[84px] shrink-0">
+                                        <div className="w-full h-full rounded-[14px] overflow-hidden bg-neutral-100 border border-neutral-200/70">
+                                          <PoiImage
+                                            src={getPoiImage(matchedPoi)}
+                                            alt={stop.title}
+                                            poiId={stop.poi_id || stop.stop_id}
+                                            poiName={stop.title}
+                                            category={matchedPoi?.category}
+                                            city={matchedPoi?.city}
+                                            className="w-full h-full object-cover pointer-events-none"
+                                          />
+                                        </div>
+                                        <span className="no-print absolute -top-1.5 -left-1.5 min-w-[22px] h-[22px] px-1 rounded-full bg-neutral-950 text-white text-xs font-bold flex items-center justify-center ring-2 ring-white shadow-xs">
+                                          {sIdx + 1}
+                                        </span>
                                       </div>
                                     )}
 
                                     {/* Nội dung điểm dừng */}
                                     <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch">
                                       <div>
-                                        <div className="flex items-center gap-1.5 mb-1">
-                                          <h4 className="font-extrabold text-[14.5px] text-gray-950 truncate">
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                          <h4 className="font-bold text-[15px] text-neutral-950 truncate leading-snug">
                                             {stop.title}
                                           </h4>
                                         </div>
 
                                         {/* Giờ tham quan */}
                                         {isEditingTime ? (
-                                          <div className="flex items-center gap-1.5 mt-1">
+                                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
                                             <input
                                               type="time"
+                                              name="stop_start_time"
+                                              aria-label="Giờ bắt đầu"
                                               value={editStartTime}
                                               onChange={(e) => setEditStartTime(e.target.value)}
-                                              className="text-xs border border-gray-300 rounded px-1.5 py-0.5"
+                                              className="text-xs border border-neutral-300 rounded-lg px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                                             />
-                                            <span>–</span>
+                                            <span className="text-xs text-neutral-600">–</span>
                                             <input
                                               type="time"
+                                              name="stop_end_time"
+                                              aria-label="Giờ kết thúc"
                                               value={editEndTime}
                                               onChange={(e) => setEditEndTime(e.target.value)}
-                                              className="text-xs border border-gray-300 rounded px-1.5 py-0.5"
+                                              className="text-xs border border-neutral-300 rounded-lg px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                                             />
                                             <button
                                               type="button"
                                               onClick={() => handleSaveEditTime(day.day_number, stop.stop_id)}
-                                              className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded cursor-pointer"
+                                              className="min-h-8 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 px-3 rounded-full cursor-pointer"
                                             >
                                               Lưu
                                             </button>
                                             <button
                                               type="button"
                                               onClick={() => setEditingStopId(null)}
-                                              className="text-[11px] text-gray-500 cursor-pointer"
+                                              className="min-h-8 text-xs font-medium text-neutral-600 hover:text-neutral-950 px-2.5 rounded-full cursor-pointer"
                                             >
                                               Hủy
                                             </button>
@@ -2422,14 +2441,14 @@ export default function TripItineraryView({
                                               setEditStartTime(stop.start_time || '08:00');
                                               setEditEndTime(stop.end_time || '09:30');
                                             }}
-                                            className="flex items-center gap-1 text-xs text-gray-600 hover:text-black font-medium mt-0.5 cursor-pointer group/time"
+                                            className="inline-flex items-center gap-1.5 text-xs text-neutral-700 hover:text-neutral-950 font-semibold mt-0.5 cursor-pointer group/time tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 rounded"
                                             title="Bấm để sửa khung giờ"
                                           >
-                                            <Clock size={12} className="text-gray-400 group-hover/time:text-black" />
+                                            <Clock size={12} className="text-neutral-500 group-hover/time:text-neutral-950" />
                                             <span>
                                               {stop.start_time || '08:00'} – {stop.end_time || '09:30'}
                                             </span>
-                                            <Pencil size={10} className="text-gray-300 group-hover/time:text-gray-600 ml-0.5 opacity-0 group-hover/time:opacity-100" />
+                                            <Pencil size={11} className="text-neutral-400 group-hover/time:text-neutral-700 opacity-0 group-hover/time:opacity-100 transition-opacity" />
                                           </button>
                                         )}
 
@@ -2451,7 +2470,7 @@ export default function TripItineraryView({
                                           openingCheck.warningMessage && (
                                             <div
                                               role="status"
-                                              className="mt-1.5 inline-flex items-start gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-950"
+                                              className="mt-1.5 inline-flex items-start gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-950"
                                             >
                                               <AlertTriangle size={13} className="text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
                                               <span className="leading-snug">{openingCheck.warningMessage}</span>
@@ -2463,13 +2482,13 @@ export default function TripItineraryView({
                                           const inPeak = isTimeInCrowdPeakWindow(stop.start_time, crowd);
                                           const isCrowded = crowd.level === 'high' || evaluateLocalAuthentic(matchedPoi).isCrowded;
                                           return (
-                                            <div className="no-print mt-1.5 flex flex-wrap items-center gap-2">
+                                            <div className="no-print mt-2 pt-2 border-t border-neutral-100 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
                                               {isCrowded && (
                                                 <span
-                                                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                                                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
                                                     inPeak
                                                       ? 'border-rose-300 bg-rose-50 text-rose-900'
-                                                      : 'border-amber-200 bg-amber-50 text-amber-900'
+                                                      : 'border-amber-200 bg-amber-50/90 text-amber-900'
                                                   }`}
                                                   title={crowd.offPeakTip || 'Điểm phổ biến thường đông vào khung giờ cao điểm'}
                                                 >
@@ -2484,7 +2503,7 @@ export default function TripItineraryView({
                                                 <button
                                                   type="button"
                                                   onClick={() => handleShiftStopOffPeak(day.day_number, stop.stop_id)}
-                                                  className="text-xs font-bold text-amber-900 hover:text-black underline underline-offset-2 cursor-pointer"
+                                                  className="text-xs font-semibold text-amber-900 hover:text-neutral-950 underline underline-offset-2 cursor-pointer"
                                                 >
                                                   Dời sang 07:30 (giờ vắng)
                                                 </button>
@@ -2499,7 +2518,7 @@ export default function TripItineraryView({
                                                       stopId: stop.stop_id,
                                                     });
                                                   }}
-                                                  className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline underline-offset-2 cursor-pointer"
+                                                  className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 underline underline-offset-2 cursor-pointer"
                                                 >
                                                   Đổi điểm bản địa ít đông
                                                 </button>
@@ -2534,11 +2553,13 @@ export default function TripItineraryView({
                                       {isEditingNote && (
                                         <div className="mt-2 space-y-1.5">
                                           <textarea
+                                            name="stop_note"
+                                            aria-label="Ghi chú cho điểm dừng"
                                             value={noteInput}
                                             onChange={(e) => setNoteInput(e.target.value)}
-                                            placeholder="Nhập ghi chú cho điểm này..."
+                                            placeholder="Nhập ghi chú cho điểm này…"
                                             rows={2}
-                                            className="w-full text-xs p-2 rounded-xl border border-gray-300 focus:border-black focus:outline-none"
+                                            className="w-full text-xs p-2 rounded-xl border border-neutral-300 focus:border-neutral-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                                           />
                                           <div className="flex justify-end gap-1.5">
                                             <button
@@ -2560,25 +2581,27 @@ export default function TripItineraryView({
                                       )}
                                     </div>
 
-                                    {/* Menu thao tác góc phải */}
+                                    {/* Menu thao tác góc phải (ẩn nhẹ nút sắp xếp ↑ ↓ khi chưa hover để giảm nhiễu thị giác) */}
                                     <div className="relative shrink-0 flex items-center gap-1 self-start">
                                       <button
                                         type="button"
                                         disabled={sIdx === 0}
                                         onClick={() => handleMoveStop(day.day_number, sIdx, 'up')}
-                                        className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-gray-500 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                                        aria-label="Di chuyển lên trên"
+                                        className="w-8 h-8 rounded-full border border-neutral-200 hover:border-neutral-950 hover:bg-neutral-50 flex items-center justify-center text-neutral-600 hover:text-neutral-950 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                                         title="Lên trên"
                                       >
-                                        <ArrowUp size={13} />
+                                        <ArrowUp size={13} aria-hidden="true" />
                                       </button>
                                       <button
                                         type="button"
                                         disabled={sIdx === day.stops.length - 1}
                                         onClick={() => handleMoveStop(day.day_number, sIdx, 'down')}
-                                        className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-gray-500 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
+                                        aria-label="Di chuyển xuống dưới"
+                                        className="w-8 h-8 rounded-full border border-neutral-200 hover:border-neutral-950 hover:bg-neutral-50 flex items-center justify-center text-neutral-600 hover:text-neutral-950 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                                         title="Xuống dưới"
                                       >
-                                        <ArrowDown size={13} />
+                                        <ArrowDown size={13} aria-hidden="true" />
                                       </button>
 
                                       <button
@@ -2587,15 +2610,16 @@ export default function TripItineraryView({
                                           e.stopPropagation();
                                           setActiveMenuStopId(isMenuOpen ? null : stop.stop_id);
                                         }}
-                                        className="min-w-[40px] min-h-[40px] rounded-xl border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-gray-600 hover:text-black cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                                        aria-label="Tùy chọn khác"
+                                        className="min-w-[40px] min-h-[40px] rounded-full border border-neutral-200 hover:border-neutral-950 hover:bg-neutral-50 flex items-center justify-center text-neutral-700 hover:text-neutral-950 cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                                         title="Tùy chọn khác"
                                       >
-                                        <MoreHorizontal size={14} />
+                                        <MoreHorizontal size={15} aria-hidden="true" />
                                       </button>
 
                                       {isMenuOpen && (
                                         <div
-                                          className="absolute right-0 top-8 w-48 bg-white rounded-2xl shadow-xl border border-gray-200 p-1.5 z-40 text-xs animate-fadeIn"
+                                          className="absolute right-0 top-11 w-52 bg-white rounded-2xl shadow-xl border border-neutral-200 p-1.5 z-40 text-xs animate-fadeIn"
                                           onClick={(e) => e.stopPropagation()}
                                         >
                                           {!isRest && (
@@ -2620,7 +2644,7 @@ export default function TripItineraryView({
                                               setNoteInput(stop.comment || '');
                                               setActiveMenuStopId(null);
                                             }}
-                                            className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-gray-100 font-medium text-gray-800 flex items-center gap-2 cursor-pointer"
+                                            className="w-full min-h-9 text-left px-3 py-1.5 rounded-xl hover:bg-neutral-100 font-medium text-neutral-800 flex items-center gap-2 cursor-pointer"
                                           >
                                             <FileText size={13} /> {stop.comment ? 'Sửa bình luận' : 'Thêm bình luận'}
                                           </button>
@@ -2632,12 +2656,12 @@ export default function TripItineraryView({
                                               setEditEndTime(stop.end_time || '09:30');
                                               setActiveMenuStopId(null);
                                             }}
-                                            className="w-full text-left px-3 py-1.5 rounded-xl hover:bg-gray-100 font-medium text-gray-800 flex items-center gap-2 cursor-pointer"
+                                            className="w-full min-h-9 text-left px-3 py-1.5 rounded-xl hover:bg-neutral-100 font-medium text-neutral-800 flex items-center gap-2 cursor-pointer"
                                           >
                                             <Clock size={13} /> Chỉnh sửa thời gian
                                           </button>
-                                          <div className="border-t border-gray-100 my-1"></div>
-                                          <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase">
+                                          <div className="border-t border-neutral-100 my-1"></div>
+                                          <div className="px-3 py-1 text-xs font-semibold text-neutral-600">
                                             Chuyển sang ngày khác:
                                           </div>
                                           {plan.days
@@ -2782,27 +2806,30 @@ export default function TripItineraryView({
                                             ? Bus
                                             : Footprints;
                                     return (
-                                      <div className="min-h-[44px] ml-7 pl-6 border-l-2 border-[#ddd] flex flex-wrap items-center gap-2.5 text-xs text-gray-700 font-semibold animate-fadeIn">
-                                        <LegIcon size={13} className="text-emerald-700 shrink-0" aria-hidden="true" />
-                                        <span>~{transitDistKm.toFixed(1)} km</span>
-                                        <span className="text-gray-400" aria-hidden="true">·</span>
-                                        <span className="text-emerald-800">{formatCarbonAmount(legCarbon.co2Grams)}</span>
-                                        <a
-                                          href={getGoogleMapsDirectionsUrl(
-                                            stop.latitude ?? matchedPoi?.lat,
-                                            stop.longitude ?? matchedPoi?.lng,
-                                            nextStop.latitude ?? nextMatchedPoi?.lat,
-                                            nextStop.longitude ?? nextMatchedPoi?.lng,
-                                            transportMode
-                                          )}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-emerald-800 hover:text-emerald-950 hover:underline flex items-center gap-1 font-bold ml-1"
-                                          title="Mở chỉ đường trên Google Maps"
-                                        >
-                                          <span>Chỉ đường</span>
-                                          <ExternalLink size={12} />
-                                        </a>
+                                      <div className="ml-9 pl-5 py-1 border-l-2 border-dashed border-neutral-200 flex items-center animate-fadeIn">
+                                        <div className="inline-flex flex-wrap items-center gap-2 rounded-full bg-neutral-50 border border-neutral-200/80 px-3 py-1.5 text-xs text-neutral-700 font-semibold">
+                                          <LegIcon size={13} className="text-emerald-700 shrink-0" aria-hidden="true" />
+                                          <span className="tabular-nums">~{transitDistKm.toFixed(1)} km</span>
+                                          <span className="text-neutral-400" aria-hidden="true">·</span>
+                                          <span className="text-emerald-800 tabular-nums">{formatCarbonAmount(legCarbon.co2Grams)}</span>
+                                          <span className="text-neutral-400" aria-hidden="true">·</span>
+                                          <a
+                                            href={getGoogleMapsDirectionsUrl(
+                                              stop.latitude ?? matchedPoi?.lat,
+                                              stop.longitude ?? matchedPoi?.lng,
+                                              nextStop.latitude ?? nextMatchedPoi?.lat,
+                                              nextStop.longitude ?? nextMatchedPoi?.lng,
+                                              transportMode
+                                            )}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-emerald-800 hover:text-emerald-950 hover:underline inline-flex items-center gap-1 font-bold"
+                                            title="Mở chỉ đường trên Google Maps"
+                                          >
+                                            <span>Chỉ đường</span>
+                                            <ExternalLink size={12} aria-hidden="true" />
+                                          </a>
+                                        </div>
                                       </div>
                                     );
                                   })()}
@@ -2863,9 +2890,9 @@ export default function TripItineraryView({
                 <button
                   type="button"
                   onClick={handleAddDay}
-                  className="inline-flex items-center gap-2 h-9 px-5 rounded-full border border-dashed border-gray-300 hover:border-black bg-gray-50/70 hover:bg-gray-100 text-xs font-bold text-gray-800 transition cursor-pointer active:scale-95 shadow-2xs"
+                  className="inline-flex items-center gap-2 min-h-10 px-5 rounded-full border border-dashed border-neutral-300 hover:border-neutral-950 bg-neutral-50/70 hover:bg-neutral-100 text-xs font-semibold text-neutral-800 transition cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                 >
-                  <Plus size={14} />
+                  <Plus size={14} aria-hidden="true" />
                   <span>+ Thêm Ngày {plan.days.length + 1}</span>
                 </button>
               </div>

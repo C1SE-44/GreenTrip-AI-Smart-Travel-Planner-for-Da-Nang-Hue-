@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { X, Minus, Plus, Calendar, Loader2, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Minus, Plus, Calendar, Loader2, Sparkles } from 'lucide-react';
+import DateRangeCalendar from './DateRangeCalendar';
 import type { UserTrip } from '@/pages/ExplorePage';
 import { validateTripParameters } from '@/services/tripService';
 
@@ -51,13 +52,6 @@ export default function CreateTripCopilotModal({
 
   // 2. WHEN STATE (Khi: Ngày tháng vs Linh hoạt)
   const [whenTab, setWhenTab] = useState<'dates' | 'flex'>('flex');
-  
-  // Khởi tạo lịch ở tuần tới để ngày mặc định không bị backend từ chối theo thời gian thực.
-  const [calendarBaseMonth, setCalendarBaseMonth] = useState<Date>(() => {
-    const nextWeek = new Date();
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    return new Date(nextWeek.getFullYear(), nextWeek.getMonth(), 1);
-  });
   const [rangeStart, setRangeStart] = useState<Date | null>(() => {
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
@@ -113,7 +107,6 @@ export default function CreateTripCopilotModal({
       setWhenTab('dates');
       setRangeStart(intent.startDate);
       setRangeEnd(intent.endDate);
-      setCalendarBaseMonth(new Date(intent.startDate.getFullYear(), intent.startDate.getMonth(), 1));
     } else if (intent.whenMode === 'month_duration' || intent.whenMode === 'month_only') {
       setWhenTab('flex');
       setSelectedMonth(intent.monthLabel || '');
@@ -204,66 +197,6 @@ export default function CreateTripCopilotModal({
     return tierText;
   };
   const budgetDisplay = getBudgetDisplay();
-
-  // Helper hàm cho lịch 2 tháng bên tab "Ngày tháng"
-  const month1Year = calendarBaseMonth.getFullYear();
-  const month1Index = calendarBaseMonth.getMonth();
-
-  const nextMonthDate = new Date(month1Year, month1Index + 1, 1);
-  const month2Year = nextMonthDate.getFullYear();
-  const month2Index = nextMonthDate.getMonth();
-
-  const getMonthMeta = (year: number, month: number) => {
-    const firstDay = new Date(year, month, 1).getDay(); // 0 = Chủ nhật
-    const totalDays = new Date(year, month + 1, 0).getDate();
-    return { firstDay, totalDays };
-  };
-
-  const meta1 = getMonthMeta(month1Year, month1Index);
-  const meta2 = getMonthMeta(month2Year, month2Index);
-
-  const isSameDay = (d1: Date | null, d2: Date | null) => {
-    if (!d1 || !d2) return false;
-    return (
-      d1.getFullYear() === d2.getFullYear() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getDate() === d2.getDate()
-    );
-  };
-
-  const isDayInRange = (date: Date) => {
-    if (!rangeStart || !rangeEnd) return false;
-    const t = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-    const s = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate()).getTime();
-    const e = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate()).getTime();
-    return t > s && t < e;
-  };
-
-  const handleSelectDate = (year: number, month: number, day: number) => {
-    const clicked = new Date(year, month, day);
-    if (!rangeStart || (rangeStart && rangeEnd)) {
-      setRangeStart(clicked);
-      setRangeEnd(null);
-    } else if (rangeStart && !rangeEnd) {
-      if (clicked.getTime() < rangeStart.getTime()) {
-        setRangeStart(clicked);
-        setRangeEnd(null);
-      } else {
-        setRangeEnd(clicked);
-        const diffMs = clicked.getTime() - rangeStart.getTime();
-        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
-        setFlexibleDays(Math.min(14, Math.max(1, diffDays)));
-      }
-    }
-  };
-
-  const handlePrevMonth = () => {
-    setCalendarBaseMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCalendarBaseMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-  };
 
   const handleClearDates = () => {
     setRangeStart(null);
@@ -715,157 +648,23 @@ export default function CreateTripCopilotModal({
               </div>
             </div>
 
-            {/* TRANG 1: TAB NGÀY THÁNG (LỊCH KÉP 2 THÁNG LIỀN KỀ THEO ẢNH 1) */}
+            {/* TRANG 1: TAB NGÀY THÁNG */}
             {whenTab === 'dates' && (
-              <div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-7 mb-7">
-                  {/* THÁNG 1: TRÁI (Ví dụ Tháng 11 năm 2026 có mũi tên lùi <) */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3 px-1">
-                      <button 
-                        type="button" 
-                        onClick={handlePrevMonth}
-                        className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 cursor-pointer text-gray-600"
-                      >
-                        <ChevronLeft size={18} />
-                      </button>
-                      <span className="font-bold text-[14px] text-gray-900">
-                        {`Tháng ${month1Index + 1} năm ${month1Year}`}
-                      </span>
-                      <div className="w-7"></div>
-                    </div>
-
-                    {/* Hàng thứ: S M T W T F S */}
-                    <div className="grid grid-cols-7 text-center text-[12px] text-gray-400 font-medium mb-1.5">
-                      <span>S</span>
-                      <span>M</span>
-                      <span>T</span>
-                      <span>W</span>
-                      <span>T</span>
-                      <span>F</span>
-                      <span>S</span>
-                    </div>
-
-                    {/* Lưới các ngày Tháng 1 */}
-                    <div className="grid grid-cols-7 text-center">
-                      {Array.from({ length: meta1.firstDay }).map((_, idx) => (
-                        <div key={`empty-1-${idx}`} className="h-9"></div>
-                      ))}
-
-                      {Array.from({ length: meta1.totalDays }).map((_, idx) => {
-                        const dayNum = idx + 1;
-                        const thisDate = new Date(month1Year, month1Index, dayNum);
-                        const isStart = isSameDay(thisDate, rangeStart);
-                        const isEnd = isSameDay(thisDate, rangeEnd);
-                        const inRange = isDayInRange(thisDate);
-
-                        return (
-                          <div key={`day-1-${dayNum}`} className="relative h-9 flex items-center justify-center">
-                            {/* Dải nền kết nối khoảng ngày được chọn */}
-                            {inRange && <div className="absolute inset-0 bg-[#f0f0f0]" />}
-                            {isStart && rangeEnd && <div className="absolute top-0 bottom-0 right-0 left-1/2 bg-[#f0f0f0]" />}
-                            {isEnd && rangeStart && <div className="absolute top-0 bottom-0 left-0 right-1/2 bg-[#f0f0f0]" />}
-
-                            <button
-                              type="button"
-                              onClick={() => handleSelectDate(month1Year, month1Index, dayNum)}
-                              className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
-                                isStart || isEnd
-                                  ? 'bg-black text-white font-bold shadow-xs'
-                                  : 'text-gray-900 hover:bg-gray-200/80 font-normal'
-                              }`}
-                            >
-                              {dayNum}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* THÁNG 2: PHẢI (Ví dụ Tháng 12 năm 2026 có mũi tên tiến >) */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3 px-1">
-                      <div className="w-7"></div>
-                      <span className="font-bold text-[14px] text-gray-900">
-                        {`Tháng ${month2Index + 1} năm ${month2Year}`}
-                      </span>
-                      <button 
-                        type="button" 
-                        onClick={handleNextMonth}
-                        className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 cursor-pointer text-gray-600"
-                      >
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-
-                    {/* Hàng thứ: S M T W T F S */}
-                    <div className="grid grid-cols-7 text-center text-[12px] text-gray-400 font-medium mb-1.5">
-                      <span>S</span>
-                      <span>M</span>
-                      <span>T</span>
-                      <span>W</span>
-                      <span>T</span>
-                      <span>F</span>
-                      <span>S</span>
-                    </div>
-
-                    {/* Lưới các ngày Tháng 2 */}
-                    <div className="grid grid-cols-7 text-center">
-                      {Array.from({ length: meta2.firstDay }).map((_, idx) => (
-                        <div key={`empty-2-${idx}`} className="h-9"></div>
-                      ))}
-
-                      {Array.from({ length: meta2.totalDays }).map((_, idx) => {
-                        const dayNum = idx + 1;
-                        const thisDate = new Date(month2Year, month2Index, dayNum);
-                        const isStart = isSameDay(thisDate, rangeStart);
-                        const isEnd = isSameDay(thisDate, rangeEnd);
-                        const inRange = isDayInRange(thisDate);
-
-                        return (
-                          <div key={`day-2-${dayNum}`} className="relative h-9 flex items-center justify-center">
-                            {inRange && <div className="absolute inset-0 bg-[#f0f0f0]" />}
-                            {isStart && rangeEnd && <div className="absolute top-0 bottom-0 right-0 left-1/2 bg-[#f0f0f0]" />}
-                            {isEnd && rangeStart && <div className="absolute top-0 bottom-0 left-0 right-1/2 bg-[#f0f0f0]" />}
-
-                            <button
-                              type="button"
-                              onClick={() => handleSelectDate(month2Year, month2Index, dayNum)}
-                              className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-[13px] cursor-pointer transition-all ${
-                                isStart || isEnd
-                                  ? 'bg-black text-white font-bold shadow-xs'
-                                  : 'text-gray-900 hover:bg-gray-200/80 font-normal'
-                              }`}
-                            >
-                              {dayNum}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer Trang 1: Clear bên trái, Cập nhật bên phải */}
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={handleClearDates}
-                    className="text-[14px] font-semibold text-black hover:underline cursor-pointer"
-                  >
-                    Clear
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowWhenModal(false)}
-                    className="px-8 py-3 bg-black text-white rounded-full font-bold text-[14px] hover:bg-neutral-800 transition active:scale-95 cursor-pointer shadow-xs"
-                  >
-                    Cập nhật
-                  </button>
-                </div>
-              </div>
+              <DateRangeCalendar
+                rangeStart={rangeStart}
+                rangeEnd={rangeEnd}
+                onSelectRange={(s, e) => {
+                  setRangeStart(s);
+                  setRangeEnd(e);
+                  if (s && e) {
+                    const diffDays = Math.round((e.getTime() - s.getTime()) / 86400000) + 1;
+                    setFlexibleDays(Math.min(14, Math.max(1, diffDays)));
+                  }
+                }}
+                onClear={handleClearDates}
+                onApply={() => setShowWhenModal(false)}
+                applyLabel="Cập nhật"
+              />
             )}
 
             {/* TRANG 2: TAB LINH HOẠT (ĐÚNG PHẠM VI 3 THÁNG THEO YÊU CẦU CỦA BẠN) */}

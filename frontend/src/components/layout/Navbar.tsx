@@ -130,7 +130,7 @@ export default function Navbar() {
           `}
         >
           <nav className={`mx-auto w-full max-w-[1400px] flex items-center justify-between transition-all duration-500 ${scrolled ? 'h-[50px]' : 'h-[60px]'} px-6 lg:px-8`}>
-            <Link to="/" className="flex items-center outline-none focus:outline-none">
+            <Link to="/" className="flex items-center min-h-[40px] rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
               <Logo size="md" />
             </Link>
 
@@ -141,7 +141,7 @@ export default function Navbar() {
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `rounded-full px-4 py-1.5 text-[14px] transition-all duration-300 outline-none focus:outline-none ${
+                    `rounded-full px-4 min-h-[40px] inline-flex items-center text-[14px] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
                       isActive
                         ? 'text-black bg-black/5 font-medium'
                         : 'text-black hover:bg-black/5 font-normal'
@@ -158,14 +158,14 @@ export default function Navbar() {
               {isAuthenticated ? (
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-1.5 text-[14px] text-charcoal/60 hover:text-red-600 hover:bg-red-50 font-medium rounded-full transition-all cursor-pointer"
+                  className="px-4 min-h-[40px] inline-flex items-center text-[14px] text-charcoal/60 hover:text-red-600 hover:bg-red-50 font-medium rounded-full transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                 >
                   Đăng xuất
                 </button>
               ) : (
                 <Link
                   to="/login"
-                  className="px-4 py-1.5 text-[14px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-all duration-300 outline-none focus:outline-none cursor-pointer"
+                  className="px-4 min-h-[40px] inline-flex items-center text-[14px] border border-black/20 hover:border-black/50 text-black hover:bg-black/5 font-medium rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 cursor-pointer"
                 >
                   Đăng nhập
                 </Link>
@@ -175,7 +175,7 @@ export default function Navbar() {
             {/* Mobile toggle */}
             <button
               onClick={() => setMobileOpen((o) => !o)}
-              className="flex items-center justify-center rounded-full p-2 text-charcoal hover:bg-black/5 md:hidden"
+              className="flex items-center justify-center min-w-[40px] min-h-[40px] rounded-full p-2 text-charcoal hover:bg-black/5 md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
               aria-label={mobileOpen ? 'Đóng menu' : 'Mở menu'}
               aria-expanded={mobileOpen}
             >

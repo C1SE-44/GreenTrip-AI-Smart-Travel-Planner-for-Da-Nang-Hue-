@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/common/ErrorBoundary.tsx';
 import './index.css';
+import './styles/motion-tokens.css';
 import '@phosphor-icons/web/regular';
 import '@phosphor-icons/web/fill';
 import '@phosphor-icons/web/bold';

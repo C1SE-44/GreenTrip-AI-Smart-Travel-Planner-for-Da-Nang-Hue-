@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowUpRight, ArrowRight, Leaf, ArrowDown, Sparkles } from 'lucide-react';
+import { ArrowUpRight, ArrowRight, Leaf, ArrowDown } from 'lucide-react';
 import { HeroScenes } from '@/components/landing/HeroScenes';
 import { HeroSearchPill } from '@/components/landing/HeroSearchPill';
 import { ValuePropsSection } from '@/components/landing/ValuePropsSection';
@@ -60,18 +60,13 @@ export default function LandingPage() {
             />
 
             <div className="hero-content">
-              {/* Small pill label above H1 */}
-              <div className="inline-flex items-center rounded-full border border-white/40 bg-white/60 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-neutral-700 backdrop-blur-sm mb-6">
-                LẬP LỊCH TRÌNH DU LỊCH XANH · ĐÀ NẴNG &amp; HUẾ
-              </div>
-
               <h1 id="hero-title">
                 Có lịch để bắt đầu.
               </h1>
               <p>
-                Chọn điểm đến và số ngày. Thử chỉnh một lịch tham khảo —{' '}
+                Chọn điểm đến và số ngày để xem ngay lịch trình tham khảo —{' '}
                 <br className="mobile-only" />
-                xem ngay, không cần đăng ký.
+                hoặc hỏi Trợ lý AI để thiết kế riêng.
               </p>
 
               {/* Hero Search Pill */}
@@ -83,27 +78,19 @@ export default function LandingPage() {
                 onSubmit={() => openSample()}
               />
 
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+              <div className="mt-4 flex items-center justify-center">
                 <Link
                   to="/chat"
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-full bg-emerald-800 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-900 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-neutral-900 shadow-xs border border-neutral-200/80 hover:bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                 >
-                  <Sparkles size={14} aria-hidden="true" />
-                  <span>Hỏi Trợ lý AI ngay</span>
-                </Link>
-                <Link
-                  to="/explore"
-                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full border border-neutral-300 bg-white/85 px-4 py-2 text-xs font-semibold text-neutral-900 hover:bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-                >
-                  <span>Khám phá điểm đến xanh</span>
+                  <span>Chưa biết đi đâu? Hỏi Trợ lý AI ngay</span>
+                  <ArrowRight size={13} aria-hidden="true" />
                 </Link>
               </div>
-
-              <p className="hero-note">Thử chỉnh miễn phí · Địa điểm từ GreenTrip · Đăng nhập khi lưu</p>
             </div>
 
             <a href="#core-values" className="hero-scroll" aria-label="Xem GreenTrip giúp bạn thế nào">
-              <ArrowDown size={20} />
+              <ArrowDown size={20} aria-hidden="true" />
             </a>
           </section>
 
@@ -117,12 +104,57 @@ export default function LandingPage() {
             onOpenSampleForCity={(c, d) => openSample(c, d)}
           />
 
+          {/* SECTION 3.5: TRUST & FAQ STRIP */}
+          <section
+            aria-label="Câu hỏi thường gặp"
+            className="section-width py-10 md:py-12"
+          >
+            <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
+              <div className="text-center mb-6">
+                <span className="inline-block text-xs font-semibold uppercase tracking-wider text-emerald-800 mb-1.5">
+                  Rõ ràng trước khi xuất phát
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+                  Mọi thắc mắc phổ biến, trả lời gọn trong 10 giây
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <article className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-2xs">
+                  <h3 className="text-sm font-semibold text-neutral-900 mb-1.5">
+                    Có mất phí để lập lịch trình không?
+                  </h3>
+                  <p className="text-xs sm:text-[13px] text-neutral-600 leading-relaxed">
+                    Miễn phí hoàn toàn cho việc khám phá địa điểm, hỏi Trợ lý AI, tối ưu tuyến đường xanh và xuất lịch trình PDF.
+                  </p>
+                </article>
+                <article className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-2xs">
+                  <h3 className="text-sm font-semibold text-neutral-900 mb-1.5">
+                    Địa điểm gợi ý có thực tế không?
+                  </h3>
+                  <p className="text-xs sm:text-[13px] text-neutral-600 leading-relaxed">
+                    Hơn 575 địa điểm tại Đà Nẵng và Huế được chuẩn hóa tọa độ, giờ mở cửa và chi phí tham khảo theo từng tuyến đường.
+                  </p>
+                </article>
+                <article className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-2xs">
+                  <h3 className="text-sm font-semibold text-neutral-900 mb-1.5">
+                    Có thể tự chỉnh lại lịch trình AI tạo?
+                  </h3>
+                  <p className="text-xs sm:text-[13px] text-neutral-600 leading-relaxed">
+                    Có. Bạn thêm, bớt hoặc kéo thả đổi thứ tự từng điểm dừng theo ngày và lưu lại trực tiếp trong tài khoản cá nhân.
+                  </p>
+                </article>
+              </div>
+            </div>
+          </section>
+
           {/* SECTION 4: EDITORIAL CLOSING PHOTO CTA */}
           <section className="closing-photo section-width">
             <img
               src="/images/landing/closing-resort-1400.webp"
               srcSet="/images/landing/closing-resort-640.webp 640w, /images/landing/closing-resort-1400.webp 1400w"
               sizes="100vw"
+              width={1400}
+              height={933}
               decoding="async"
               alt=""
               loading="lazy"
@@ -135,7 +167,7 @@ export default function LandingPage() {
                 Chọn nơi muốn đến, số ngày bạn có. GreenTrip làm phần còn lại.
               </p>
               <button className="button" onClick={() => openSample()}>
-                Xem lịch trình mẫu <ArrowRight size={18} />
+                Xem lịch trình mẫu <ArrowRight size={18} aria-hidden="true" />
               </button>
             </div>
           </section>
@@ -145,7 +177,7 @@ export default function LandingPage() {
         <footer className="site-footer section-width">
           <div>
             <a className="logo" href="#">
-              <Leaf size={25} />
+              <Leaf size={25} aria-hidden="true" />
               greentrip
             </a>
             <p>
@@ -159,7 +191,7 @@ export default function LandingPage() {
             <Link to="/chat">Trợ lý AI</Link>
             <button onClick={() => openSample()}>Xem lịch mẫu</button>
             <Link to="/planner">
-              Lập lịch trình <ArrowUpRight size={14} />
+              Lập lịch trình <ArrowUpRight size={14} aria-hidden="true" />
             </Link>
           </div>
           <span className="copyright">

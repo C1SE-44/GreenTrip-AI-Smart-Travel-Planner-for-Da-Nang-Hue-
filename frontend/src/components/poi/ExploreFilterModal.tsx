@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { Clock, CloudRain, Compass, Leaf, Loader2, Ticket, X } from 'lucide-react';
 import type { Poi } from '@/data/pois';
 import { evaluateLocalAuthentic } from '@/data/pois';
 import { isPoiEcoCertified } from '@/services/poi';
@@ -986,45 +986,191 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
       {/* 1. Backdrop */}
       <div
         onClick={onClose}
-        className="absolute inset-0 bg-black/45 backdrop-blur-[4px] transition-opacity"
+        className="absolute inset-0 bg-black/50 backdrop-blur-[3px] transition-opacity"
         aria-hidden="true"
       />
 
-      {/* 2. Dialog Shell (Mindtrip Minimalist Design) */}
+      {/* 2. Dialog Shell (Airbnb Filters Modal Style) */}
       <div
-        className="relative w-full max-w-[540px] bg-white rounded-[28px] shadow-2xl overflow-hidden z-10 flex flex-col max-h-[90vh] sm:max-h-[85vh] animate-fadeInScale"
+        className="relative w-full max-w-[580px] bg-white rounded-3xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[90vh] sm:max-h-[85vh] animate-fadeInScale"
         role="dialog"
         aria-modal="true"
         aria-labelledby="filter-modal-title"
       >
         {/* ── HEADER ── */}
-        <div className="relative px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+        <div className="relative px-6 py-4 border-b border-neutral-200 flex items-center justify-between shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-800 transition flex items-center justify-center cursor-pointer"
-            aria-label="Đóng"
+            className="w-10 h-10 rounded-full hover:bg-neutral-100 text-neutral-900 transition flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            aria-label="Đóng bộ lọc"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
-          <h2 id="filter-modal-title" className="text-[17px] font-bold text-gray-950 tracking-tight">
+          <h2 id="filter-modal-title" className="text-base font-bold text-neutral-950 tracking-tight">
             Bộ lọc
           </h2>
-          <div className="w-8" />
+          <div className="w-10" />
         </div>
 
         {/* ── SCROLLABLE BODY ── */}
         <div className="px-6 py-5 space-y-6 overflow-y-auto overscroll-contain flex-1 auto-hide-scrollbar">
 
-          {/* 1. Loại hình cụ thể (Tên danh mục riêng: Ẩm thực / Di sản & Văn hóa / Trải nghiệm thiên nhiên) */}
+          {/* 0. Gợi ý nhanh cho bạn (Airbnb "Recommended for you" 4 square icon cards) */}
+          <div className="border-b border-neutral-200 pb-6">
+            <h3 className="text-sm font-bold text-neutral-950 mb-3.5">Gợi ý nhanh cho bạn</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <button
+                type="button"
+                aria-pressed={ecoCertifiedOnly}
+                onClick={() => setEcoCertifiedOnly(!ecoCertifiedOnly)}
+                className={`rounded-2xl border-2 p-3.5 flex flex-col items-center justify-center gap-2 text-center transition cursor-pointer min-h-[94px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                  ecoCertifiedOnly
+                    ? 'border-emerald-800 bg-emerald-50/80 text-emerald-950'
+                    : 'border-neutral-200 bg-white hover:border-neutral-400 text-neutral-800'
+                }`}
+              >
+                <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${ecoCertifiedOnly ? 'bg-emerald-800 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
+                  <Leaf className="w-4 h-4" aria-hidden="true" />
+                </span>
+                <span className="text-xs font-semibold leading-tight">Chuẩn Xanh</span>
+              </button>
+
+              <button
+                type="button"
+                aria-pressed={localAuthenticOnly}
+                onClick={() => setLocalAuthenticOnly(!localAuthenticOnly)}
+                className={`rounded-2xl border-2 p-3.5 flex flex-col items-center justify-center gap-2 text-center transition cursor-pointer min-h-[94px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                  localAuthenticOnly
+                    ? 'border-emerald-800 bg-emerald-50/80 text-emerald-950'
+                    : 'border-neutral-200 bg-white hover:border-neutral-400 text-neutral-800'
+                }`}
+              >
+                <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${localAuthenticOnly ? 'bg-emerald-800 text-white' : 'bg-neutral-100 text-neutral-800'}`}>
+                  <Compass className="w-4 h-4" aria-hidden="true" />
+                </span>
+                <span className="text-xs font-semibold leading-tight">Bản địa ít đông</span>
+              </button>
+
+              <button
+                type="button"
+                aria-pressed={openNowOnly}
+                onClick={() => setOpenNowOnly(!openNowOnly)}
+                className={`rounded-2xl border-2 p-3.5 flex flex-col items-center justify-center gap-2 text-center transition cursor-pointer min-h-[94px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                  openNowOnly
+                    ? 'border-neutral-950 bg-neutral-100 text-neutral-950'
+                    : 'border-neutral-200 bg-white hover:border-neutral-400 text-neutral-800'
+                }`}
+              >
+                <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${openNowOnly ? 'bg-neutral-950 text-white' : 'bg-neutral-100 text-neutral-800'}`}>
+                  <Clock className="w-4 h-4" aria-hidden="true" />
+                </span>
+                <span className="text-xs font-semibold leading-tight">Đang mở cửa</span>
+              </button>
+
+              {activeTab === 'di-tich' || activeTab === 'canh-quan' ? (
+                <button
+                  type="button"
+                  aria-pressed={freeTicketOnly}
+                  onClick={() => setFreeTicketOnly(!freeTicketOnly)}
+                  className={`rounded-2xl border-2 p-3.5 flex flex-col items-center justify-center gap-2 text-center transition cursor-pointer min-h-[94px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                    freeTicketOnly
+                      ? 'border-neutral-950 bg-neutral-100 text-neutral-950'
+                      : 'border-neutral-200 bg-white hover:border-neutral-400 text-neutral-800'
+                  }`}
+                >
+                  <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${freeTicketOnly ? 'bg-neutral-950 text-white' : 'bg-neutral-100 text-neutral-800'}`}>
+                    <Ticket className="w-4 h-4" aria-hidden="true" />
+                  </span>
+                  <span className="text-xs font-semibold leading-tight">Miễn phí vé</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  aria-pressed={rainyDayFriendly}
+                  onClick={() => setRainyDayFriendly(!rainyDayFriendly)}
+                  className={`rounded-2xl border-2 p-3.5 flex flex-col items-center justify-center gap-2 text-center transition cursor-pointer min-h-[94px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                    rainyDayFriendly
+                      ? 'border-neutral-950 bg-neutral-100 text-neutral-950'
+                      : 'border-neutral-200 bg-white hover:border-neutral-400 text-neutral-800'
+                  }`}
+                >
+                  <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${rainyDayFriendly ? 'bg-neutral-950 text-white' : 'bg-neutral-100 text-neutral-800'}`}>
+                    <CloudRain className="w-4 h-4" aria-hidden="true" />
+                  </span>
+                  <span className="text-xs font-semibold leading-tight">Hợp ngày mưa</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 1. Khoảng giá (Airbnb Segmented Control) */}
+          <div className="border-b border-neutral-200 pb-6">
+            <h3 className="text-sm font-bold text-neutral-950 mb-1">Khoảng giá</h3>
+            <p className="text-xs text-neutral-600 mb-3.5">
+              {activeTab === 'luu-tru'
+                ? 'Chọn mức giá phòng tham khảo mỗi đêm'
+                : 'Chọn mức chi phí dự kiến cho mỗi người'}
+            </p>
+            <div className="rounded-2xl border border-neutral-200 bg-neutral-50/70 p-1 grid grid-cols-2 sm:grid-cols-4 gap-1">
+              {(activeTab === 'quan-an'
+                ? [
+                    { id: 'all' as const, label: 'Tất cả', desc: 'Mọi mức giá' },
+                    { id: '$' as const, label: '$', desc: '< 50k · Bình dân' },
+                    { id: '$$' as const, label: '$$', desc: '50k - 150k' },
+                    { id: '$$$' as const, label: '$$$', desc: '> 150k · Cao cấp' },
+                  ]
+                : activeTab === 'luu-tru'
+                  ? [
+                      { id: 'all' as const, label: 'Tất cả', desc: 'Mọi mức giá' },
+                      { id: '$' as const, label: '$', desc: '< 800k/đêm' },
+                      { id: '$$' as const, label: '$$', desc: '800k - 2tr/đêm' },
+                      { id: '$$$' as const, label: '$$$', desc: '> 2tr/đêm' },
+                    ]
+                  : activeTab === 'di-tich' || activeTab === 'canh-quan'
+                    ? [
+                        { id: 'free' as const, label: '0đ', desc: 'Miễn phí vé' },
+                        { id: '$' as const, label: '$', desc: '< 50k' },
+                        { id: '$$' as const, label: '$$', desc: '50k - 200k' },
+                        { id: '$$$' as const, label: '$$$', desc: '> 200k' },
+                      ]
+                    : [
+                        { id: 'all' as const, label: 'Tất cả', desc: 'Mọi mức giá' },
+                        { id: '$' as const, label: '$', desc: '< 100k' },
+                        { id: '$$' as const, label: '$$', desc: '100k - 400k' },
+                        { id: '$$$' as const, label: '$$$', desc: '> 400k' },
+                      ]
+              ).map(({ id, label, desc }) => {
+                const isSelected = budget === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setBudget(isSelected && id !== 'all' ? 'all' : id)}
+                    className={`min-h-[54px] px-2.5 py-2 rounded-xl text-center transition cursor-pointer flex flex-col items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                      isSelected
+                        ? 'bg-white border-2 border-neutral-950 text-neutral-950 shadow-xs'
+                        : 'border-2 border-transparent text-neutral-700 hover:bg-white/70'
+                    }`}
+                  >
+                    <span className="text-xs font-bold">{label}</span>
+                    <span className="text-xs text-neutral-600 mt-0.5 leading-tight">{desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Loại hình cụ thể */}
           {activeTab !== 'all' && SPECIFIC_FACETS_BY_CATEGORY[activeTab] && (
-            <div className="border-b border-gray-100 pb-5">
+            <div className="border-b border-neutral-200 pb-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[14px] font-bold text-gray-950">
+                <h3 className="text-sm font-bold text-neutral-950">
                   {CATEGORY_FACET_TITLES[activeTab] || 'Loại hình cụ thể'}
                 </h3>
                 {subCategories.length > 0 && (
-                  <span className="text-xs text-gray-500 font-medium">{subCategories.length} đã chọn</span>
+                  <span className="text-xs text-neutral-600 font-semibold">{subCategories.length} đã chọn</span>
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1035,16 +1181,17 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
                     <button
                       key={id}
                       type="button"
+                      aria-pressed={isSelected}
                       onClick={() => toggleArrayItem(subCategories, id, setSubCategories)}
-                      className={`px-3.5 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`min-h-[40px] px-3.5 py-2 rounded-full border text-xs transition cursor-pointer flex items-center gap-1.5 ${
                         isSelected
-                          ? 'bg-black border-black text-white font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                      } ${count === 0 && !isSelected ? 'opacity-40' : ''}`}
+                          ? 'bg-neutral-950 border-neutral-950 text-white font-semibold shadow-xs'
+                          : 'bg-white border-neutral-300 text-neutral-800 hover:border-neutral-950 font-medium'
+                      } ${count === 0 && !isSelected ? 'opacity-45' : ''}`}
                     >
                       <span>{label}</span>
                       {count !== null && (
-                        <span className={`text-[11px] ${isSelected ? 'text-gray-300' : 'text-gray-400'}`}>
+                        <span className={`text-xs ${isSelected ? 'text-neutral-300' : 'text-neutral-600'}`}>
                           ({count})
                         </span>
                       )}
@@ -1055,13 +1202,13 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
             </div>
           )}
 
-          {/* 2. Đặc trưng (Features - chuẩn Mindtrip, phân biệt rõ với Loại hình) */}
+          {/* 3. Đặc trưng */}
           {activeTab !== 'all' && FEATURES_BY_CATEGORY[activeTab] && (
-            <div className="border-b border-gray-100 pb-5">
+            <div className="border-b border-neutral-200 pb-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[14px] font-bold text-gray-950">Đặc trưng</h3>
+                <h3 className="text-sm font-bold text-neutral-950">Đặc trưng &amp; Tiện ích</h3>
                 {features.length > 0 && (
-                  <span className="text-xs text-gray-500 font-medium">{features.length} đã chọn</span>
+                  <span className="text-xs text-neutral-600 font-semibold">{features.length} đã chọn</span>
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1072,16 +1219,17 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
                     <button
                       key={id}
                       type="button"
+                      aria-pressed={isSelected}
                       onClick={() => toggleArrayItem(features, id, setFeatures)}
-                      className={`px-3.5 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`min-h-[40px] px-3.5 py-2 rounded-full border text-xs transition cursor-pointer flex items-center gap-1.5 ${
                         isSelected
-                          ? 'bg-black border-black text-white font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                      } ${count === 0 && !isSelected ? 'opacity-40' : ''}`}
+                          ? 'bg-neutral-950 border-neutral-950 text-white font-semibold shadow-xs'
+                          : 'bg-white border-neutral-300 text-neutral-800 hover:border-neutral-950 font-medium'
+                      } ${count === 0 && !isSelected ? 'opacity-45' : ''}`}
                     >
                       <span>{label}</span>
                       {count !== null && (
-                        <span className={`text-[11px] ${isSelected ? 'text-gray-300' : 'text-gray-400'}`}>
+                        <span className={`text-xs ${isSelected ? 'text-neutral-300' : 'text-neutral-600'}`}>
                           ({count})
                         </span>
                       )}
@@ -1092,15 +1240,15 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
             </div>
           )}
 
-          {/* 3. Rating - CHỈ HIỂN THỊ KHI Ở CÁC NHÓM DI TÍCH / CẢNH QUAN, BỎ Ở TAB "TẤT CẢ" VÀ "ẨM THỰC" */}
+          {/* 4. Đánh giá tối thiểu */}
           {activeTab !== 'all' && activeTab !== 'quan-an' && (
-            <div className="border-b border-gray-100 pb-5">
-              <h3 className="text-[14px] font-bold text-gray-950 mb-3">Đánh giá</h3>
+            <div className="border-b border-neutral-200 pb-6">
+              <h3 className="text-sm font-bold text-neutral-950 mb-3">Đánh giá tối thiểu</h3>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { value: 3.0, label: '★ 3+' },
+                  { value: 3.0, label: '★ 3.0+' },
                   { value: 3.5, label: '★ 3.5+' },
-                  { value: 4.0, label: '★ 4+' },
+                  { value: 4.0, label: '★ 4.0+' },
                   { value: 4.5, label: '★ 4.5+' },
                 ].map(({ value, label }) => {
                   const isSelected = minRating === value;
@@ -1108,11 +1256,12 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
                     <button
                       key={label}
                       type="button"
+                      aria-pressed={isSelected}
                       onClick={() => setMinRating(isSelected ? null : value)}
-                      className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer ${
+                      className={`min-h-[40px] px-4 py-2 rounded-full border text-xs transition cursor-pointer ${
                         isSelected
-                          ? 'bg-black border-black text-white font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
+                          ? 'bg-neutral-950 border-neutral-950 text-white font-semibold shadow-xs'
+                          : 'bg-white border-neutral-300 text-neutral-800 hover:border-neutral-950 font-medium'
                       }`}
                     >
                       {label}
@@ -1123,224 +1272,60 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
             </div>
           )}
 
-          {/* 4. Giờ mở cửa & Thời điểm */}
-          <div className="border-b border-gray-100 pb-5">
-            <h3 className="text-[14px] font-bold text-gray-950 mb-3">Thời gian hoạt động</h3>
+          {/* 5. Thời gian hoạt động */}
+          <div className="border-b border-neutral-200 pb-6">
+            <h3 className="text-sm font-bold text-neutral-950 mb-3">Khung giờ trải nghiệm</h3>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setOpenNowOnly(!openNowOnly)}
-                className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer ${
-                  openNowOnly
-                    ? 'bg-black border-black text-white font-medium shadow-sm'
-                    : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                }`}
-              >
-                Đang mở cửa
-              </button>
-              <button
-                type="button"
+                aria-pressed={timeOfDay.includes('morning')}
                 onClick={() => {
                   if (timeOfDay.includes('morning')) setTimeOfDay(timeOfDay.filter((t) => t !== 'morning'));
                   else setTimeOfDay([...timeOfDay, 'morning']);
                 }}
-                className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer ${
+                className={`min-h-[40px] px-4 py-2 rounded-full border text-xs transition cursor-pointer ${
                   timeOfDay.includes('morning')
-                    ? 'bg-black border-black text-white font-medium shadow-sm'
-                    : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
+                    ? 'bg-neutral-950 border-neutral-950 text-white font-semibold shadow-xs'
+                    : 'bg-white border-neutral-300 text-neutral-800 hover:border-neutral-950 font-medium'
                 }`}
               >
                 Ban ngày
               </button>
               <button
                 type="button"
+                aria-pressed={timeOfDay.includes('evening')}
                 onClick={() => {
                   if (timeOfDay.includes('evening')) setTimeOfDay(timeOfDay.filter((t) => t !== 'evening'));
                   else setTimeOfDay([...timeOfDay, 'evening']);
                 }}
-                className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer ${
+                className={`min-h-[40px] px-4 py-2 rounded-full border text-xs transition cursor-pointer ${
                   timeOfDay.includes('evening')
-                    ? 'bg-black border-black text-white font-medium shadow-sm'
-                    : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
+                    ? 'bg-neutral-950 border-neutral-950 text-white font-semibold shadow-xs'
+                    : 'bg-white border-neutral-300 text-neutral-800 hover:border-neutral-950 font-medium'
                 }`}
               >
-                Buổi tối & Đêm
-              </button>
-            </div>
-          </div>
-
-          {/* 5. Tiện ích, Bản địa ít đông & Chuẩn Xanh */}
-          <div className="border-b border-gray-100 pb-5">
-            <h3 className="text-[14px] font-bold text-gray-950 mb-3">Tiêu chuẩn &amp; Bản địa ít đông</h3>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                aria-pressed={localAuthenticOnly}
-                onClick={() => setLocalAuthenticOnly(!localAuthenticOnly)}
-                className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                  localAuthenticOnly
-                    ? 'bg-emerald-900 border-emerald-900 text-white font-medium shadow-sm'
-                    : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                }`}
-              >
-                <span>Bản địa ít đông (Tây sông Hàn &amp; Làng nghề)</span>
+                Buổi tối &amp; Đêm
               </button>
               {activeTab === 'all' && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setEcoCertifiedOnly(!ecoCertifiedOnly)}
-                    className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                      ecoCertifiedOnly
-                        ? 'bg-black border-black text-white font-medium shadow-sm'
-                        : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                    }`}
-                  >
-                    <span>🍃 Chuẩn Xanh</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFreeTicketOnly(!freeTicketOnly)}
-                    className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer ${
-                      freeTicketOnly
-                        ? 'bg-black border-black text-white font-medium shadow-sm'
-                        : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                    }`}
-                  >
-                    Miễn phí vé
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRainyDayFriendly(!rainyDayFriendly)}
-                    className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer ${
-                      rainyDayFriendly
-                        ? 'bg-black border-black text-white font-medium shadow-sm'
-                        : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                    }`}
-                  >
-                    Thân thiện ngày mưa
-                  </button>
-                </>
+                <button
+                  type="button"
+                  aria-pressed={freeTicketOnly}
+                  onClick={() => setFreeTicketOnly(!freeTicketOnly)}
+                  className={`min-h-[40px] px-4 py-2 rounded-full border text-xs transition cursor-pointer ${
+                    freeTicketOnly
+                      ? 'bg-neutral-950 border-neutral-950 text-white font-semibold shadow-xs'
+                      : 'bg-white border-neutral-300 text-neutral-800 hover:border-neutral-950 font-medium'
+                  }`}
+                >
+                  Miễn phí vé
+                </button>
               )}
             </div>
           </div>
 
-          {/* 6. Khoảng giá */}
-          <div className="border-b border-gray-100 pb-5">
-            <h3 className="text-[14px] font-bold text-gray-950 mb-3">Khoảng giá</h3>
-            <div className="flex flex-wrap gap-2">
-              {activeTab === 'quan-an' ? (
-                // Ẩm thực & Cafe: < 50k, 50k - 150k, > 150k
-                [
-                  { id: '$' as const, label: '$', desc: '< 50k (Bình dân / Cafe)' },
-                  { id: '$$' as const, label: '$$', desc: '50k - 150k (Tiêu chuẩn)' },
-                  { id: '$$$' as const, label: '$$$', desc: '> 150k (Cao cấp)' },
-                ].map(({ id, label, desc }) => {
-                  const isSelected = budget === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setBudget(isSelected ? 'all' : id)}
-                      className={`px-3.5 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-black border-black text-white font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                      }`}
-                    >
-                      <span className="font-semibold">{label}</span>
-                      <span className={`text-[11px] ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                        {desc}
-                      </span>
-                    </button>
-                  );
-                })
-              ) : activeTab === 'luu-tru' ? (
-                // Lưu trú xanh theo giá / đêm
-                [
-                  { id: '$' as const, label: '$', desc: '< 800k/đêm · Tiết kiệm' },
-                  { id: '$$' as const, label: '$$', desc: '800k - 2tr/đêm · Tiêu chuẩn' },
-                  { id: '$$$' as const, label: '$$$', desc: '> 2tr/đêm · Cao cấp' },
-                ].map(({ id, label, desc }) => {
-                  const isSelected = budget === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setBudget(isSelected ? 'all' : id)}
-                      className={`px-3.5 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-black border-black text-white font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                      }`}
-                    >
-                      <span className="font-semibold">{label}</span>
-                      <span className={`text-[11px] ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                        {desc}
-                      </span>
-                    </button>
-                  );
-                })
-              ) : activeTab === 'di-tich' || activeTab === 'canh-quan' ? (
-                // Di tích / Cảnh quan: Miễn phí, < 50k, 50k - 200k, > 200k
-                [
-                  { id: 'free' as const, label: '0đ', desc: 'Miễn phí vé' },
-                  { id: '$' as const, label: '$', desc: '< 50k (Vé phổ thông)' },
-                  { id: '$$' as const, label: '$$', desc: '50k - 200k (Di tích / Lăng)' },
-                  { id: '$$$' as const, label: '$$$', desc: '> 200k (Khu du lịch)' },
-                ].map(({ id, label, desc }) => {
-                  const isSelected = budget === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setBudget(isSelected ? 'all' : id)}
-                      className={`px-3.5 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-black border-black text-white font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                      }`}
-                    >
-                      <span className="font-semibold">{label}</span>
-                      <span className={`text-[11px] ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                        {desc}
-                      </span>
-                    </button>
-                  );
-                })
-              ) : (
-                // Tất cả
-                [
-                  { id: '$' as const, label: '$', desc: '< 100k' },
-                  { id: '$$' as const, label: '$$', desc: '100k - 400k' },
-                  { id: '$$$' as const, label: '$$$', desc: '> 400k' },
-                ].map(({ id, label, desc }) => {
-                  const isSelected = budget === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setBudget(isSelected ? 'all' : id)}
-                      className={`px-3.5 py-2 rounded-full border text-[13px] transition-all cursor-pointer flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-black border-black text-white font-medium shadow-sm'
-                          : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
-                      }`}
-                    >
-                      <span className="font-semibold">{label}</span>
-                      <span className={`text-[11px] ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                        {desc}
-                      </span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* 7. Khoảng cách từ trung tâm */}
+          {/* 6. Khoảng cách từ trung tâm */}
           <div>
-            <h3 className="text-[14px] font-bold text-gray-950 mb-3">Khoảng cách từ trung tâm</h3>
+            <h3 className="text-sm font-bold text-neutral-950 mb-3">Khoảng cách từ trung tâm</h3>
             <div className="flex flex-wrap gap-2">
               {[
                 { value: 1, label: '1 km' },
@@ -1354,11 +1339,12 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
                   <button
                     key={label}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => setRadiusKm(value)}
-                    className={`px-4 py-2 rounded-full border text-[13px] transition-all cursor-pointer ${
+                    className={`min-h-[40px] px-4 py-2 rounded-full border text-xs transition cursor-pointer ${
                       isSelected
-                        ? 'bg-black border-black text-white font-medium shadow-sm'
-                        : 'bg-white border-gray-200 text-gray-800 hover:border-gray-400 font-normal'
+                        ? 'bg-neutral-950 border-neutral-950 text-white font-semibold shadow-xs'
+                        : 'bg-white border-neutral-300 text-neutral-800 hover:border-neutral-950 font-medium'
                     }`}
                   >
                     {label}
@@ -1367,34 +1353,33 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
               })}
             </div>
           </div>
-
         </div>
 
-        {/* ── FOOTER ── */}
-        <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-between shrink-0">
+        {/* ── FOOTER (Airbnb Clear all + Show N places) ── */}
+        <div className="px-6 py-4 bg-white border-t border-neutral-200 flex items-center justify-between shrink-0">
           <button
             type="button"
             onClick={handleClear}
             disabled={isDefaultState || isApplying}
-            className={`text-sm font-medium transition cursor-pointer ${
+            className={`min-h-[40px] px-2 text-sm font-semibold transition cursor-pointer ${
               isDefaultState || isApplying
-                ? 'text-gray-300 cursor-not-allowed'
-                : 'text-gray-500 hover:text-black underline underline-offset-4'
+                ? 'text-neutral-400 cursor-not-allowed'
+                : 'text-neutral-900 hover:text-black underline underline-offset-4'
             }`}
           >
-            Đặt lại
+            Xóa tất cả
           </button>
 
           <button
             type="button"
             onClick={handleApplyWithFeedback}
             disabled={isApplying}
-            className="bg-black hover:bg-neutral-800 active:scale-95 text-white font-semibold text-sm px-7 py-2.5 rounded-full transition-all shadow-md flex items-center gap-2 cursor-pointer select-none"
+            className="bg-neutral-950 hover:bg-neutral-800 active:scale-[0.98] text-white font-semibold text-sm min-h-[44px] px-7 rounded-xl transition shadow-sm flex items-center gap-2 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
           >
             {isApplying ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>Đang áp dụng...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-white" aria-hidden="true" />
+                <span>Đang áp dụng…</span>
               </>
             ) : (
               <span>
@@ -1403,7 +1388,6 @@ export const ExploreFilterModal: React.FC<ExploreFilterModalProps> = ({
             )}
           </button>
         </div>
-
       </div>
     </div>
   );

@@ -1,0 +1,375 @@
+/* Lucian UX/UI Prompt #089 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#089 */
+.u089-page {
+  min-height: 100dvh;
+  width: 100%;
+  padding: 24px 16px;
+  background: var(--ux-page);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.u089 {
+  position: relative;
+  width: min(400px, 100%);
+  min-height: 432px;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  border-radius: 30px;
+  background: var(--ux-surface);
+  box-shadow:
+    0 0 0 1px var(--ux-line),
+    0 30px 60px -36px var(--ux-shadow-strong);
+  overflow: hidden;
+  text-align: center;
+}
+
+.u089-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 14px;
+  background: var(--ux-surface-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ux-ink-2);
+  text-align: left;
+  overflow: hidden;
+}
+
+.u089-url svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.u089-url-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u089-url b {
+  font-weight: 750;
+  color: var(--ux-ink);
+  text-decoration: underline wavy var(--ux-danger);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+  text-decoration-skip-ink: none;
+  transition: color 0.3s;
+}
+
+.u089.fixing .u089-url b {
+  text-decoration-color: transparent;
+}
+
+.u089.found .u089-url b {
+  color: var(--ux-mint);
+  text-decoration-color: transparent;
+}
+
+.u089-url b::after {
+  content: "";
+  display: inline-block;
+  width: 1.5px;
+  height: 15px;
+  margin-left: 1px;
+  vertical-align: -2px;
+  background: var(--ux-accent);
+  opacity: 0;
+}
+
+.u089.fixing .u089-url b::after {
+  opacity: 1;
+  animation: u089-c 0.8s steps(1) infinite;
+}
+
+@keyframes u089-c {
+  50% {
+    opacity: 0;
+  }
+}
+
+.u089-num {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  height: 96px;
+  margin-top: 18px;
+  font-size: 82px;
+  font-weight: 850;
+  letter-spacing: -0.05em;
+  line-height: 96px;
+  font-variant-numeric: tabular-nums;
+}
+
+.u089-d {
+  height: 96px;
+  overflow: hidden;
+  transition: transform 0.5s var(--ux-spring);
+}
+
+.u089-d:first-child {
+  transform: rotate(calc(var(--r, 0) * -7deg));
+}
+
+.u089-d:last-child {
+  transform: rotate(calc(var(--r, 0) * 7deg));
+}
+
+.u089-col {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(calc(var(--v) * -96px));
+  transition: transform 1s cubic-bezier(0.6, -0.15, 0.25, 1.2);
+}
+
+.u089-d:last-child .u089-col {
+  transition-delay: 0.12s;
+}
+
+.u089-col span {
+  height: 96px;
+}
+
+.u089-cp {
+  width: 72px;
+  height: 72px;
+  margin: 0 2px;
+}
+
+.u089-cp svg {
+  display: block;
+  width: 72px;
+  height: 72px;
+  overflow: visible;
+}
+
+.u089-ring {
+  fill: none;
+  stroke: var(--ux-ink);
+  stroke-width: 11;
+  transition: stroke 0.5s;
+}
+
+.u089.found .u089-ring {
+  stroke: var(--ux-mint);
+}
+
+.u089-tk {
+  stroke: var(--ux-ink-3);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.u089-wob {
+  transform-origin: 36px 36px;
+}
+
+.u089:not(.trk):not(.found) .u089-wob {
+  animation: u089-w 3.4s ease-in-out infinite;
+}
+
+@keyframes u089-w {
+  0%,
+  100% {
+    transform: rotate(-16deg);
+  }
+  50% {
+    transform: rotate(18deg);
+  }
+}
+
+.u089-nd {
+  transform-origin: 36px 36px;
+}
+
+.u089-hub {
+  fill: var(--ux-surface);
+  stroke: var(--ux-ink);
+  stroke-width: 2;
+}
+
+.u089-t {
+  margin: 14px 0 0;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ux-ink);
+}
+
+.u089-s {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ux-ink-2);
+}
+
+.u089-t,
+.u089-s {
+  transition:
+    opacity 0.25s,
+    transform 0.35s var(--ux-ease);
+}
+
+.u089.swap .u089-t,
+.u089.swap .u089-s {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.u089-lab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  margin-top: 20px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ux-ink-2);
+}
+
+.u089-re {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ux-surface-2);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ux-ink-2);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.3s,
+    visibility 0s 0.3s;
+}
+
+.u089.found .u089-re {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s;
+}
+
+.u089-re:hover {
+  color: var(--ux-ink);
+  background: var(--ux-surface-3);
+}
+
+.u089-sug {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.u089-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  text-align: left;
+  transition:
+    background-color 0.2s,
+    opacity 0.3s;
+}
+
+.u089-row:hover:not(:disabled) {
+  background: var(--ux-surface-2);
+}
+
+.u089-row:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.u089-row code {
+  font:
+    750 13px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--ux-ink);
+  flex: none;
+}
+
+.u089-row small {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ux-ink-2);
+}
+
+.u089-m {
+  width: 40px;
+  height: 4px;
+  flex: none;
+  border-radius: 2px;
+  background: var(--ux-surface-3);
+  overflow: hidden;
+}
+
+.u089-m i {
+  display: block;
+  height: 100%;
+  width: calc(var(--m) * 100%);
+  border-radius: inherit;
+  background: var(--ux-accent);
+}
+
+.u089-row svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: var(--ux-ink-2);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.3s var(--ux-spring);
+}
+
+.u089-row:hover:not(:disabled) svg {
+  transform: translateX(3px);
+}
+
+.u089-row:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.u089-row.on {
+  background: color-mix(in srgb, var(--ux-mint) 14%, transparent);
+  opacity: 1;
+}
+
+.u089-row.on .u089-m i {
+  background: var(--ux-mint);
+}
+
+.u089-row.on svg {
+  stroke: var(--ux-mint);
+  transform: none;
+}

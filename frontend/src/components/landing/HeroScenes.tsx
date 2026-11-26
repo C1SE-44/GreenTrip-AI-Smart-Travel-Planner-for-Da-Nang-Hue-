@@ -63,7 +63,7 @@ export function HeroScenes({selectedCity,running,reduced}: {selectedCity: keyof 
 
   return <>
     <div className="hero-scenery" aria-hidden="true" data-scene={visibleScene} data-transitioning={!!transition}>
-      {Object.entries(places).map(([id,p])=><div key={id} className={`hero-scene ${sceneClass(id)}`}><div className="hero-scene-motion"><img src={p.image} srcSet={p.srcSet} sizes="100vw" decoding="async" className={`hero-scene-img image-${id}`} alt="" fetchPriority={id===selectedCity?'high':'low'}/></div></div>)}
+      {Object.entries(places).map(([id,p])=><div key={id} className={`hero-scene ${sceneClass(id)}`}><div className="hero-scene-motion"><img src={p.image} srcSet={p.srcSet} sizes="100vw" decoding="async" className={`hero-scene-img image-${id}`} alt="" {...({ fetchpriority: id === selectedCity ? 'high' : 'low' } as Record<string, string>)}/></div></div>)}
       {transition&&<div key={transition.id} className="scene-sweep"/>}
     </div>
     <div className="hero-travelers"><TravelerSprite active={running&&ready&&!reduced} transitionId={beat} reducedMotion={reduced}/></div>

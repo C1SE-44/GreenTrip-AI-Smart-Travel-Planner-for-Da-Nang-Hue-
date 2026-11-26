@@ -45,3 +45,13 @@ test('Home View: HomeDashboardView renders 4 cards & Assistant setup matching Mi
   // Onboarding Modal integration
   assert.ok(content.includes('<OnboardingModal'), 'Must integrate OnboardingModal');
 });
+
+test('Home View: HomeDashboardView renders Airbnb-style real POI carousels, 4 API states, and PoiImage', () => {
+  const content = fs.readFileSync(homeViewPath, 'utf8');
+  const exploreContent = fs.readFileSync(explorePagePath, 'utf8');
+
+  assert.ok(content.includes('HomeCarouselSection'), 'Must render horizontal POI carousel sections');
+  assert.ok(content.includes('<PoiImage'), 'Must use PoiImage component for POI cards');
+  assert.ok(content.includes('poisLoading') && content.includes('poisError') && content.includes('Thử lại'), 'Must handle loading, error, empty and populated states');
+  assert.ok(exploreContent.includes('onSelectPoi={(poi) => handleOpenFullDetail(poi.id)}'), 'ExplorePage must wire onSelectPoi for /home cards');
+});

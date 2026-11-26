@@ -175,7 +175,7 @@ function renderInlineMarkdown(
   onSelectPoi?: (id: string) => void,
   preferredCity?: string
 ) {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
+  const parts = text.split(/(\*\*.*?\*\*|\*[^*\n]+?\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       const inner = part.slice(2, -2);
@@ -200,6 +200,13 @@ function renderInlineMarkdown(
         <strong key={i} className="font-semibold text-neutral-950">
           {inner}
         </strong>
+      );
+    }
+    if (part.length >= 3 && part.startsWith('*') && part.endsWith('*')) {
+      return (
+        <em key={i} className="italic text-neutral-700">
+          {part.slice(1, -1)}
+        </em>
       );
     }
     return part;

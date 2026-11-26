@@ -1,0 +1,258 @@
+/* Lucian UX/UI Prompt #022 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#022 */
+.u022 {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.u022-btn {
+  position: relative;
+  border: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.45s var(--ux-spring),
+    background-color 0.2s var(--ux-ease),
+    box-shadow 0.4s var(--ux-ease),
+    color 0.2s var(--ux-ease);
+}
+
+.u022-btn:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.u022-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.u022-btn:focus-visible {
+  outline: 2px solid #e11d48;
+  outline-offset: 2px;
+}
+
+.u022-btn:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+/* Compact circular overlay variant for ExplorePoiCard (40px touch target) */
+.u022--overlay .u022-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+}
+
+.u022--overlay .u022-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.52);
+}
+
+.u022--overlay.is-on .u022-btn {
+  background: #ffffff;
+  color: #e11d48;
+  box-shadow:
+    0 0 0 1px rgba(225, 29, 72, 0.24),
+    0 8px 20px -8px rgba(225, 29, 72, 0.55);
+}
+
+/* Pill variant with label for PoiDetailSection header */
+.u022--pill .u022-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  gap: 7px;
+  border-radius: 9999px;
+  background: transparent;
+  color: #262626;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.u022--pill .u022-btn:hover:not(:disabled) {
+  background: #f5f5f5;
+  transform: none;
+}
+
+.u022--pill.is-on .u022-btn {
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.u022--pill.is-on .u022-btn:hover:not(:disabled) {
+  background: #ffe4e6;
+}
+
+.u022-stage {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.u022-heart {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.u022-heart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.u022-o {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3.4;
+  stroke-linejoin: round;
+  transition: stroke 0.2s var(--ux-ease);
+}
+
+.u022.is-on .u022-o {
+  stroke: transparent;
+}
+
+.u022-f {
+  transform-origin: 50% 55%;
+  transform: scale(0);
+  transition: transform 0.2s var(--ux-ease);
+}
+
+.u022.is-on .u022-f {
+  transform: scale(1);
+}
+
+.u022.is-pop .u022-heart {
+  animation: u022-beat 0.7s var(--ux-ease);
+}
+
+@keyframes u022-beat {
+  0% {
+    transform: scale(1);
+  }
+  18% {
+    transform: scale(0.72);
+  }
+  48% {
+    transform: scale(1.24);
+  }
+  70% {
+    transform: scale(0.94);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.u022.is-pop .u022-f {
+  animation: u022-fill 0.7s var(--ux-ease);
+}
+
+@keyframes u022-fill {
+  0%,
+  18% {
+    transform: scale(0);
+  }
+  48% {
+    transform: scale(1);
+  }
+}
+
+.u022-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px;
+  border-radius: 50%;
+  border: 5px solid #ff7a93;
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.u022.is-pop .u022-ring {
+  animation: u022-ring 0.6s var(--ux-ease) 0.1s;
+}
+
+@keyframes u022-ring {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+    border-width: 8px;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+    border-width: 0;
+  }
+}
+
+.u022-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  transform: rotate(var(--a));
+}
+
+.u022-dot i {
+  position: absolute;
+  width: 4.5px;
+  height: 4.5px;
+  margin: -2.25px;
+  border-radius: 50%;
+  background: var(--c);
+  opacity: 0;
+}
+
+.u022-dot i + i {
+  width: 3px;
+  height: 3px;
+  margin: -1.5px;
+  background: var(--c2);
+}
+
+.u022.is-pop .u022-dot i {
+  animation: u022-fly 0.7s var(--ux-ease) 0.18s;
+}
+
+.u022.is-pop .u022-dot i + i {
+  animation-name: u022-fly2;
+}
+
+@keyframes u022-fly {
+  0% {
+    opacity: 1;
+    transform: translate(0, -14px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, -28px) scale(0.2);
+  }
+}
+
+@keyframes u022-fly2 {
+  0% {
+    opacity: 1;
+    transform: translate(4px, -12px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(7px, -24px) scale(0.2);
+  }
+}

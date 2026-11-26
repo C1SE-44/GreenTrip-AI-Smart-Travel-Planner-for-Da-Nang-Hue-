@@ -28,7 +28,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
       widgets: (
         <>
           {/* Bubble 1 (Top Left) */}
-          <div className="absolute top-12 left-4 lg:left-4 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5">
+          <div className="absolute top-12 left-4 lg:left-4 max-w-[calc(100%-2rem)] rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5">
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center gap-3">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 shrink-0">
@@ -36,7 +36,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
-              <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-neutral-900 sm:whitespace-nowrap">
                 Ưu tiên quán bản địa ít người biết.
               </p>
             </div>
@@ -44,7 +44,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
 
           {/* Bubble 2 (Middle Right) */}
           <div
-            className="absolute top-[40%] right-4 lg:right-4 -translate-y-1/2 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
+            className="absolute top-[40%] right-4 lg:right-4 max-w-[calc(100%-2rem)] -translate-y-1/2 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
             style={{ animationDelay: '150ms' }}
           >
             <div className="flex flex-col gap-2.5">
@@ -54,7 +54,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
-              <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-neutral-900 sm:whitespace-nowrap">
                 3 ngày cuối tuần · Thong thả, không chạy sô.
               </p>
             </div>
@@ -62,7 +62,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
 
           {/* Bubble 3 (Bottom Left) */}
           <div
-            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
+            className="absolute bottom-32 left-4 lg:left-4 max-w-[calc(100%-2rem)] rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
             style={{ animationDelay: '300ms' }}
           >
             <div className="flex flex-col gap-2.5">
@@ -72,17 +72,18 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
-              <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-neutral-900 sm:whitespace-nowrap">
                 Cà phê muối &amp; Du lịch xanh giảm phát thải.
               </p>
             </div>
           </div>
 
           {/* Soundwave Dial Button (Mindtrip-styled concentric glass dial) */}
-          <div
+          <button
+            type="button"
             onClick={onOpenSample}
             aria-label="Xem gợi ý theo gu"
-            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex h-20 w-20 items-center justify-center rounded-full bg-white/95 backdrop-blur-2xl border border-white/80 shadow-[0_16px_40px_rgba(0,0,0,0.28)] ring-4 ring-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer z-10"
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex h-20 w-20 items-center justify-center rounded-full !bg-white/95 backdrop-blur-2xl border border-white/80 shadow-[0_16px_40px_rgba(0,0,0,0.28)] ring-4 ring-white/20 hover:scale-105 active:scale-95 transition-transform cursor-pointer z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
           >
             <div className="flex items-center gap-1.5">
               <div className="w-1 h-3.5 bg-neutral-900 rounded-full animate-pulseRing" />
@@ -91,7 +92,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
               <div className="w-1 h-5 bg-neutral-900 rounded-full animate-pulseRing" style={{ animationDelay: '150ms' }} />
               <div className="w-1 h-2.5 bg-neutral-900 rounded-full animate-pulseRing" style={{ animationDelay: '250ms' }} />
             </div>
-          </div>
+          </button>
         </>
       ),
     },
@@ -112,7 +113,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
       widgets: (
         <>
           {/* Bubble 1 (Top Left) */}
-          <div className="absolute top-12 left-4 lg:left-4 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5">
+          <div className="absolute top-12 left-4 lg:left-4 max-w-[calc(100%-2rem)] rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5">
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center gap-3">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 shrink-0">
@@ -120,15 +121,15 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
-              <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
-                <span className="line-through text-neutral-400 font-normal">2h 35m / 42.8 km</span> → Tuyến tối ưu: 1h 15m (-52%).
+              <p className="text-[13px] font-bold text-neutral-900 sm:whitespace-nowrap">
+                <span className="line-through text-neutral-600 font-normal">2h 35m / 42.8 km</span> → Tuyến tối ưu: 1h 15m (-52%).
               </p>
             </div>
           </div>
 
           {/* Bubble 2 (Middle Right) */}
           <div
-            className="absolute top-[40%] right-4 lg:right-4 -translate-y-1/2 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
+            className="absolute top-[40%] right-4 lg:right-4 max-w-[calc(100%-2rem)] -translate-y-1/2 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
             style={{ animationDelay: '150ms' }}
           >
             <div className="flex flex-col gap-2.5">
@@ -138,7 +139,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
-              <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-neutral-900 sm:whitespace-nowrap">
                 Trợ lý du lịch AI: Chiều nay ngắm hoàng hôn đèo nhé?
               </p>
             </div>
@@ -146,7 +147,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
 
           {/* Bubble 3 (Bottom Left) */}
           <div
-            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
+            className="absolute bottom-32 left-4 lg:left-4 max-w-[calc(100%-2rem)] rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
             style={{ animationDelay: '300ms' }}
           >
             <div className="flex flex-col gap-2.5">
@@ -156,17 +157,18 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
-              <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-neutral-900 sm:whitespace-nowrap">
                 Gom cụm Hải Châu – Sơn Trà · Tiết kiệm 4.6 kg CO₂.
               </p>
             </div>
           </div>
 
           {/* Soundwave Dial Button */}
-          <div
+          <button
+            type="button"
             onClick={onOpenSample}
             aria-label="Xem lộ trình tối ưu"
-            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex h-20 w-20 items-center justify-center rounded-full bg-white/95 backdrop-blur-2xl border border-white/80 shadow-[0_16px_40px_rgba(0,0,0,0.28)] ring-4 ring-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer z-10"
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex h-20 w-20 items-center justify-center rounded-full !bg-white/95 backdrop-blur-2xl border border-white/80 shadow-[0_16px_40px_rgba(0,0,0,0.28)] ring-4 ring-white/20 hover:scale-105 active:scale-95 transition-transform cursor-pointer z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
           >
             <div className="flex items-center gap-1.5">
               <div className="w-1 h-3.5 bg-neutral-900 rounded-full animate-pulseRing" />
@@ -175,7 +177,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
               <div className="w-1 h-5 bg-neutral-900 rounded-full animate-pulseRing" style={{ animationDelay: '150ms' }} />
               <div className="w-1 h-2.5 bg-neutral-900 rounded-full animate-pulseRing" style={{ animationDelay: '250ms' }} />
             </div>
-          </div>
+          </button>
         </>
       ),
     },
@@ -196,7 +198,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
       widgets: (
         <>
           {/* Bubble 1 (Top Left) */}
-          <div className="absolute top-12 left-4 lg:left-4 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5">
+          <div className="absolute top-12 left-4 lg:left-4 max-w-[calc(100%-2rem)] rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5">
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center gap-3">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 shrink-0">
@@ -204,7 +206,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
-              <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-neutral-900 sm:whitespace-nowrap">
                 01. Ý tưởng &amp; 02. Lịch trình khám phá Cố đô Huế.
               </p>
             </div>
@@ -212,7 +214,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
 
           {/* Bubble 2 (Middle Right) */}
           <div
-            className="absolute top-[40%] right-4 lg:right-4 -translate-y-1/2 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
+            className="absolute top-[40%] right-4 lg:right-4 max-w-[calc(100%-2rem)] -translate-y-1/2 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
             style={{ animationDelay: '150ms' }}
           >
             <div className="flex flex-col gap-2.5">
@@ -222,7 +224,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
-              <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-neutral-900 sm:whitespace-nowrap">
                 03. Lịch ngày: Tự dời khi thay đổi thời tiết.
               </p>
             </div>
@@ -230,7 +232,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
 
           {/* Bubble 3 (Bottom Left) */}
           <div
-            className="absolute bottom-32 left-4 lg:left-4 rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
+            className="absolute bottom-32 left-4 lg:left-4 max-w-[calc(100%-2rem)] rounded-[24px] border border-white/70 bg-white/95 p-4 backdrop-blur-2xl shadow-[0_12px_36px_rgba(0,0,0,0.22)] animate-slideUp z-10 transition-transform hover:-translate-y-0.5"
             style={{ animationDelay: '300ms' }}
           >
             <div className="flex flex-col gap-2.5">
@@ -240,17 +242,18 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 </div>
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
-              <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
+              <p className="text-[13px] font-bold text-neutral-900 sm:whitespace-nowrap">
                 04. Bản đồ số: Tương tác lộ trình hai chiều.
               </p>
             </div>
           </div>
 
           {/* Soundwave Dial Button */}
-          <div
+          <button
+            type="button"
             onClick={onOpenSample}
             aria-label="Xem không gian làm việc đồng bộ"
-            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex h-20 w-20 items-center justify-center rounded-full bg-white/95 backdrop-blur-2xl border border-white/80 shadow-[0_16px_40px_rgba(0,0,0,0.28)] ring-4 ring-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer z-10"
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex h-20 w-20 items-center justify-center rounded-full !bg-white/95 backdrop-blur-2xl border border-white/80 shadow-[0_16px_40px_rgba(0,0,0,0.28)] ring-4 ring-white/20 hover:scale-105 active:scale-95 transition-transform cursor-pointer z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
           >
             <div className="flex items-center gap-1.5">
               <div className="w-1 h-3.5 bg-neutral-900 rounded-full animate-pulseRing" />
@@ -259,7 +262,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
               <div className="w-1 h-5 bg-neutral-900 rounded-full animate-pulseRing" style={{ animationDelay: '150ms' }} />
               <div className="w-1 h-2.5 bg-neutral-900 rounded-full animate-pulseRing" style={{ animationDelay: '250ms' }} />
             </div>
-          </div>
+          </button>
         </>
       ),
     },
@@ -269,7 +272,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
     <div className="flex flex-col gap-8 pt-24 pb-16 bg-[#FAF8F5]">
       {/* Section Header */}
       <div className="text-center max-w-xl mx-auto px-4 mb-4 sm:mb-6">
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 text-[11px] font-semibold tracking-wider uppercase mb-3.5 shadow-2xs">
+        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white border border-neutral-200/80 text-neutral-700 text-xs font-semibold tracking-wider uppercase mb-3.5 shadow-2xs">
           <Sparkles size={12} className="text-neutral-900" />
           CÁCH GREENTRIP HOẠT ĐỘNG
         </div>
@@ -284,7 +287,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
       {/* 3 Separate Feature Panels with In-Page Scroll Nav (Sprint 2 exact layout + Mindtrip refinement) */}
       {features.map((feature) => (
         <section key={feature.id} id={feature.id} className="px-4 md:px-8 scroll-mt-[57px]">
-          <div className={`relative mx-auto max-w-[1200px] overflow-hidden rounded-[40px] text-white min-h-[500px] ${feature.bgColor} shadow-2xl`}>
+          <div className={`relative mx-auto max-w-[1400px] overflow-hidden rounded-[40px] text-white min-h-[500px] ${feature.bgColor} shadow-2xl`}>
             <div className="flex flex-col lg:flex-row min-h-[500px]">
               {/* Left Column (Copy) */}
               <div className="flex flex-col justify-center p-8 sm:p-12 lg:p-16 lg:w-1/2 z-10">
@@ -298,7 +301,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                       className={`rounded-full px-4 sm:px-5 py-1.5 text-xs sm:text-[13px] font-semibold transition-all cursor-pointer ${
                         f.id === feature.id
                           ? 'bg-white text-neutral-900 shadow-md'
-                          : 'text-white/60 hover:text-white hover:bg-white/10'
+                          : 'text-white/85 hover:text-white hover:bg-white/10'
                       }`}
                     >
                       {f.label}
@@ -323,7 +326,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                   className="absolute inset-0 h-full w-full object-cover"
                   loading="lazy"
                 />
-                <div className={`absolute inset-0 bg-gradient-to-r ${feature.gradient} via-${feature.gradient}/40 to-transparent lg:w-48`} />
+                <div className={`absolute inset-0 bg-gradient-to-r ${feature.gradient} to-transparent lg:w-52 opacity-90`} />
                 <div className="absolute inset-0 bg-black/20" />
 
                 {/* Floating Widgets */}

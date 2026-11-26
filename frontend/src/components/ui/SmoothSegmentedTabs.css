@@ -1,0 +1,110 @@
+.gt-tabs {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+}
+
+.gt-tabs--pill {
+  padding: 4px;
+  border-radius: 9999px;
+  background: #f5f3ef;
+  border: 1px solid rgba(10, 10, 10, 0.08);
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gt-tabs--pill::-webkit-scrollbar {
+  display: none;
+}
+
+.gt-tabs--underline {
+  gap: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.gt-tabs--underline::-webkit-scrollbar {
+  display: none;
+}
+
+.gt-tabs-indicator {
+  position: absolute;
+  left: 0;
+  pointer-events: none;
+  transition:
+    transform 0.38s var(--ux-spring, cubic-bezier(0.34, 1.45, 0.64, 1)),
+    width 0.35s var(--ux-ease, cubic-bezier(0.2, 0.8, 0.2, 1)),
+    opacity 0.2s;
+}
+
+.gt-tabs--pill .gt-tabs-indicator {
+  top: 4px;
+  bottom: 4px;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.08),
+    0 4px 10px -4px rgba(15, 23, 42, 0.12);
+}
+
+.gt-tabs--underline .gt-tabs-indicator {
+  bottom: 0;
+  height: 2px;
+  border-radius: 9999px;
+  background: #0a0a0a;
+}
+
+.gt-tab-btn {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.gt-tab-btn:focus-visible {
+  outline: 2px solid #065f46;
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+
+.gt-tabs--pill .gt-tab-btn {
+  min-height: 40px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  color: #525252;
+  font-weight: 500;
+}
+
+.gt-tabs--pill .gt-tab-btn:hover {
+  color: #0a0a0a;
+}
+
+.gt-tabs--pill .gt-tab-btn.is-active {
+  color: #0a0a0a;
+  font-weight: 650;
+}
+
+.gt-tabs--underline .gt-tab-btn {
+  min-height: 42px;
+  padding: 4px 2px 10px;
+  font-size: 13px;
+  color: #525252;
+  font-weight: 500;
+}
+
+.gt-tabs--underline .gt-tab-btn:hover {
+  color: #0a0a0a;
+}
+
+.gt-tabs--underline .gt-tab-btn.is-active {
+  color: #0a0a0a;
+  font-weight: 650;
+}

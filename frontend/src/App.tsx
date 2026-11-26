@@ -6,6 +6,7 @@ import LandingPage from '@/pages/LandingPage';
 import AdminDashboardPage from '@/pages/AdminDashboardPage';
 import DemoQrPage from '@/pages/DemoQrPage';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
+import NotFoundPage from '@/pages/NotFoundPage';
 import { SavedPlacesProvider } from '@/context/SavedPlacesContext';
 
 function App() {
@@ -78,7 +79,7 @@ function App() {
         {/* Committee Live Demo QR Code Page */}
         <Route path="/demo-qr" element={<DemoQrPage />} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
       </SavedPlacesProvider>
     </BrowserRouter>

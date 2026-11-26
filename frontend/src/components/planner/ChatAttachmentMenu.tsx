@@ -15,6 +15,7 @@ import {
   normalizeUrlInput,
   type ReadyAttachment,
 } from './chatAttachmentUtils';
+import FileDropzone from './FileDropzone';
 
 export interface ChatAttachmentMenuProps {
   isOpen: boolean;
@@ -271,6 +272,11 @@ export default function ChatAttachmentMenu({
               </div>
             </div>
           )}
+
+          <FileDropzone
+            onPickFile={(picked) => void processFile(picked)}
+            onBrowseClick={() => fileInputRef.current?.click()}
+          />
 
           {/* Row 1: Upload a file (non-nested interactive controls) */}
           <div className="w-full flex items-start gap-3 rounded-2xl px-3 py-2.5 hover:bg-neutral-100/90 transition relative min-h-[44px]">

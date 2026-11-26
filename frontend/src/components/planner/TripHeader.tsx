@@ -1,13 +1,19 @@
 import { tripRangeLabel } from '@/utils/tripDates';
 import React from 'react';
 import {
+  Calendar,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
+  MapPin,
   RefreshCw,
   SlidersHorizontal,
+  Users,
+  Wallet,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
+import PoiImage from '@/components/ui/PoiImage';
+import SmoothSegmentedTabs from '@/components/ui/SmoothSegmentedTabs';
 import { plannerStyles } from './plannerStyles';
 
 export interface TripHeaderProps {
@@ -34,12 +40,9 @@ export interface TripHeaderProps {
 function formatTripSummarySubtitle(trip: UserTrip, overrideDaysCount?: number): string {
   const rawDate = trip.startDate?.trim() || '';
 
-
-  // 1. Parse date range
   const dashMatch = rawDate.match(/(\d+)\s*[-–]\s*(\d+)\s+(?:tháng|thg)\s*(\d+)/i);
   const ngayMatch = rawDate.match(/^Ngày\s+(\d+)\s*[-–]\s*(\d+)\s+tháng\s+(\d+)/i);
 
-  // 2. Compute days count
   let days = overrideDaysCount || trip.daysCount;
   if (!days) {
     if (dashMatch) {
@@ -51,9 +54,7 @@ function formatTripSummarySubtitle(trip: UserTrip, overrideDaysCount?: number): 
     }
   }
 
-  // 3. Guests count
   const guests = trip.peopleCount || 2;
-
   return `${tripRangeLabel(trip.startDate, days)} · ${days} ngày · ${guests} khách`;
 }
 
@@ -97,96 +98,70 @@ export default function TripHeader({
       : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/fcef1de3-bd58-4eb0-ae95-7d6d8f77f93b.webp';
 
   return (
-    <header className="no-print min-h-[112px] xl:min-h-[64px] relative px-4 sm:px-6 lg:px-[36px] pt-3 pb-[52px] xl:py-0 bg-white border-b border-gray-200/80 flex items-center justify-between gap-3 shrink-0 z-30 select-none">
-      {/* ─── VÙNG TRÁI: NÚT QUAY LẠI + ẢNH NHỎ + TÊN CHUYẾN ĐI & PHỤ ĐỀ ─── */}
-      <div className="flex items-center gap-3 shrink min-w-0 max-w-[calc(100%-56px)] xl:max-w-[35%]">
+    <header className="no-print min-h-[116px] xl:min-h-[68px] relative px-4 sm:px-6 lg:px-8 pt-3 pb-[54px] xl:py-0 bg-white/95 backdrop-blur-md border-b border-neutral-200/80 flex items-center justify-between gap-3 shrink-0 z-30 select-none">
+      {/* Left: Back + Trip Thumbnail + Title & Subtitle */}
+      <div className="flex items-center gap-3 shrink min-w-0 max-w-[calc(100%-56px)] xl:max-w-[36%]">
         <button
           type="button"
           onClick={onBack}
-          className="w-10 h-10 rounded-full border border-gray-200/90 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer shrink-0 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
+          aria-label="Quay lại danh sách chuyến đi"
+          className="w-10 h-10 rounded-full border border-neutral-200 hover:border-neutral-950 flex items-center justify-center text-neutral-800 hover:bg-neutral-50 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
           title="Quay lại danh sách chuyến đi"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={18} aria-hidden="true" />
         </button>
 
-        {/* Thumbnail ảnh nhỏ bo góc 8px */}
-        <img
-          src={trip.image || defaultImage}
-          alt={trip.destination}
-          className="w-9 h-9 rounded-lg object-cover border border-gray-200/80 shrink-0 shadow-2xs hidden sm:block"
-        />
+        <div className="w-10 h-10 rounded-xl overflow-hidden border border-neutral-200/80 shrink-0 hidden sm:block bg-neutral-100">
+          <PoiImage
+            src={trip.image || defaultImage}
+            alt={trip.destination}
+            fallbackSeed={trip.id}
+            className="w-full h-full object-cover"
+          />
+        </div>
 
         <div className="min-w-0">
-          <h1 className={`${plannerStyles.tripTitle} truncate`}>
-            {displayTitle}
-          </h1>
-          <p className="text-[13px] leading-[18px] text-gray-500 font-normal truncate">
+          <h1 className={`${plannerStyles.tripTitle} truncate`}>{displayTitle}</h1>
+          <p className="text-xs leading-[18px] text-neutral-600 font-medium truncate">
             {subtitleText}
           </p>
         </div>
       </div>
 
-      {/* ─── VÙNG GIỮA: Ý TƯỞNG · LỊCH TRÌNH · LỊCH (CHUẨN EXPLORE & MOCKUP) ─── */}
-      <div className={`flex w-max max-w-[calc(100%-24px)] whitespace-nowrap items-center absolute bottom-2 xl:bottom-auto left-1/2 -translate-x-1/2 gap-1 ${plannerStyles.controlText}`}>
-        <button
-          type="button"
-          onClick={() => onNavigateToTab?.('ideas')}
-          aria-pressed={activeTab === 'ideas'}
-          className={`h-10 px-[14px] rounded-full transition-colors font-medium flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
-            activeTab === 'ideas'
-              ? 'bg-black text-white'
-              : 'text-neutral-700 hover:text-black bg-transparent hover:bg-gray-100/60'
-          }`}
-        >
-          Ý tưởng
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onNavigateToTab?.('itinerary')}
-          aria-pressed={activeTab === 'itinerary'}
-          className={`h-10 px-[14px] rounded-full transition-colors font-medium flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
-            activeTab === 'itinerary'
-              ? 'bg-black text-white'
-              : 'text-neutral-700 hover:text-black bg-transparent hover:bg-gray-100/60'
-          }`}
-        >
-          Lịch trình
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onNavigateToTab?.('calendar')}
-          aria-pressed={activeTab === 'calendar'}
-          className={`h-10 px-[14px] rounded-full transition-colors font-medium flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
-            activeTab === 'calendar'
-              ? 'bg-black text-white'
-              : 'text-neutral-700 hover:text-black bg-transparent hover:bg-gray-100/60'
-          }`}
-        >
-          Lịch
-        </button>
+      {/* Center: Smooth Sliding Segmented Workspace Switcher */}
+      <div
+        className={`flex w-max max-w-[calc(100%-24px)] whitespace-nowrap items-center absolute bottom-2 xl:bottom-auto left-1/2 -translate-x-1/2 ${plannerStyles.controlText}`}
+      >
+        <SmoothSegmentedTabs
+          variant="pill"
+          ariaLabel="Chuyển đổi góc nhìn lịch trình"
+          value={activeTab}
+          onChange={(tab) => onNavigateToTab?.(tab)}
+          options={[
+            { id: 'ideas', label: 'Ý tưởng' },
+            { id: 'itinerary', label: 'Lịch trình' },
+            { id: 'calendar', label: 'Lịch' },
+          ]}
+        />
       </div>
 
-      {/* ─── VÙNG PHẢI: TRẠNG THÁI LƯU (NẾU ĐANG LƯU/LỖI) + ĐƯỜNG PHÂN CÁCH + NÚT TÙY CHỈNH ─── */}
-      <div className="flex items-center gap-2.5 shrink-0">
-        {/* Phản hồi khi đang lưu hoặc lỗi - không đẩy cụm tab ở giữa vì tab căn absolute giữa */}
+      {/* Right: Save status + Extra actions + Customize Popover */}
+      <div className="flex items-center gap-2 shrink-0">
         {isSaving ? (
-          <span className="text-[12px] text-amber-700 hidden md:flex items-center gap-1 font-medium mr-1 animate-pulse">
-            <RefreshCw size={11} className="animate-spin" /> Đang lưu...
+          <span className="text-xs text-amber-800 hidden md:flex items-center gap-1.5 font-semibold mr-1">
+            <RefreshCw size={12} className="animate-spin" aria-hidden="true" />
+            <span>Đang lưu…</span>
           </span>
         ) : saveError ? (
-          <span className="text-[12px] text-rose-600 hidden md:flex items-center gap-1 font-medium mr-1">
+          <span className="text-xs text-rose-700 hidden md:flex items-center gap-1 font-semibold mr-1">
             Lưu lỗi
           </span>
         ) : null}
 
         {rightActions}
 
-        {/* Đường gạch phân cách nhẹ nhàng chuẩn mockup */}
-        <div className="h-5 w-px bg-gray-200 hidden sm:block" />
+        <div className="h-5 w-px bg-neutral-200 hidden sm:block" aria-hidden="true" />
 
-        {/* Nút Tùy chỉnh với Dropdown Popover 4 thông số */}
         <div className="relative">
           <button
             type="button"
@@ -194,117 +169,121 @@ export default function TripHeader({
               e.stopPropagation();
               setShowCustomSettings(!showCustomSettings);
             }}
-            className={`h-10 w-10 sm:w-auto sm:px-3.5 rounded-full border border-gray-200/90 hover:border-black text-[13px] font-medium transition flex items-center gap-2 shadow-2xs cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black ${
-              showCustomSettings ? 'bg-black text-white' : 'bg-white hover:bg-gray-50 text-gray-900'
+            className={`h-10 w-10 sm:w-auto sm:px-4 rounded-full border text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+              showCustomSettings
+                ? 'bg-neutral-950 border-neutral-950 text-white'
+                : 'bg-white border-neutral-300 hover:border-neutral-950 text-neutral-900'
             }`}
             title="Tùy chỉnh thông số chuyến đi"
             aria-expanded={showCustomSettings}
           >
-            <SlidersHorizontal size={14} className={showCustomSettings ? 'text-white' : 'text-gray-700'} />
+            <SlidersHorizontal size={14} aria-hidden="true" />
             <span className="hidden sm:inline">Tùy chỉnh</span>
             <ChevronDown
-              size={12}
+              size={13}
+              aria-hidden="true"
               className={`hidden sm:block transition-transform duration-200 ${showCustomSettings ? 'rotate-180' : ''}`}
             />
           </button>
 
-          {/* Popover chứa 4 thông số */}
           {showCustomSettings && (
             <div
-              className="absolute right-0 top-11 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 animate-fadeIn"
+              className="absolute right-0 top-12 w-76 bg-white rounded-2xl shadow-[0_12px_36px_rgba(0,0,0,0.14)] border border-neutral-200 p-2 z-50 animate-fadeIn divide-y divide-neutral-100"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-[12px] font-bold text-gray-400 px-2.5 py-1 uppercase tracking-wider">
-                Tùy chỉnh chuyến đi
+              <div className="text-xs font-bold text-neutral-600 px-3 py-2">
+                Thông số chuyến đi
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCustomSettings(false);
-                  onOpenWhere?.();
-                }}
-                className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                    <i className="ph-fill ph-map-pin text-sm"></i>
-                  </div>
-                  <div>
-                    <div className="text-[12px] text-gray-500 font-medium">Điểm đến</div>
-                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">
-                      {trip.destination}
+              <div className="pt-1 space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    onOpenWhere?.();
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-neutral-50 transition flex items-center justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/70 text-emerald-800 flex items-center justify-center shrink-0">
+                      <MapPin size={16} aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs text-neutral-600 font-medium">Điểm đến</div>
+                      <div className="text-sm font-semibold text-neutral-950 truncate">
+                        {trip.destination}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
-              </button>
+                  <ChevronRight size={15} className="text-neutral-500 group-hover:text-neutral-950 shrink-0" aria-hidden="true" />
+                </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCustomSettings(false);
-                  onOpenWhen?.();
-                }}
-                className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-                    <i className="ph-fill ph-calendar text-sm"></i>
-                  </div>
-                  <div>
-                    <div className="text-[12px] text-gray-500 font-medium">Thời gian bắt đầu</div>
-                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">
-                      {formatStartingDate(trip.startDate)}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    onOpenWhen?.();
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-neutral-50 transition flex items-center justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-9 h-9 rounded-xl bg-neutral-100 border border-neutral-200/70 text-neutral-800 flex items-center justify-center shrink-0">
+                      <Calendar size={16} aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs text-neutral-600 font-medium">Thời gian bắt đầu</div>
+                      <div className="text-sm font-semibold text-neutral-950 truncate">
+                        {formatStartingDate(trip.startDate)}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
-              </button>
+                  <ChevronRight size={15} className="text-neutral-500 group-hover:text-neutral-950 shrink-0" aria-hidden="true" />
+                </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCustomSettings(false);
-                  onOpenWho?.();
-                }}
-                className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
-                    <i className="ph-fill ph-users text-sm"></i>
-                  </div>
-                  <div>
-                    <div className="text-[12px] text-gray-500 font-medium">Số du khách</div>
-                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">
-                      {trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    onOpenWho?.();
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-neutral-50 transition flex items-center justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-9 h-9 rounded-xl bg-neutral-100 border border-neutral-200/70 text-neutral-800 flex items-center justify-center shrink-0">
+                      <Users size={16} aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs text-neutral-600 font-medium">Số du khách</div>
+                      <div className="text-sm font-semibold text-neutral-950 truncate">
+                        {trip.peopleCount ? `${trip.peopleCount} du khách` : '2 du khách'}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
-              </button>
+                  <ChevronRight size={15} className="text-neutral-500 group-hover:text-neutral-950 shrink-0" aria-hidden="true" />
+                </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCustomSettings(false);
-                  onOpenBudget?.();
-                }}
-                className="w-full text-left p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
-                    <i className="ph-fill ph-wallet text-sm"></i>
-                  </div>
-                  <div>
-                    <div className="text-[12px] text-gray-500 font-medium">Ngân sách</div>
-                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-black">
-                      {budgetText}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomSettings(false);
+                    onOpenBudget?.();
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-neutral-50 transition flex items-center justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-9 h-9 rounded-xl bg-neutral-100 border border-neutral-200/70 text-neutral-800 flex items-center justify-center shrink-0">
+                      <Wallet size={16} aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs text-neutral-600 font-medium">Ngân sách</div>
+                      <div className="text-sm font-semibold text-neutral-950 truncate">
+                        {budgetText}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <ChevronRight size={14} className="text-gray-400 group-hover:text-black" />
-              </button>
+                  <ChevronRight size={15} className="text-neutral-500 group-hover:text-neutral-950 shrink-0" aria-hidden="true" />
+                </button>
+              </div>
             </div>
           )}
         </div>

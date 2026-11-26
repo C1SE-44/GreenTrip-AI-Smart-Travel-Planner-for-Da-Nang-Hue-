@@ -1,7 +1,15 @@
 import { Leaf } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { evaluateLocalAuthentic, getGalleryImages, SUB_CATEGORY_LABELS, type Poi } from '@/data/pois';
+import {
+  computeGreenScoreBreakdown,
+  evaluateCrowdProfile,
+  evaluateLocalAuthentic,
+  getGalleryImages,
+  SUB_CATEGORY_LABELS,
+  type Poi,
+} from '@/data/pois';
 import { CATEGORY_META } from '@/components/explore/exploreUtils';
+import ExplanationModal from '@/components/poi/ExplanationModal';
 import PoiImage from '@/components/ui/PoiImage';
 
 export interface ExplorePoiCardProps {
@@ -32,8 +40,21 @@ export default function ExplorePoiCard({
 }: ExplorePoiCardProps) {
   const [imgIdx, setImgIdx] = useState(0);
   const [isCardHovered, setIsCardHovered] = useState(false);
+  const [isExplanationOpen, setIsExplanationOpen] = useState(false);
 
   const gallery = useMemo(() => getGalleryImages(poi), [poi]);
+  const auth = useMemo(() => evaluateLocalAuthentic(poi), [poi]);
+  const crowd = useMemo(() => evaluateCrowdProfile(poi), [poi]);
+  const greenBreakdown = useMemo(() => computeGreenScoreBreakdown(poi), [poi]);
+  const communityBadgeLabel =
+    auth.badgeLabel ||
+    (poi.isLocalBusiness
+      ? poi.category === 'luu-tru'
+        ? 'Lưu trú cộng đồng'
+        : 'Cộng đồng bản địa'
+      : showLocalAuthenticBadge
+        ? 'Bản địa ít đông'
+        : null);
 
   const isCafe = Boolean(
     poi.sub_category?.includes('cafe') ||
@@ -177,24 +198,54 @@ export default function ExplorePoiCard({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-normal">
-          <i className={`ph ${resolvedCategoryIcon} text-gray-400 text-[14px] shrink-0`}></i>
+        <div className="flex items-center gap-1.5 text-[13px] text-neutral-600 font-normal">
+          <i className={`ph ${resolvedCategoryIcon} text-neutral-500 text-[14px] shrink-0`}></i>
           <span className="truncate">{resolvedCategoryLabel}</span>
-          {(() => {
-            const auth = evaluateLocalAuthentic(poi);
-            if (!auth.badgeLabel || (!showLocalAuthenticBadge && !auth.isCraftVillage)) return null;
-            return (
-              <span className="ml-auto shrink-0 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-                {auth.badgeLabel}
-              </span>
-            );
-          })()}
+          {communityBadgeLabel ? (
+            <span className="ml-auto shrink-0 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+              {communityBadgeLabel}
+            </span>
+          ) : crowd.level === 'high' ? (
+            <span
+              className="ml-auto shrink-0 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-900"
+              title={crowd.peakHours ? `Giờ cao điểm: ${crowd.peakHours}` : 'Điểm phổ biến dễ đông khách'}
+            >
+              {crowd.label}
+            </span>
+          ) : null}
         </div>
 
-        <div className="text-[12.5px] text-gray-400 font-normal truncate">
-          <span>{poi.address || `${poi.city === 'Đà Nẵng' ? 'Hải Châu, Đà Nẵng' : `${poi.city}, Việt Nam`}`}</span>
+        <div className="flex items-center justify-between gap-2 text-xs text-neutral-600">
+          <span className="truncate">
+            {poi.address || `${poi.city === 'Đà Nẵng' ? 'Hải Châu, Đà Nẵng' : `${poi.city}, Việt Nam`}`}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExplanationOpen(true);
+            }}
+            className="shrink-0 font-semibold text-emerald-800 hover:text-emerald-950 underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 rounded px-1 py-0.5"
+            aria-label={`Xem vì sao đề xuất ${poi.name}`}
+          >
+            Vì sao chọn?
+          </button>
         </div>
+
+        <p className="text-xs text-neutral-600 line-clamp-1" title={greenBreakdown.summaryReason}>
+          {greenBreakdown.summaryReason}
+        </p>
       </div>
+
+      {isExplanationOpen && (
+        <ExplanationModal
+          poiId={poi.id}
+          poiName={poi.name}
+          explanationSnippet={`${greenBreakdown.summaryReason}${crowd.offPeakTip ? ` ${crowd.offPeakTip}.` : ''}`}
+          isOpen={isExplanationOpen}
+          onClose={() => setIsExplanationOpen(false)}
+        />
+      )}
     </article>
   );
 }

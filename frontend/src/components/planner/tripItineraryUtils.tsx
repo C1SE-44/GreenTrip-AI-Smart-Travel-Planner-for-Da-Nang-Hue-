@@ -51,7 +51,7 @@ export function formatCategoryLabel(cat?: string | null): string {
 }
 
 export function getPoiImage(poi?: Poi | null): string {
-  if (!poi) return 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
+  if (!poi) return 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp';
   if (poi.image && poi.image.startsWith('http')) return poi.image;
   return getDeterministicImage(poi.name, poi.id, (poi.category as PoiCategory) || 'quan-an', poi.city);
 }

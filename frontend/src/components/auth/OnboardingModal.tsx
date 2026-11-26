@@ -12,24 +12,24 @@ interface OnboardingModalProps {
 }
 
 const MOCK_LOCATIONS = [
-  { id: 1, name: 'Đà Nẵng', sub: 'Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=100&h=100&fit=crop' },
-  { id: 2, name: 'Đà Lạt', sub: 'Lâm Đồng, Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1623067866504-20412b1898fb?w=100&h=100&fit=crop' },
-  { id: 3, name: 'Dallas', sub: 'Texas, Hoa Kỳ', type: 'image', img: 'https://images.unsplash.com/photo-1542838686-37ed7a7ef3f3?w=100&h=100&fit=crop' },
-  { id: 4, name: 'Dakar', sub: 'Senegal', type: 'image', img: 'https://images.unsplash.com/photo-1523805009345-7448845a9e53?w=100&h=100&fit=crop' },
-  { id: 5, name: 'Hà Nội', sub: 'Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=100&h=100&fit=crop' },
-  { id: 6, name: 'Hồ Chí Minh', sub: 'Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=100&h=100&fit=crop' },
-  { id: 7, name: 'Hội An', sub: 'Quảng Nam, Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=100&h=100&fit=crop' },
-  { id: 8, name: 'Huế', sub: 'Thừa Thiên Huế, Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=100&h=100&fit=crop' },
-  { id: 9, name: 'Nha Trang', sub: 'Khánh Hòa, Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=100&h=100&fit=crop' },
-  { id: 10, name: 'Phú Quốc', sub: 'Kiên Giang, Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1623067866504-20412b1898fb?w=100&h=100&fit=crop' },
-  { id: 11, name: 'Vũng Tàu', sub: 'Bà Rịa - Vũng Tàu, Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1542838686-37ed7a7ef3f3?w=100&h=100&fit=crop' },
-  { id: 12, name: 'Sapa', sub: 'Lào Cai, Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1523805009345-7448845a9e53?w=100&h=100&fit=crop' },
-  { id: 13, name: 'Quy Nhơn', sub: 'Bình Định, Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=100&h=100&fit=crop' },
-  { id: 14, name: 'Cần Thơ', sub: 'Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=100&h=100&fit=crop' },
-  { id: 15, name: 'Đồng Hới', sub: 'Quảng Bình, Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=100&h=100&fit=crop' },
-  { id: 16, name: 'Mũi Né', sub: 'Bình Thuận, Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1623067866504-20412b1898fb?w=100&h=100&fit=crop' },
-  { id: 17, name: 'Hạ Long', sub: 'Quảng Ninh, Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-150861194942-f883de0bce24?w=100&h=100&fit=crop' },
-  { id: 18, name: 'Hải Phòng', sub: 'Việt Nam', type: 'image', img: 'https://images.unsplash.com/photo-1599839619722-39751411ea63?w=100&h=100&fit=crop' }
+  { id: 1, name: 'Đà Nẵng', sub: 'Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp' },
+  { id: 2, name: 'Đà Lạt', sub: 'Lâm Đồng, Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp' },
+  { id: 3, name: 'Dallas', sub: 'Texas, Hoa Kỳ', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp' },
+  { id: 4, name: 'Dakar', sub: 'Senegal', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp' },
+  { id: 5, name: 'Hà Nội', sub: 'Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/b3936724-967f-43d6-b7d5-b59e715e5e23.webp' },
+  { id: 6, name: 'Hồ Chí Minh', sub: 'Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/b266e90c-a842-499f-8588-d44176dcced0.webp' },
+  { id: 7, name: 'Hội An', sub: 'Quảng Nam, Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/d5375048-89cc-4b39-b2bc-7686e3a82d42.webp' },
+  { id: 8, name: 'Huế', sub: 'Thừa Thiên Huế, Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a13f5349-0b72-4196-9d6a-d9721dd99411.webp' },
+  { id: 9, name: 'Nha Trang', sub: 'Khánh Hòa, Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/833b605a-8faf-4872-af4a-706abdae5754.webp' },
+  { id: 10, name: 'Phú Quốc', sub: 'Kiên Giang, Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/d229571b-14fb-4357-aad6-af1547af7615.webp' },
+  { id: 11, name: 'Vũng Tàu', sub: 'Bà Rịa - Vũng Tàu, Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp' },
+  { id: 12, name: 'Sapa', sub: 'Lào Cai, Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52e23cf0-4463-433d-a135-7953a8a5ba07.webp' },
+  { id: 13, name: 'Quy Nhơn', sub: 'Bình Định, Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/bd48c6e0-7288-479f-8ecf-ed14cb82b949.webp' },
+  { id: 14, name: 'Cần Thơ', sub: 'Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp' },
+  { id: 15, name: 'Đồng Hới', sub: 'Quảng Bình, Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp' },
+  { id: 16, name: 'Mũi Né', sub: 'Bình Thuận, Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c4ecef3d-5946-4bd8-974e-fd36c7aa9a7e.webp' },
+  { id: 17, name: 'Hạ Long', sub: 'Quảng Ninh, Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/9190b203-7172-4f7b-8069-cb5ba9c590c1.webp' },
+  { id: 18, name: 'Hải Phòng', sub: 'Việt Nam', type: 'image', img: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0f0bb5ae-dc02-4ffc-8278-8244fcac3f82.webp' }
 ];
 
 export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {

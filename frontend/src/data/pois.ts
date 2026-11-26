@@ -174,63 +174,63 @@ export const categoryLabels: Record<PoiCategory, string> = {
 
 export const DEFAULT_IMAGES_BY_CATEGORY: Record<PoiCategory, string[]> = {
   chua: [
-    'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1563897539633-7374c276c212?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1509099836639-18ba1795216d?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/bfed964e-ff10-44f4-8654-2136245ab062.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/3dec7f76-900f-43a3-a623-3bd287bfe310.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c4ecef3d-5946-4bd8-974e-fd36c7aa9a7e.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/9190b203-7172-4f7b-8069-cb5ba9c590c1.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0f0bb5ae-dc02-4ffc-8278-8244fcac3f82.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f0a00581-4ed0-4210-ae87-9cd3484afa11.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a1319702-de6c-469f-8f28-e13dc25de56b.webp',
   ],
   'quan-an': [
-    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1517433670267-08bbd4be890f?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/27a8ef48-0c1c-494b-964f-965903416654.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/e250a511-145f-4506-b5ae-782017e3bfe6.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c4ecef3d-5946-4bd8-974e-fd36c7aa9a7e.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/9190b203-7172-4f7b-8069-cb5ba9c590c1.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0f0bb5ae-dc02-4ffc-8278-8244fcac3f82.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f0a00581-4ed0-4210-ae87-9cd3484afa11.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a1319702-de6c-469f-8f28-e13dc25de56b.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp',
   ],
   'canh-quan': [
-    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=900&q=80',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/7a50ea49-9566-4988-b14b-e339d372bc76.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0f0bb5ae-dc02-4ffc-8278-8244fcac3f82.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f0a00581-4ed0-4210-ae87-9cd3484afa11.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a1319702-de6c-469f-8f28-e13dc25de56b.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp',
   ],
   'di-tich': [
-    'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1599707367072-cd6ada2bc375?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1568084680786-a84f91d1153c?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f7d6e8a3-2a21-4242-8a84-66f1643f39a1.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c976ac2a-8a0f-41e4-ab2b-c8e6e1c2c36d.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0f0bb5ae-dc02-4ffc-8278-8244fcac3f82.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f0a00581-4ed0-4210-ae87-9cd3484afa11.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a1319702-de6c-469f-8f28-e13dc25de56b.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp',
   ],
   'luu-tru': [
-    'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=900&q=80',
-    'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=900&q=80',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a62a8860-93ef-5f5d-9f94-2467b13542cb.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/11289586-dded-54d5-85ed-239a2e576a69.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c4ecef3d-5946-4bd8-974e-fd36c7aa9a7e.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/9190b203-7172-4f7b-8069-cb5ba9c590c1.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0f0bb5ae-dc02-4ffc-8278-8244fcac3f82.webp',
+    'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f0a00581-4ed0-4210-ae87-9cd3484afa11.webp',
   ],
 };
 
@@ -249,51 +249,51 @@ export function getDeterministicImage(name: string, id: string | number, categor
   if (category === 'quan-an') {
     if (lower.includes('chay') || lower.includes('tịnh') || lower.includes('rau') || lower.includes('healthy')) {
       return pick([
-        'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/d5a1e6d1-ddc6-4c46-bb2f-73454783e2d2.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp',
       ]);
     }
     if (lower.includes('tea') || lower.includes('trà') || lower.includes('tearoom')) {
       return pick([
-        'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/dd103afa-246e-4bdd-a536-8cefa2202fb7.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp',
       ]);
     }
     if (lower.includes('cafe') || lower.includes('cà phê') || lower.includes('coffee')) {
       return pick([
-        'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/b0abc908-fe78-4ea0-8c07-48b98b59957f.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/9190b203-7172-4f7b-8069-cb5ba9c590c1.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0f0bb5ae-dc02-4ffc-8278-8244fcac3f82.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f0a00581-4ed0-4210-ae87-9cd3484afa11.webp',
       ]);
     }
     if (lower.includes('dê') || lower.includes('bò') || lower.includes('nướng') || lower.includes('bbq') || lower.includes('lẩu')) {
       return pick([
-        'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a1319702-de6c-469f-8f28-e13dc25de56b.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp',
       ]);
     }
     if (lower.includes('ăn vặt') || lower.includes('bánh') || lower.includes('chè') || lower.includes('ốc')) {
       return pick([
-        'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1626804475297-41608ea09aeb?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1517433670267-08bbd4be890f?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/cce05cd8-9e38-460a-b60c-485fb94261e2.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp',
       ]);
     }
     if (lower.includes('bún') || lower.includes('phở') || lower.includes('mì')) {
       return pick([
-        'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1617093727343-374698b1b08d?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5c7c846c-aec5-403e-a67b-3f5c590c8a27.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/9190b203-7172-4f7b-8069-cb5ba9c590c1.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0f0bb5ae-dc02-4ffc-8278-8244fcac3f82.webp',
       ]);
     }
     if (lower.includes('hải sản') || lower.includes('seafood') || lower.includes('tôm') || lower.includes('cua')) {
       return pick([
-        'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a12c8108-ca8d-4541-9624-d7bed5d9cbe0.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a1319702-de6c-469f-8f28-e13dc25de56b.webp',
       ]);
     }
   }
@@ -302,20 +302,20 @@ export function getDeterministicImage(name: string, id: string | number, categor
   if (category === 'chua') {
     if (lower.includes('thiên mụ')) {
       return pick([
-        'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/07bbba17-b65d-4edc-abf2-8a9466fc2f51.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp',
       ]);
     }
     if (lower.includes('linh ứng') || lower.includes('tượng') || lower.includes('quán thế âm')) {
       return pick([
-        'https://images.unsplash.com/photo-1563897539633-7374c276c212?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1509099836639-18ba1795216d?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/177df420-aec0-4eca-8443-b373893bf6fe.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp',
       ]);
     }
     if (lower.includes('thiền viện') || lower.includes('trúc lâm') || lower.includes('sen')) {
       return pick([
-        'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c4ecef3d-5946-4bd8-974e-fd36c7aa9a7e.webp',
       ]);
     }
   }
@@ -324,26 +324,26 @@ export function getDeterministicImage(name: string, id: string | number, categor
   if (category === 'canh-quan') {
     if (lower.includes('biển') || lower.includes('bãi') || lower.includes('mỹ khê') || lower.includes('non nước')) {
       return pick([
-        'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/b3936724-967f-43d6-b7d5-b59e715e5e23.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0f0bb5ae-dc02-4ffc-8278-8244fcac3f82.webp',
       ]);
     }
     if (lower.includes('đèo') || lower.includes('hải vân')) {
       return pick([
-        'https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f0a00581-4ed0-4210-ae87-9cd3484afa11.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a1319702-de6c-469f-8f28-e13dc25de56b.webp',
       ]);
     }
     if (lower.includes('sông') || lower.includes('hương') || lower.includes('hàn')) {
       return pick([
-        'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp',
       ]);
     }
     if (lower.includes('bà nà') || lower.includes('bana')) {
       return pick([
-        'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp',
       ]);
     }
   }
@@ -352,26 +352,26 @@ export function getDeterministicImage(name: string, id: string | number, categor
   if (category === 'di-tich') {
     if (lower.includes('đại nội') || lower.includes('hoàng thành') || lower.includes('ngọ môn')) {
       return pick([
-        'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ce249bef-0477-4a46-a19c-735b3db10498.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c4ecef3d-5946-4bd8-974e-fd36c7aa9a7e.webp',
       ]);
     }
     if (lower.includes('cầu rồng') || lower.includes('rồng')) {
       return pick([
-        'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/9190b203-7172-4f7b-8069-cb5ba9c590c1.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0f0bb5ae-dc02-4ffc-8278-8244fcac3f82.webp',
       ]);
     }
     if (lower.includes('tràng tiền') || lower.includes('cầu')) {
       return pick([
-        'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/8fb055d5-993d-435f-b4fa-25d04dcc2a0d.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a1319702-de6c-469f-8f28-e13dc25de56b.webp',
       ]);
     }
     if (lower.includes('lăng') || lower.includes('khải định') || lower.includes('tự đức') || lower.includes('minh mạng')) {
       return pick([
-        'https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=900&q=80',
-        'https://images.unsplash.com/photo-1599707367072-cd6ada2bc375?auto=format&fit=crop&w=900&q=80',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/bbccfb8f-b38c-41bb-a348-290a352a46f4.webp',
+        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp',
       ]);
     }
   }
@@ -382,30 +382,18 @@ export function getDeterministicImage(name: string, id: string | number, categor
 }
 
 export function getGalleryImages(poi: Poi): string[] {
-  const base = (poi.gallery && poi.gallery.length > 0) ? poi.gallery : [poi.image];
-  const result: string[] = [poi.image, ...base.filter((img) => img !== poi.image)];
-
-  if (result.length >= 5) {
-    return result.slice(0, 5);
-  }
-
-  // Pad remaining slots only using the place's own authentic photos to avoid irrelevant stock photos
-  // Bổ sung các ảnh đẹp cùng danh mục để bộ sưu tập 5 ảnh luôn phong phú và thực tế
-  const categoryPool = DEFAULT_IMAGES_BY_CATEGORY[poi.category] || DEFAULT_IMAGES_BY_CATEGORY['canh-quan'];
-  let poolIdx = 0;
-  while (result.length < 5 && poolIdx < categoryPool.length) {
-    const candidate = categoryPool[poolIdx++];
-    if (!result.includes(candidate)) {
-      result.push(candidate);
+  const candidates = [poi.image, ...(Array.isArray(poi.gallery) ? poi.gallery : [])];
+  const unique: string[] = [];
+  for (const raw of candidates) {
+    const url = typeof raw === 'string' ? raw.trim() : '';
+    if (url && !unique.includes(url)) {
+      unique.push(url);
+    }
+    if (unique.length >= 5) {
+      break;
     }
   }
-
-  // Nếu vẫn chưa đủ thì mới cycle từ base
-  while (result.length < 5) {
-    const cyclePhoto = base[result.length % base.length] || poi.image;
-    result.push(cyclePhoto);
-  }
-  return result;
+  return unique;
 }
 
 export function normalizeCategory(value?: string | null): PoiCategory {
@@ -543,13 +531,6 @@ export function normalizePoi(item: NormalizablePoiInput | null | undefined, allo
       const gSet = new Set(['my-khe', 'ngu-hanh-son', 'linh-ung-son-tra', 'cau-rong', 'madame-lan', 'dai-noi', 'thien-mu', 'khai-dinh', 'tu-duc', 'cau-truong-tien']);
       item.isGreen = gSet.has(String(item.id)) || Boolean(item.ecoScore && item.ecoScore >= 75 && !['ba-na-hills', 'cho-han', 'cho-dong-ba', 'mi-quang', 'bun-bo-hue'].includes(String(item.id)));
     }
-    if (String(item.name).includes('Cầu Rồng') || String(item.id).includes('cau-rong')) {
-      item.image = 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80';
-      item.gallery = [
-        'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80',
-        'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=900&q=80',
-      ];
-    }
     if (item.ai_metadata) {
       item.ai_metadata = sanitizePoiAiMetadata(
         item.ai_metadata,
@@ -585,11 +566,7 @@ export function normalizePoi(item: NormalizablePoiInput | null | undefined, allo
     subTitle = parenMatch[2].trim();
   }
 
-  let image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id ?? item.poi_id ?? cleanName, category, city);
-  // Đảm bảo Cầu Rồng luôn hiển thị ảnh thực tế cầu rồng phun lửa Đà Nẵng, không dùng ảnh Cầu Vàng Bà Nà
-  if (cleanName.includes('Cầu Rồng') || String(item.id).includes('cau-rong')) {
-    image = 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80';
-  }
+  const image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id ?? item.poi_id ?? cleanName, category, city);
   const gallery = Array.isArray(item.gallery_urls) && item.gallery_urls.length > 0 ? item.gallery_urls : undefined;
 
   const rawRating = Number(item.ai_metadata?.raw_rating);
@@ -970,7 +947,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.0825,
     lng: 108.2238,
-    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/2a9fc4ea-ced9-4156-b2a0-4d0c1efb1494.webp',
     description: 'Madame Lân là nhà hàng ẩm thực Việt nổi tiếng bên bờ sông Hàn, tái hiện nét văn hóa phố cổ với hơn 300 món ăn đặc trưng 3 miền Bắc - Trung - Nam.',
     rating: 4.8,
     visitDuration: '1–1.5 giờ',
@@ -984,7 +961,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.0756,
     lng: 108.2236,
-    image: 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0f0bb5ae-dc02-4ffc-8278-8244fcac3f82.webp',
     description: 'Biểu tượng kiến trúc hiện đại của Đà Nẵng, rồng thép phun lửa và nước vào 21:00 cuối tuần.',
     rating: 4.7,
     visitDuration: '30–45 phút',
@@ -998,7 +975,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.0544,
     lng: 108.2422,
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=1280',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/7a50ea49-9566-4988-b14b-e339d372bc76.webp',
     description: 'Top 6 bãi biển quyến rũ nhất hành tinh, cát mịn nước trong.',
     rating: 4.8,
     visitDuration: '2–3 giờ',
@@ -1012,7 +989,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.0012,
     lng: 108.2598,
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=1280',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/0c66039f-d722-4b4a-a1f9-46f62b52197b.webp',
     description: 'Ngọn núi đá vôi với hang động và chùa cổ, năm ngọn linh thiêng.',
     rating: 4.6,
     visitDuration: '2–3 giờ',
@@ -1026,7 +1003,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.1058,
     lng: 108.2933,
-    image: 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&q=80&w=1280',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/bfed964e-ff10-44f4-8654-2136245ab062.webp',
     description: 'Chùa có tượng Phật bà cao nhất Việt Nam, nhìn ra biển Đà Nẵng.',
     rating: 4.7,
     visitDuration: '1–2 giờ',
@@ -1040,7 +1017,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 15.9989,
     lng: 107.9889,
-    image: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&q=80&w=1280',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp',
     description: 'Khu nghỉ dưỡng trên cao nguyên, cầu vàng icon nổi tiếng.',
     rating: 4.5,
     visitDuration: 'Cả ngày',
@@ -1054,7 +1031,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.0684,
     lng: 108.2218,
-    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=1280',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/df43dc2c-50fe-4ed3-82f3-55135c0cb87b.webp',
     description: 'Chợ truyền thống sầm uất, đặc sản hải sản và đồ lưu niệm.',
     rating: 4.3,
     visitDuration: '45–60 phút',
@@ -1068,7 +1045,7 @@ export const pois: Poi[] = [
     city: 'Đà Nẵng',
     lat: 16.0658,
     lng: 108.2186,
-    image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1280&q=80',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/9c13839a-28b0-4571-997f-fb0cc2cb6ae3.webp',
     description: 'Mì Quảng chuẩn vị Đà Nẵng, tôm thịt trứng gà, nước lèo đậm đà.',
     rating: 4.6,
     visitDuration: '30–45 phút',
@@ -1082,7 +1059,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4637,
     lng: 107.5809,
-    image: 'https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&q=80&w=1280',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp',
     description: 'Di sản thế giới UNESCO, trung tâm quyền lực triều Nguyễn.',
     rating: 4.8,
     visitDuration: '2–3 giờ',
@@ -1096,7 +1073,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4697,
     lng: 107.5489,
-    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=1280&q=80',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/280e601b-9a91-4c1b-b2d4-24e821481aff.webp',
     description: 'Ngôi chùa cổ nhất Huế, tháp Phước Duyên biểu tượng bên sông Hương.',
     rating: 4.7,
     visitDuration: '1 giờ',
@@ -1110,7 +1087,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.3942,
     lng: 107.5989,
-    image: 'https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?auto=format&fit=crop&q=80&w=1280',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c976ac2a-8a0f-41e4-ab2b-c8e6e1c2c36d.webp',
     description: 'Lăng tombs kiến trúc Đông – Tây giao thoa, sứ khảm trang trí.',
     rating: 4.6,
     visitDuration: '1–2 giờ',
@@ -1124,7 +1101,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4356,
     lng: 107.5733,
-    image: 'https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=1280&q=80',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/df656073-394e-4f39-b788-743153114715.webp',
     description: 'Lăng tẩm rộng nhất Huế, hồ Lưu Khiêm và vườn thơ mộng.',
     rating: 4.5,
     visitDuration: '1–2 giờ',
@@ -1138,7 +1115,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4658,
     lng: 107.5818,
-    image: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?auto=format&fit=crop&q=80&w=1280',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/2538a95e-a73b-4a06-84bd-17b60e1b40e3.webp',
     description: 'Chợ lớn nhất Huế, đặc sản mè xửng, bánh ép, nón bài thơ.',
     rating: 4.2,
     visitDuration: '45–60 phút',
@@ -1152,7 +1129,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4672,
     lng: 107.5795,
-    image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=1280&q=80',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ff000b3f-3970-4eb9-9ba4-32a800f2d800.webp',
     description: 'Bún bò Huế cay nồng chuẩn vị, nước lèo xương bò đậm đà.',
     rating: 4.7,
     visitDuration: '30–45 phút',
@@ -1166,7 +1143,7 @@ export const pois: Poi[] = [
     city: 'Huế',
     lat: 16.4647,
     lng: 107.5866,
-    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&q=80&w=1280',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ce249bef-0477-4a46-a19c-735b3db10498.webp',
     description: 'Cầu sắt sáu nhịp lịch sử bắc ngang sông Hương, biểu tượng Huế.',
     rating: 4.4,
     visitDuration: '20–30 phút',
@@ -1625,5 +1602,164 @@ export function getSpecificPoiIconClass(poi: Poi | { name?: string; category?: s
   }
 
   return 'ph-bold ph-map-pin';
+}
+
+export interface GreenScorePillarBreakdown {
+  key: 'nature_env' | 'heritage_community' | 'green_ops' | 'green_transit';
+  label: string;
+  weightPct: number;
+  score: number;
+}
+
+export interface GreenScoreExplanation {
+  totalScore: number;
+  pillars: GreenScorePillarBreakdown[];
+  summaryReason: string;
+}
+
+/**
+ * Phân rã Điểm xanh theo 4 trụ cột MCDA đồng bộ với backend/scripts/enrich_poi_scores.py
+ */
+export function computeGreenScoreBreakdown(
+  poi: Pick<Poi, 'name' | 'category' | 'ecoScore' | 'isLocalBusiness' | 'localBusinessType' | 'eco_features' | 'popularityScore' | 'sub_category'>
+): GreenScoreExplanation {
+  const total = Math.max(40, Math.min(98, Math.round(poi.ecoScore || 80)));
+  const text = `${poi.name || ''} ${poi.category || ''} ${poi.sub_category || ''}`.toLowerCase();
+  const hasEcoFeatures = Boolean(poi.eco_features && poi.eco_features.length > 0);
+  const isLocal = Boolean(poi.isLocalBusiness) || poi.localBusinessType === 'craft_workshop';
+  const isLowCrowd = typeof poi.popularityScore === 'number' && Number.isFinite(poi.popularityScore) && poi.popularityScore <= 3.65;
+
+  const nature = Math.min(98, Math.max(50, total + (/cảnh quan|canh-quan|biển|rừng|sơn trà|đầm|vườn|sinh thái|bạch mã/.test(text) ? 6 : -4)));
+  const community = Math.min(98, Math.max(55, (isLocal ? 90 : 68) + (/làng|di-tich|chua|cố đô|craft|homestay|eco_lodge/.test(text) ? 6 : 0)));
+  const ops = Math.min(98, Math.max(55, total + (/chay|vegan|vegetarian|thực dưỡng/.test(text) || hasEcoFeatures ? 8 : -3)));
+  const transit = Math.min(98, Math.max(55, total + (isLowCrowd ? 6 : 0) - 2));
+
+  const reasons: string[] = [];
+  if (isLocal) reasons.push('hỗ trợ cộng đồng địa phương');
+  if (isLowCrowd) reasons.push('không gian ít đông');
+  if (/chay|vegan|vegetarian/.test(text)) reasons.push('ẩm thực ít phát thải carbon');
+  else if (nature >= 85) reasons.push('gần gũi thiên nhiên');
+  if (reasons.length === 0) reasons.push('thuận tiện gom cụm tuyến đường xanh');
+
+  return {
+    totalScore: total,
+    pillars: [
+      { key: 'nature_env', label: 'Môi trường & Sinh thái', weightPct: 40, score: nature },
+      { key: 'heritage_community', label: 'Cộng đồng & Di sản bản địa', weightPct: 25, score: community },
+      { key: 'green_ops', label: 'Vận hành xanh & Ít rác thải', weightPct: 20, score: ops },
+      { key: 'green_transit', label: 'Dễ đi bộ & Giao thông xanh', weightPct: 15, score: transit },
+    ],
+    summaryReason: `Đề xuất vì ${reasons.slice(0, 2).join(', ')}.`,
+  };
+}
+
+export interface CrowdPeakWindow {
+  startMin: number;
+  endMin: number;
+  weekendOnly?: boolean;
+}
+
+export interface CrowdProfile {
+  level: 'low' | 'medium' | 'high';
+  label: string;
+  peakHours: string | null;
+  offPeakTip: string | null;
+  peakWindows: CrowdPeakWindow[];
+}
+
+const HOTSPOT_CROWD_RULES: Array<{
+  pattern: RegExp;
+  peakHours: string;
+  offPeakTip: string;
+  peakWindows: CrowdPeakWindow[];
+}> = [
+  {
+    pattern: /đại nội|hoàng thành/i,
+    peakHours: '09:00 – 11:30 & 14:30 – 16:00',
+    offPeakTip: 'Nên đi sớm 07:30 – 09:00 để mát mẻ và vắng đoàn tour',
+    peakWindows: [{ startMin: 540, endMin: 690 }, { startMin: 870, endMin: 960 }],
+  },
+  {
+    pattern: /cầu rồng/i,
+    peakHours: '19:30 – 21:30 (đặc biệt T6–CN)',
+    offPeakTip: 'Dạo bộ sáng sớm hoặc 17:30 ngắm hoàng hôn đỡ kẹt xe hơn',
+    peakWindows: [{ startMin: 1170, endMin: 1290 }],
+  },
+  {
+    pattern: /bà nà|cầu vàng/i,
+    peakHours: '08:30 – 14:30',
+    offPeakTip: 'Lên cáp treo chuyến đầu 07:30 hoặc cân nhắc Sơn Trà / Hòa Bắc ít đông hơn',
+    peakWindows: [{ startMin: 510, endMin: 870 }],
+  },
+  {
+    pattern: /linh ứng.*(?:sơn trà|bãi bụt)|bán đảo sơn trà/i,
+    peakHours: '09:30 – 11:30 & 15:30 – 17:30',
+    offPeakTip: 'Đi trước 08:30 sáng để thoáng đãng và dễ ngắm voọc chà vá',
+    peakWindows: [{ startMin: 570, endMin: 690 }, { startMin: 930, endMin: 1050 }],
+  },
+  {
+    pattern: /thiên mụ/i,
+    peakHours: '09:30 – 11:30 & 16:00 – 17:30',
+    offPeakTip: 'Ghé sớm trước 08:30 hoặc kết hợp làng Thủy Biều vắng người',
+    peakWindows: [{ startMin: 570, endMin: 690 }, { startMin: 960, endMin: 1050 }],
+  },
+  {
+    pattern: /mỹ khê|ngũ hành sơn|chợ hàn|chợ cồn|chợ đông ba/i,
+    peakHours: '09:30 – 12:00 & 16:30 – 18:30',
+    offPeakTip: 'Nên đi sáng sớm trước 08:30 hoặc đầu giờ chiều để tránh đông đúc',
+    peakWindows: [{ startMin: 570, endMin: 720 }, { startMin: 990, endMin: 1110 }],
+  },
+];
+
+export function evaluateCrowdProfile(
+  poi: Pick<Poi, 'name' | 'popularityScore' | 'localBusinessType' | 'isLocalBusiness'>
+): CrowdProfile {
+  const matchedRule = HOTSPOT_CROWD_RULES.find((rule) => rule.pattern.test(poi.name || ''));
+  if (matchedRule) {
+    return {
+      level: 'high',
+      label: 'Đông giờ cao điểm',
+      peakHours: matchedRule.peakHours,
+      offPeakTip: matchedRule.offPeakTip,
+      peakWindows: matchedRule.peakWindows,
+    };
+  }
+  const pop = typeof poi.popularityScore === 'number' && Number.isFinite(poi.popularityScore) ? poi.popularityScore : null;
+  if (pop !== null && pop >= 3.85) {
+    return {
+      level: 'high',
+      label: 'Đông giờ cao điểm',
+      peakHours: '09:30 – 11:30 & 16:00 – 18:00',
+      offPeakTip: 'Nên ghé khung giờ sớm hoặc đổi sang điểm bản địa lân cận',
+      peakWindows: [{ startMin: 570, endMin: 690 }, { startMin: 960, endMin: 1080 }],
+    };
+  }
+  if (poi.localBusinessType === 'craft_workshop' || (pop !== null && pop <= 3.65)) {
+    return {
+      level: 'low',
+      label: 'Ít đông · Thong thả',
+      peakHours: null,
+      offPeakTip: 'Không gian thoáng, phù hợp trải nghiệm sâu không phải chờ đợi',
+      peakWindows: [],
+    };
+  }
+  return {
+    level: 'medium',
+    label: 'Mật độ vừa phải',
+    peakHours: null,
+    offPeakTip: null,
+    peakWindows: [],
+  };
+}
+
+export function isTimeInCrowdPeakWindow(
+  startTime: string | null | undefined,
+  crowd: CrowdProfile
+): boolean {
+  if (!startTime || crowd.peakWindows.length === 0) return false;
+  const m = startTime.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return false;
+  const mins = Number(m[1]) * 60 + Number(m[2]);
+  return crowd.peakWindows.some((w) => mins >= w.startMin && mins <= w.endMin);
 }
 

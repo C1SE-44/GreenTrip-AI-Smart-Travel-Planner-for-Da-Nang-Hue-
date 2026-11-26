@@ -30,3 +30,20 @@ test('Key POI cards, detail views, planner stops, and saved collections use PoiI
     assert.ok(content.includes('PoiImage'), `${relPath} must render <PoiImage />`);
   }
 });
+
+test('getGalleryImages only uses authentic POI photos without category padding or Cau Rong overrides', () => {
+  const poisSource = readFileSync(new URL('../src/data/pois.ts', import.meta.url), 'utf8');
+  const fnStart = poisSource.indexOf('export function getGalleryImages');
+  const fnEnd = poisSource.indexOf('export function normalizeCategory');
+  assert.ok(fnStart !== -1 && fnEnd > fnStart, 'getGalleryImages function must exist');
+
+  const fnBody = poisSource.slice(fnStart, fnEnd);
+  assert.ok(
+    !fnBody.includes('DEFAULT_IMAGES_BY_CATEGORY'),
+    'getGalleryImages must not pad missing gallery slots with other POIs category photos'
+  );
+  assert.ok(
+    !poisSource.includes("c4ecef3d-5946-4bd8-974e-fd36c7aa9a7e.webp';\n  }\n  const gallery"),
+    'normalizePoi must not overwrite Cau Rong with Cau Vang photo'
+  );
+});

@@ -333,10 +333,10 @@ export default function CreateTripCopilotModal({
         : `Hành trình ${normDest} ${validDays} ngày`;
 
       const coverImage = normDest === 'Huế'
-        ? 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=800&q=80'
+        ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ce249bef-0477-4a46-a19c-735b3db10498.webp'
         : normDest === 'Đà Nẵng'
-        ? 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80'
-        : 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&q=80';
+        ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp'
+        : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp';
 
       const newTrip: UserTrip = {
         id: 'trip_' + Date.now(),
@@ -385,8 +385,8 @@ export default function CreateTripCopilotModal({
         : `Hành trình ${normDest} ${validDays} ngày`;
 
       const coverImage = normDest === 'Huế'
-        ? 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=800&q=80'
-        : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80';
+        ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c107817a-7452-4385-b024-462f08e10dad.webp'
+        : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/87930706-8d34-4e16-a21d-6cade6364cf1.webp';
       const pacing = estimatePacing(validDays);
 
       const newTrip: UserTrip = {

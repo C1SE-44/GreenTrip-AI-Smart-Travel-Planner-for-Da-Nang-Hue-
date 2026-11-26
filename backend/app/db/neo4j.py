@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 from urllib.parse import urlparse
 
@@ -9,6 +10,22 @@ from neo4j.exceptions import Neo4jError
 from app.config import get_settings
 
 _driver: Any = None
+_NEO4J_RETRY_AFTER: float = 0.0
+NEO4J_COOLDOWN_SECONDS: float = 60.0
+
+
+def is_neo4j_in_cooldown() -> bool:
+    return time.monotonic() < _NEO4J_RETRY_AFTER
+
+
+def mark_neo4j_unavailable(cooldown_seconds: float = NEO4J_COOLDOWN_SECONDS) -> None:
+    global _NEO4J_RETRY_AFTER
+    _NEO4J_RETRY_AFTER = time.monotonic() + max(0.0, cooldown_seconds)
+
+
+def reset_neo4j_cooldown() -> None:
+    global _NEO4J_RETRY_AFTER
+    _NEO4J_RETRY_AFTER = 0.0
 
 
 def initialize_driver() -> Any:

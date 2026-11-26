@@ -8,13 +8,18 @@ from app.trips.schemas import CopilotSuggestedPoiItem
 from app.trips.text_utils import strip_vietnamese_accents
 
 DEFAULT_POI_COORDS_KB: list[tuple[str, float, float]] = [
+    ("linh ứng bà nà", 15.9989, 107.9946),
+    ("linh ứng non nước", 16.0076, 108.2674),
+    ("linh ứng ngũ hành sơn", 16.0076, 108.2674),
+    ("linh ứng bãi bụt", 16.1046, 108.2789),
+    ("linh ứng sơn trà", 16.1046, 108.2789),
     ("cầu vàng", 15.9951, 107.9962),
     ("linh ứng bà nà", 15.9977, 107.9881),
     ("linh ứng non nước", 16.0038, 108.2631),
     ("linh ứng ngũ hành sơn", 16.0038, 108.2631),
     ("bà nà", 15.9977, 107.9881),
     ("sơn trà", 16.1060, 108.2615),
-    ("linh ứng", 16.0996, 108.2775),
+    ("linh ứng", 16.1046, 108.2789),
     ("ngũ hành sơn", 16.0038, 108.2631),
     ("mỹ khê", 16.0598, 108.2464),
     ("cầu rồng", 16.0611, 108.2275),
@@ -254,9 +259,11 @@ def build_kg_explanation_for_poi(
         eco_practices.append("Bảo tồn kiến trúc di sản nguyên bản và cảnh quan sinh thái truyền thống")
     else:
         reasons.append(
-            f"Điểm trải nghiệm sinh thái – cảnh quan tự nhiên nổi bật tại {city}"
+            f"Điểm trải nghiệm văn hóa – bản địa tiêu biểu tại {city}, kết nối thuận tiện trong cụm lịch trình"
         )
-        eco_practices.append("Không gian mở hòa hợp thiên nhiên, bảo vệ cảnh quan và hệ sinh thái bản địa")
+        eco_practices.append(
+            f"Điểm cộng đồng/bản địa tại {city} chú trọng bảo tồn cảnh quan và giảm rác thải nhựa một lần"
+        )
 
     # 2. Append constraint-specific tailoring if not already mentioned
     if "elderly_friendly" in constraints and not any("bằng phẳng" in r or "thang máy" in r or "xe điện" in r or "ô tô" in r for r in reasons):
@@ -379,6 +386,88 @@ def score_homonym_disambiguation(
     return 0.0
 
 
+_DANANG_ENTITY_MARKERS = (
+    "đà nẵng", "da nang", "danang", "sơn trà", "mỹ khê", "hải châu", "ngũ hành sơn",
+    "bà nà", "cầu rồng", "cầu vàng", "chợ cồn", "chợ hàn", "linh ứng", "bãi bụt", "bãi rạng",
+    "hội an", "hoi an", "cẩm thanh", "trà quế", "sông hàn",
+)
+_HUE_ENTITY_MARKERS = (
+    "huế", "hue", "đại nội", "hoàng thành", "thiên mụ", "tự đức", "khải định",
+    "minh mạng", "chợ đông ba", "sông hương", "thủy biều", "rú chá", "đầm chuồn",
+    "vọng cảnh", "thủy xuân", "tam giang", "cồn hến",
+)
+
+
+def recommend_transport_for_leg(
+    distance_km: float,
+    num_people: int = 2,
+    constraints: list[str] | None = None,
+    is_intercity: bool = False,
+) -> str:
+    """Recommend practical, green transport based on real distance and group size."""
+    active = set(constraints or [])
+    has_family = "elderly_friendly" in active or "kid_friendly" in active or num_people >= 4
+    if is_intercity or distance_km >= 45.0:
+        return "Tàu hỏa Di sản Đà Nẵng – Huế (giảm ~75% CO₂ so với ô tô riêng, êm ái cho nhóm/gia đình)"
+    if distance_km <= 1.5 and "elderly_friendly" not in active:
+        return "Đi bộ gom cụm trong khu vực (0 g CO₂, thuận tiện khám phá phố và hẻm)"
+    if has_family:
+        return (
+            f"Taxi điện Xanh SM hoặc ô tô điện đi chung cho nhóm {max(2, num_people)} người "
+            "(êm ái, chia chi phí hợp lý và không phát thải trực tiếp)"
+        )
+    if distance_km <= 5.0:
+        return "Xe buýt công cộng hoặc xe đạp/taxi điện ngắn chặng tùy thời tiết"
+    return "Xe buýt công cộng tuyến nội đô hoặc taxi điện Xanh SM cho chặng dài"
+
+
+def estimate_trip_budget_summary(
+    days_count: int,
+    num_people: int = 2,
+    budget_tier: Any = None,
+    total_budget: float | None = None,
+) -> dict[str, Any]:
+    """Calculate transparent per-person and total-group budget ranges based on trip context."""
+    days = max(1, int(days_count or 3))
+    people = max(1, int(num_people or 1))
+    tier_raw = getattr(budget_tier, "value", budget_tier)
+    tier = str(tier_raw or "standard").lower()
+
+    tier_specs = {
+        "budget": ("$ Tiết kiệm", 550_000, 750_000, "homestay xanh/nhà nghỉ cộng đồng, quán ăn bản địa, xe buýt/đi bộ"),
+        "standard": ("$$ Tiêu chuẩn", 1_100_000, 1_550_000, "khách sạn/eco-lodge 3–4 sao, ẩm thực địa phương + vé tham quan, taxi điện chia nhóm"),
+        "luxury": ("$$$ Cao cấp", 2_400_000, 3_500_000, "eco-resort/boutique 4–5 sao, trải nghiệm riêng tư và xe điện đưa đón"),
+    }
+    tier_label, pp_min, pp_max, scope_desc = tier_specs.get(tier, tier_specs["standard"])
+    group_min = pp_min * days * people
+    group_max = pp_max * days * people
+
+    def _fmt(v: float) -> str:
+        return f"{int(round(v)):,} ₫".replace(",", ".")
+
+    cap_note = ""
+    if total_budget and total_budget > 0:
+        cap_note = f" (ngân sách bạn đặt: **{_fmt(total_budget)}** cho cả đoàn)"
+
+    summary_text = (
+        f"Ước tính hạng **{tier_label}** cho **{people} người × {days} ngày**: "
+        f"**{_fmt(group_min)} – {_fmt(group_max)}** cả đoàn "
+        f"(khoảng **{_fmt(pp_min)} – {_fmt(pp_max)}/người/ngày**){cap_note} — "
+        f"*đã tính gồm lưu trú ({scope_desc}), ăn uống, vé tham quan và đi lại nội tỉnh*."
+    )
+    return {
+        "tier": tier,
+        "tier_label": tier_label,
+        "days": days,
+        "num_people": people,
+        "per_person_day_min": pp_min,
+        "per_person_day_max": pp_max,
+        "group_total_min": group_min,
+        "group_total_max": group_max,
+        "summary_text": summary_text,
+    }
+
+
 def enrich_pois_with_kg_and_filter_city(
     pois: list[CopilotSuggestedPoiItem],
     target_city_display: str,
@@ -396,14 +485,20 @@ def enrich_pois_with_kg_and_filter_city(
     for idx, p in enumerate(pois):
         addr_folded = strip_vietnamese_accents((p.address or "").lower())
         name_folded = strip_vietnamese_accents((p.name or "").lower())
+        addr_lower = (p.address or "").lower()
+        name_lower = (p.name or "").lower()
+        probe = f"{name_lower} {addr_lower} {(p.city or '').lower()}"
         poi_city = (p.city or "").strip()
 
+        is_hue_entity = any(tok in probe for tok in _HUE_ENTITY_MARKERS)
+        is_dn_or_ha_entity = any(tok in probe for tok in _DANANG_ENTITY_MARKERS)
+
         if not poi_city:
-            if any(m in addr_folded or m in name_folded for m in ("hue", "thua thien", "dai noi", "thien mu", "khai dinh", "tu duc")):
+            if is_hue_entity and not is_dn_or_ha_entity:
                 poi_city = "Huế"
             elif any(m in addr_folded or m in name_folded for m in ("hoi an", "quang nam")):
                 poi_city = "Hội An"
-            elif any(m in addr_folded or m in name_folded for m in _DANANG_HOIAN_MARKERS):
+            elif is_dn_or_ha_entity and not is_hue_entity:
                 poi_city = "Đà Nẵng"
             else:
                 poi_city = "Huế" if "huế" in target_lower and not is_both_cities else "Đà Nẵng"

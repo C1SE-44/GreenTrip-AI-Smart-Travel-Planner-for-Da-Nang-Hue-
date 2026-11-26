@@ -548,6 +548,7 @@ from app.trips.copilot_consultant import (
     handle_city_comparison_consultative,
     handle_city_mismatch_and_mutation,
     handle_elderly_constraints_consultation,
+    handle_external_link_guidance,
     handle_itinerary_mutation_request,
     handle_out_of_scope_request,
     handle_over_scheduling_guardrail,
@@ -602,8 +603,15 @@ def _dispatch_copilot_intent(
             connection=connection,
         )
 
-    # 2. Fact-Check & Feasibility Guardrails (Rule 2)
+    # 2. Fact-Check & Feasibility Guardrails (Rule 2) & External Social Link Guidance
     if fact_check:
+        if fact_check.get("type") == "external_social_link":
+            return finalize_copilot_response(
+                handle_external_link_guidance(request.message, fact_check, effective_ctx, constraints),
+                effective_ctx,
+                constraints,
+                connection=connection,
+            )
         if fact_check.get("type") == "over_scheduling":
             return finalize_copilot_response(
                 handle_over_scheduling_guardrail(request.message, fact_check, effective_ctx, constraints),

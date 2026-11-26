@@ -18,6 +18,7 @@ import {
 import { normalizeCategory, normalizeCity, type Poi } from '@/data/pois';
 import PoiImage from '@/components/ui/PoiImage';
 import PoiMap from '@/components/poi/PoiMap';
+import ExplanationModal from '@/components/poi/ExplanationModal';
 import {
   streamCopilotChat,
   type CopilotExtractedPlace,
@@ -26,6 +27,7 @@ import {
 } from '@/services/copilotService';
 import { extractTripIntentFromPrompt } from '@/utils/vietnamesePromptExtractor';
 import { FormattedCopilotMessage, type CopilotAttachmentSummary } from './TripOverviewView';
+import { sanitizeCopilotReplyText } from './copilotMessageMarkdown';
 import ChatAttachmentMenu, { AttachmentThumbnail, StagedAttachmentChip } from './ChatAttachmentMenu';
 import {
   fileToReadyAttachment,
@@ -105,6 +107,7 @@ function mapSuggestedToPoi(s: CopilotSuggestedPoi, allPois: Poi[]): Poi | null {
     visitDuration: '1–2 giờ',
     isGreen: s.green_score >= 75,
     ecoScore: s.green_score || 85,
+    estimatedCost: s.estimated_cost ?? 0,
   };
 }
 
@@ -156,6 +159,11 @@ export default function IdeationChatView({
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
   const [openEcoTipPoiId, setOpenEcoTipPoiId] = useState<string | null>(null);
+  const [explanationPoi, setExplanationPoi] = useState<{
+    id: string;
+    name: string;
+    snippet?: string;
+  } | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -205,7 +213,7 @@ export default function IdeationChatView({
   }, [messages, allPois]);
 
   const entityLookup = useMemo(
-    () => mapPois.map((p) => ({ id: p.id, name: p.name })),
+    () => mapPois.map((p) => ({ id: p.id, name: p.name, city: p.city })),
     [mapPois]
   );
 
@@ -324,7 +332,7 @@ export default function IdeationChatView({
       const aiMsg: IdeationMessage = {
         id: `idea-a-${Date.now()}`,
         sender: 'assistant',
-        text: res.reply_text,
+        text: sanitizeCopilotReplyText(res.reply_text, text),
         timestamp: nowHHMM(),
         suggestedPois: res.suggested_pois || [],
         extractedPlaces: res.extracted_places || [],
@@ -350,8 +358,29 @@ export default function IdeationChatView({
       }
     } catch (err) {
       console.error('Ideation chat error:', err);
-      setErrorMessage('Không thể kết nối tới trợ lý AI lúc này. Vui lòng kiểm tra backend và thử lại.');
-      setLastFailedPrompt(text);
+      const hasSocialLink = /(?:tiktok\.com|vt\.tiktok\.com|facebook\.com|fb\.watch|instagram\.com|youtu\.be|youtube\.com)/i.test(
+        text
+      );
+      if (hasSocialLink) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `idea-a-${Date.now()}`,
+            sender: 'assistant',
+            text: sanitizeCopilotReplyText('Please wait...', text),
+            timestamp: nowHHMM(),
+            suggestedPois: [],
+            nextSuggestedPrompts: [
+              'Tìm quán ăn bản địa ít đông ở Huế',
+              'Gợi ý điểm xanh & làng nghề tại Đà Nẵng',
+              'Lên lịch trình 2 ngày tránh giờ cao điểm',
+            ],
+          },
+        ]);
+      } else {
+        setErrorMessage('Không thể kết nối tới trợ lý AI lúc này. Vui lòng thử lại sau giây lát.');
+        setLastFailedPrompt(text);
+      }
     } finally {
       setStreamingText('');
       setStreamingStatus(null);
@@ -575,6 +604,7 @@ export default function IdeationChatView({
                       <FormattedCopilotMessage
                         text={msg.text}
                         entityLookup={entityLookup}
+                        preferredCity={liveIntent?.destination}
                         onHoverPoi={setHoveredPoiId}
                         onSelectPoi={handleFocusPoiOnMap}
                       />
@@ -677,7 +707,7 @@ export default function IdeationChatView({
                                   data-testid="poi-green-score-badge"
                                   aria-label={`Điểm xanh ${poi.green_score}/100: ${ecoReason}`}
                                   aria-expanded={isEcoOpen}
-                                  title={ecoReason}
+                                  title="Bấm để xem giải thích 4 trụ cột Điểm xanh"
                                   onMouseEnter={() => setOpenEcoTipPoiId(poi.id)}
                                   onFocus={() => setOpenEcoTipPoiId(poi.id)}
                                   onBlur={() =>
@@ -686,6 +716,11 @@ export default function IdeationChatView({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOpenEcoTipPoiId((prev) => (prev === poi.id ? null : poi.id));
+                                    setExplanationPoi({
+                                      id: poi.id,
+                                      name: poi.name,
+                                      snippet: poi.kg_explanation || poi.swap_reason || undefined,
+                                    });
                                   }}
                                   className="absolute top-2 left-2 min-h-[28px] px-2.5 py-0.5 rounded-full bg-emerald-950/90 hover:bg-emerald-900 text-emerald-100 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 z-10"
                                 >
@@ -794,6 +829,7 @@ export default function IdeationChatView({
                   <FormattedCopilotMessage
                     text={streamingText}
                     entityLookup={entityLookup}
+                    preferredCity={liveIntent?.destination}
                     onHoverPoi={setHoveredPoiId}
                     onSelectPoi={(poiId) => {
                       setSelectedMapPoiId(poiId);
@@ -1000,6 +1036,15 @@ export default function IdeationChatView({
             </div>
           </div>
         </div>
+      )}
+      {explanationPoi && (
+        <ExplanationModal
+          poiId={explanationPoi.id}
+          poiName={explanationPoi.name}
+          explanationSnippet={explanationPoi.snippet}
+          isOpen={Boolean(explanationPoi)}
+          onClose={() => setExplanationPoi(null)}
+        />
       )}
     </main>
   );

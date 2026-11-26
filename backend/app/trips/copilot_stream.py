@@ -44,7 +44,7 @@ def stream_copilot_chat_events(
     payload: CopilotChatRequest,
     chunk_delay_seconds: float = 0.015,
 ) -> Iterator[str]:
-    """Yield status, delta chunks, and full structured Copilot payload over SSE."""
+    """Yield multi-stage progress statuses, delta chunks, and full structured Copilot payload over SSE."""
     status_msg = (
         "Đang phân tích đường dẫn & trích xuất điểm đến xanh..."
         if payload.attachment and payload.attachment.type == "link"
@@ -52,7 +52,7 @@ def stream_copilot_chat_events(
         if payload.attachment and payload.attachment.type == "receipt"
         else "Đang đọc ảnh / tệp đính kèm & nhận diện địa điểm..."
         if payload.attachment
-        else "Đang phân tích nhu cầu & kiểm tra địa điểm xanh..."
+        else "Đang phân tích nhu cầu & khóa phạm vi địa lý..."
     )
     yield format_sse_event(
         "status",
@@ -62,9 +62,24 @@ def stream_copilot_chat_events(
         },
     )
     try:
+        yield format_sse_event(
+            "status",
+            {
+                "stage": "knowledge_graph",
+                "message": "Đang truy xuất điểm cộng đồng & Đồ thị Tri thức...",
+            },
+        )
         # Open DB connection inside generator so FastAPI dependency teardown never closes it early.
         with get_connection() as conn:
             response = process_copilot_chat(payload, conn)
+
+        yield format_sse_event(
+            "status",
+            {
+                "stage": "optimizing_route",
+                "message": "Đang tối ưu tuyến đường ít phát thải & tổng hợp gợi ý...",
+            },
+        )
 
         for chunk in chunk_reply_text(response.reply_text):
             yield format_sse_event("delta", {"text": chunk})

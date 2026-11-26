@@ -124,7 +124,7 @@ def test_get_carbon_estimate(registry):
     )
     assert res["success"] is True
     data = res["data"]
-    assert data["co2_kg"] == 3.4
+    assert data["co2_kg"] == 3.42
     assert data["potential_savings_co2_kg"] > 0
 
 

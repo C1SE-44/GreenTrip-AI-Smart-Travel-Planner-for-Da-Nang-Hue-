@@ -339,6 +339,27 @@ _MATH_SUB_EVAL_RE = re.compile(
     r"\b\d+\s*[-+*×÷/]\s*\d+\s*(?:=|bằng\s+mấy|bang\s+may|bằng\s+bao\s+nhiêu|bang\s+bao\s+nhieu)"
 )
 _MATH_ALGEBRA_RE = re.compile(r"\b(?:tìm|tim)\s+[xyz]\b|\b\d*[xyz]\s*[+\-*/]\s*\d+\s*=")
+_EXTERNAL_SOCIAL_URL_RE = re.compile(
+    r"(?:https?://)?(?:www\.|vm\.|vt\.|m\.)?(tiktok\.com|youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch)/\S*",
+    re.IGNORECASE,
+)
+
+
+def detect_external_social_link(message: str) -> tuple[str, str] | None:
+    """Detect pasted TikTok/YouTube/Instagram/Facebook links before math/OOS rules."""
+    m = _EXTERNAL_SOCIAL_URL_RE.search(message or "")
+    if not m:
+        return None
+    domain = m.group(1).lower()
+    if "tiktok" in domain:
+        platform = "TikTok"
+    elif "youtu" in domain:
+        platform = "YouTube"
+    elif "instagram" in domain:
+        platform = "Instagram"
+    else:
+        platform = "Facebook"
+    return m.group(0), platform
 
 
 def is_out_of_scope_query(message: str) -> tuple[bool, str | None]:
@@ -392,6 +413,16 @@ def classify_copilot_request(
     """
     norm_msg = normalize_vietnamese_query(message)
     folded_msg = strip_vietnamese_accents(norm_msg)
+
+    # 0. Check pasted external social/video URLs (TikTok, Reels, YouTube) before math/OOS rules
+    social_link = detect_external_social_link(message)
+    if social_link:
+        url_str, platform = social_link
+        return "QA_AND_COMPARE", "external_link_guidance", {
+            "type": "external_social_link",
+            "url": url_str,
+            "platform": platform,
+        }
 
     # 1. Check OUT_OF_SCOPE first
     out_of_scope, oos_target = is_out_of_scope_query(message)

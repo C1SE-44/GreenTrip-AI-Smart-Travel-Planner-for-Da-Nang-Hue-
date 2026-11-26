@@ -4,6 +4,7 @@ import re
 import unicodedata
 import urllib.parse
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from reportlab.lib import colors
@@ -16,8 +17,11 @@ from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer,
 
 from app.trips.schemas import TripItineraryResponse
 
-# Font candidates supporting Vietnamese Unicode diacritics
+_BUNDLED_FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+
+# Font candidates supporting Vietnamese Unicode diacritics (bundled repo font prioritized first for Linux/Docker/Render parity)
 FONT_CANDIDATES = [
+    (str(_BUNDLED_FONT_DIR / "DejaVuSans.ttf"), str(_BUNDLED_FONT_DIR / "DejaVuSans-Bold.ttf")),
     # Linux standard paths (Render / Ubuntu / Debian / Alpine)
     ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
     ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),
@@ -108,8 +112,8 @@ class NumberedCanvas(canvas.Canvas):
         self.line(36, 32, 559, 32)
 
         # Footer metadata
-        footer_text = "GreenTrip AI — Nền tảng thiết kế hành trình du lịch xanh tại Đà Nẵng–Huế"
-        page_text = f"Trang {self._pageNumber} / {page_count}"
+        footer_text = _clean_for_pdf("GreenTrip AI — Nền tảng thiết kế hành trình du lịch xanh tại Đà Nẵng–Huế")
+        page_text = _clean_for_pdf(f"Trang {self._pageNumber} / {page_count}")
         self.drawString(36, 20, footer_text)
         self.drawRightString(559, 20, page_text)
         self.restoreState()

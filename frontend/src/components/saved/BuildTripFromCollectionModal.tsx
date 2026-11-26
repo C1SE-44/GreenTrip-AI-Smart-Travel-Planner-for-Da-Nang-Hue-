@@ -31,6 +31,7 @@ export interface BuildTripFromCollectionModalProps {
   initialCollectionName?: string | null;
   initialCollectionPois?: Poi[] | null;
   onClose: () => void;
+  onNavigateToExplore?: () => void;
   onConfirmBuild: (payload: BuildTripFromCollectionResultPayload) => Promise<void> | void;
 }
 
@@ -54,6 +55,7 @@ export default function BuildTripFromCollectionModal({
   initialCollectionName = null,
   initialCollectionPois = null,
   onClose,
+  onNavigateToExplore,
   onConfirmBuild,
 }: BuildTripFromCollectionModalProps) {
   const { collections } = useSavedPlaces();
@@ -275,13 +277,25 @@ export default function BuildTripFromCollectionModal({
 
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
           {collections.length === 0 && collectionPois.length === 0 ? (
-            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-6 text-center space-y-2">
+            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-6 text-center space-y-3">
               <p className="text-sm font-bold text-neutral-900">
                 Bạn chưa có bộ sưu tập nào được lưu
               </p>
               <p className="text-xs text-neutral-600">
-                Hãy đăng nhập và bấm thả tim các địa điểm bạn thích ở trang Khám phá để gom vào một bộ sưu tập trước nhé.
+                Hãy khám phá các điểm đến xanh tại Đà Nẵng &amp; Huế và bấm thả tim để gom vào bộ sưu tập trước nhé.
               </p>
+              {onNavigateToExplore && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={onNavigateToExplore}
+                    className="min-h-[44px] px-5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    <Compass size={14} aria-hidden="true" />
+                    <span>Đi tới trang Khám phá</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <>

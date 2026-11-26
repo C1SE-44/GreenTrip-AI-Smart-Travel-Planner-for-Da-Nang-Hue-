@@ -22,13 +22,13 @@ from app.config import get_settings  # noqa: E402
 from app.db.postgres import get_connection  # noqa: E402
 
 CURATED_REPLACEMENTS: dict[str, str] = {
-    "seafood": "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1000&q=80",
-    "market": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1000&q=80",
-    "food": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1000&q=80",
-    "beach": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80",
-    "lake": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80",
-    "culture": "https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=1000&q=80",
-    "nature": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1000&q=80",
+    "seafood": "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/6ada5f81-2278-5cbe-86a2-c2cb91480fa8.webp",
+    "market": "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5c492955-4c55-43c9-af22-37445cd4fa38.webp",
+    "food": "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/63273e05-399c-45a6-8de9-dc774049816e.webp",
+    "beach": "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/20dbadbe-372a-4238-99ce-537e9bf8f5c7.webp",
+    "lake": "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/e6d32403-30c9-4de2-b111-96b8fddae21f.webp",
+    "culture": "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f7d6e8a3-2a21-4242-8a84-66f1643f39a1.webp",
+    "nature": "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c976ac2a-8a0f-41e4-ab2b-c8e6e1c2c36d.webp",
 }
 
 

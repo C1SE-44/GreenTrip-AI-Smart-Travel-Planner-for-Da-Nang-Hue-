@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import Any, Literal
@@ -447,6 +448,10 @@ class TripContextPayload(BaseModel):
     current_stop_name: str | None = Field(default=None, description="Tên điểm dừng hiện tại cần đổi")
     current_stop_id: str | None = Field(default=None, description="ID của điểm dừng hiện tại")
     saved_ideas: list[str] = Field(default_factory=list, description="Danh sách địa điểm người dùng đã lưu vào Ý tưởng")
+    suggested_places: list[str] = Field(
+        default_factory=list,
+        description="Danh sách tên hoặc ID các địa điểm AI đã gợi ý trong phiên chat hiện tại (dùng để chống lặp)",
+    )
     traveler_name: str | None = Field(default=None, description="Tên người dùng để cá nhân hóa xưng hô")
     companions: str | None = Field(default=None, description="Đối tượng đi cùng (bố mẹ lớn tuổi, trẻ nhỏ, cặp đôi, solo)")
     preferences: list[str] = Field(default_factory=list, description="Danh sách sở thích ưu tiên")
@@ -477,12 +482,59 @@ class TripContextPayload(BaseModel):
     )
 
 
+class CopilotAttachmentPayload(BaseModel):
+    """Multimodal attachment sent from the Mindtrip-style '+' menu (file, link, or receipt)."""
+
+    type: Literal["file", "link", "receipt"] = Field(
+        ...,
+        description="Loại đính kèm: 'file' (ảnh/screenshot/PDF), 'link' (URL mạng xã hội/bài viết), hoặc 'receipt' (vé/xác nhận đặt chỗ)",
+    )
+    url: str | None = Field(default=None, max_length=2000, description="Đường dẫn URL khi type='link'")
+    file_name: str | None = Field(default=None, max_length=255, description="Tên tệp khi type='file' hoặc 'receipt'")
+    mime_type: str | None = Field(default=None, max_length=100, description="MIME type (image/jpeg, image/png, application/pdf, text/plain)")
+    content_base64: str | None = Field(
+        default=None,
+        max_length=6_000_000,
+        description="Nội dung file mã hóa base64 (tối đa ~4MB nhị phân)",
+    )
+    extracted_text: str | None = Field(
+        default=None,
+        max_length=8000,
+        description="Văn bản trích xuất sẵn từ tệp text/ghi chú (nếu có)",
+    )
+
+    @model_validator(mode="after")
+    def validate_attachment_fields(self) -> "CopilotAttachmentPayload":
+        if self.type == "link":
+            if not (self.url or "").strip():
+                raise ValueError("Vui lòng nhập đường dẫn URL hợp lệ.")
+            cleaned = self.url.strip()
+            if not (cleaned.startswith("http://") or cleaned.startswith("https://")):
+                cleaned = f"https://{cleaned}"
+            self.url = cleaned
+        else:
+            has_content = bool((self.content_base64 or "").strip() or (self.extracted_text or "").strip() or (self.file_name or "").strip())
+            if not has_content:
+                raise ValueError("Vui lòng chọn tệp ảnh, PDF hoặc hóa đơn hợp lệ.")
+        return self
+
+
 class CopilotChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=1000, description="Nội dung người dùng gửi cho Copilot")
+    message: str = Field(default="", max_length=1000, description="Nội dung người dùng gửi cho Copilot")
     trip_context: TripContextPayload = Field(
         default_factory=TripContextPayload,
         description="Ngữ cảnh chuyến đi hiện tại (thành phố, ngày, điểm dừng)",
     )
+    attachment: CopilotAttachmentPayload | None = Field(
+        default=None,
+        description="Tệp ảnh, đường dẫn bài viết/video, hoặc hóa đơn đặt chỗ đính kèm từ menu '+'",
+    )
+
+    @model_validator(mode="after")
+    def validate_message_or_attachment(self) -> "CopilotChatRequest":
+        if not (self.message or "").strip() and self.attachment is None:
+            raise ValueError("Vui lòng nhập câu hỏi hoặc đính kèm tệp/đường dẫn.")
+        return self
 
 
 class CopilotSuggestedPoiItem(BaseModel):
@@ -510,6 +562,44 @@ class CopilotSuggestedPoiItem(BaseModel):
     opening_hours_warning: str | None = None
     open_range_label: str | None = None
 
+    @field_validator("gallery_urls", mode="before")
+    @classmethod
+    def _coerce_gallery_urls(cls, value: Any) -> list[str] | None:
+        if value is None or value == "":
+            return None
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                return parsed if isinstance(parsed, list) else None
+            except ValueError:
+                return None
+        return value if isinstance(value, list) else None
+
+
+class CopilotExtractedPlace(BaseModel):
+    name: str
+    timestamp: str | None = None
+    place_type: str = "attraction"
+    context: str = ""
+    is_specific: bool = True
+    city: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    source: str = "video"  # 'db' | 'geo_anchor' | 'geocoded' | 'video'
+
+
+class CopilotReceiptBooking(BaseModel):
+    booking_type: str = "hotel"
+    title: str
+    city: str = "Đà Nẵng"
+    date_str: str | None = None
+    checkout_str: str | None = None
+    time_str: str | None = None
+    estimated_cost_vnd: int | None = None
+    confirmation_code: str | None = None
+    is_duplicate: bool = False
+    auto_synced_day: int | None = None
+
 
 class CopilotChatResponse(BaseModel):
     reply_text: str
@@ -522,6 +612,8 @@ class CopilotChatResponse(BaseModel):
     fact_check_warning: str | None = None
     target_slot: str | None = None
     suggested_pois: list[CopilotSuggestedPoiItem] = Field(default_factory=list)
+    extracted_places: list[CopilotExtractedPlace] = Field(default_factory=list)
+    receipt_booking: CopilotReceiptBooking | None = None
     action_type: str = "none"  # 'replace_stop', 'add_stop', 'mutate_itinerary', 'view_on_map', 'none'
     next_suggested_prompts: list[str] = Field(default_factory=list)
     avoid_notice: str | None = None

@@ -17,8 +17,6 @@ import {
   Bus,
   Footprints,
   Train,
-  Sparkles,
-  DollarSign,
   Leaf,
   ShieldCheck,
   X,
@@ -35,7 +33,6 @@ import {
   type DayRouteResponse,
   type RouteStop,
   type RouteSegment,
-  type TransportModeOption,
   type RouteTransportMode,
 } from '@/services/itineraryService';
 

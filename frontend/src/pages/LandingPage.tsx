@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowUpRight, ArrowRight, Leaf, ArrowDown } from 'lucide-react';
+import { ArrowUpRight, ArrowRight, Leaf, ArrowDown, Sparkles } from 'lucide-react';
 import { HeroScenes } from '@/components/landing/HeroScenes';
 import { HeroSearchPill } from '@/components/landing/HeroSearchPill';
 import { ValuePropsSection } from '@/components/landing/ValuePropsSection';
@@ -61,8 +61,8 @@ export default function LandingPage() {
 
             <div className="hero-content">
               {/* Small pill label above H1 */}
-              <div className="inline-flex items-center rounded-full border border-white/40 bg-white/60 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#555555] backdrop-blur-sm mb-6">
-                AI-POWERED TRAVEL PLANNER · ĐÀ NẴNG &amp; HUẾ
+              <div className="inline-flex items-center rounded-full border border-white/40 bg-white/60 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-neutral-700 backdrop-blur-sm mb-6">
+                LẬP LỊCH TRÌNH DU LỊCH XANH · ĐÀ NẴNG &amp; HUẾ
               </div>
 
               <h1 id="hero-title">
@@ -82,6 +82,22 @@ export default function LandingPage() {
                 onDaysChange={setDays}
                 onSubmit={() => openSample()}
               />
+
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  to="/chat"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-full bg-emerald-800 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-900 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                >
+                  <Sparkles size={14} aria-hidden="true" />
+                  <span>Hỏi Trợ lý AI ngay</span>
+                </Link>
+                <Link
+                  to="/explore"
+                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full border border-neutral-300 bg-white/85 px-4 py-2 text-xs font-semibold text-neutral-900 hover:bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                >
+                  <span>Khám phá điểm đến xanh</span>
+                </Link>
+              </div>
 
               <p className="hero-note">Thử chỉnh miễn phí · Địa điểm từ GreenTrip · Đăng nhập khi lưu</p>
             </div>
@@ -140,6 +156,7 @@ export default function LandingPage() {
           </div>
           <div className="footer-links">
             <Link to="/explore">Khám phá điểm đến</Link>
+            <Link to="/chat">Trợ lý AI</Link>
             <button onClick={() => openSample()}>Xem lịch mẫu</button>
             <Link to="/planner">
               Lập lịch trình <ArrowUpRight size={14} />

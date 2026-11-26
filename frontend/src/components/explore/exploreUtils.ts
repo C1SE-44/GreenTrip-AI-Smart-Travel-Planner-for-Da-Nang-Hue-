@@ -164,7 +164,7 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
     daysCount: 3,
     tags: ['Đà Nẵng & Huế', '3 Ngày', 'Lộ trình tối ưu OSRM', 'Xanh'],
     createdAt: '2026-11-23',
-    image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ce249bef-0477-4a46-a19c-735b3db10498.webp',
     ideas: [
       '029a28df-b091-49d9-a911-738572c72464',
       'd58fe815-4aa1-45b2-831a-11b97e130918',
@@ -181,7 +181,7 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
     daysCount: 5,
     tags: ['Đà Nẵng & Huế', '5 Ngày', 'Di sản & Biển xanh'],
     createdAt: '2026-11-23',
-    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/a998a35e-bdff-49f2-9dab-33be011309b2.webp',
     itineraryOutline: buildDefaultMindtripItinerary('Đà Nẵng & Huế', 5) as unknown as DailyItineraryOutline[],
   },
   {
@@ -193,7 +193,7 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
     daysCount: 7,
     tags: ['Miền Trung', '7 Ngày', 'Tour gia đình'],
     createdAt: '2026-11-23',
-    image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800&auto=format&fit=crop&q=80',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f2115474-4a6a-4fcb-8010-d7bb7f21995c.webp',
     itineraryOutline: buildDefaultMindtripItinerary('Đà Nẵng & Huế', 7) as unknown as DailyItineraryOutline[],
   },
 ];

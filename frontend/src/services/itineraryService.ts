@@ -1,6 +1,30 @@
 import { fetchJson } from '@/lib/api';
 import type { Poi } from '@/data/pois';
 
+const HOTSPOT_PEAK_PATTERNS: ReadonlyArray<{ pattern: RegExp; windows: ReadonlyArray<[number, number]> }> = [
+  { pattern: /đại nội|hoàng thành/i, windows: [[540, 690], [870, 960]] },
+  { pattern: /cầu rồng/i, windows: [[1170, 1290]] },
+  { pattern: /bà nà|cầu vàng/i, windows: [[510, 870]] },
+  { pattern: /linh ứng.*(?:sơn trà|bãi bụt)|bán đảo sơn trà/i, windows: [[570, 690], [930, 1050]] },
+  { pattern: /thiên mụ/i, windows: [[570, 690], [960, 1050]] },
+  { pattern: /mỹ khê|ngũ hành sơn|chợ hàn|chợ cồn|chợ đông ba/i, windows: [[570, 720], [990, 1110]] },
+];
+
+function isPoiCrowdedHotspot(poi: Pick<Poi, 'name' | 'popularityScore'>): boolean {
+  if (HOTSPOT_PEAK_PATTERNS.some((rule) => rule.pattern.test(poi.name || ''))) return true;
+  return typeof poi.popularityScore === 'number' && Number.isFinite(poi.popularityScore) && poi.popularityScore >= 3.85;
+}
+
+function isStopInCrowdPeak(startTime: string | null | undefined, poi: Pick<Poi, 'name' | 'popularityScore'>): boolean {
+  if (!startTime) return false;
+  const m = startTime.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return false;
+  const mins = Number(m[1]) * 60 + Number(m[2]);
+  const rule = HOTSPOT_PEAK_PATTERNS.find((r) => r.pattern.test(poi.name || ''));
+  const windows: ReadonlyArray<[number, number]> = rule ? rule.windows : isPoiCrowdedHotspot(poi) ? [[570, 690], [960, 1080]] : [];
+  return windows.some(([s, e]) => mins >= s && mins <= e);
+}
+
 function evaluateStopLocalAuthentic(
   poi: Pick<Poi, 'city' | 'category' | 'lng' | 'ecoScore' | 'popularityScore' | 'localBusinessType'>
 ): { isLocalAuthentic: boolean; isCraftVillage: boolean; badgeLabel: string | null } {
@@ -1493,6 +1517,39 @@ export function formatCarbonAmount(grams: number): string {
   return `${(safe / 1000).toFixed(2)} kg CO₂`;
 }
 
+/**
+ * Quy đổi lượng CO₂ tiết kiệm sang mốc dễ hình dung:
+ * 1 cây xanh trưởng thành hấp thụ ~22 kg CO₂/năm (~60 g CO₂/ngày).
+ */
+export function formatCarbonEquivalence(savedGrams: number, savedPercent: number): string | null {
+  const safeGrams = Math.max(0, Number.isFinite(savedGrams) ? savedGrams : 0);
+  const safePct = Math.max(0, Math.round(Number.isFinite(savedPercent) ? savedPercent : 0));
+  if (safeGrams < 60 && safePct <= 0) return null;
+  const treeDays = Math.max(1, Math.round(safeGrams / 60));
+  return `Giảm ${safePct}% so với ô tô riêng · ≈ ${treeDays} ngày cây xanh hấp thụ`;
+}
+
+export function detectSameDayIntercityConflict(
+  day: ItineraryDay,
+  poiById?: Map<string, Poi>
+): boolean {
+  const activeStops = day.stops.filter((s) => s.stop_type !== 'rest');
+  let hasDaNang = false;
+  let hasHue = false;
+  for (const stop of activeStops) {
+    const matched = stop.poi_id ? poiById?.get(stop.poi_id) : undefined;
+    const rawCity = (stop.city || matched?.city || '').trim();
+    if (!rawCity) continue;
+    if (/hu[eế]/i.test(rawCity)) {
+      hasHue = true;
+    } else if (/đà nẵng|da nang|danang/i.test(rawCity)) {
+      hasDaNang = true;
+    }
+    if (hasDaNang && hasHue) return true;
+  }
+  return false;
+}
+
 // ─────────────────────────────────────────────────────────────
 // KIỂM TRA RÀNG BUỘC GIỜ MỞ CỬA (OPENING HOURS VALIDATOR)
 // ─────────────────────────────────────────────────────────────
@@ -1790,10 +1847,21 @@ export function optimizeDays(
 
   pending.forEach((poi) => {
     const candidate = stopFromPoi(poi, 'assistant');
+    const candidateProvince = normalizeCityLabel(candidate.city || poi.city);
     const duration = minutesFor(candidate);
     let eligible = next
       .map((day, index) => ({ day, index, stops: day.stops.filter((stop) => stop.stop_type !== 'rest') }))
-      .filter(({ stops }) => stops.reduce((total, stop) => total + minutesFor(stop), 0) + duration <= dailyCapacity);
+      .filter(({ stops }) => stops.reduce((total, stop) => total + minutesFor(stop), 0) + duration <= dailyCapacity)
+      // Khóa cứng mỗi ngày tối đa 1 tỉnh (Đà Nẵng hoặc Huế) để không xếp nhảy đèo Hải Vân trong 30 phút
+      .filter(({ stops }) => {
+        if (stops.length === 0) return true;
+        return stops.every((stop) => {
+          const matched = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
+          const stopCity = stop.city || matched?.city;
+          if (!stopCity) return true;
+          return normalizeCityLabel(stopCity) === candidateProvince;
+        });
+      });
     const isCafe = experienceGroup(poi, candidate) === 'cafe';
     if (isCafe) {
       eligible = eligible.filter(({ stops }) =>
@@ -2391,5 +2459,231 @@ export function computeDayFatigue(day: ItineraryDay, poiById?: Map<string, Poi>)
     hasRestBlock,
     needsRest,
     level,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// TỐI ƯU ĐA MỤC TIÊU (TRADE-OFF) & 5 CHỈ SỐ NGHIÊN CỨU ĐỀ TÀI
+// ─────────────────────────────────────────────────────────────
+
+export type OptimizationTradeoffMode = 'fast' | 'budget' | 'green_local';
+
+export interface ItineraryResearchMetrics {
+  routeFeasibilityPct: number;
+  userSatisfactionScore: number;
+  diversityPct: number;
+  emissionReductionPct: number;
+  localBusinessExposurePct: number;
+  crowdedStopCount: number;
+  peakHourConflictCount: number;
+  totalRoadKm: number;
+  co2Grams: number;
+}
+
+export function computeItineraryResearchMetrics(
+  days: ItineraryDay[],
+  poiById: Map<string, Poi>,
+  transportMode: RouteTransportMode
+): ItineraryResearchMetrics {
+  let totalRoadKm = 0;
+  let activeStopsCount = 0;
+  let ratingSum = 0;
+  let ratingCount = 0;
+  let localCount = 0;
+  let crowdedStopCount = 0;
+  let peakHourConflictCount = 0;
+  let openingConflictCount = 0;
+  let intercityDays = 0;
+  const categories = new Set<string>();
+
+  for (const day of days) {
+    totalRoadKm += calculateStopsPathKm(day.stops, poiById, true);
+    if (detectSameDayIntercityConflict(day, poiById)) {
+      intercityDays += 1;
+    }
+    for (const stop of day.stops) {
+      if (stop.stop_type === 'rest') continue;
+      activeStopsCount += 1;
+      const matched = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
+      if (matched) {
+        if (Number.isFinite(matched.rating) && matched.rating > 0) {
+          ratingSum += matched.rating;
+          ratingCount += 1;
+        }
+        if (matched.isLocalBusiness || matched.localBusinessType === 'craft_workshop') {
+          localCount += 1;
+        }
+        categories.add(matched.category);
+        if (isPoiCrowdedHotspot(matched)) {
+          crowdedStopCount += 1;
+          if (isStopInCrowdPeak(stop.start_time, matched)) {
+            peakHourConflictCount += 1;
+          }
+        }
+      } else if (stop.category) {
+        categories.add(stop.category);
+      }
+      const ohCheck = checkStopOpeningHours(stop, matched, day.date);
+      if (ohCheck.status === 'closed' || ohCheck.status === 'outside_hours') {
+        openingConflictCount += 1;
+      }
+    }
+  }
+
+  const penalty = intercityDays * 30 + openingConflictCount * 12 + peakHourConflictCount * 5;
+  const routeFeasibilityPct = activeStopsCount === 0 ? 100 : Math.max(0, Math.min(100, 100 - penalty));
+  const userSatisfactionScore = ratingCount > 0 ? Math.round((ratingSum / ratingCount) * 10) / 10 : 4.6;
+  const diversityPct = activeStopsCount === 0 ? 0 : Math.min(100, Math.round((categories.size / 4) * 100));
+  const carbon = estimateCarbonFootprint(totalRoadKm * 1000, transportMode);
+  const localBusinessExposurePct = activeStopsCount > 0 ? Math.round((localCount / activeStopsCount) * 100) : 0;
+
+  return {
+    routeFeasibilityPct,
+    userSatisfactionScore,
+    diversityPct,
+    emissionReductionPct: carbon.savedPercent,
+    localBusinessExposurePct,
+    crowdedStopCount,
+    peakHourConflictCount,
+    totalRoadKm: Math.round(totalRoadKm * 10) / 10,
+    co2Grams: carbon.co2Grams,
+  };
+}
+
+export interface TradeoffOptimizationResult {
+  mode: OptimizationTradeoffMode;
+  days: ItineraryDay[];
+  recommendedTransportMode: RouteTransportMode;
+  before: ItineraryResearchMetrics & { totalCost: number };
+  after: ItineraryResearchMetrics & { totalCost: number };
+  swappedCount: number;
+  summaryText: string;
+}
+
+export function optimizeItineraryWithTradeoff(
+  days: ItineraryDay[],
+  allPois: Poi[],
+  mode: OptimizationTradeoffMode,
+  currentTransportMode: RouteTransportMode,
+  peopleCount = 2
+): TradeoffOptimizationResult {
+  const poiById = new Map(allPois.map((p) => [p.id, p]));
+  const beforeMetrics = computeItineraryResearchMetrics(days, poiById, currentTransportMode);
+  const beforeBudget = computeTripBudgetSummary(days, poiById, peopleCount);
+
+  // Step 1: Always eliminate zig-zag ordering first
+  const routeRes = optimizeItineraryRouteOrder(days, poiById);
+  let nextDays: ItineraryDay[] = routeRes.days.map((d) => ({ ...d, stops: d.stops.map((s) => ({ ...s })) }));
+  let recommendedTransportMode: RouteTransportMode = currentTransportMode;
+  let swappedCount = 0;
+
+  const usedPoiIds = new Set(
+    nextDays.flatMap((d) => d.stops.map((s) => s.poi_id).filter((id): id is string => Boolean(id)))
+  );
+
+  if (mode === 'green_local') {
+    // Prefer low-carbon transit (or walking if very compact)
+    recommendedTransportMode = beforeMetrics.totalRoadKm <= 3.5 ? 'walking' : 'transit';
+    nextDays = nextDays.map((day) => {
+      let daySwapped = false;
+      const updatedStops = day.stops.map((stop) => {
+        if (daySwapped || stop.stop_type === 'rest') return stop;
+        const matched = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
+        if (!matched || !isPoiCrowdedHotspot(matched)) return stop;
+        const alts = suggestNearbyAlternativesForStop(stop, day, allPois, usedPoiIds, 2, {
+          preferLocalAuthentic: true,
+        });
+        const bestAlt = alts.find((a) => !isPoiCrowdedHotspot(a.poi)) ?? alts[0];
+        if (!bestAlt) return stop;
+        usedPoiIds.add(bestAlt.poi.id);
+        daySwapped = true;
+        swappedCount += 1;
+        return {
+          ...stop,
+          poi_id: bestAlt.poi.id,
+          title: bestAlt.poi.name,
+          city: bestAlt.poi.city,
+          address: bestAlt.poi.address ?? stop.address,
+          category: bestAlt.poi.category,
+          latitude: bestAlt.poi.lat,
+          longitude: bestAlt.poi.lng,
+          comment: `Đổi tránh đông sang cơ sở bản địa gần đó (${bestAlt.reason})`,
+        };
+      });
+      return { ...day, stops: updatedStops };
+    });
+  } else if (mode === 'budget') {
+    recommendedTransportMode = 'transit';
+    nextDays = nextDays.map((day) => {
+      let daySwapped = false;
+      const updatedStops = day.stops.map((stop) => {
+        if (daySwapped || stop.stop_type === 'rest') return stop;
+        const matched = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
+        const curCost = matched?.estimatedCost ?? 0;
+        if (!matched || curCost < 120000) return stop;
+        const alts = suggestNearbyAlternativesForStop(stop, day, allPois, usedPoiIds, 4, {
+          preferLocalAuthentic: true,
+        });
+        const cheaper = alts.find((a) => (a.poi.estimatedCost ?? 0) <= Math.min(60000, curCost * 0.5));
+        if (!cheaper) return stop;
+        usedPoiIds.add(cheaper.poi.id);
+        daySwapped = true;
+        swappedCount += 1;
+        return {
+          ...stop,
+          poi_id: cheaper.poi.id,
+          title: cheaper.poi.name,
+          city: cheaper.poi.city,
+          address: cheaper.poi.address ?? stop.address,
+          category: cheaper.poi.category,
+          latitude: cheaper.poi.lat,
+          longitude: cheaper.poi.lng,
+          comment: `Đổi sang điểm tiết kiệm hơn cùng khu vực (${cheaper.reason})`,
+        };
+      });
+      return { ...day, stops: updatedStops };
+    });
+  }
+
+  // Re-order routes after swaps
+  if (swappedCount > 0) {
+    nextDays = optimizeItineraryRouteOrder(nextDays, poiById).days;
+  }
+
+  const afterMetrics = computeItineraryResearchMetrics(nextDays, poiById, recommendedTransportMode);
+  const afterBudget = computeTripBudgetSummary(nextDays, poiById, peopleCount);
+
+  const kmDelta = Math.round((afterMetrics.totalRoadKm - beforeMetrics.totalRoadKm) * 10) / 10;
+  const co2DeltaPct =
+    beforeMetrics.co2Grams > 0
+      ? Math.round(((afterMetrics.co2Grams - beforeMetrics.co2Grams) / beforeMetrics.co2Grams) * 100)
+      : 0;
+  const localDelta = afterMetrics.localBusinessExposurePct - beforeMetrics.localBusinessExposurePct;
+  const crowdDelta = afterMetrics.crowdedStopCount - beforeMetrics.crowdedStopCount;
+
+  const modeLabel =
+    mode === 'green_local' ? 'Xanh & Ít đông' : mode === 'budget' ? 'Tiết kiệm chi phí' : 'Nhanh & Gọn tuyến';
+  const parts: string[] = [];
+  if (kmDelta !== 0) parts.push(`${kmDelta > 0 ? '+' : ''}${kmDelta.toFixed(1)} km`);
+  if (co2DeltaPct !== 0) parts.push(`${co2DeltaPct > 0 ? '+' : ''}${co2DeltaPct}% CO₂`);
+  if (crowdDelta < 0) parts.push(`giảm ${Math.abs(crowdDelta)} điểm đông`);
+  if (localDelta > 0) parts.push(`+${localDelta}% điểm cộng đồng`);
+  if (afterBudget.totalCost < beforeBudget.totalCost) {
+    parts.push(`tiết kiệm ${new Intl.NumberFormat('vi-VN').format(beforeBudget.totalCost - afterBudget.totalCost)} ₫`);
+  }
+
+  const summaryText =
+    parts.length > 0
+      ? `Chế độ ${modeLabel}: ${parts.join(' · ')}.`
+      : `Chế độ ${modeLabel}: Tuyến đường hiện tại đã tối ưu theo tiêu chí đã chọn.`;
+
+  return {
+    mode,
+    days: nextDays,
+    recommendedTransportMode,
+    before: { ...beforeMetrics, totalCost: beforeBudget.totalCost },
+    after: { ...afterMetrics, totalCost: afterBudget.totalCost },
+    swappedCount,
+    summaryText,
   };
 }

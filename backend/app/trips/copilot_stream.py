@@ -48,12 +48,20 @@ def stream_copilot_chat_events(
     Progressive SSE event stream for GreenTrip Copilot.
     Emits events: start -> status -> sources (if RAG used) -> tool_result (if tools used) -> token / delta -> complete / done.
     """
-    # 1. Status event
+    status_msg = (
+        "Đang phân tích đường dẫn & trích xuất điểm đến xanh..."
+        if payload.attachment and payload.attachment.type == "link"
+        else "Đang đọc vé / hóa đơn đặt chỗ & đồng bộ lịch trình..."
+        if payload.attachment and payload.attachment.type == "receipt"
+        else "Đang đọc ảnh / tệp đính kèm & nhận diện địa điểm..."
+        if payload.attachment
+        else "Đang phân tích nhu cầu & khóa phạm vi địa lý..."
+    )
     yield format_sse_event(
         "status",
         {
             "stage": "analyzing",
-            "message": "Đang phân tích nhu cầu & kiểm tra dữ liệu du lịch xanh...",
+            "message": status_msg,
         },
     )
 
@@ -67,6 +75,13 @@ def stream_copilot_chat_events(
     )
 
     try:
+        yield format_sse_event(
+            "status",
+            {
+                "stage": "knowledge_graph",
+                "message": "Đang truy xuất điểm cộng đồng & Đồ thị Tri thức...",
+            },
+        )
         # Open DB connection inside generator so FastAPI dependency teardown never closes it early.
         with get_connection() as conn:
             response = process_copilot_chat(payload, conn)
@@ -91,9 +106,15 @@ def stream_copilot_chat_events(
                 },
             )
 
+        yield format_sse_event(
+            "status",
+            {
+                "stage": "optimizing_route",
+                "message": "Đang tối ưu tuyến đường ít phát thải & tổng hợp gợi ý...",
+            },
+        )
+
         # 5. Token & Delta events
-        # Note: If real provider stream is active, tokens stream live.
-        # For deterministic fallback, chunks are emitted progressively for UI typewriter effect.
         for chunk in chunk_reply_text(response.reply_text):
             yield format_sse_event("token", {"text": chunk})
             yield format_sse_event("delta", {"text": chunk})

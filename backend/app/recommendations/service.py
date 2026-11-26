@@ -148,6 +148,17 @@ def _effective_visit_minutes(poi: dict[str, Any]) -> Decimal:
     return duration
 
 
+def _resolved_cost_vnd(poi: dict[str, Any], default: float = 0.0) -> float:
+    """Return numeric per-person cost while preserving explicit 0 VND (free) POIs."""
+    for key in ("effective_estimated_cost", "estimated_cost"):
+        val = poi.get(key)
+        if val is not None and not isinstance(val, bool):
+            parsed = _decimal_value(val)
+            if parsed is not None and parsed >= 0:
+                return float(parsed)
+    return default
+
+
 def _resolved_green_score(poi: dict[str, Any]) -> float:
     """Return the normalized green score used by the engine."""
     raw = poi.get("resolved_green_score", poi.get("green_score"))
@@ -302,7 +313,7 @@ def _rank_and_format(
             "name": str(poi.get("name") or ""),
             "category_name": poi.get("category_name") or poi.get("category"),
             "match_score": round(score, 1),
-            "estimated_cost": float(poi.get("effective_estimated_cost") or poi.get("estimated_cost") or 50000),
+            "estimated_cost": _resolved_cost_vnd(poi, default=50000.0),
             "satisfaction_score": poi.get("satisfaction_score"),
             "is_local_business": poi.get("is_local_business") is True,
             "green_score": _resolved_green_score(poi),
@@ -576,7 +587,7 @@ def _recommend_by_ideas_and_taxonomy(
             quality_score = sat * 15.0
 
             # Budget alignment
-            cost = float(poi.get("effective_estimated_cost") or poi.get("estimated_cost") or 50000)
+            cost = _resolved_cost_vnd(poi, default=50000.0)
             b_tier = str(poi.get("budget_tier") or "$$").lower()
             budget_adj = 0.0
             if request.budget_tier == "budget":
@@ -600,9 +611,27 @@ def _recommend_by_ideas_and_taxonomy(
             else:
                 vibe_score = 5.0
 
+            # Multi-objective green, anti-overtourism, and local community signals
+            g_score = _resolved_green_score(poi)
+            is_local = poi.get("is_local_business") is True
+            raw_pop = float(poi.get("popularity_score") or 3.0)
+            low_crowd = max(0.0, min(1.0, 1.0 - (raw_pop / 5.0)))
+            opt_mode = getattr(request, "optimization_mode", "balanced") or "balanced"
+            if request.slider_weights and request.slider_weights.local_authentic_only:
+                opt_mode = "green_local"
+
+            if opt_mode == "green_local":
+                eco_local_bonus = (g_score * 20.0) + (low_crowd * 14.0) + (12.0 if is_local else -4.0)
+            elif opt_mode == "budget":
+                eco_local_bonus = (g_score * 8.0) + (8.0 if cost <= 50000 else 0.0) + (6.0 if is_local else 0.0)
+            elif opt_mode == "fast":
+                eco_local_bonus = (dist_score * 0.35) + (g_score * 6.0)
+            else:
+                eco_local_bonus = (g_score * 12.0) + (low_crowd * 6.0) + (6.0 if is_local else 0.0)
+
             total_score = min(
                 99.0,
-                max(50.0, dist_score + bucket_score + behavior_score + quality_score + budget_adj + vibe_score),
+                max(50.0, dist_score + bucket_score + behavior_score + quality_score + budget_adj + vibe_score + eco_local_bonus),
             )
 
             # --- LỜI VĂN GIẢI THÍCH CHỮ KÝ ĐẶC TRƯNG (Point b & Point d) ---
@@ -614,39 +643,59 @@ def _recommend_by_ideas_and_taxonomy(
                 p_bucket=p_bucket,
                 c_bucket=c_bucket,
             )
+            if is_local and "cộng đồng" not in snippet.lower() and "bản địa" not in snippet.lower():
+                snippet = f"{snippet} Hỗ trợ cơ sở cộng đồng địa phương."
 
             ranked_list.append((total_score, snippet, poi))
 
         ranked_list.sort(key=lambda x: -x[0])
         selected_candidates = ranked_list[:top_k]
 
-    # STAGE 1: No ideas yet - Focus on Budget Tier + Rating & Distinct POI Hook (0 Eco)
+    # STAGE 1: Multi-objective ranking (Experience + Green + Low-Crowd + Local Community + Budget)
     else:
         ranked_list = []
         b_req = (request.budget_tier or "standard").lower()
+        opt_mode = getattr(request, "optimization_mode", "balanced") or "balanced"
+        if request.slider_weights and request.slider_weights.local_authentic_only:
+            opt_mode = "green_local"
 
         for poi in candidates:
-            cost = float(poi.get("effective_estimated_cost") or poi.get("estimated_cost") or 50000)
+            cost = _resolved_cost_vnd(poi, default=50000.0)
             b_tier = str(poi.get("budget_tier") or "$$").lower()
             sat = float(poi.get("satisfaction_score") or 4.5) / 5.0
-            pop = min(1.0, math.log1p(float(poi.get("popularity_score") or 10)) / 4.0)
+            green_val = _resolved_green_score(poi)
+            is_local = poi.get("is_local_business") is True
+            raw_pop = float(poi.get("popularity_score") or 3.0)
+            low_crowd = max(0.0, min(1.0, 1.0 - (raw_pop / 5.0)))
 
             if b_req == "budget":
-                budget_affinity = 0.35 if (cost <= 80000 or b_tier in ("$", "free")) else (-0.35 if cost > 150000 else 0.0)
-                tier_label = "tiết kiệm & kinh tế"
+                budget_affinity = 1.0 if (cost <= 80000 or b_tier in ("$", "free")) else (0.2 if cost > 150000 else 0.6)
             elif b_req in ("upgrade", "luxury"):
-                budget_affinity = 0.35 if (cost >= 200000 or b_tier in ("$$$", "luxury")) else (-0.25 if cost < 80000 else 0.0)
-                tier_label = "sang trọng & cao cấp"
+                budget_affinity = 1.0 if (cost >= 200000 or b_tier in ("$$$", "luxury")) else (0.4 if cost < 80000 else 0.7)
             else:
-                budget_affinity = 0.25 if (50000 <= cost <= 250000 or b_tier == "$$") else 0.0
-                tier_label = "tiêu chuẩn hợp lý"
+                budget_affinity = 0.9 if (cost <= 250000 or b_tier in ("free", "$", "$$")) else 0.5
 
-            raw_score = (sat * 0.70) + (pop * 0.30) + budget_affinity
-            match_score = min(99.0, max(60.0, raw_score * 85.0))
+            local_score = 1.0 if is_local else 0.25
+            if opt_mode == "green_local":
+                raw_score = (0.20 * sat) + (0.35 * green_val) + (0.20 * low_crowd) + (0.20 * local_score) + (0.05 * budget_affinity)
+            elif opt_mode == "budget":
+                raw_score = (0.25 * sat) + (0.15 * green_val) + (0.10 * low_crowd) + (0.15 * local_score) + (0.35 * budget_affinity)
+            elif opt_mode == "fast":
+                raw_score = (0.45 * sat) + (0.20 * green_val) + (0.10 * low_crowd) + (0.10 * local_score) + (0.15 * budget_affinity)
+            else:
+                raw_score = (0.30 * sat) + (0.25 * green_val) + (0.15 * low_crowd) + (0.15 * local_score) + (0.15 * budget_affinity)
 
-            city_display = poi.get("city_name") or poi.get("city") or "Đà Nẵng & Huế"
+            match_score = min(99.0, max(55.0, raw_score * 100.0))
+
             usp_hook = _generate_poi_signature_hook(poi)
-            snippet = usp_hook
+            tags: list[str] = []
+            if is_local:
+                tags.append("Cơ sở bản địa")
+            if low_crowd >= 0.35:
+                tags.append("Ít đông")
+            if green_val >= 0.85:
+                tags.append(f"Điểm xanh {int(round(green_val * 100))}/100")
+            snippet = f"{' · '.join(tags)}. {usp_hook}" if tags else usp_hook
 
             ranked_list.append((match_score, snippet, poi))
 
@@ -663,7 +712,7 @@ def _recommend_by_ideas_and_taxonomy(
             "best_time": poi.get("best_time"),
             "opening_hours": poi.get("opening_hours"),
             "match_score": round(score, 1),
-            "estimated_cost": float(poi.get("effective_estimated_cost") or poi.get("estimated_cost") or 50000),
+            "estimated_cost": _resolved_cost_vnd(poi, default=50000.0),
             "satisfaction_score": poi.get("satisfaction_score"),
             "is_local_business": poi.get("is_local_business") is True,
             "green_score": _resolved_green_score(poi),

@@ -8,14 +8,28 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.config import Settings
+from app.db import postgres
 from app.main import app
 from app.itineraries.router import get_day_route
 from app.itineraries.repository import seed_sample_itineraries
+from app.itineraries import repository as itinerary_repository
 from app.itineraries.schemas import RouteStop, DayRouteResponse
 from app.itineraries.service import get_itinerary_day_route
 
-# Ensure sample itineraries are in DB
-seed_sample_itineraries()
+
+@pytest.fixture(autouse=True)
+def isolated_sample_itineraries(tmp_path, monkeypatch):
+    settings = Settings(
+        APP_ENV="development",
+        DATABASE_URL="",
+        SQLITE_FALLBACK_ENABLED=True,
+    )
+    monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", tmp_path / "itinerary_routes.sqlite3")
+    monkeypatch.setattr(postgres, "get_settings", lambda: settings)
+    monkeypatch.setattr(itinerary_repository, "get_settings", lambda: settings)
+    seed_sample_itineraries()
+
 
 # Mocked OSRM GeoJSON response
 MOCK_OSRM_GEOJSON = {

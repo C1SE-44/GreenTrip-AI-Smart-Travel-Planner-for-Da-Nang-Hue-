@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict
 
 
@@ -69,3 +69,4 @@ class ExplanationFact(BaseModel):
 class POIExplanationFactsResponse(BaseModel):
     poi: ExplanationPOI
     facts: list[ExplanationFact]
+    fact_source: Literal["NEO4J", "POSTGRESQL_FALLBACK", "CSV_FALLBACK"] | None = None

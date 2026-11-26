@@ -50,6 +50,29 @@ test('Legacy cache migration requires server-confirmed ownership and keeps ideas
   assert.equal((await loadAccountTrips(db, 'bob', async () => [])).length, 0);
 });
 
+test('Local-only duration and flexible-date edits survive merging the owned trip summary', async () => {
+  const db = storage();
+  db.setItem(tripStorageKey('alice'), JSON.stringify([{
+    id: 'a',
+    title: 'Trip',
+    destination: 'Huế',
+    startDate: '6 ngày • Tháng 12',
+    daysCount: 6,
+    peopleCount: 3,
+    preferences: ['beach'],
+    ideas: ['poi-1'],
+    localMetadataOverrides: { startDate: '6 ngày • Tháng 12', daysCount: 6 },
+  }]));
+  const [trip] = await loadAccountTrips(db, 'alice', async () => [
+    { trip_id: 'a', title: 'Trip', destination: 'Huế', start_date: '2026-11-01', days_count: 4 },
+  ]);
+  assert.equal(trip.startDate, '6 ngày • Tháng 12');
+  assert.equal(trip.daysCount, 6);
+  assert.equal(trip.peopleCount, 3);
+  assert.deepEqual(Array.from(trip.preferences), ['beach']);
+  assert.deepEqual(Array.from(trip.ideas), ['poi-1']);
+});
+
 test('Failed verification does not discard or automatically claim legacy trips', async () => {
   const db = storage();
   db.setItem('greentrip_user_trips', '[{"id":"unassigned"}]');
@@ -67,4 +90,18 @@ test('An injected account cache never overrides a server-owned list', async () =
   db.setItem(tripStorageKey('bob'), JSON.stringify([{ id: 'alice-private', ideas: ['secret'] }]));
   const rows = await loadAccountTrips(db, 'bob', async () => []);
   assert.equal(rows.length, 0);
+});
+
+test('Only namespaced client-draft trips are restored from an account cache', async () => {
+  const db = storage();
+  db.setItem(tripStorageKey('alice'), JSON.stringify([
+    { id: 'trip_123', title: 'Alice draft', ideas: ['poi-1'] },
+    { id: 'not-owned-server-trip', title: 'Unverified' },
+  ]));
+  db.setItem(tripStorageKey('bob'), JSON.stringify([{ id: 'trip_456', title: 'Bob draft' }]));
+  const aliceTrips = await loadAccountTrips(db, 'alice', async () => []);
+  const bobTrips = await loadAccountTrips(db, 'bob', async () => []);
+  assert.deepEqual(Array.from(aliceTrips, (trip) => trip.id), ['trip_123']);
+  assert.deepEqual(Array.from(bobTrips, (trip) => trip.id), ['trip_456']);
+  assert.deepEqual(Array.from(aliceTrips[0].ideas), ['poi-1']);
 });

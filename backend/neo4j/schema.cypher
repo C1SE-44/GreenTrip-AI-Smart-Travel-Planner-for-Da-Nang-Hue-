@@ -17,6 +17,11 @@ CREATE CONSTRAINT location_key_unique IF NOT EXISTS
 FOR (l:Location)
 REQUIRE l.key IS UNIQUE;
 
+// Persistent lease and checkpoint used to serialize graph-builder sync runs.
+CREATE CONSTRAINT graph_sync_state_key_unique IF NOT EXISTS
+FOR (s:GraphSyncState)
+REQUIRE s.key IS UNIQUE;
+
 // POI names are not unique, but this index supports optional name lookup.
 CREATE INDEX poi_name_index IF NOT EXISTS
 FOR (p:POI)

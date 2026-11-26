@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import PoiMap from '@/components/poi/PoiMap';
 import type { Poi } from '@/data/pois';
 import type { ItineraryDay } from '@/services/itineraryService';
 
 interface ItineraryMapPanelProps {
+  mapPurpose?: 'ideas' | 'itinerary';
+  isDetailOpen?: boolean;
+  detailPanel?: ReactNode;
   isMapExpanded: boolean;
   onToggleExpand: () => void;
   mapDayFilter: number | 'all';
@@ -26,6 +29,9 @@ interface ItineraryMapPanelProps {
 }
 
 export default function ItineraryMapPanel({
+  mapPurpose = 'itinerary',
+  isDetailOpen = false,
+  detailPanel,
   isMapExpanded,
   onToggleExpand,
   mapDayFilter,
@@ -49,12 +55,17 @@ export default function ItineraryMapPanel({
 
   return (
     <section
-      className={`${isMapExpanded ? 'block' : 'hidden md:block'} flex-1 h-full relative bg-white overflow-hidden`}
+      className={`${isDetailOpen ? 'fixed inset-0 z-[80] block md:relative md:inset-auto md:z-auto' : isMapExpanded ? 'block' : 'hidden md:block'} flex-1 h-full relative bg-white overflow-hidden`}
       data-purpose="right-panel-container"
     >
       <div className="w-full h-full p-2 md:pl-3 md:pr-6 lg:pr-[36px] md:py-4 md:pb-6">
         <div className="w-full h-full rounded-[22px] overflow-hidden border border-gray-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.06)] relative [transform:translateZ(0)]">
-          {/* Bộ chọn xem đường đi theo ngày dạng Dropdown dọc */}
+          {/* Recommendation view uses the map for selected and suggested POIs without itinerary filters. */}
+          {mapPurpose === 'ideas' ? (
+            <div className="absolute right-3.5 top-3.5 z-[400] rounded-full border border-neutral-200 bg-white/95 px-3.5 py-2 text-xs font-semibold text-neutral-900 shadow-md">
+              Địa điểm đã chọn và gợi ý
+            </div>
+          ) : (
           <div className="absolute top-3.5 right-3.5 z-[400] flex flex-col items-end">
             <button
               type="button"
@@ -140,6 +151,7 @@ export default function ItineraryMapPanel({
               </div>
             )}
           </div>
+          )}
 
           {/* Bản đồ Leaflet sạch sẽ */}
           <div className="w-full h-full relative">
@@ -166,6 +178,11 @@ export default function ItineraryMapPanel({
           </div>
         </div>
       </div>
+      {isDetailOpen && detailPanel && (
+        <div className="absolute inset-0 z-[1000] bg-white md:rounded-[22px]" data-purpose="planner-poi-detail-overlay">
+          {detailPanel}
+        </div>
+      )}
     </section>
   );
 }

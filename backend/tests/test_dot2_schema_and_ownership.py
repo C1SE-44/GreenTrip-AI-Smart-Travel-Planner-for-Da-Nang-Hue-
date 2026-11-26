@@ -17,8 +17,10 @@ from app.main import app
 
 def test_sqlite_unified_schema_and_seeded_itineraries_work_together(tmp_path, monkeypatch) -> None:
     sqlite_file = tmp_path / "dot2_unified.sqlite"
+    settings = Settings(APP_ENV="development", DATABASE_URL="", SQLITE_FALLBACK_ENABLED=True)
     monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", sqlite_file)
-    monkeypatch.setattr(postgres, "get_settings", lambda: Settings(DATABASE_URL=""))
+    monkeypatch.setattr(postgres, "get_settings", lambda: settings)
+    monkeypatch.setattr(itin_repo, "get_settings", lambda: settings)
 
     # Bootstrap via itineraries repository (which delegates SQLite DDL to _ensure_local_tables)
     itin_repo.seed_sample_itineraries()

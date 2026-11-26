@@ -66,7 +66,7 @@
 | :--- | :--- | :---: | :--- | :--- |
 | `GET` | `/pois/weights` | Public | Slider weight query params (`PB08`, gồm `local_authentic_only`) | `ParsedSliderWeights` |
 | `GET` | `/pois` | Public | `page` (≥ 1), `limit`, `city`, `category`, `sub_category`, `cuisine`, `budget_tier`, `local_authentic_only`, slider weights... | `{ items: POIResponse[], pagination: { page, limit, total, total_pages, has_next, has_previous } }` *(gồm thêm trường tùy chọn `popularity_score`)* |
-| `GET` | `/pois/{poi_id}/explanation-facts` | Public | `poi_id` | `{ poi: { id, name, is_local_business, local_business_type, source }, facts: [{ relationship, target_type, target_key, target_name }] }` |
+| `GET` | `/pois/{poi_id}/explanation-facts` | Public | `poi_id` | `{ poi: { id, name, is_local_business, local_business_type, source: string | null }, facts: [{ relationship, target_type, target_key, target_name }], fact_source: "NEO4J", "POSTGRESQL_FALLBACK", "CSV_FALLBACK", or null }` *(`poi.source` is nullable POI provenance metadata and may be null; it is distinct from `fact_source`, which identifies where response facts were read. HTTP 404 requires PostgreSQL to confirm the POI is absent or inactive. HTTP 503 means no available source could provide facts or verify absence; a Neo4j outage alone returns an available fallback.)* |
 
 ---
 
@@ -76,7 +76,7 @@
 
 | Method | Path | Auth | Request Body chính | Response chính |
 | :--- | :--- | :---: | :--- | :--- |
-| `POST` | `/v1/recommendations/poi` | Public | `{ destination?, interests?, budget_band?, budget_tier?, ideas?, trip_days?, green_priority?, top_k?, trip_data?, slider_weights? }` | `{ status, total, data: RecommendationPOI[] }` *(mỗi item gồm `poi_id`, `name`, `category_name`, `sub_category`, `match_score`, `estimated_cost`, `green_score`, `is_local_business`, `best_time`, `opening_hours`...)* |
+| `POST` | `/v1/recommendations/poi` | Public | `{ destination?, interests?, budget_band?, budget_tier?, ideas?, trip_days?, green_priority?, top_k?, offset?, snapshot_id?, trip_data?, slider_weights? }` | `{ status, total, data: RecommendationPOI[], has_more, next_offset, snapshot_id }` *(`top_k` là kích thước một trang, mặc định 10, tối đa 50; `offset` là vị trí bắt đầu. `total` là tổng số POI đủ điều kiện sau khi xếp hạng. Trang đầu trả `snapshot_id`; các trang sau gửi lại ID này cùng `next_offset`. PB09 xếp hạng toàn bộ tập đủ điều kiện trước khi chia trang, theo `match_score` cuối cùng giảm dần và `poi_id` tăng dần khi hòa điểm. Nếu tập kết quả thay đổi giữa các trang, API trả `409` để client tải lại từ trang đầu. `has_more` và `next_offset` cho biết còn trang hay không. Khi có sở thích, PB09 dùng 90% điểm cho độ phù hợp taxonomy/text/TF-IDF-Cosine và chỉ trả POI có tín hiệu khớp. `matched_interests` nêu các sở thích thực sự góp điểm cho POI. Chất lượng, xanh, phổ biến và ngân sách cùng chiếm tối đa 10%; ngân sách PB07 là tín hiệu mềm, không lọc theo tổng ngân sách nhóm hoặc thời lượng tham quan. `budget_time_filter_applied` là `false` cho nhánh này. Chỉ ràng buộc PB08 `slider_weights.max_budget` tiếp tục là hard filter.)* |
 
 ---
 

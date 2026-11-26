@@ -46,7 +46,8 @@ import PoiMap from '@/components/poi/PoiMap';
 import PoiCard from '@/components/poi/PoiCard';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import ExplanationModal from '@/components/poi/ExplanationModal';
-import TripItineraryView from './TripItineraryView';
+import TripItineraryView, { type PlannerRecommendationPoi } from './TripItineraryView';
+import type { RecommendationScoreBreakdown } from '@/services/recommendations';
 import CentralVietnamAdvisoryBanner from './CentralVietnamAdvisoryBanner';
 import { evaluateCentralVietnamAdvisories } from '@/utils/centralVietnamAdvisories';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
@@ -85,9 +86,42 @@ export interface TripOverviewViewProps {
   onOpenItineraryDetails?: () => void;
   onNavigateToTab?: (tab: 'ideas' | 'itinerary' | 'calendar') => void;
   onUpdateTrip?: (updatedTrip: UserTrip) => void;
+  isCopilotDrawer?: boolean;
+  onCloseCopilot?: () => void;
+  initialItineraryPlan?: TripItinerary;
+  onApplyItineraryPlan?: (plan: TripItinerary) => void;
 }
 
-type RecommendedPoi = Poi & { matchScore?: number };
+type RecommendedPoi = PlannerRecommendationPoi & {
+  matchScore?: number;
+  recommendationScoreBreakdown?: RecommendationScoreBreakdown | null;
+};
+
+interface PendingCopilotProposal {
+  plan: TripItinerary | null;
+  destination?: string;
+  daysCount?: number;
+  summary: string[];
+}
+
+function persistTripChatTranscript(tripId: string, messages: CopilotChatMessageItem[]) {
+  try {
+    const key = `greentrip_trip_copilot_${tripId}`;
+    const raw = localStorage.getItem(key);
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    const stored = Array.isArray(parsed) ? parsed as CopilotChatMessageItem[] : [];
+    const byId = new Map(stored.map((message) => [message.id, message]));
+    messages.forEach((message) => byId.set(message.id, message));
+    const ordered = Array.from(byId.values()).sort((left, right) => {
+      const leftTime = Number(left.id.match(/(\d+)$/)?.[1] || 0);
+      const rightTime = Number(right.id.match(/(\d+)$/)?.[1] || 0);
+      return leftTime - rightTime;
+    });
+    localStorage.setItem(key, JSON.stringify(ordered));
+  } catch {
+    // Keep the in-memory transcript available when browser storage is unavailable.
+  }
+}
 
 export default function TripOverviewView({
   trip,
@@ -97,6 +131,10 @@ export default function TripOverviewView({
   onOpenItineraryDetails,
   onNavigateToTab,
   onUpdateTrip,
+  isCopilotDrawer = false,
+  onCloseCopilot,
+  initialItineraryPlan,
+  onApplyItineraryPlan,
 }: TripOverviewViewProps) {
   const { savedIds, pendingIds, openCollectionPicker, places } = useSavedPlaces();
   const handleOpenSavedCollections = (_poiId: string, poi?: Poi) => {
@@ -205,7 +243,53 @@ export default function TripOverviewView({
       'Chia lịch trình Đà Nẵng & Huế theo cụm gần nhau',
     ];
   });
-  const [chatMessages, setChatMessages] = useState<CopilotChatMessageItem[]>([]);
+  const [chatMessages, setChatMessages] = useState<CopilotChatMessageItem[]>(() => {
+    try {
+      const raw = localStorage.getItem(`greentrip_trip_copilot_${trip.id}`);
+      const parsed: unknown = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed) ? parsed as CopilotChatMessageItem[] : [];
+    } catch {
+      return [];
+    }
+  });
+  const [pendingCopilotProposal, setPendingCopilotProposal] = useState<PendingCopilotProposal | null>(() => {
+    try {
+      const raw = localStorage.getItem(`greentrip_trip_copilot_proposal_${trip.id}`);
+      const parsed: unknown = raw ? JSON.parse(raw) : null;
+      if (parsed && typeof parsed === 'object' && 'summary' in parsed && Array.isArray(parsed.summary)) {
+        return parsed as PendingCopilotProposal;
+      }
+    } catch {
+      // Ignore an unavailable or invalid saved proposal.
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    persistTripChatTranscript(trip.id, chatMessages);
+  }, [chatMessages, trip.id]);
+
+  useEffect(() => {
+    try {
+      const key = `greentrip_trip_copilot_proposal_${trip.id}`;
+      if (pendingCopilotProposal) {
+        localStorage.setItem(key, JSON.stringify(pendingCopilotProposal));
+      } else {
+        localStorage.removeItem(key);
+      }
+    } catch {
+      // The proposal remains available in memory when browser storage is unavailable.
+    }
+  }, [pendingCopilotProposal, trip.id]);
+
+  useEffect(() => {
+    if (!isCopilotDrawer) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') (onCloseCopilot || onBack)();
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [isCopilotDrawer, onBack, onCloseCopilot]);
 
   const handleRemoveMemoryConstraint = (constraintKey: string) => {
     setActiveConstraints((prev) => prev.filter((c) => c !== constraintKey));
@@ -222,13 +306,19 @@ export default function TripOverviewView({
 
   // ─── TAB ĐIỀU HƯỚNG CỘT GIỮA CHUẨN EXPLORE (CHAT / LỊCH TRÌNH / Ý TƯỞNG) ───
   const [activeMainTab, setActiveMainTab] = useState<'chat' | 'itinerary' | 'ideas'>('chat');
-  const [itineraryPlan, setItineraryPlan] = useState<TripItinerary>(() => createEmptyItinerary(trip));
+  const [itineraryPlan, setItineraryPlan] = useState<TripItinerary>(() => initialItineraryPlan || createEmptyItinerary(trip));
   const [selectedItineraryDay, setSelectedItineraryDay] = useState<number | 'all'>('all');
   const [dayTargetForAdd, setDayTargetForAdd] = useState<number>(1);
 
   // Tải lịch trình chi tiết của chuyến đi
   useEffect(() => {
     let active = true;
+    if (initialItineraryPlan?.trip_id === trip.id) {
+      setItineraryPlan(initialItineraryPlan);
+      return () => {
+        active = false;
+      };
+    }
     getTripItinerary(trip.id).then((p) => {
       if (active && p) {
         setItineraryPlan(p);
@@ -241,7 +331,7 @@ export default function TripOverviewView({
     return () => {
       active = false;
     };
-  }, [trip.id]);
+  }, [initialItineraryPlan, trip.id]);
 
   const handleAddPoiToItinerary = (poi: Poi, dayNum: number = 1) => {
     const newStop = stopFromPoi(poi);
@@ -256,11 +346,11 @@ export default function TripOverviewView({
       return d;
     });
     const nextPlan = { ...itineraryPlan, days: updatedDays };
-    setItineraryPlan(nextPlan);
-    saveTripItinerary(nextPlan).catch((err) => {
-      setToastMessage(err instanceof Error ? err.message : 'Chưa thể lưu lịch trình.');
+    setPendingCopilotProposal({
+      plan: nextPlan,
+      summary: [`Thêm ${poi.name} vào Ngày ${dayNum}.`],
     });
-    setToastMessage(`Đã thêm "${poi.name}" vào Ngày ${dayNum}`);
+    setToastMessage('Đã tạo đề xuất; lịch chỉ thay đổi sau khi bạn xác nhận.');
   };
 
   const handleRemoveStopFromDay = (stopId: string, dayNum: number) => {
@@ -274,10 +364,69 @@ export default function TripOverviewView({
       return d;
     });
     const nextPlan = { ...itineraryPlan, days: updatedDays };
-    setItineraryPlan(nextPlan);
-    saveTripItinerary(nextPlan).catch((err) => {
-      setToastMessage(err instanceof Error ? err.message : 'Chưa thể lưu lịch trình.');
+    setPendingCopilotProposal({
+      plan: nextPlan,
+      summary: [`Xóa một điểm dừng khỏi Ngày ${dayNum}.`],
     });
+  };
+
+  const recordCopilotProposalStatus = (text: string) => {
+    const message: CopilotChatMessageItem = {
+      id: `ai-${Date.now()}`,
+      sender: 'ai',
+      text,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    };
+    persistTripChatTranscript(trip.id, [...chatMessages, message]);
+    setChatMessages((previous) => [...previous, message]);
+  };
+
+  const rejectCopilotProposal = () => {
+    setPendingCopilotProposal(null);
+    recordCopilotProposalStatus('Bạn đã từ chối đề xuất. Lịch trình hiện tại được giữ nguyên.');
+  };
+
+  const confirmCopilotProposal = async () => {
+    if (!pendingCopilotProposal) return;
+    const proposal = pendingCopilotProposal;
+    const destination = proposal.destination || trip.destination;
+    const daysCount = proposal.daysCount || proposal.plan?.days_count || trip.daysCount || 4;
+
+    try {
+      if (proposal.plan) {
+        if (onApplyItineraryPlan) {
+          onApplyItineraryPlan(proposal.plan);
+        } else {
+          await saveTripItinerary(proposal.plan);
+        }
+        setItineraryPlan(proposal.plan);
+      }
+
+      if (proposal.destination || proposal.daysCount) {
+        const updatedTrip: UserTrip = {
+          ...trip,
+          destination,
+          daysCount,
+          ...(proposal.daysCount ? { startDate: `${proposal.daysCount} ngày • ${selectedMonth}` } : {}),
+          title: `Chuyến đi ${destination} (${daysCount} ngày)`,
+        };
+        setFlexibleDays(daysCount);
+        setWhereTarget(destination);
+        onUpdateTrip?.(updatedTrip);
+      }
+
+      setPendingCopilotProposal(null);
+      recordCopilotProposalStatus('Bạn đã xác nhận áp dụng đề xuất này.');
+      setToastMessage('Đã áp dụng đề xuất của GreenTrip AI.');
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : '';
+      setToastMessage(
+        errMsg.includes('quá khứ')
+          ? 'Lịch trình đang ở ngày quá khứ — hãy bấm "Dời sang hôm nay" để lưu thay đổi.'
+          : errMsg || 'Chưa thể áp dụng đề xuất.'
+      );
+    }
   };
 
   // Tự động cuộn xuống khi có tin nhắn mới hoặc AI đang suy nghĩ
@@ -295,7 +444,7 @@ export default function TripOverviewView({
   const [tripIdeas, setTripIdeas] = useState<string[]>(() => trip.ideas || []);
 
   // ─── STATE CHO GỢI Ý ĐỊA ĐIỂM (TOP 10 TỐI ƯU THEO BACKEND PB09) ───
-const [recommendedPois, setRecommendedPois] = useState<Poi[]>([]);
+const [recommendedPois, setRecommendedPois] = useState<RecommendedPoi[]>([]);
   const [recCategoryFilter, setRecCategoryFilter] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan'>('all');
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [recommendationTitle, setRecommendationTitle] = useState('Gợi ý cho bạn');
@@ -479,6 +628,10 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       try {
         const payload = {
           destination: trip.destination || 'Đà Nẵng & Huế',
+          interests: Array.from(new Set([
+            ...(trip.recommendationTripData?.preferences ?? trip.preferences ?? []),
+            ...(trip.preferenceText?.trim() ? [trip.preferenceText.trim()] : []),
+          ])),
           budget_tier: categoryBudgets.activities !== 'any' ? categoryBudgets.activities : (categoryBudgets.dining !== 'any' ? categoryBudgets.dining : 'any'),
           trip_days: trip.daysCount || 4,
           ideas: tripIdeas.map((id) => {
@@ -486,6 +639,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             return found ? found.name : id;
           }),
           top_k: 10,
+          ...(trip.recommendationTripData ? { trip_data: trip.recommendationTripData } : {}),
         };
 
         interface RecommendedPoiApiItem {
@@ -502,6 +656,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           green_score?: number | null;
           estimated_cost?: number | null;
           match_score?: number | null;
+          score_breakdown?: RecommendationScoreBreakdown | null;
         }
 
         const res = await fetchJson<{ status: string; total: number; data: RecommendedPoiApiItem[] }>(
@@ -531,6 +686,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               lat: item.lat || foundLocal?.lat || 16.0,
               lng: item.lng || foundLocal?.lng || 108.0,
               image: item.image || foundLocal?.image || getDeterministicImage(item.name, item.poi_id || idx, category, city),
+              imageSourceAvailable: Boolean(item.image?.trim()) || foundLocal?.imageSourceAvailable === true,
               description: foundLocal?.description || item.explanation_snippet || 'Địa điểm hấp dẫn cho chuyến đi của bạn.',
               rating: item.satisfaction_score || foundLocal?.rating || 4.6,
               visitDuration: foundLocal?.visitDuration || '1–2 giờ',
@@ -543,6 +699,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               })(),
               estimatedCost: item.estimated_cost || foundLocal?.estimatedCost || 50000,
               matchScore: typeof item.match_score === 'number' ? Math.round(item.match_score) : undefined,
+              recommendationScoreBreakdown: item.score_breakdown,
+              recommendationEstimatedCost: item.estimated_cost,
             };
           });
 
@@ -598,7 +756,17 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     return () => {
       isCancelled = true;
     };
-  }, [trip.destination, categoryBudgets.dining, categoryBudgets.lodging, categoryBudgets.activities, tripIdeas]);
+  }, [
+    trip.destination,
+    trip.daysCount,
+    trip.preferences,
+    trip.preferenceText,
+    trip.recommendationTripData,
+    categoryBudgets.dining,
+    categoryBudgets.lodging,
+    categoryBudgets.activities,
+    tripIdeas,
+  ]);
 
   const getRecommendationReason = (poi: Poi) => {
     let text = poi.description || 'Địa điểm hấp dẫn cho hành trình của bạn.';
@@ -884,6 +1052,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       content: m.text,
     }));
 
+    persistTripChatTranscript(trip.id, [...chatMessages, newUserMsg]);
     setChatMessages((prev) => [...prev, newUserMsg]);
     setChatInput('');
     setStreamingText('');
@@ -960,6 +1129,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
       // 3. Đồng bộ Conversational Trip Mutation: cập nhật Header + lưu Itinerary (MVP #1)
       let hasMutated = false;
+      let proposedPlan: TripItinerary | null = null;
+      let proposedDestination: string | undefined;
+      let proposedDaysCount: number | undefined;
       if (res.updated_itinerary_state && res.updated_itinerary_state.length > 0) {
         hasMutated = true;
         const seenStopIds = new Set<string>();
@@ -1041,33 +1213,45 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           days_count: nextDays.length,
           days: nextDays,
         };
-        setItineraryPlan(nextPlan);
-        void saveTripItinerary(nextPlan).catch((saveErr: unknown) => {
-          const errMsg = saveErr instanceof Error ? saveErr.message : '';
-          setToastMessage(
-            errMsg.includes('quá khứ')
-              ? 'Lịch trình đang ở ngày quá khứ — hãy bấm "Dời sang hôm nay" để lưu thay đổi.'
-              : 'Không thể lưu tự động lịch trình lúc này.'
-          );
-          setTimeout(() => setToastMessage(null), 4500);
-        });
+        proposedPlan = nextPlan;
       }
 
       if (res.updated_days_count || res.updated_destination) {
         hasMutated = true;
-        const nextDaysCount = res.updated_days_count || trip.daysCount || 4;
-        const nextDest = res.updated_destination || trip.destination;
-        setFlexibleDays(nextDaysCount);
-        setWhereTarget(nextDest);
-        onUpdateTrip?.({
-          ...trip,
-          destination: nextDest,
-          daysCount: nextDaysCount,
-          startDate: `${nextDaysCount} ngày • ${selectedMonth}`,
-          title: `Chuyến đi ${nextDest} (${nextDaysCount} ngày)`,
+        proposedDaysCount = res.updated_days_count || undefined;
+        proposedDestination = res.updated_destination || undefined;
+      }
+
+      if (hasMutated) {
+        const summary = [...(res.mutation_summary || [])];
+        if (proposedDestination) summary.push(`Đổi điểm đến thành ${proposedDestination}.`);
+        if (proposedDaysCount) summary.push(`Điều chỉnh chuyến đi thành ${proposedDaysCount} ngày.`);
+        if (proposedPlan && summary.length === 0) {
+          const currentStops = itineraryPlan.days.flatMap((day) => day.stops
+            .filter((stop) => stop.stop_type !== 'rest')
+            .map((stop) => ({ day: day.day_number, stop, key: stop.poi_id || stop.title.toLocaleLowerCase('vi-VN') })));
+          const nextStops = proposedPlan.days.flatMap((day) => day.stops
+            .filter((stop) => stop.stop_type !== 'rest')
+            .map((stop) => ({ day: day.day_number, stop, key: stop.poi_id || stop.title.toLocaleLowerCase('vi-VN') })));
+          const currentKeys = new Set(currentStops.map((item) => item.key));
+          const nextKeys = new Set(nextStops.map((item) => item.key));
+          const addedStops = nextStops.filter((item) => !currentKeys.has(item.key));
+          const removedStops = currentStops.filter((item) => !nextKeys.has(item.key));
+          const retimedStops = nextStops.filter((item) => {
+            const previous = currentStops.find((candidate) => candidate.key === item.key);
+            return previous && (previous.stop.start_time !== item.stop.start_time || previous.day !== item.day);
+          });
+          if (addedStops.length) summary.push(`Thêm ${addedStops.length} điểm dừng: ${addedStops.slice(0, 3).map(({ stop }) => stop.title).join(', ')}.`);
+          if (removedStops.length) summary.push(`Bỏ ${removedStops.length} điểm dừng: ${removedStops.slice(0, 3).map(({ stop }) => stop.title).join(', ')}.`);
+          if (retimedStops.length) summary.push(`Đổi ngày hoặc giờ cho ${retimedStops.length} điểm dừng.`);
+          if (summary.length === 0) summary.push('Điều chỉnh thứ tự hoặc thông tin các điểm dừng trong lịch trình.');
+        }
+        setPendingCopilotProposal({
+          plan: proposedPlan,
+          destination: proposedDestination,
+          daysCount: proposedDaysCount,
+          summary,
         });
-        setToastMessage(`Đã cập nhật lịch trình: ${nextDest} (${nextDaysCount} ngày)`);
-        setTimeout(() => setToastMessage(null), 3500);
       }
 
       const aiMsgId = `ai-${Date.now()}`;
@@ -1085,10 +1269,11 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         mutationSummary: res.mutation_summary || [],
         updatedDaysCount: res.updated_days_count || null,
         updatedDestination: res.updated_destination || null,
-        hasMutatedItinerary: hasMutated || res.action_type === 'mutate_itinerary',
+        hasMutatedItinerary: hasMutated,
         reasoningTrace: res.reasoning_trace,
       };
 
+      persistTripChatTranscript(trip.id, [...chatMessages, newUserMsg, newAiMsg]);
       setChatMessages((prev) => [...prev, newAiMsg]);
 
       if (res.next_suggested_prompts && res.next_suggested_prompts.length > 0) {
@@ -1190,19 +1375,18 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         greenImpact = 'Di chuyển bằng xe điện và đi bộ giúp giảm hơn 4.2 kg CO₂ phát thải.';
       }
 
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-${Date.now()}`,
-          sender: 'ai',
-          text: fallbackText,
-          timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-          suggestedPois: fallbackPois,
-          avoidNotice,
-          greenImpact,
-          budgetImpact,
-        },
-      ]);
+      const fallbackMessage: CopilotChatMessageItem = {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        text: fallbackText,
+        timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        suggestedPois: fallbackPois,
+        avoidNotice,
+        greenImpact,
+        budgetImpact,
+      };
+      persistTripChatTranscript(trip.id, [...chatMessages, newUserMsg, fallbackMessage]);
+      setChatMessages((prev) => [...prev, fallbackMessage]);
     } finally {
       setStreamingText('');
       setStreamingStatus(null);
@@ -1213,7 +1397,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
   return (
     <div className="flex-1 min-w-0 w-full h-full bg-white overflow-hidden select-none animate-fadeIn flex flex-col">
       {/* ─── THANH HEADER 3 TAB CHUẨN EXPLORE & MOCKUP (TRIPHEADER) ─── */}
-      <TripHeader
+      {!isCopilotDrawer && <TripHeader
         trip={trip}
         activeTab="ideas"
         onNavigateToTab={(tab) => {
@@ -1273,38 +1457,50 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             </button>
           </div>
         }
-      />
+      />}
 
-      <ExpiredTripBanner
+      {!isCopilotDrawer && <ExpiredTripBanner
         trip={trip}
         plan={itineraryPlan}
         onUpdateTrip={onUpdateTrip}
         onPlanUpdated={(next) => setItineraryPlan(next)}
         onOpenWhen={() => setShowWhenModal(true)}
-      />
+      />}
 
-      <CentralVietnamAdvisoryBanner
+      {!isCopilotDrawer && <CentralVietnamAdvisoryBanner
         advisories={evaluateCentralVietnamAdvisories(trip, itineraryPlan, allPois)}
         className="px-4 sm:px-6 py-2 bg-white border-b border-gray-100 shrink-0"
-      />
+      />}
 
       {/* ─── NỘI DUNG CHÍNH: BỐ CỤC CHUẨN TRANG EXPLORE (CỘT GIỮA + BẢN ĐỒ FLEX-1) ─── */}
-      <div className="flex-1 min-w-0 w-full min-h-0 flex items-stretch overflow-hidden">
+      <div className={`flex-1 min-w-0 w-full min-h-0 overflow-hidden ${isCopilotDrawer ? 'flex flex-col' : 'flex items-stretch'}`}>
         
         {/* ────── CỘT GIỮA: AI COPILOT CHAT WORKSPACE (CHIỀU RỘNG CHUẨN EXPLORE) ────── */}
         <div 
-          className={`${
-            isMapExpanded ? 'hidden' : 'w-full min-w-0 md:w-[560px] lg:w-[620px] xl:w-[660px] shrink-0'
-          } h-full bg-white flex flex-col justify-between px-4 md:pl-6 lg:pl-[36px] md:pr-5 pt-3.5 pb-20 md:pb-5 border-r border-gray-100 select-none transition-[width] duration-300 ease-in-out`}
+          className={`${isCopilotDrawer
+            ? 'w-full min-w-0 flex-1'
+            : isMapExpanded ? 'hidden' : 'w-full min-w-0 md:w-[560px] lg:w-[620px] xl:w-[660px] shrink-0'
+          } h-full bg-white flex flex-col justify-between px-4 md:pl-6 lg:pl-[36px] md:pr-5 pt-3.5 ${isCopilotDrawer ? 'pb-4' : 'pb-20 md:pb-5 border-r border-gray-100'} select-none transition-[width] duration-300 ease-in-out`}
         >
           {/* Header Chat: Chats 1 chuẩn Mindtrip */}
           <div className="flex items-center justify-between mb-1.5 shrink-0">
             <h3 className="text-[15px] font-bold text-gray-950 tracking-tight flex items-center gap-1.5">
-              <span>Chats</span>
-              <span className="text-gray-400 font-normal text-xs">1</span>
-              <span className="sr-only">Đoạn chat (1)</span>
+              <span>{isCopilotDrawer ? 'Hỏi GreenTrip AI' : 'Chats'}</span>
+              {!isCopilotDrawer && <>
+                <span className="text-gray-400 font-normal text-xs">1</span>
+                <span className="sr-only">Đoạn chat (1)</span>
+              </>}
             </h3>
-            <span className="text-[11px] text-gray-400 font-medium">Hỏi AI để gợi ý & đồng bộ ý tưởng lên bản đồ</span>
+            {isCopilotDrawer ? (
+              <button
+                type="button"
+                onClick={onCloseCopilot || onBack}
+                className="min-h-10 min-w-10 rounded-full border border-gray-200 text-neutral-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                aria-label="Đóng trợ lý GreenTrip AI"
+              >
+                <X size={16} className="mx-auto" aria-hidden="true" />
+              </button>
+            ) : <span className="text-[11px] text-gray-600 font-medium">Hỏi AI để gợi ý & đồng bộ ý tưởng lên bản đồ</span>}
           </div>
 
           {/* MVP #3: Removable Session Memory Badges (Bộ nhớ ngữ cảnh xuyên suốt) */}
@@ -1474,7 +1670,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                           <Sparkles size={13} className="text-emerald-700 shrink-0" />
                           <span>
                             {msg.hasMutatedItinerary
-                              ? '🔄 Đã đồng bộ cập nhật lịch trình'
+                              ? '📝 Đã tạo đề xuất chỉnh sửa lịch trình'
                               : '🧠 Đã phân tích · Đồng bộ Đồ thị Tri thức'}
                           </span>
                           <ChevronDown
@@ -1518,11 +1714,15 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <span className="font-bold flex items-center gap-1.5 text-emerald-900">
                         <Check size={14} className="text-emerald-700 shrink-0" />
-                        <span>Đã đồng bộ trực tiếp vào Kế hoạch chi tiết</span>
+                        <span>Đề xuất chỉnh sửa lịch trình · Chờ bạn xác nhận</span>
                       </span>
                       <button
                         type="button"
                         onClick={() => {
+                          if (isCopilotDrawer) {
+                            onCloseCopilot?.();
+                            return;
+                          }
                           setShowIdeasView(false);
                           setShowItineraryDrawer(true);
                         }}
@@ -1530,7 +1730,9 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                       >
                         <Compass size={13} className="text-emerald-400 shrink-0" />
                         <span>
-                          Xem kế hoạch chi tiết ({msg.updatedDaysCount || itineraryPlan.days.length || trip.daysCount || 4} ngày)
+                          {isCopilotDrawer
+                            ? 'Về lịch trình'
+                            : `Xem kế hoạch (${msg.updatedDaysCount || itineraryPlan.days.length || trip.daysCount || 4} ngày)`}
                         </span>
                         <ChevronRight size={12} />
                       </button>
@@ -1629,10 +1831,10 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                               type="button"
                               onClick={() => handleAddCopilotPoiToDay(p, dayTargetForAdd || 1)}
                               className="px-2 py-1.5 rounded-lg text-[11px] font-semibold border border-gray-300 hover:border-black bg-white hover:bg-gray-50 text-gray-800 transition cursor-pointer flex items-center gap-1 active:scale-95"
-                              title={`Chèn trực tiếp vào Ngày ${dayTargetForAdd || 1} trong Kế hoạch chi tiết`}
+                              title={`Tạo đề xuất thêm vào Ngày ${dayTargetForAdd || 1}; cần xác nhận trước khi áp dụng`}
                             >
                               <CalendarIcon size={11} className="text-emerald-700" />
-                              <span>+ Ngày {dayTargetForAdd || 1}</span>
+                              <span>Đề xuất · Ngày {dayTargetForAdd || 1}</span>
                             </button>
 
                             <button
@@ -1665,6 +1867,48 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                 )}
               </div>
             ))}
+
+            {pendingCopilotProposal && (
+              <section className="rounded-2xl border border-amber-300 bg-amber-50 p-3.5 text-amber-950 shadow-2xs" aria-label="Đề xuất lịch trình đang chờ xác nhận">
+                <div className="flex items-start gap-2">
+                  <Sparkles size={16} className="mt-0.5 shrink-0 text-amber-800" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-sm font-bold">Đề xuất của GreenTrip AI</h4>
+                    <p className="mt-0.5 text-xs leading-5">Lịch trình và thông tin chuyến đi chưa thay đổi. Xem nội dung rồi xác nhận để áp dụng.</p>
+                  </div>
+                </div>
+                {(pendingCopilotProposal.summary.length > 0 || pendingCopilotProposal.plan) && (
+                  <ul className="mt-2 space-y-1 text-xs leading-5">
+                    {pendingCopilotProposal.summary.map((item, index) => <li key={`${index}-${item}`}>• {item}</li>)}
+                    {pendingCopilotProposal.plan?.days.flatMap((day) => day.stops
+                      .filter((stop) => stop.stop_type !== 'rest')
+                      .map((stop) => ({ day: day.day_number, stop })))
+                      .slice(0, 8)
+                      .map(({ day, stop }) => (
+                        <li key={`${day}-${stop.stop_id}`} className="pl-3 text-amber-900">
+                          Ngày {day}{stop.start_time ? ` · ${stop.start_time}` : ''}: {stop.title}
+                        </li>
+                      ))}
+                  </ul>
+                )}
+                <div className="mt-3 flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={rejectCopilotProposal}
+                    className="min-h-10 rounded-full border border-amber-800 px-3.5 text-xs font-semibold text-amber-950 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800"
+                  >
+                    Từ chối
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void confirmCopilotProposal()}
+                    className="min-h-10 rounded-full bg-emerald-900 px-3.5 text-xs font-bold text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Xác nhận và áp dụng
+                  </button>
+                </div>
+              </section>
+            )}
 
             {isAiThinking && (
               <div
@@ -1780,7 +2024,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         </div>
 
         {/* ────── CỘT PHẢI: MAP SECTION CHUẨN TRANG EXPLORE (FLEX-1, PADDING & BORDER KHỚP 100%) ────── */}
-        <section
+        {!isCopilotDrawer && <section
           className="hidden md:block flex-1 h-full relative bg-white overflow-hidden"
           data-purpose="right-panel-container"
         >
@@ -1812,7 +2056,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
               )}
             </div>
           </div>
-        </section>
+        </section>}
       </div>
 
       {/* ─── MODAL 1-4: THÔNG SỐ CHUYẾN ĐI (Ở ĐÂU / KHI / AI / NGÂN SÁCH) ─── */}

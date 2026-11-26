@@ -10,7 +10,10 @@ from psycopg import Connection
 
 from app.db.postgres import get_connection
 from app.recommendations.schemas import RecommendationRequest, RecommendationResponse
-from app.recommendations.service import get_poi_recommendations
+from app.recommendations.service import (
+    RecommendationSnapshotMismatch,
+    get_poi_recommendations,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -50,6 +53,11 @@ def recommend_pois(
     """Return personalized, budget-filtered POI recommendations."""
     try:
         return get_poi_recommendations(request, connection)
+    except RecommendationSnapshotMismatch as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
     except Exception as exc:
         logger.exception("Failed to rank POI recommendations.")
         raise HTTPException(

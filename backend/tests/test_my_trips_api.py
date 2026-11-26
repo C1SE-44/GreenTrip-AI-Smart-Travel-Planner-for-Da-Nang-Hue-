@@ -20,7 +20,6 @@ def isolated_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     test_db = tmp_path / "test_my_trips.sqlite"
     monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", test_db)
     monkeypatch.setattr(postgres, "get_settings", lambda: Settings(DATABASE_URL=""))
-    monkeypatch.setattr("app.main.seed_sample_itineraries", lambda: None)
 
 
 @pytest.fixture

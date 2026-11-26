@@ -23,6 +23,8 @@ interface ItineraryAddPlacesModalProps {
   onChangeCustomIdeaInput: (val: string) => void;
   onClose: () => void;
   onSelectPoi: (poiId: string) => void;
+  onViewPoi: (poiId: string) => void;
+  onSubmitSearch: (query: string) => void;
   onAddToDay: (dayNumber: number, poi: Poi) => void;
   onToggleIdeaInTrip: (poiId: string) => void;
   onSubmitCustomIdea: () => void;
@@ -48,6 +50,8 @@ export default function ItineraryAddPlacesModal({
   onChangeCustomIdeaInput,
   onClose,
   onSelectPoi,
+  onViewPoi,
+  onSubmitSearch,
   onAddToDay,
   onToggleIdeaInTrip,
   onSubmitCustomIdea,
@@ -211,7 +215,15 @@ export default function ItineraryAddPlacesModal({
                     type="text"
                     value={modalSearch}
                     onChange={(e) => onChangeModalSearch(e.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        onSubmitSearch(modalSearch);
+                      }
+                    }}
                     placeholder="Tìm kiếm địa điểm, di tích, ẩm thực..."
+                    aria-label="Tìm kiếm địa điểm trong chuyến đi"
+                    aria-describedby="trip-related-search-hint"
                     className="w-full h-[42px] pl-10 pr-9 bg-white text-[13.5px] placeholder-gray-400 text-gray-900 rounded-full border border-gray-300 focus:border-black focus:outline-none shadow-2xs transition"
                   />
                   {modalSearch && (
@@ -224,6 +236,7 @@ export default function ItineraryAddPlacesModal({
                     </button>
                   )}
                 </div>
+                <span id="trip-related-search-hint" className="sr-only">Nhấn Enter để dùng từ khóa này cho gợi ý liên quan của chuyến đi.</span>
 
                 <button
                   type="button"
@@ -304,7 +317,10 @@ export default function ItineraryAddPlacesModal({
                     return (
                       <div
                         key={poi.id}
-                        onClick={() => onSelectPoi(poi.id)}
+                        onClick={() => {
+                          onViewPoi(poi.id);
+                          onSelectPoi(poi.id);
+                        }}
                         className="flex flex-col group cursor-pointer text-left select-none"
                       >
                         {/* Ảnh thẻ tỉ lệ 1.05 : 1, bo góc 16px */}

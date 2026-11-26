@@ -16,6 +16,7 @@ import {
   CITY_CENTERS,
   getDistanceFromLatLonInKm,
   matchesTimeOfDay,
+  rankPoisForYou,
   SEEDED_SAMPLE_TRIPS,
   type ExploreTabId,
   type UserTrip,
@@ -27,7 +28,7 @@ import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import SavedPlacesView from '@/components/saved/SavedPlacesView';
 import BuildTripFromCollectionModal from '@/components/saved/BuildTripFromCollectionModal';
 import AddToTripModal from '@/components/planner/AddToTripModal';
-import { saveTripItinerary } from '@/services/itineraryService';
+import { isClientDraftTripId, saveTripItinerary, type TripItinerary } from '@/services/itineraryService';
 import HomeDashboardView from '@/components/home/HomeDashboardView';
 import AccountMenu from '@/components/account/AccountMenu';
 import ProfileSettingsPage from '@/components/account/ProfileSettingsPage';
@@ -36,7 +37,7 @@ import { PoiCardSkeleton } from '@/components/ui/Skeleton';
 import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
 import { clearAuthSession, getMe, type UserProfile } from '@/services/auth';
-import { deleteMyTrip, getMyTrips } from '@/services/tripService';
+import { deleteMyTrip, getMyTrips, updateMyTrip } from '@/services/tripService';
 import { loadAccountTrips, tripStorageKey } from '@/utils/accountTrips';
 import { getPois, getAllPois } from '@/services/poi';
 import ExploreFilterModal, {
@@ -90,6 +91,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
   const [viewMode, setViewMode] = useState<'home' | 'explore' | 'trips' | 'saved' | 'chat' | 'profile'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
+  const [isTripCopilotOpen, setIsTripCopilotOpen] = useState(false);
+  const [tripCopilotPlan, setTripCopilotPlan] = useState<TripItinerary | null>(null);
+  const [tripCopilotPlanUpdate, setTripCopilotPlanUpdate] = useState<{ version: number; tripId: string; plan: TripItinerary } | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
   const [ideationDraft, setIdeationDraft] = useState<{
     initialPrompt: string;
@@ -100,7 +104,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [pendingAddToTripPoiIds, setPendingAddToTripPoiIds] = useState<string[] | null>(null);
   const [tripsSubTab, setTripsSubTab] = useState<'trips' | 'calendar'>('trips');
   const [selectedTripForDetails, setSelectedTripForDetails] = useState<UserTrip | null>(null);
-  const [activeTripSubTab, setActiveTripSubTab] = useState<'ideas' | 'itinerary' | 'calendar'>('ideas');
+  const [activeTripSubTab, setActiveTripSubTab] = useState<'ideas' | 'itinerary' | 'calendar'>('itinerary');
 
   useEffect(() => {
     setViewMode(initialView);
@@ -227,9 +231,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const toggleTripSavedPlaces = (tripId: string, poiIds: string[], allPlacesAlreadySaved: boolean) => {
     if (poiIds.length === 0) return;
     const updateTripPlaces = (trip: UserTrip): UserTrip => {
-      const savedPlaces = new Set(trip.savedPlaces ?? []);
-      const ideas = new Set(trip.ideas ?? []);
-      poiIds.forEach((poiId) => {
+      const resolvePoiId = (value: string) => allPois.find((poi) =>
+        poi.id === value || poi.name.toLocaleLowerCase('vi-VN') === value.toLocaleLowerCase('vi-VN')
+      )?.id || value;
+      const savedPlaces = new Set((trip.savedPlaces ?? []).map(resolvePoiId));
+      const ideas = new Set((trip.ideas ?? []).map(resolvePoiId));
+      poiIds.map(resolvePoiId).forEach((poiId) => {
         if (allPlacesAlreadySaved) {
           savedPlaces.delete(poiId);
           ideas.delete(poiId);
@@ -670,49 +677,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       filterValues.ecoPriority !== 'all';
 
     if (activeTab === 'for-you') {
-      const likedPois = allPois.filter((p) => savedIds.has(p.id));
-      const likedCats = new Set(likedPois.map((p) => p.category));
-      const likedCities = new Set(likedPois.map((p) => p.city));
-      const likedSubs = new Set(likedPois.map((p) => p.sub_category?.toLowerCase()).filter(Boolean));
-
-      return [...matched].sort((a, b) => {
-        let scoreA = 0;
-        let scoreB = 0;
-
-        // Phản hồi hành vi thả tim của người dùng (chạy thuật toán ngầm ở dưới):
-        if (likedPois.length > 0) {
-          if (likedCats.has(a.category)) scoreA += 30;
-          if (likedCats.has(b.category)) scoreB += 30;
-          if (a.sub_category && likedSubs.has(a.sub_category.toLowerCase())) scoreA += 25;
-          if (b.sub_category && likedSubs.has(b.sub_category.toLowerCase())) scoreB += 25;
-          if (likedCities.has(a.city)) scoreA += 15;
-          if (likedCities.has(b.city)) scoreB += 15;
-        }
-
-        // 1. Điểm xanh (ưu tiên du lịch bền vững)
-        if (a.isGreen) scoreA += 35;
-        if (b.isGreen) scoreB += 35;
-        if (a.ecoScore) scoreA += a.ecoScore / 10;
-        if (b.ecoScore) scoreB += b.ecoScore / 10;
-
-        // 2. Điểm đánh giá thực tế
-        scoreA += (a.rating || 4.0) * 10;
-        scoreB += (b.rating || 4.0) * 10;
-
-        // 3. Địa điểm yêu thích / đã lưu của người dùng
-        if (savedIds.has(a.id)) scoreA += 15;
-        if (savedIds.has(b.id)) scoreB += 15;
-
-        // 4. Địa điểm biểu tượng / Must-Try
-        if (isCuratedHighlight(a)) scoreA += 25;
-        if (isCuratedHighlight(b)) scoreB += 25;
-
-        // Giữ cân bằng "Cho bạn": ưu tiên danh thắng & ẩm thực bản địa trừ khi người dùng đã thả tim lưu trú
-        if (a.category === 'luu-tru' && !likedCats.has('luu-tru')) scoreA -= 15;
-        if (b.category === 'luu-tru' && !likedCats.has('luu-tru')) scoreB -= 15;
-
-        return scoreB - scoreA;
-      });
+      return rankPoisForYou(matched, allPois, savedIds);
     }
 
     if (!isCustomWeights) {
@@ -967,6 +932,36 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [allPois, fullDetailPoiId]);
 
 const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilter;
+  const plannerTrip = selectedTripForDetails || activeOverviewTrip;
+  const persistPlannerTripMetadata = useCallback(async (
+    updatedTrip: UserTrip,
+    options?: { itineraryAlreadySaved?: boolean },
+  ) => {
+    const previousTrip = selectedTripForDetails?.id === updatedTrip.id
+      ? selectedTripForDetails
+      : activeOverviewTrip?.id === updatedTrip.id
+        ? activeOverviewTrip
+        : userTrips.find((item) => item.id === updatedTrip.id);
+
+    if (currentUser && !isClientDraftTripId(updatedTrip.id) && !options?.itineraryAlreadySaved) {
+      const payload: { title?: string; destination?: string; start_date?: string } = {};
+      if (previousTrip?.title !== updatedTrip.title) payload.title = updatedTrip.title;
+      if (previousTrip?.destination !== updatedTrip.destination) payload.destination = updatedTrip.destination;
+      if (previousTrip?.startDate !== updatedTrip.startDate && /^\d{4}-\d{2}-\d{2}$/.test(updatedTrip.startDate || '')) {
+        payload.start_date = updatedTrip.startDate;
+      }
+      if (Object.keys(payload).length > 0) {
+        await updateMyTrip(updatedTrip.id, payload);
+      }
+    }
+
+    setSelectedTripForDetails((current) => current?.id === updatedTrip.id ? updatedTrip : current);
+    setActiveOverviewTrip((current) => current?.id === updatedTrip.id ? updatedTrip : current);
+    setUserTrips((previous) => previous.map((item) => item.id === updatedTrip.id ? updatedTrip : item));
+  }, [activeOverviewTrip, currentUser, selectedTripForDetails, userTrips]);
+  const handleExternalCopilotPlanConsumed = useCallback((plan: TripItinerary) => {
+    setTripCopilotPlanUpdate((current) => current?.plan === plan ? null : current);
+  }, []);
 
   return (
     <div className="flex h-screen h-[100dvh] w-full max-w-full overflow-hidden font-sans bg-white select-none print-scroll-unlock">
@@ -1131,18 +1126,18 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                           e.stopPropagation();
                           const targetTrip = selectedTripForDetails || activeOverviewTrip;
                           setActiveTripSubTab('ideas');
-                          setSelectedTripForDetails(null);
+                          setSelectedTripForDetails(targetTrip);
                           setActiveOverviewTrip(targetTrip);
                           setViewMode('trips');
                         }}
                         className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] transition cursor-pointer select-none ${
-                          activeTripSubTab === 'ideas' && !selectedTripForDetails
+                          activeTripSubTab === 'ideas' && selectedTripForDetails
                             ? 'bg-neutral-900 text-white font-bold shadow-2xs'
                             : 'text-gray-600 hover:text-black hover:bg-gray-100 font-medium'
                         }`}
                       >
-                        <span className="text-emerald-400 text-xs">💬</span>
-                        <span className="truncate">Trợ lý &amp; Tổng quan</span>
+                        <span className="text-emerald-400 text-xs">💡</span>
+                        <span className="truncate">Gợi ý địa điểm</span>
                       </button>
 
                       {/* Nhánh 2: Kế hoạch chi tiết */}
@@ -1365,37 +1360,86 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
               }}
             />
-          ) : (activeTripSubTab === 'itinerary' && selectedTripForDetails) ? (
-            <TripItineraryView
-              trip={selectedTripForDetails}
-              allPois={allPois}
-              onBack={() => {
-                setActiveOverviewTrip(null);
-                setSelectedTripForDetails(null);
-                setActiveTripSubTab('ideas');
-              }}
-              onNavigateToCalendar={() => {
-                const target = activeOverviewTrip || selectedTripForDetails;
-                if (target) {
-                  setActiveTripSubTab('calendar');
-                  setSelectedTripForDetails(target);
-                  setActiveOverviewTrip(target);
-                }
-              }}
-              onNavigateToTab={(tab) => {
-                const target = activeOverviewTrip || selectedTripForDetails;
-                if (target) {
-                  setActiveTripSubTab(tab);
-                  setActiveOverviewTrip(target);
-                  setSelectedTripForDetails(target);
-                }
-              }}
-              onUpdateTrip={(updatedTrip) => {
-                setSelectedTripForDetails(updatedTrip);
-                setActiveOverviewTrip(updatedTrip);
-                setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
-              }}
-            />
+          ) : ((activeTripSubTab === 'itinerary' || activeTripSubTab === 'ideas') && plannerTrip) ? (
+            <>
+              <TripItineraryView
+                trip={plannerTrip}
+                allPois={allPois}
+                initialFocus={activeTripSubTab === 'ideas' ? 'ideas' : 'itinerary'}
+                activeTab={activeTripSubTab === 'ideas' ? 'ideas' : 'itinerary'}
+                externalCopilotPlan={tripCopilotPlanUpdate?.tripId === plannerTrip.id ? tripCopilotPlanUpdate.plan : null}
+                onExternalCopilotPlanConsumed={handleExternalCopilotPlanConsumed}
+                onOpenCopilot={(currentPlan) => {
+                  setTripCopilotPlan(currentPlan);
+                  setIsTripCopilotOpen(true);
+                }}
+                onBack={() => {
+                  setIsTripCopilotOpen(false);
+                  setActiveOverviewTrip(null);
+                  setSelectedTripForDetails(null);
+                  setActiveTripSubTab('ideas');
+                }}
+                onNavigateToCalendar={() => {
+                  const target = activeOverviewTrip || selectedTripForDetails;
+                  if (target) {
+                    setIsTripCopilotOpen(false);
+                    setActiveTripSubTab('calendar');
+                    setSelectedTripForDetails(target);
+                    setActiveOverviewTrip(target);
+                  }
+                }}
+                onNavigateToTab={(tab) => {
+                  const target = activeOverviewTrip || selectedTripForDetails;
+                  if (target) {
+                    setIsTripCopilotOpen(false);
+                    setActiveTripSubTab(tab);
+                    setActiveOverviewTrip(target);
+                    setSelectedTripForDetails(target);
+                  }
+                }}
+                onUpdateTrip={(updatedTrip) => {
+                  setSelectedTripForDetails(updatedTrip);
+                  setActiveOverviewTrip(updatedTrip);
+                  setUserTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
+                }}
+                onPersistTripMetadata={persistPlannerTripMetadata}
+              />
+              {plannerTrip && tripCopilotPlan?.trip_id === plannerTrip.id && (
+                <div
+                  className={`fixed inset-0 z-[70] bg-black/35 ${isTripCopilotOpen ? 'block' : 'hidden'}`}
+                  role="presentation"
+                  onClick={() => setIsTripCopilotOpen(false)}
+                >
+                  <div
+                    className="ml-auto h-full w-full max-w-[480px] bg-white shadow-2xl"
+                    role="dialog"
+                    aria-label="Hỏi GreenTrip AI"
+                    aria-modal="true"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <TripOverviewView
+                      key={plannerTrip.id}
+                      trip={plannerTrip}
+                      allPois={allPois}
+                      currentUser={currentUser}
+                      isCopilotDrawer
+                      initialItineraryPlan={tripCopilotPlan}
+                      onCloseCopilot={() => setIsTripCopilotOpen(false)}
+                      onApplyItineraryPlan={(plan) => {
+                        setTripCopilotPlan(plan);
+                        setTripCopilotPlanUpdate({ version: Date.now(), tripId: plannerTrip.id, plan });
+                      }}
+                      onBack={() => setIsTripCopilotOpen(false)}
+                      onUpdateTrip={(updatedTrip) => {
+                        setSelectedTripForDetails(updatedTrip);
+                        setActiveOverviewTrip(updatedTrip);
+                        setUserTrips((prev) => prev.map((item) => (item.id === updatedTrip.id ? updatedTrip : item)));
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
           ) : activeOverviewTrip ? (
             <TripOverviewView
               trip={activeOverviewTrip}
@@ -1590,8 +1634,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                         key={trip.id}
                         onClick={() => {
                           setActiveOverviewTrip(trip);
-                          setSelectedTripForDetails(null);
-                          setActiveTripSubTab('ideas');
+                          setSelectedTripForDetails(trip);
+                          setActiveTripSubTab('itinerary');
                         }}
                         className="group border border-gray-200/90 hover:border-gray-300 rounded-[22px] overflow-hidden bg-white shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col"
                       >
@@ -2176,6 +2220,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               id: newTrip.id || `trip-${Date.now()}`,
               savedPlaces,
               ideas,
+              itineraryOutline: newTrip.itineraryOutline?.map((day) => ({ ...day, stops: [] })),
               image:
                 newTrip.coverImage ||
                 newTrip.image ||
@@ -2191,13 +2236,9 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             };
             setUserTrips((prev) => [trip, ...prev]);
             setActiveOverviewTrip(trip);
-            if (options?.openInItinerary) {
-              setSelectedTripForDetails(trip);
-              setActiveTripSubTab('itinerary');
-            } else {
-              setSelectedTripForDetails(null);
-              setActiveTripSubTab('ideas');
-            }
+            setSelectedTripForDetails(trip);
+            setActiveTripSubTab(options?.openInItinerary ? 'itinerary' : 'ideas');
+            setIsTripCopilotOpen(false);
             setViewMode('trips');
             setPendingAddToTripPoiIds(null);
             setIdeationDraft(null);

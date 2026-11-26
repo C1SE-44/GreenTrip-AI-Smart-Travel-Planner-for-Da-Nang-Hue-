@@ -69,6 +69,18 @@ export interface OpeningHoursInfo {
   [key: string]: unknown;
 }
 
+export interface PoiDetailEvidence {
+  rating: boolean;
+  greenScore: boolean;
+  greenStatus: boolean;
+  openingHours: boolean;
+  price: boolean;
+  visitDuration: boolean;
+  description: boolean;
+  gallery: boolean;
+  coordinates: boolean;
+}
+
 export interface Poi {
   id: string;
   name: string;
@@ -82,6 +94,7 @@ export interface Poi {
   lng: number;
   address?: string | null;
   image: string;
+  imageSourceAvailable?: boolean;
   gallery?: string[];
   description: string;
   rating: number;
@@ -110,6 +123,7 @@ export interface Poi {
   opening_hours?: OpeningHoursInfo | null;
   email?: string | null;
   savedCount?: number;
+  detailEvidence?: PoiDetailEvidence;
 }
 
 export interface BackendPoiItem {
@@ -534,6 +548,7 @@ export type NormalizablePoiInput = Partial<BackendPoiItem> & {
   cleanTitle?: string;
   subTitle?: string;
   isMichelin?: boolean;
+  detailEvidence?: PoiDetailEvidence;
 };
 
 export function normalizePoi(item: NormalizablePoiInput | null | undefined, allowMissingCoordinates = false): Poi | null {
@@ -585,14 +600,22 @@ export function normalizePoi(item: NormalizablePoiInput | null | undefined, allo
     subTitle = parenMatch[2].trim();
   }
 
-  let image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id ?? item.poi_id ?? cleanName, category, city);
+  const sourceImage = item.image_url?.trim() || item.image?.trim() || '';
+  let image = sourceImage || getDeterministicImage(cleanName, item.id ?? item.poi_id ?? cleanName, category, city);
+  let imageSourceAvailable = Boolean(sourceImage);
   // Đảm bảo Cầu Rồng luôn hiển thị ảnh thực tế cầu rồng phun lửa Đà Nẵng, không dùng ảnh Cầu Vàng Bà Nà
   if (cleanName.includes('Cầu Rồng') || String(item.id).includes('cau-rong')) {
     image = 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=1280&q=80';
+    imageSourceAvailable = true;
   }
   const gallery = Array.isArray(item.gallery_urls) && item.gallery_urls.length > 0 ? item.gallery_urls : undefined;
 
   const rawRating = Number(item.ai_metadata?.raw_rating);
+  const hasSourceRating = Number.isFinite(rawRating) && rawRating > 0
+    || (item.satisfaction_score !== null
+      && item.satisfaction_score !== undefined
+      && Number.isFinite(Number(item.satisfaction_score))
+      && Number(item.satisfaction_score) > 0);
   const rating = Number.isFinite(rawRating) && rawRating > 0
     ? rawRating
     : item.satisfaction_score
@@ -620,6 +643,12 @@ export function normalizePoi(item: NormalizablePoiInput | null | undefined, allo
 
   const rawGreen = item.green_score !== null && item.green_score !== undefined && Number.isFinite(Number(item.green_score)) ? Number(item.green_score) : 0.5;
   const ecoScore = Math.round(rawGreen <= 1 ? rawGreen * 100 : rawGreen);
+  const openingHoursHasSource = Boolean(
+    item.open_hours?.trim()
+    || Object.values(item.opening_hours ?? {}).some((value) =>
+      typeof value === 'string' ? value.trim().length > 0 : Array.isArray(value) && value.length > 0,
+    ),
+  );
   const GREEN_IDS = new Set(['my-khe', 'ngu-hanh-son', 'linh-ung-son-tra', 'cau-rong', 'madame-lan', 'dai-noi', 'thien-mu', 'khai-dinh', 'tu-duc', 'cau-truong-tien']);
   const explicitGreen = typeof item.is_green === 'boolean' ? item.is_green : (typeof item.isGreen === 'boolean' ? item.isGreen : null);
   const isGreen: boolean = explicitGreen !== null
@@ -641,6 +670,7 @@ export function normalizePoi(item: NormalizablePoiInput | null | undefined, allo
     lng: hasCoordinates ? longitude : Number.NaN,
     address: item.address?.trim() || null,
     image,
+    imageSourceAvailable,
     gallery,
     description: (item.description ?? '').trim() || 'Địa điểm đáng ghé thăm trong hành trình của bạn.',
     rating,
@@ -677,6 +707,26 @@ export function normalizePoi(item: NormalizablePoiInput | null | undefined, allo
     opening_hours: item.opening_hours && typeof item.opening_hours === 'object' ? item.opening_hours : null,
     email: item.email?.trim() || null,
     savedCount: Number.isFinite(Number(item.saved_count)) ? Math.max(0, Number(item.saved_count)) : undefined,
+    detailEvidence: {
+      rating: hasSourceRating,
+      greenScore: item.green_score !== null
+        && item.green_score !== undefined
+        && Number.isFinite(Number(item.green_score)),
+      greenStatus: typeof item.is_green === 'boolean' || typeof item.isGreen === 'boolean',
+      openingHours: openingHoursHasSource,
+      price: (item.estimated_cost !== null
+        && item.estimated_cost !== undefined
+        && Number.isFinite(Number(item.estimated_cost)))
+        || Boolean(item.ai_metadata?.price_range_display?.trim()),
+      visitDuration: (item.average_visit_minutes !== null
+        && item.average_visit_minutes !== undefined
+        && Number.isFinite(Number(item.average_visit_minutes))
+        && Number(item.average_visit_minutes) > 0)
+        || Boolean(rawRecHours),
+      description: Boolean(item.description?.trim()),
+      gallery: Boolean(sourceImage || gallery?.length),
+      coordinates: hasCoordinates,
+    },
   };
 }
 

@@ -1,5 +1,6 @@
 MATCH (p:POI)
 WHERE COALESCE(p.is_local_business, false) = true
+  AND COALESCE(p.is_active, true) = true
   AND (
     p.local_business_type IN ['craft_workshop', 'eco_lodge', 'homestay', 'traditional_market']
     OR EXISTS {

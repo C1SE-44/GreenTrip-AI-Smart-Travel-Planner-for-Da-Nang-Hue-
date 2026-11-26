@@ -157,6 +157,20 @@ export async function getMyTrips(): Promise<OwnedTripSummary[]> {
   return fetchJson<OwnedTripSummary[]>('/my-trips');
 }
 
+export interface UpdateMyTripPayload {
+  title?: string;
+  destination?: string;
+  start_date?: string;
+}
+
+export async function updateMyTrip(tripId: string, payload: UpdateMyTripPayload): Promise<void> {
+  await fetchJson(`/my-trips/${encodeURIComponent(tripId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function deleteMyTrip(tripId: string): Promise<void> {
   await fetchJson(`/my-trips/${encodeURIComponent(tripId)}`, { method: 'DELETE' });
 }

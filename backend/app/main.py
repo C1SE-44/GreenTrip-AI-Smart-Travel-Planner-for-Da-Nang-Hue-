@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -15,15 +14,10 @@ from app.trips.my_trips_router import router as my_trips_router
 from app.recommendations.router import router as recommendations_router
 from app.saved_places.router import router as saved_places_router
 from app.itineraries.router import router as itineraries_router
-from app.itineraries.repository import seed_sample_itineraries
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    try:
-        await asyncio.to_thread(seed_sample_itineraries)
-    except Exception as e:
-        print(f"Warning: could not seed sample itineraries: {e}")
     try:
         yield
     finally:

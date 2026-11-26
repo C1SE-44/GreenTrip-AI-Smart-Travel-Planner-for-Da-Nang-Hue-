@@ -52,10 +52,10 @@ def test_query_maps_each_semantic_target_type() -> None:
     assert "target_name: target.name" in QUERY
 
 
-def test_query_returns_local_business_and_provenance_properties() -> None:
+def test_query_returns_local_business_without_claiming_poi_provenance() -> None:
     assert "is_local_business: p.is_local_business" in QUERY
     assert "local_business_type: p.local_business_type" in QUERY
-    assert "source: p.source" in QUERY
+    assert "source: p.source" not in QUERY
 
 
 def test_query_deduplicates_and_orders_facts() -> None:

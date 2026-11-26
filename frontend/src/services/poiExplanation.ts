@@ -23,6 +23,7 @@ export interface PoiExplanationResponse {
     source: string | null;
   };
   facts: ExplanationFact[];
+  fact_source?: 'NEO4J' | 'POSTGRESQL_FALLBACK' | 'CSV_FALLBACK' | null;
 }
 
 export function getPoiExplanationFacts(

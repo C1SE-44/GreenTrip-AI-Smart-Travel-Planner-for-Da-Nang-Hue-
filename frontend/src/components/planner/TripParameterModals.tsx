@@ -139,7 +139,9 @@ export function TripWhenModal({
   onClose,
   onSave,
 }: TripWhenModalProps) {
-  const [calendarBaseMonth, setCalendarBaseMonth] = useState<Date>(new Date(2026, 10, 1));
+  const [calendarBaseMonth, setCalendarBaseMonth] = useState<Date>(() => rangeStart
+    ? new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1)
+    : new Date(2026, 10, 1));
 
   const month1Year = calendarBaseMonth.getFullYear();
   const month1Index = calendarBaseMonth.getMonth();

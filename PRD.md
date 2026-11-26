@@ -42,9 +42,12 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 ### 3.1. Trong phạm vi MVP (In-Scope — v1.0)
 * **F-01 — Xác thực, Hồ sơ & Onboarding (`PB01`):** Đăng ký Email + mã OTP qua SMTP, đăng nhập Email/Mật khẩu, đăng nhập Google OAuth 2.0, quên/đổi mật khẩu, cập nhật hồ sơ & avatar (`/profile`), và luồng Onboarding (`/onboarding`) thu thập sở thích ban đầu.
 * **F-02 — Khám phá địa điểm xanh & Lọc trọng số (`PB08`):** Trang `/home` và `/explore` chia 2 cột (danh sách POI + bản đồ `PoiMap` đồng bộ hover/select), gắn nhãn **Địa điểm xanh**, lọc theo thành phố (Đà Nẵng / Huế), danh mục (Ẩm thực, Di tích, Cảnh quan, Chùa, Lưu trú xanh trên tổng 642 POI đã kiểm định gồm 482 điểm tham quan/ẩm thực và 160 cơ sở lưu trú xanh), nút gạt **Bản địa ít đông** (ưu tiên phía Tây sông Hàn Đà Nẵng, làng nghề thủ công, kết nối Neo4j và lọc điểm ít quá tải), từ khóa và trọng số ưu tiên bền vững.
-* **F-03 — Giải thích đề xuất bằng Knowledge Graph (`PB10`):** Xem chi tiết POI (`PoiDetailSection`) và mở modal giải thích *"Vì sao địa điểm này phù hợp?"* dựa trên dữ liệu đồ thị Neo4j (`GET /pois/{poi_id}/explanation-facts`).
+* **F-03 — Giải thích đề xuất bằng Knowledge Graph (`PB10`):** Xem chi tiết POI (`PoiDetailSection`) và mở modal giải thích *"Vì sao địa điểm này phù hợp?"* dựa trên dữ liệu đồ thị Neo4j (`GET /pois/{poi_id}/explanation-facts`). Lời giải thích kết hợp các yếu tố PB09 thực sự đóng góp điểm với Category/Activity/Location được đọc từ graph; chỉ cá nhân hóa khi sở thích đã chọn, được PB09 khớp và có fact hỗ trợ. PB10 không thay đổi thứ hạng Recommendation. Nếu dùng PostgreSQL/CSV dự phòng, giao diện phải nêu đúng nguồn và không gọi đó là dữ kiện Neo4j.
+  ExplanationModal ưu tiên lý do cá nhân hóa có bằng chứng; khi thiếu bằng chứng chỉ trình bày facts chung và nguồn thật. Chi tiết điểm PB09 nằm trong mục mở rộng mặc định đóng, giữ nguyên giá trị score breakdown; tên category, activity và location hiển thị bằng nhãn tiếng Việt.
+* **PB10 Graph Builder (Phase 2):** PostgreSQL là nguồn dữ liệu chuẩn; Graph Builder chỉ đọc POI, ánh xạ 6 category và Activity từ whitelist có bằng chứng, mặc định dry-run. Khi được phê duyệt để đồng bộ, chỉ reconcile relationship do importer đánh dấu `managed_by`; xung đột với graph legacy phải dừng và báo cáo. POI không active hoặc không còn trong full source snapshot được đánh dấu inactive theo chính sách không xóa graph lịch sử. Đồng bộ production tự động chưa được triển khai.
 * **F-04 — Bộ sưu tập, Địa điểm đã lưu & Xếp lịch từ Kho đã lưu (`Saved Places`):** Thả tim lưu địa điểm và tổ chức theo các bộ sưu tập cá nhân (`/saved`), đồng bộ trực tiếp vào modal thêm điểm trong Planner, và cho phép **xếp lịch trình trực tiếp từ bộ sưu tập đã lưu** (gom cụm theo thành phố/khoảng cách đúng các điểm đã chọn, chỉ gợi ý tùy chọn quán ăn/giờ nghỉ vào khung giờ trống).
-* **F-05 — Thiết lập thông số chuyến đi & Gợi ý cá nhân hóa (`PB07`, `PB09`):** Chọn điểm đến (Đà Nẵng / Huế / Cả 2), lịch ngày đi/về hoặc số ngày linh hoạt, số du khách, ngân sách theo 3 nhóm độc lập (Ăn uống, Lưu trú, Hoạt động) và nhận gợi ý POI phù hợp (`POST /v1/recommendations/poi`).
+* **F-05 — Thiết lập thông số chuyến đi & Gợi ý cá nhân hóa (`PB07`, `PB09`):** Chọn điểm đến (Đà Nẵng / Huế / Cả 2), lịch ngày đi/về hoặc số ngày linh hoạt, số du khách, ngân sách theo 3 nhóm độc lập (Ăn uống, Lưu trú, Hoạt động) và nhận POI qua `POST /v1/recommendations/poi`. Mục “Địa điểm phù hợp với chuyến đi” dùng sở thích đã chọn/nhập và thông tin PB07 để xếp hạng, trong đó ngân sách là tín hiệu mềm; không phụ thuộc danh sách POI người dùng đã chọn. Kết quả PB09 được phân trang: tải 10 POI đầu, sau đó cho phép tải thêm 10 POI mỗi lượt đến khi hết POI đủ điều kiện; thứ tự toàn danh sách giảm dần theo điểm cuối cùng, hòa điểm có thứ tự ổn định theo POI ID. Khi trip metadata tham gia tính điểm thay đổi, kết quả và phân trang được làm mới theo metadata mới; thêm/xóa POI khỏi Trip không làm thay đổi hoặc tải lại xếp hạng PB09. Mục “Có thể bạn sẽ thích” là gợi ý liên quan theo từng chuyến, dựa trên POI đã thêm, POI đã mở và từ khóa tìm kiếm đã gửi. Tín hiệu xem/tìm kiếm chỉ được giữ trong `sessionStorage` theo ID chuyến; không lưu keystroke, không ghi vào backend và không trộn giữa các chuyến. Khi chưa có tín hiệu phù hợp, hiển thị trạng thái trống thay vì gọi danh sách khám phá chung là cá nhân hóa. Cả hai mục thêm POI vào cùng danh sách chuyến; không tự thêm POI vào lịch.
+* **Chỉnh sửa thông tin chuyến tại Planner:** Người dùng có thể sửa điểm đến, thời gian, số khách, ngân sách và sở thích từ Header; PB09 lấy bộ metadata mới. Nếu chuyến đã có POI trong lịch và thay đổi điểm đến/ngày, Planner tạo bản xem trước bằng engine hiện có; chỉ lưu lịch và metadata liên quan sau khi người dùng xác nhận. Số khách, ngân sách và sở thích cập nhật trên trip theo cơ chế lưu hiện tại mà không tự xáo trộn lịch đã xác nhận.
 * **F-06 — Không gian Lịch trình Split-Screen, Xếp lịch tự động & Tối ưu xanh (`PB11`):**
   * Giao diện chia đôi: Timeline theo ngày (bên trái) + Bản đồ lộ trình đánh số thứ tự & lọc theo ngày (bên phải).
   * Trợ lý xếp lịch theo 3 nhịp độ (`Relaxed` / `Balanced` / `Fast`), tự chèn khung giờ nghỉ, kiểm tra xung đột giờ mở cửa.
@@ -139,3 +142,29 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 - Thông số chuyến đi PB07: [docs/PB07-TRIP-PARAMETERS-WIREFRAME-AND-CONTRACT.md](docs/PB07-TRIP-PARAMETERS-WIREFRAME-AND-CONTRACT.md)
 - Xếp lịch & Nghỉ ngơi PB11: [docs/PB11-TRAVEL-ASSISTANT-REST-PLANNING.md](docs/PB11-TRAVEL-ASSISTANT-REST-PLANNING.md)
 - Luồng tư vấn POI: [docs/user_flows/copilot_poi_advice_flow.md](docs/user_flows/copilot_poi_advice_flow.md)
+
+## Phase 3C.2 — Vận hành đồng bộ Knowledge Graph
+
+- Graph Builder CLI là đường đồng bộ thủ công; chưa có scheduler, webhook, database trigger hoặc job chạy cùng FastAPI. Dry-run và consistency audit chỉ đọc PostgreSQL/Neo4j; mọi lệnh apply cần phê duyệt riêng.
+- Incremental apply chỉ dùng cursor đã lưu trong `GraphSyncState`; `--since` không được kết hợp với `--apply`. Các bản ghi có timestamp trùng được đọc lại theo cả nhóm timestamp để tránh bỏ sót; `updated_at` null cũng được đọc lại mỗi lượt.
+- Trước full reconciliation, Graph Builder chặn snapshot rỗng/không có projection hợp lệ và kiểm tra tỷ lệ record bị bỏ qua, category/location thiếu hoặc không ánh xạ, cùng mức giảm số POI so với graph do importer quản lý. Ngưỡng có thể cấu hình; guard thất bại thì không đánh dấu hàng loạt POI inactive.
+- Consistency audit chỉ báo cáo ID, trạng thái active, facts semantic, duplicate, drift timestamp, timestamp bị lùi, node semantic mồ côi và trạng thái checkpoint/lease; không tự sửa hoặc dọn graph.
+- Supabase hiện không bảo đảm tự cập nhật `pois.updated_at` khi record hoặc taxonomy liên quan đổi. Incremental sync có thể bỏ sót cập nhật có timestamp không đổi hoặc lùi; cần audit định kỳ và xem xét trigger/writer thống nhất trong một thay đổi riêng.
+
+## Phase 3C.3 — Manual Full Reconciliation cho Capstone
+
+- Manual full reconciliation là quy trình đồng bộ Knowledge Graph chính ở giai đoạn Capstone. Không bật scheduler, webhook hoặc incremental tự động.
+- Operator chạy `--audit` READ ONLY, dry-run, rà soát chênh lệch và guard; chỉ chạy một lần full apply sau phê duyệt rõ ràng. Sau đó chạy audit READ ONLY để xác minh node, relationship, checkpoint và lease.
+- Chênh lệch số POI dưới ngưỡng giảm 5% vẫn phải được báo `[REVIEW]` và giải thích trước khi phê duyệt; vượt ngưỡng là điều kiện dừng. Guard không được hạ hoặc bỏ qua để tiếp tục sync.
+- Full reconciliation không xóa POI inactive/mất khỏi nguồn hoặc semantic node. Nó đánh dấu POI do importer quản lý là inactive; chỉ relationship stale do importer quản lý được reconcile theo chính sách.
+- Incremental chưa đáng tin cậy làm chế độ chính vì `updated_at` không được mọi writer duy trì, thay đổi `poi_categories`/`cities` có thể không cập nhật POI liên quan, và xóa vật lý chỉ được phát hiện qua full reconciliation.
+
+## Vận hành backend local
+
+- FastAPI startup/shutdown không tự tạo hoặc cập nhật itinerary mẫu. Khi cần dữ liệu demo, chỉ chạy `python -m app.itineraries.seed_samples` trong `backend` với `APP_ENV=development`, `DATABASE_URL` không cấu hình và `SQLITE_FALLBACK_ENABLED=true`; lệnh từ chối môi trường khác và PostgreSQL.
+
+## Planner POI Detail Panel
+
+- Từ card PB09 hoặc “Có thể bạn sẽ thích”, người dùng có thể mở `PoiDetailSection` phủ đúng vùng bản đồ trong Planner; panel không đổi route, giữ map mounted và giữ vị trí cuộn danh sách.
+- Planner dùng chính POI ID để lấy dữ liệu từ catalogue/API hiện có. Lưu, thêm/xóa Trip và PB10 dùng state/endpoint hiện có; mở panel không thay ranking hay tín hiệu Recommendation.
+- Chế độ Planner chỉ hiển thị giá trị có nguồn xác định. Không coi rating/Green Score/giờ mở cửa/giá/thời lượng/ảnh mặc định, chứng nhận, AI review hoặc carbon estimate theo category là dữ kiện; Explore giữ chế độ hiển thị cũ.

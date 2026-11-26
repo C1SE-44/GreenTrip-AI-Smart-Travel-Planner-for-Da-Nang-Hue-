@@ -399,7 +399,6 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
 # ponytail: 30s monotonic cooldown on Postgres connection failure instead of sticky disable; replace with pool/probe if needed
 _POSTGRES_RETRY_COOLDOWN_SECONDS = 30.0
 _POSTGRES_RETRY_AFTER: float = 0.0
-_PG_COORDS_PATCHED = False
 
 
 def get_connection() -> Any:
@@ -408,7 +407,7 @@ def get_connection() -> Any:
     Nếu không có PostgreSQL (hoặc người dùng không bật Docker),
     hệ thống tự động sử dụng CSDL SQLite cục bộ giúp tính năng Đăng nhập/Đăng ký hoạt động mượt mà.
     """
-    global _POSTGRES_RETRY_AFTER, _PG_COORDS_PATCHED
+    global _POSTGRES_RETRY_AFTER
     settings = get_settings()
 
     if settings.DATABASE_URL and time.monotonic() >= _POSTGRES_RETRY_AFTER:
@@ -417,22 +416,6 @@ def get_connection() -> Any:
                 settings.DATABASE_URL,
                 connect_timeout=3,
             )
-            if not _PG_COORDS_PATCHED and hasattr(pg_conn, "cursor"):
-                try:
-                    with pg_conn.cursor() as pg_cur:
-                        pg_cur.execute(
-                            """
-                            UPDATE public.pois
-                            SET latitude = 15.9977, longitude = 107.9885
-                            WHERE poi_id = '5c0d99bb-4e57-4869-8fdc-38470cf34a0d'
-                              AND latitude BETWEEN 16.07 AND 16.08
-                            """
-                        )
-                    pg_conn.commit()
-                    _PG_COORDS_PATCHED = True
-                except Exception:
-                    if hasattr(pg_conn, "rollback"):
-                        pg_conn.rollback()
             return pg_conn
         except Exception:
             _POSTGRES_RETRY_AFTER = time.monotonic() + _POSTGRES_RETRY_COOLDOWN_SECONDS

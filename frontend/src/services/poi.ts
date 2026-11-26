@@ -376,12 +376,12 @@ export interface ExplanationPoi {
 export interface PoiExplanationFactsResponse {
   poi: ExplanationPoi;
   facts: ExplanationFact[];
+  fact_source?: 'NEO4J' | 'POSTGRESQL_FALLBACK' | 'CSV_FALLBACK' | null;
 }
 
 /**
- * Gọi API lấy dữ liệu dẫn chứng giải thích (Why-this-place) từ Neo4j Knowledge Graph.
- * Trả về danh sách facts (IN_CATEGORY, OFFERS_ACTIVITY, LOCATED_IN).
- * Nếu Neo4j chưa cấu hình hoặc tạm thời offline, hàm trả về null để UI fallback an toàn sang CBF.
+ * Gọi API lấy dữ kiện giải thích POI; fact_source cho biết dữ kiện đến từ Neo4j hay nguồn dự phòng.
+ * Nếu cả Neo4j lẫn nguồn dự phòng không truy xuất được, hàm trả về null.
  */
 export async function getPoiExplanationFacts(
   poiId: string

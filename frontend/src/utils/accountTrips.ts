@@ -23,6 +23,10 @@ function readTrips(storage: Storage, key: string): UserTrip[] | null {
   }
 }
 
+function isAccountLocalDraftTripId(tripId: string): boolean {
+  return tripId.startsWith('trip-quick-') || tripId.startsWith('trip_') || tripId.startsWith('trip-saved-');
+}
+
 export async function loadAccountTrips(
   storage: Storage,
   userId: string,
@@ -45,12 +49,18 @@ export async function loadAccountTrips(
       id: remote.trip_id,
       title: remote.title,
       destination: remote.destination,
-      daysCount: remote.days_count,
-      startDate: remote.start_date || previous?.startDate || '',
+      daysCount: previous?.localMetadataOverrides?.daysCount ?? remote.days_count,
+      startDate: previous?.localMetadataOverrides?.startDate ?? (remote.start_date || previous?.startDate || ''),
       peopleCount: previous?.peopleCount || 2,
       createdAt: previous?.createdAt || '',
     };
     result.push(migrate ? await migrate(trip) : trip);
+  }
+  // New, unsynced trips are restored only from this account's namespaced cache.
+  for (const trip of cached) {
+    if (isAccountLocalDraftTripId(trip.id) && !result.some((item) => item.id === trip.id)) {
+      result.push(trip);
+    }
   }
   if (migrate) {
     for (const trip of cached) {

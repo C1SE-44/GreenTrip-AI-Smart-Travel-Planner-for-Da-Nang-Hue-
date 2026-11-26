@@ -20,6 +20,7 @@ import {
   type CopilotTripMessage,
 } from './copilotTripData';
 import { extractTripIntentFromPrompt, type ExtractedTripIntent } from '@/utils/vietnamesePromptExtractor';
+import TripPreferencesModal, { TRIP_INTERESTS } from './TripPreferencesModal';
 
 export { buildDefaultMindtripItinerary, buildDefaultMindtripConversation };
 
@@ -89,8 +90,17 @@ export default function CreateTripCopilotModal({
   const [lodgingTier, setLodgingTier] = useState<string>('any');
   const [activitiesTier, setActivitiesTier] = useState<string>('any');
   const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [preferenceText, setPreferenceText] = useState('');
+  const [showInterestsModal, setShowInterestsModal] = useState(false);
 
   // Bộ bóc tách thông số tự nhiên tức thì từ prompt chuẩn Mindtrip AI
+  const toggleInterest = (interestId: string) => {
+    setSelectedInterests((current) => current.includes(interestId)
+      ? current.filter((interest) => interest !== interestId)
+      : [...current, interestId]);
+  };
+
   const handlePromptChange = (val: string) => {
     const text = val.slice(0, 2000);
     setTripPrompt(text);
@@ -204,6 +214,20 @@ export default function CreateTripCopilotModal({
     return tierText;
   };
   const budgetDisplay = getBudgetDisplay();
+
+  const getInterestDisplay = () => {
+    if (selectedInterests.length === 0) {
+      const freeText = preferenceText.trim();
+      if (!freeText) return 'Chưa chọn';
+      return freeText.length > 28 ? `${freeText.slice(0, 28)}…` : freeText;
+    }
+    const labels = selectedInterests
+      .map((interestId) => TRIP_INTERESTS.find((interest) => interest.id === interestId)?.label)
+      .filter((label) => label !== undefined);
+    const summary = labels.slice(0, 2).join(', ');
+    return labels.length > 2 ? `${summary} +${labels.length - 2}` : summary;
+  };
+  const interestDisplay = getInterestDisplay();
 
   // Helper hàm cho lịch 2 tháng bên tab "Ngày tháng"
   const month1Year = calendarBaseMonth.getFullYear();
@@ -323,7 +347,7 @@ export default function CreateTripCopilotModal({
         activities_tier: activitiesTier !== 'any' ? (activitiesTier === '$' ? 'budget' : activitiesTier === '$$$' ? 'luxury' : 'standard') : undefined,
         num_people: validPeople,
         start_date: startDateStr,
-        preferences: ['food', 'culture', 'nature', 'eco'],
+        preferences: selectedInterests,
       });
 
       const validatedData = backendResponse.data;
@@ -349,7 +373,10 @@ export default function CreateTripCopilotModal({
         createdAt: new Date().toISOString(),
         status: 'upcoming',
         prompt: tripPrompt.trim(),
+        preferences: selectedInterests,
+        preferenceText: preferenceText.trim() || undefined,
         totalBudget: estimatedBudget,
+        recommendationTripData: validatedData,
         itineraryOutline: (validatedData.itinerary_outline && validatedData.itinerary_outline.length > 0)
           ? (validatedData.itinerary_outline as unknown as CopilotDayOutline[]).map((d: CopilotDayOutline, idx: number) => ({
               ...d,
@@ -400,6 +427,8 @@ export default function CreateTripCopilotModal({
         createdAt: new Date().toISOString(),
         status: 'upcoming',
         prompt: tripPrompt.trim(),
+        preferences: selectedInterests,
+        preferenceText: preferenceText.trim() || undefined,
         totalBudget: estimatedBudget,
         pacingLevel: pacing.level,
         pacingLabel: pacing.label,
@@ -433,7 +462,7 @@ export default function CreateTripCopilotModal({
     >
       {/* Khung hộp thoại: rộng 917px (max-w-[508px], -5%), bo góc 36px (rounded-[20px], -28%), hạ giữa dọc, padding chuẩn Mindtrip */}
       <div 
-        className="w-full max-w-[508px] bg-white rounded-[20px] px-7 sm:px-[30px] pt-[22px] pb-[24px] shadow-2xl relative border border-gray-100"
+        className="w-full max-h-[calc(100dvh-2rem)] max-w-[508px] overflow-y-auto bg-white rounded-[20px] px-7 sm:px-[30px] pt-[22px] pb-[24px] shadow-2xl relative border border-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Nút đóng modal chính: cách mép trái/trên 43/42px (top-[17px] left-[17px], -28%), màu đen đậm nét dày */}
@@ -548,6 +577,17 @@ export default function CreateTripCopilotModal({
             </div>
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowInterestsModal(true)}
+          className="mt-[9px] w-full h-[44px] flex items-center justify-between pl-[17px] pr-[17px] rounded-[14px] border border-[#c8c8c8] hover:border-gray-400 transition-colors bg-white cursor-pointer group text-left"
+        >
+          <span className="text-[13.5px] font-bold text-black">Sở thích</span>
+          <span className="max-w-[65%] truncate text-[12.5px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+            {interestDisplay}
+          </span>
+        </button>
 
         {errorMessage && (
           <p className="mt-3 text-xs text-red-500 text-center font-medium">
@@ -1163,6 +1203,17 @@ export default function CreateTripCopilotModal({
             </div>
           </div>
         </div>
+      )}
+      {showInterestsModal && (
+        <TripPreferencesModal
+          nested
+          selectedInterests={selectedInterests}
+          preferenceText={preferenceText}
+          onToggleInterest={toggleInterest}
+          onChangePreferenceText={setPreferenceText}
+          onClose={() => setShowInterestsModal(false)}
+          onSave={() => setShowInterestsModal(false)}
+        />
       )}
     </div>
   );

@@ -19,8 +19,22 @@ test('Explore Page: TABS replaces "Tất cả" with "Dành cho bạn" and 4 cate
 
 test('Explore Page: filteredPois applies hidden recommendation ranking factoring in user favorites', () => {
   const content = fs.readFileSync(explorePagePath, 'utf8');
+  const helperContent = fs.readFileSync(path.resolve('src/components/explore/exploreUtils.ts'), 'utf8');
   assert.ok(content.includes("activeTab === 'for-you'"), 'Must handle for-you in filteredPois');
-  assert.ok(content.includes("likedPois"), 'Must factor in user liked/hearted places');
+  assert.ok(content.includes('rankPoisForYou(matched, allPois, savedIds)'), 'Explore must use its shared for-you ranking');
+  assert.ok(helperContent.includes('likedPois') && helperContent.includes('isCuratedHighlight'), 'Shared ranking must retain favorite and Must-Try signals');
+  assert.ok([
+    'if (likedCategories.has(a.category)) scoreA += 30',
+    'if (a.sub_category && likedSubcategories.has(a.sub_category.toLowerCase())) scoreA += 25',
+    'if (likedCities.has(a.city)) scoreA += 15',
+    'if (a.isGreen) scoreA += 35',
+    'if (a.ecoScore) scoreA += a.ecoScore / 10',
+    'scoreA += (a.rating || 4.0) * 10',
+    'if (savedIds.has(a.id)) scoreA += 15',
+    'if (isCuratedHighlight(a)) scoreA += 25',
+    "if (a.category === 'luu-tru' && !likedCategories.has('luu-tru')) scoreA -= 15",
+    'return scoreB - scoreA',
+  ].every((signal) => helperContent.includes(signal)), 'Shared ranking must retain Explore’s current scoring signals and weights');
 });
 
 test('Explore Page: Curated sections render Must-Try for each category and limit map pins', () => {
@@ -37,11 +51,15 @@ test('PoiCard: Hides match percentage and explanation button by default', () => 
   assert.ok(content.includes('{showExplanation && !recommendation && ('), 'Does not show Vì sao nơi này button unless explicitly requested');
 });
 
-test('Planner TripOverview: Left column dedicated to AI insight & Chat (no POI recommendation cards list)', () => {
+test('Planner opens the itinerary first and keeps Copilot in an optional drawer', () => {
+  const pageContent = fs.readFileSync(explorePagePath, 'utf8');
   const content = fs.readFileSync(plannerViewPath, 'utf8');
-  assert.ok(content.includes('Đoạn chat (1)'), 'Must have Chats section');
-  assert.ok(content.includes('Bắt đầu một cuộc trò chuyện mới cho chuyến đi này...'), 'Must have chat input placeholder');
-  assert.ok(!content.includes('+ Lưu vào ý tưởng'), 'Must NOT have old POI recommendation cards list in planner overview');
+  assert.ok(pageContent.includes("useState<'ideas' | 'itinerary' | 'calendar'>('itinerary')"), 'New Planner sessions must open the itinerary view');
+  assert.ok(pageContent.includes('itineraryOutline: newTrip.itineraryOutline?.map((day) => ({ ...day, stops: [] }))'), 'A new trip must not inherit unselected template POIs as scheduled stops');
+  assert.ok(pageContent.includes('isTripCopilotOpen'), 'ExplorePage must own the optional Copilot drawer state');
+  assert.ok(pageContent.includes('isCopilotDrawer'), 'Copilot must render as a drawer');
+  assert.ok(content.includes('Bắt đầu một cuộc trò chuyện mới cho chuyến đi này...'), 'The existing trip chat input must remain available');
+  assert.ok(content.includes('persistTripChatTranscript(trip.id, chatMessages)') && content.includes('greentrip_trip_copilot_${tripId}'), 'Trip chat history must survive closing and reopening the drawer');
 });
 
 test('Planner Itinerary Drawer: "Xem lịch theo ngày" opens TripItineraryView inside right card drawer container', () => {
@@ -64,7 +82,7 @@ test('Planner Itinerary Drawer: "Xem lịch theo ngày" opens TripItineraryView 
   assert.ok(itineraryContent.includes('!isDrawerMode &&'), 'Map column must only render when NOT in drawer mode');
 });
 
-test('PB14 Copilot: Integrated seamlessly into Left-Column Chat of TripOverviewView without altering external layout', () => {
+test('PB14 Copilot: Existing chat features remain available from the optional drawer', () => {
   const content = fs.readFileSync(plannerViewPath, 'utf8');
 
   // 1. Integration with copilotService
@@ -84,6 +102,9 @@ test('PB14 Copilot: Integrated seamlessly into Left-Column Chat of TripOverviewV
   assert.ok(content.includes('greenImpact'), 'Must render green CO2 reduction impact');
   assert.ok(content.includes('budgetImpact'), 'Must render budget savings impact');
   assert.ok(content.includes('suggestedPois'), 'Must render suggested POI recommendation cards');
+  assert.ok(content.includes('pendingCopilotProposal'), 'Itinerary mutations must be staged as a proposal');
+  assert.ok(content.includes('Từ chối') && content.includes('Xác nhận và áp dụng'), 'Copilot proposals must require explicit confirmation');
+  assert.ok(content.includes('isCopilotDrawer && <section') || content.includes('!isCopilotDrawer && <section'), 'The drawer must use a focused panel layout');
 
   // 4. Strict layout invariance: Right column & drawers preserved
   assert.ok(content.includes('showIdeasView'), 'Ideas drawer preserved');

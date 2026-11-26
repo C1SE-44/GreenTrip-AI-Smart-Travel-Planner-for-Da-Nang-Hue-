@@ -17,6 +17,7 @@ interface ItineraryIdeasCarouselProps {
   onSelectPoi: (poiId: string) => void;
   onAddIdeaToDay: (dayNumber: number, poi: Poi) => void;
   onRemoveIdeaFromTrip: (poiId: string) => void;
+  allowScheduleActions?: boolean;
 }
 
 export default function ItineraryIdeasCarousel({
@@ -31,6 +32,7 @@ export default function ItineraryIdeasCarousel({
   onSelectPoi,
   onAddIdeaToDay,
   onRemoveIdeaFromTrip,
+  allowScheduleActions = true,
 }: ItineraryIdeasCarouselProps) {
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -117,22 +119,26 @@ export default function ItineraryIdeasCarousel({
                     <ExternalLink size={13} />
                     <span className="truncate">Xem {poi.name}</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSetActiveIdeaAddDayPoiId(activeIdeaAddDayPoiId === poi.id ? null : poi.id);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-medium flex items-center justify-between cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Clock size={13} /> Thêm vào lịch trình
-                    </span>
-                    <ChevronRight
-                      size={13}
-                      className={activeIdeaAddDayPoiId === poi.id ? 'rotate-90 transition-transform' : 'transition-transform'}
-                    />
-                  </button>
-                  {activeIdeaAddDayPoiId === poi.id && (
+                  {allowScheduleActions && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSetActiveIdeaAddDayPoiId(activeIdeaAddDayPoiId === poi.id ? null : poi.id);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-medium flex items-center justify-between cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Clock size={13} /> Thêm vào lịch trình
+                        </span>
+                        <ChevronRight
+                          size={13}
+                          className={activeIdeaAddDayPoiId === poi.id ? 'rotate-90 transition-transform' : 'transition-transform'}
+                        />
+                      </button>
+                    </>
+                  )}
+                  {allowScheduleActions && activeIdeaAddDayPoiId === poi.id && (
                     <div className="pl-3 pr-1 py-1 space-y-1 bg-gray-50 rounded-xl my-1">
                       {days.map((d) => (
                         <button

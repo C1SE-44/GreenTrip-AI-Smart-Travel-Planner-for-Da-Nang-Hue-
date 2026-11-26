@@ -82,8 +82,9 @@ Các bảng chính được quản lý qua chuỗi migration đánh số tuần 
 | `itinerary_stops` | Từng điểm dừng trong ngày (`poi_id`, `title`, `address`, `sequence`, `start_time`, `end_time`, `duration_minutes`, `stop_type`). |
 
 ### 3.2. Knowledge Graph (Neo4j Aura)
-- Lưu quan hệ ngữ nghĩa giữa `POI`, `Category`, `City`, `EcoFeature`, `Vibe`, `LocalBusiness` (chi tiết tại [docs/NEO4J_KNOWLEDGE_GRAPH.md](docs/NEO4J_KNOWLEDGE_GRAPH.md) và [docs/NEO4J_AURA_SETUP.md](docs/NEO4J_AURA_SETUP.md)).
-- Khi Neo4j chưa cấu hình hoặc tạm gián đoạn, backend trả fallback an toàn cho endpoint giải thích POI thay vì làm sập luồng khám phá.
+- Graph PB10 gồm các node nghiệp vụ `POI`, `Category`, `Activity`, `Location` và các quan hệ `IN_CATEGORY`, `OFFERS_ACTIVITY`, `LOCATED_IN`; `GraphSyncState` chỉ lưu lease/checkpoint của importer. PostgreSQL là nguồn dữ liệu chuẩn. Chi tiết tại [docs/NEO4J_KNOWLEDGE_GRAPH.md](docs/NEO4J_KNOWLEDGE_GRAPH.md) và [docs/NEO4J_AURA_SETUP.md](docs/NEO4J_AURA_SETUP.md).
+- `backend/scripts/import_pois_to_neo4j.py` đọc PostgreSQL trong transaction `READ ONLY`. Dry-run là mặc định; chưa có job production tự chạy. Khi được duyệt để apply, chỉ relationship mang `managed_by = 'greentrip_graph_builder_phase2'` mới được reconcile; xung đột với relationship legacy dừng đồng bộ để báo cáo.
+- Graph Builder không chấm điểm Recommendation. PB10 đọc Neo4j ở chế độ READ, dùng kết nối PostgreSQL có transaction READ ONLY làm nguồn xác nhận POI/fallback, và gắn `fact_source` theo nguồn thật. HTTP 404 chỉ khi PostgreSQL xác nhận POI không tồn tại hoặc inactive; HTTP 503 khi không nguồn nào cung cấp facts hoặc xác minh được vắng mặt. CSV chỉ có thể cung cấp facts dự phòng, không xác nhận POI vắng mặt.
 
 ---
 

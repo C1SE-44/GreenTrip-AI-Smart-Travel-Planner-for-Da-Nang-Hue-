@@ -1,0 +1,1432 @@
+{
+  "updated_at": "2026-11-17T03:48:12+00:00",
+  "completed_query_ids": [
+    "102:can-ho-dich-vu",
+    "102:homestay",
+    "102:khach-san",
+    "102:nha-nghi",
+    "102:resort",
+    "104:can-ho-dich-vu",
+    "104:homestay",
+    "104:khach-san",
+    "104:nha-nghi",
+    "104:resort",
+    "105:can-ho-dich-vu",
+    "105:homestay",
+    "105:khach-san",
+    "105:nha-nghi",
+    "105:resort",
+    "108:can-ho-dich-vu",
+    "108:homestay",
+    "108:khach-san",
+    "108:nha-nghi",
+    "108:resort",
+    "109:can-ho-dich-vu",
+    "109:homestay",
+    "109:khach-san",
+    "109:nha-nghi",
+    "109:resort",
+    "10:can-ho-dich-vu",
+    "10:homestay",
+    "10:khach-san",
+    "10:nha-nghi",
+    "10:resort",
+    "110:can-ho-dich-vu",
+    "110:homestay",
+    "110:khach-san",
+    "110:nha-nghi",
+    "110:resort",
+    "111:can-ho-dich-vu",
+    "111:homestay",
+    "111:khach-san",
+    "111:nha-nghi",
+    "111:resort",
+    "113:can-ho-dich-vu",
+    "113:homestay",
+    "113:khach-san",
+    "113:nha-nghi",
+    "113:resort",
+    "114:can-ho-dich-vu",
+    "114:homestay",
+    "114:khach-san",
+    "114:nha-nghi",
+    "114:resort",
+    "115:can-ho-dich-vu",
+    "115:homestay",
+    "115:khach-san",
+    "115:nha-nghi",
+    "115:resort",
+    "117:can-ho-dich-vu",
+    "117:homestay",
+    "117:khach-san",
+    "117:nha-nghi",
+    "117:resort",
+    "11:can-ho-dich-vu",
+    "11:homestay",
+    "11:khach-san",
+    "11:nha-nghi",
+    "11:resort",
+    "121:can-ho-dich-vu",
+    "121:homestay",
+    "121:khach-san",
+    "121:nha-nghi",
+    "121:resort",
+    "122:can-ho-dich-vu",
+    "122:homestay",
+    "122:khach-san",
+    "122:nha-nghi",
+    "122:resort",
+    "125:can-ho-dich-vu",
+    "125:homestay",
+    "125:khach-san",
+    "125:nha-nghi",
+    "125:resort",
+    "126:can-ho-dich-vu",
+    "126:homestay",
+    "126:khach-san",
+    "126:nha-nghi",
+    "126:resort",
+    "128:can-ho-dich-vu",
+    "128:homestay",
+    "128:khach-san",
+    "128:nha-nghi",
+    "128:resort",
+    "129:can-ho-dich-vu",
+    "129:homestay",
+    "129:khach-san",
+    "129:nha-nghi",
+    "129:resort",
+    "12:can-ho-dich-vu",
+    "12:homestay",
+    "12:khach-san",
+    "12:nha-nghi",
+    "12:resort",
+    "130:can-ho-dich-vu",
+    "130:homestay",
+    "130:khach-san",
+    "130:nha-nghi",
+    "130:resort",
+    "13:can-ho-dich-vu",
+    "13:homestay",
+    "13:khach-san",
+    "13:nha-nghi",
+    "13:resort",
+    "14:can-ho-dich-vu",
+    "14:homestay",
+    "14:khach-san",
+    "14:nha-nghi",
+    "14:resort",
+    "15:can-ho-dich-vu",
+    "15:homestay",
+    "15:khach-san",
+    "15:nha-nghi",
+    "15:resort",
+    "16:can-ho-dich-vu",
+    "16:homestay",
+    "16:khach-san",
+    "16:nha-nghi",
+    "16:resort",
+    "17:can-ho-dich-vu",
+    "17:homestay",
+    "17:khach-san",
+    "17:nha-nghi",
+    "17:resort",
+    "18:can-ho-dich-vu",
+    "18:homestay",
+    "18:khach-san",
+    "18:nha-nghi",
+    "18:resort",
+    "19:can-ho-dich-vu",
+    "19:homestay",
+    "19:khach-san",
+    "19:nha-nghi",
+    "19:resort",
+    "1:can-ho-dich-vu",
+    "1:homestay",
+    "1:khach-san",
+    "1:nha-nghi",
+    "1:resort",
+    "20:can-ho-dich-vu",
+    "20:homestay",
+    "20:khach-san",
+    "20:nha-nghi",
+    "20:resort",
+    "21:can-ho-dich-vu",
+    "21:homestay",
+    "21:khach-san",
+    "21:nha-nghi",
+    "21:resort",
+    "22:can-ho-dich-vu",
+    "22:homestay",
+    "22:khach-san",
+    "22:nha-nghi",
+    "22:resort",
+    "23:can-ho-dich-vu",
+    "23:homestay",
+    "23:khach-san",
+    "23:nha-nghi",
+    "23:resort",
+    "24:can-ho-dich-vu",
+    "24:homestay",
+    "24:khach-san",
+    "24:nha-nghi",
+    "24:resort",
+    "25:can-ho-dich-vu",
+    "25:homestay",
+    "25:khach-san",
+    "25:nha-nghi",
+    "25:resort",
+    "26:can-ho-dich-vu",
+    "26:homestay",
+    "26:khach-san",
+    "26:nha-nghi",
+    "26:resort",
+    "27:can-ho-dich-vu",
+    "27:homestay",
+    "27:khach-san",
+    "27:nha-nghi",
+    "27:resort",
+    "28:can-ho-dich-vu",
+    "28:homestay",
+    "28:khach-san",
+    "28:nha-nghi",
+    "28:resort",
+    "29:can-ho-dich-vu",
+    "29:homestay",
+    "29:khach-san",
+    "29:nha-nghi",
+    "29:resort",
+    "2:can-ho-dich-vu",
+    "2:homestay",
+    "2:khach-san",
+    "2:nha-nghi",
+    "2:resort",
+    "30:can-ho-dich-vu",
+    "30:homestay",
+    "30:khach-san",
+    "30:nha-nghi",
+    "30:resort",
+    "31:can-ho-dich-vu",
+    "31:homestay",
+    "31:khach-san",
+    "31:nha-nghi",
+    "31:resort",
+    "32:can-ho-dich-vu",
+    "32:homestay",
+    "32:khach-san",
+    "32:nha-nghi",
+    "32:resort",
+    "33:can-ho-dich-vu",
+    "33:homestay",
+    "33:khach-san",
+    "33:nha-nghi",
+    "33:resort",
+    "34:can-ho-dich-vu",
+    "34:homestay",
+    "34:khach-san",
+    "34:nha-nghi",
+    "34:resort",
+    "35:can-ho-dich-vu",
+    "35:homestay",
+    "35:khach-san",
+    "35:nha-nghi",
+    "35:resort",
+    "36:can-ho-dich-vu",
+    "36:homestay",
+    "36:khach-san",
+    "36:nha-nghi",
+    "36:resort",
+    "37:can-ho-dich-vu",
+    "37:homestay",
+    "37:khach-san",
+    "37:nha-nghi",
+    "37:resort",
+    "38:can-ho-dich-vu",
+    "38:homestay",
+    "38:khach-san",
+    "38:nha-nghi",
+    "38:resort",
+    "39:can-ho-dich-vu",
+    "39:homestay",
+    "39:khach-san",
+    "39:nha-nghi",
+    "39:resort",
+    "3:can-ho-dich-vu",
+    "3:homestay",
+    "3:khach-san",
+    "3:nha-nghi",
+    "3:resort",
+    "40:can-ho-dich-vu",
+    "40:homestay",
+    "40:khach-san",
+    "40:nha-nghi",
+    "40:resort",
+    "41:can-ho-dich-vu",
+    "41:homestay",
+    "41:khach-san",
+    "41:nha-nghi",
+    "41:resort",
+    "42:can-ho-dich-vu",
+    "42:homestay",
+    "42:khach-san",
+    "42:nha-nghi",
+    "42:resort",
+    "43:can-ho-dich-vu",
+    "43:homestay",
+    "43:khach-san",
+    "43:nha-nghi",
+    "43:resort",
+    "44:can-ho-dich-vu",
+    "44:homestay",
+    "44:khach-san",
+    "44:nha-nghi",
+    "44:resort",
+    "45:can-ho-dich-vu",
+    "45:homestay",
+    "45:khach-san",
+    "45:nha-nghi",
+    "45:resort",
+    "46:can-ho-dich-vu",
+    "46:homestay",
+    "46:khach-san",
+    "46:nha-nghi",
+    "46:resort",
+    "47:can-ho-dich-vu",
+    "47:homestay",
+    "47:khach-san",
+    "47:nha-nghi",
+    "47:resort",
+    "48:can-ho-dich-vu",
+    "48:homestay",
+    "48:khach-san",
+    "48:nha-nghi",
+    "48:resort",
+    "49:can-ho-dich-vu",
+    "49:homestay",
+    "49:khach-san",
+    "49:nha-nghi",
+    "49:resort",
+    "4:can-ho-dich-vu",
+    "4:homestay",
+    "4:khach-san",
+    "4:nha-nghi",
+    "4:resort",
+    "50:can-ho-dich-vu",
+    "50:homestay",
+    "50:khach-san",
+    "50:nha-nghi",
+    "50:resort",
+    "51:can-ho-dich-vu",
+    "51:homestay",
+    "51:khach-san",
+    "51:nha-nghi",
+    "51:resort",
+    "52:can-ho-dich-vu",
+    "52:homestay",
+    "52:khach-san",
+    "52:nha-nghi",
+    "52:resort",
+    "53:can-ho-dich-vu",
+    "53:homestay",
+    "53:khach-san",
+    "53:nha-nghi",
+    "53:resort",
+    "54:can-ho-dich-vu",
+    "54:homestay",
+    "54:khach-san",
+    "54:nha-nghi",
+    "54:resort",
+    "55:can-ho-dich-vu",
+    "55:homestay",
+    "55:khach-san",
+    "55:nha-nghi",
+    "55:resort",
+    "56:can-ho-dich-vu",
+    "56:homestay",
+    "56:khach-san",
+    "56:nha-nghi",
+    "56:resort",
+    "57:can-ho-dich-vu",
+    "57:homestay",
+    "57:khach-san",
+    "57:nha-nghi",
+    "57:resort",
+    "58:can-ho-dich-vu",
+    "58:homestay",
+    "58:khach-san",
+    "58:nha-nghi",
+    "58:resort",
+    "59:can-ho-dich-vu",
+    "59:homestay",
+    "59:khach-san",
+    "59:nha-nghi",
+    "59:resort",
+    "5:can-ho-dich-vu",
+    "5:homestay",
+    "5:khach-san",
+    "5:nha-nghi",
+    "5:resort",
+    "60:can-ho-dich-vu",
+    "60:homestay",
+    "60:khach-san",
+    "60:nha-nghi",
+    "60:resort",
+    "61:can-ho-dich-vu",
+    "61:homestay",
+    "61:khach-san",
+    "61:nha-nghi",
+    "61:resort",
+    "63:homestay",
+    "63:khach-san",
+    "63:nha-nghi",
+    "63:resort",
+    "6:can-ho-dich-vu",
+    "6:homestay",
+    "6:khach-san",
+    "6:nha-nghi",
+    "6:resort",
+    "7:can-ho-dich-vu",
+    "7:homestay",
+    "7:khach-san",
+    "7:nha-nghi",
+    "7:resort",
+    "8:can-ho-dich-vu",
+    "8:homestay",
+    "8:khach-san",
+    "8:nha-nghi",
+    "8:resort",
+    "95:can-ho-dich-vu",
+    "95:homestay",
+    "95:khach-san",
+    "95:nha-nghi",
+    "95:resort",
+    "9:can-ho-dich-vu",
+    "9:homestay",
+    "9:khach-san",
+    "9:nha-nghi",
+    "9:resort"
+  ],
+  "failed_queries": {
+    "22:khach-san": {
+      "query": "khách sạn Phường Hội An Đông, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmp4ckfy75a.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:05:53+00:00"
+    },
+    "25:resort": {
+      "query": "resort Xã Hòa Tiến, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmpejrsczi8.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:15:31+00:00"
+    },
+    "30:khach-san": {
+      "query": "khách sạn Xã Đức Phú, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmp6cev_yu8.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:24:56+00:00"
+    },
+    "25:khach-san": {
+      "query": "khách sạn Xã Hòa Tiến, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmpwtrnltox.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:28:34+00:00"
+    },
+    "33:khach-san": {
+      "query": "khách sạn Xã Chiên Đàn, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmpaqg4xlhc.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:29:49+00:00"
+    },
+    "33:nha-nghi": {
+      "query": "nhà nghỉ Xã Chiên Đàn, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmp31ul2ab4.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:30:37+00:00"
+    },
+    "35:homestay": {
+      "query": "homestay Xã Lãnh Ngọc, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmp9koijgmr.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:33:38+00:00"
+    },
+    "35:resort": {
+      "query": "resort Xã Lãnh Ngọc, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmpi5ismktw.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:34:37+00:00"
+    },
+    "36:homestay": {
+      "query": "homestay Xã Tiên Phước, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmp6cha5xgd.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:35:22+00:00"
+    },
+    "38:resort": {
+      "query": "resort Xã Sơn Cẩm Hà, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmppebs9nik.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:38:09+00:00"
+    },
+    "42:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Trà Đốc, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmp8shfyd28.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:44:31+00:00"
+    },
+    "44:nha-nghi": {
+      "query": "nhà nghỉ Xã Nam Trà My, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmpdyc6u7q3.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T18:46:38+00:00"
+    },
+    "50:khach-san": {
+      "query": "khách sạn Xã Thăng An, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmp4dhu0tpn.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T19:04:55+00:00"
+    },
+    "50:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Thăng An, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmp1p3vovjn.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T19:06:07+00:00"
+    },
+    "52:homestay": {
+      "query": "homestay Xã Thăng Điền, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmpfsrxeum8.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T19:08:48+00:00"
+    },
+    "54:resort": {
+      "query": "resort Xã Đồng Dương, Đà Nẵng",
+      "error": "[WinError 5] Access is denied: 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\tmp7ky9j3fs.tmp' -> 'D:\\\\GreenTrip-AI-Smart-Travel-Planner-for-Da-Nang-Hue-\\\\backend\\\\raw_gmaps_stays_full.json.progress.json'",
+      "failed_at": "2026-11-16T19:13:38+00:00"
+    },
+    "62:khach-san": {
+      "query": "khách sạn Xã Duy Xuyên, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:04+00:00"
+    },
+    "62:homestay": {
+      "query": "homestay Xã Duy Xuyên, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:05+00:00"
+    },
+    "62:nha-nghi": {
+      "query": "nhà nghỉ Xã Duy Xuyên, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:06+00:00"
+    },
+    "62:resort": {
+      "query": "resort Xã Duy Xuyên, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:07+00:00"
+    },
+    "62:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Duy Xuyên, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:08+00:00"
+    },
+    "63:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Thu Bồn, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:14+00:00"
+    },
+    "64:khach-san": {
+      "query": "khách sạn Xã Điện Bàn Tây, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:16+00:00"
+    },
+    "64:homestay": {
+      "query": "homestay Xã Điện Bàn Tây, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:17+00:00"
+    },
+    "64:nha-nghi": {
+      "query": "nhà nghỉ Xã Điện Bàn Tây, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:18+00:00"
+    },
+    "64:resort": {
+      "query": "resort Xã Điện Bàn Tây, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:19+00:00"
+    },
+    "64:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Điện Bàn Tây, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:20+00:00"
+    },
+    "65:khach-san": {
+      "query": "khách sạn Xã Gò Nổi, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:21+00:00"
+    },
+    "65:homestay": {
+      "query": "homestay Xã Gò Nổi, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:23+00:00"
+    },
+    "65:nha-nghi": {
+      "query": "nhà nghỉ Xã Gò Nổi, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:24+00:00"
+    },
+    "65:resort": {
+      "query": "resort Xã Gò Nổi, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:25+00:00"
+    },
+    "65:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Gò Nổi, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:26+00:00"
+    },
+    "66:khach-san": {
+      "query": "khách sạn Xã Đại Lộc, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:27+00:00"
+    },
+    "66:homestay": {
+      "query": "homestay Xã Đại Lộc, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:29+00:00"
+    },
+    "66:nha-nghi": {
+      "query": "nhà nghỉ Xã Đại Lộc, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:30+00:00"
+    },
+    "66:resort": {
+      "query": "resort Xã Đại Lộc, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:31+00:00"
+    },
+    "66:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Đại Lộc, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:32+00:00"
+    },
+    "67:khach-san": {
+      "query": "khách sạn Xã Hà Nha, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:33+00:00"
+    },
+    "67:homestay": {
+      "query": "homestay Xã Hà Nha, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:35+00:00"
+    },
+    "67:nha-nghi": {
+      "query": "nhà nghỉ Xã Hà Nha, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:36+00:00"
+    },
+    "67:resort": {
+      "query": "resort Xã Hà Nha, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:37+00:00"
+    },
+    "67:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Hà Nha, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:38+00:00"
+    },
+    "68:khach-san": {
+      "query": "khách sạn Xã Thượng Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:39+00:00"
+    },
+    "68:homestay": {
+      "query": "homestay Xã Thượng Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:41+00:00"
+    },
+    "68:nha-nghi": {
+      "query": "nhà nghỉ Xã Thượng Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:42+00:00"
+    },
+    "68:resort": {
+      "query": "resort Xã Thượng Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:43+00:00"
+    },
+    "68:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Thượng Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:44+00:00"
+    },
+    "69:khach-san": {
+      "query": "khách sạn Xã Vu Gia, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:45+00:00"
+    },
+    "69:homestay": {
+      "query": "homestay Xã Vu Gia, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:47+00:00"
+    },
+    "69:nha-nghi": {
+      "query": "nhà nghỉ Xã Vu Gia, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:48+00:00"
+    },
+    "69:resort": {
+      "query": "resort Xã Vu Gia, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:49+00:00"
+    },
+    "69:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Vu Gia, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:50+00:00"
+    },
+    "70:khach-san": {
+      "query": "khách sạn Xã Phú Thuận, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:51+00:00"
+    },
+    "70:homestay": {
+      "query": "homestay Xã Phú Thuận, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:53+00:00"
+    },
+    "70:nha-nghi": {
+      "query": "nhà nghỉ Xã Phú Thuận, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:54+00:00"
+    },
+    "70:resort": {
+      "query": "resort Xã Phú Thuận, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:55+00:00"
+    },
+    "70:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Phú Thuận, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:56+00:00"
+    },
+    "71:khach-san": {
+      "query": "khách sạn Xã Thạnh Mỹ, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:57+00:00"
+    },
+    "71:homestay": {
+      "query": "homestay Xã Thạnh Mỹ, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:45:58+00:00"
+    },
+    "71:nha-nghi": {
+      "query": "nhà nghỉ Xã Thạnh Mỹ, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:00+00:00"
+    },
+    "71:resort": {
+      "query": "resort Xã Thạnh Mỹ, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:01+00:00"
+    },
+    "71:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Thạnh Mỹ, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:02+00:00"
+    },
+    "72:khach-san": {
+      "query": "khách sạn Xã Bến Giằng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:03+00:00"
+    },
+    "72:homestay": {
+      "query": "homestay Xã Bến Giằng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:04+00:00"
+    },
+    "72:nha-nghi": {
+      "query": "nhà nghỉ Xã Bến Giằng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:06+00:00"
+    },
+    "72:resort": {
+      "query": "resort Xã Bến Giằng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:07+00:00"
+    },
+    "72:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Bến Giằng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:08+00:00"
+    },
+    "73:khach-san": {
+      "query": "khách sạn Xã Nam Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:09+00:00"
+    },
+    "73:homestay": {
+      "query": "homestay Xã Nam Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:10+00:00"
+    },
+    "73:nha-nghi": {
+      "query": "nhà nghỉ Xã Nam Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:12+00:00"
+    },
+    "73:resort": {
+      "query": "resort Xã Nam Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:13+00:00"
+    },
+    "73:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Nam Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:14+00:00"
+    },
+    "74:khach-san": {
+      "query": "khách sạn Xã Đắc Pring, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:15+00:00"
+    },
+    "74:homestay": {
+      "query": "homestay Xã Đắc Pring, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:16+00:00"
+    },
+    "74:nha-nghi": {
+      "query": "nhà nghỉ Xã Đắc Pring, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:18+00:00"
+    },
+    "74:resort": {
+      "query": "resort Xã Đắc Pring, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:19+00:00"
+    },
+    "74:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Đắc Pring, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:20+00:00"
+    },
+    "75:khach-san": {
+      "query": "khách sạn Xã La Dêê, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:21+00:00"
+    },
+    "75:homestay": {
+      "query": "homestay Xã La Dêê, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:22+00:00"
+    },
+    "75:nha-nghi": {
+      "query": "nhà nghỉ Xã La Dêê, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:24+00:00"
+    },
+    "75:resort": {
+      "query": "resort Xã La Dêê, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:25+00:00"
+    },
+    "75:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã La Dêê, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:26+00:00"
+    },
+    "76:khach-san": {
+      "query": "khách sạn Xã La Êê, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:27+00:00"
+    },
+    "76:homestay": {
+      "query": "homestay Xã La Êê, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:28+00:00"
+    },
+    "76:nha-nghi": {
+      "query": "nhà nghỉ Xã La Êê, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:29+00:00"
+    },
+    "76:resort": {
+      "query": "resort Xã La Êê, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:31+00:00"
+    },
+    "76:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã La Êê, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:32+00:00"
+    },
+    "77:khach-san": {
+      "query": "khách sạn Xã Sông Vàng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:33+00:00"
+    },
+    "77:homestay": {
+      "query": "homestay Xã Sông Vàng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:34+00:00"
+    },
+    "77:nha-nghi": {
+      "query": "nhà nghỉ Xã Sông Vàng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:36+00:00"
+    },
+    "77:resort": {
+      "query": "resort Xã Sông Vàng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:37+00:00"
+    },
+    "77:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Sông Vàng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:38+00:00"
+    },
+    "78:khach-san": {
+      "query": "khách sạn Xã Sông Kôn, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:39+00:00"
+    },
+    "78:homestay": {
+      "query": "homestay Xã Sông Kôn, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:40+00:00"
+    },
+    "78:nha-nghi": {
+      "query": "nhà nghỉ Xã Sông Kôn, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:42+00:00"
+    },
+    "78:resort": {
+      "query": "resort Xã Sông Kôn, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:43+00:00"
+    },
+    "78:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Sông Kôn, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:44+00:00"
+    },
+    "79:khach-san": {
+      "query": "khách sạn Xã Đông Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:45+00:00"
+    },
+    "79:homestay": {
+      "query": "homestay Xã Đông Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:46+00:00"
+    },
+    "79:nha-nghi": {
+      "query": "nhà nghỉ Xã Đông Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:48+00:00"
+    },
+    "79:resort": {
+      "query": "resort Xã Đông Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:49+00:00"
+    },
+    "79:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Đông Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:50+00:00"
+    },
+    "80:khach-san": {
+      "query": "khách sạn Xã Bến Hiên, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:51+00:00"
+    },
+    "80:homestay": {
+      "query": "homestay Xã Bến Hiên, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:52+00:00"
+    },
+    "80:nha-nghi": {
+      "query": "nhà nghỉ Xã Bến Hiên, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:54+00:00"
+    },
+    "80:resort": {
+      "query": "resort Xã Bến Hiên, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:55+00:00"
+    },
+    "80:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Bến Hiên, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:56+00:00"
+    },
+    "81:khach-san": {
+      "query": "khách sạn Xã Avương, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:57+00:00"
+    },
+    "81:homestay": {
+      "query": "homestay Xã Avương, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:58+00:00"
+    },
+    "81:nha-nghi": {
+      "query": "nhà nghỉ Xã Avương, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:46:59+00:00"
+    },
+    "81:resort": {
+      "query": "resort Xã Avương, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:01+00:00"
+    },
+    "81:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Avương, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:02+00:00"
+    },
+    "82:khach-san": {
+      "query": "khách sạn Xã Tây Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:03+00:00"
+    },
+    "82:homestay": {
+      "query": "homestay Xã Tây Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:04+00:00"
+    },
+    "82:nha-nghi": {
+      "query": "nhà nghỉ Xã Tây Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:05+00:00"
+    },
+    "82:resort": {
+      "query": "resort Xã Tây Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:07+00:00"
+    },
+    "82:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Tây Giang, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:08+00:00"
+    },
+    "83:khach-san": {
+      "query": "khách sạn Xã Hùng Sơn, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:09+00:00"
+    },
+    "83:homestay": {
+      "query": "homestay Xã Hùng Sơn, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:10+00:00"
+    },
+    "83:nha-nghi": {
+      "query": "nhà nghỉ Xã Hùng Sơn, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:11+00:00"
+    },
+    "83:resort": {
+      "query": "resort Xã Hùng Sơn, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:12+00:00"
+    },
+    "83:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Hùng Sơn, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:14+00:00"
+    },
+    "84:khach-san": {
+      "query": "khách sạn Xã Hiệp Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:15+00:00"
+    },
+    "84:homestay": {
+      "query": "homestay Xã Hiệp Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:16+00:00"
+    },
+    "84:nha-nghi": {
+      "query": "nhà nghỉ Xã Hiệp Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:17+00:00"
+    },
+    "84:resort": {
+      "query": "resort Xã Hiệp Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:18+00:00"
+    },
+    "84:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Hiệp Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:19+00:00"
+    },
+    "85:khach-san": {
+      "query": "khách sạn Xã Việt An, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:21+00:00"
+    },
+    "85:homestay": {
+      "query": "homestay Xã Việt An, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:22+00:00"
+    },
+    "85:nha-nghi": {
+      "query": "nhà nghỉ Xã Việt An, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:23+00:00"
+    },
+    "85:resort": {
+      "query": "resort Xã Việt An, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:24+00:00"
+    },
+    "85:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Việt An, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:25+00:00"
+    },
+    "86:khach-san": {
+      "query": "khách sạn Xã Phước Trà, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:27+00:00"
+    },
+    "86:homestay": {
+      "query": "homestay Xã Phước Trà, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:28+00:00"
+    },
+    "86:nha-nghi": {
+      "query": "nhà nghỉ Xã Phước Trà, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:29+00:00"
+    },
+    "86:resort": {
+      "query": "resort Xã Phước Trà, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:30+00:00"
+    },
+    "86:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Phước Trà, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:31+00:00"
+    },
+    "87:khach-san": {
+      "query": "khách sạn Xã Khâm Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:33+00:00"
+    },
+    "87:homestay": {
+      "query": "homestay Xã Khâm Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:34+00:00"
+    },
+    "87:nha-nghi": {
+      "query": "nhà nghỉ Xã Khâm Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:35+00:00"
+    },
+    "87:resort": {
+      "query": "resort Xã Khâm Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:36+00:00"
+    },
+    "87:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Khâm Đức, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:37+00:00"
+    },
+    "88:khach-san": {
+      "query": "khách sạn Xã Phước Năng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:38+00:00"
+    },
+    "88:homestay": {
+      "query": "homestay Xã Phước Năng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:40+00:00"
+    },
+    "88:nha-nghi": {
+      "query": "nhà nghỉ Xã Phước Năng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:41+00:00"
+    },
+    "88:resort": {
+      "query": "resort Xã Phước Năng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:42+00:00"
+    },
+    "88:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Phước Năng, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:43+00:00"
+    },
+    "89:khach-san": {
+      "query": "khách sạn Xã Phước Chánh, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:44+00:00"
+    },
+    "89:homestay": {
+      "query": "homestay Xã Phước Chánh, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:46+00:00"
+    },
+    "89:nha-nghi": {
+      "query": "nhà nghỉ Xã Phước Chánh, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:47+00:00"
+    },
+    "89:resort": {
+      "query": "resort Xã Phước Chánh, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:48+00:00"
+    },
+    "89:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Phước Chánh, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:49+00:00"
+    },
+    "90:khach-san": {
+      "query": "khách sạn Xã Phước Thành, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:50+00:00"
+    },
+    "90:homestay": {
+      "query": "homestay Xã Phước Thành, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:52+00:00"
+    },
+    "90:nha-nghi": {
+      "query": "nhà nghỉ Xã Phước Thành, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:53+00:00"
+    },
+    "90:resort": {
+      "query": "resort Xã Phước Thành, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:54+00:00"
+    },
+    "90:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Phước Thành, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:55+00:00"
+    },
+    "91:khach-san": {
+      "query": "khách sạn Xã Phước Hiệp, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:56+00:00"
+    },
+    "91:homestay": {
+      "query": "homestay Xã Phước Hiệp, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:58+00:00"
+    },
+    "91:nha-nghi": {
+      "query": "nhà nghỉ Xã Phước Hiệp, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:47:59+00:00"
+    },
+    "91:resort": {
+      "query": "resort Xã Phước Hiệp, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:00+00:00"
+    },
+    "91:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Phước Hiệp, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:01+00:00"
+    },
+    "92:khach-san": {
+      "query": "khách sạn Xã Tam Hải, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:02+00:00"
+    },
+    "92:homestay": {
+      "query": "homestay Xã Tam Hải, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:04+00:00"
+    },
+    "92:nha-nghi": {
+      "query": "nhà nghỉ Xã Tam Hải, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:05+00:00"
+    },
+    "92:resort": {
+      "query": "resort Xã Tam Hải, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:06+00:00"
+    },
+    "92:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Tam Hải, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:07+00:00"
+    },
+    "93:khach-san": {
+      "query": "khách sạn Xã Tân Hiệp, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:08+00:00"
+    },
+    "93:homestay": {
+      "query": "homestay Xã Tân Hiệp, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:09+00:00"
+    },
+    "93:nha-nghi": {
+      "query": "nhà nghỉ Xã Tân Hiệp, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:11+00:00"
+    },
+    "93:resort": {
+      "query": "resort Xã Tân Hiệp, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:12+00:00"
+    },
+    "93:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Xã Tân Hiệp, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:13+00:00"
+    },
+    "94:khach-san": {
+      "query": "khách sạn Đặc khu Hoàng Sa, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:14+00:00"
+    },
+    "94:homestay": {
+      "query": "homestay Đặc khu Hoàng Sa, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:15+00:00"
+    },
+    "94:nha-nghi": {
+      "query": "nhà nghỉ Đặc khu Hoàng Sa, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:17+00:00"
+    },
+    "94:resort": {
+      "query": "resort Đặc khu Hoàng Sa, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:18+00:00"
+    },
+    "94:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Đặc khu Hoàng Sa, Đà Nẵng",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:19+00:00"
+    },
+    "96:khach-san": {
+      "query": "khách sạn Phường Phong Thái, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:26+00:00"
+    },
+    "96:homestay": {
+      "query": "homestay Phường Phong Thái, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:27+00:00"
+    },
+    "96:nha-nghi": {
+      "query": "nhà nghỉ Phường Phong Thái, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:28+00:00"
+    },
+    "96:resort": {
+      "query": "resort Phường Phong Thái, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:30+00:00"
+    },
+    "96:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Phường Phong Thái, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:31+00:00"
+    },
+    "97:khach-san": {
+      "query": "khách sạn Phường Phong Dinh, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:32+00:00"
+    },
+    "97:homestay": {
+      "query": "homestay Phường Phong Dinh, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:33+00:00"
+    },
+    "97:nha-nghi": {
+      "query": "nhà nghỉ Phường Phong Dinh, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:34+00:00"
+    },
+    "97:resort": {
+      "query": "resort Phường Phong Dinh, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:36+00:00"
+    },
+    "97:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Phường Phong Dinh, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:37+00:00"
+    },
+    "98:khach-san": {
+      "query": "khách sạn Phường Phong Phú, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:38+00:00"
+    },
+    "98:homestay": {
+      "query": "homestay Phường Phong Phú, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:39+00:00"
+    },
+    "98:nha-nghi": {
+      "query": "nhà nghỉ Phường Phong Phú, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:40+00:00"
+    },
+    "98:resort": {
+      "query": "resort Phường Phong Phú, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:42+00:00"
+    },
+    "98:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Phường Phong Phú, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:43+00:00"
+    },
+    "99:khach-san": {
+      "query": "khách sạn Phường Phong Quảng, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:44+00:00"
+    },
+    "99:homestay": {
+      "query": "homestay Phường Phong Quảng, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:45+00:00"
+    },
+    "99:nha-nghi": {
+      "query": "nhà nghỉ Phường Phong Quảng, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:47+00:00"
+    },
+    "99:resort": {
+      "query": "resort Phường Phong Quảng, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:48+00:00"
+    },
+    "99:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Phường Phong Quảng, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:49+00:00"
+    },
+    "100:khach-san": {
+      "query": "khách sạn Phường Hương Trà, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:50+00:00"
+    },
+    "100:homestay": {
+      "query": "homestay Phường Hương Trà, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:51+00:00"
+    },
+    "100:nha-nghi": {
+      "query": "nhà nghỉ Phường Hương Trà, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:52+00:00"
+    },
+    "100:resort": {
+      "query": "resort Phường Hương Trà, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:54+00:00"
+    },
+    "100:can-ho-dich-vu": {
+      "query": "căn hộ dịch vụ Phường Hương Trà, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:55+00:00"
+    },
+    "101:khach-san": {
+      "query": "khách sạn Phường Kim Trà, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:56+00:00"
+    },
+    "101:homestay": {
+      "query": "homestay Phường Kim Trà, Huế",
+      "error": "Page.goto: Target page, context or browser has been closed",
+      "failed_at": "2026-11-16T19:48:57+00:00"
+    }
+  },
+  "record_count": 3185
+}

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import sys
 from typing import Any
 from urllib.parse import urlparse
 
-from neo4j import GraphDatabase
+import certifi
+from neo4j import GraphDatabase, TrustCustomCAs
 from neo4j.exceptions import Neo4jError
 
 from app.config import get_settings
@@ -22,11 +24,28 @@ def initialize_driver() -> Any:
     if _driver is not None:
         return _driver
 
+    driver_uri = settings.NEO4J_URI
+    driver_options: dict[str, Any] = {}
+    parsed_uri = urlparse(driver_uri)
+    if (
+        sys.platform == "win32"
+        and settings.APP_ENV == "development"
+        and parsed_uri.scheme == "neo4j+s"
+    ):
+        # The Aura URI normally trusts the OS CA store; local Windows Python
+        # can instead use certifi without weakening certificate verification.
+        driver_uri = parsed_uri._replace(scheme="neo4j").geturl()
+        driver_options = {
+            "encrypted": True,
+            "trusted_certificates": TrustCustomCAs(certifi.where()),
+        }
+
     _driver = GraphDatabase.driver(
-        settings.NEO4J_URI,
+        driver_uri,
         auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD),
         database=settings.NEO4J_DATABASE,
         connection_timeout=2.0,
+        **driver_options,
     )
     return _driver
 

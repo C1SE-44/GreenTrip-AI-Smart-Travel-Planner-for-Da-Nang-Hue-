@@ -20,6 +20,8 @@ interface PoiDetailSectionProps {
   isAddedToTrip?: boolean;
   onToggleAddTrip?: (id: string) => void;
   onAskCopilot?: (question: string) => void;
+  plannerEvidenceMode?: boolean;
+  onExplain?: () => void;
   nearbyPois?: Poi[];
   onSelectNearbyPoi?: (poiId: string) => void;
 }
@@ -32,7 +34,8 @@ function cleanDescription(text?: string | null): string {
     .trim();
 }
 
-function formatPriceRange(poi: Poi): string {
+function formatPriceRange(poi: Poi, requireEvidence = false): string | null {
+  if (requireEvidence && !poi.detailEvidence?.price) return null;
   const display = poi.ai_metadata?.price_range_display?.trim();
   if (display) {
     if (/^miễn phí/i.test(display)) return 'Miễn phí';
@@ -60,6 +63,8 @@ export default function PoiDetailSection({
   isAddedToTrip,
   onToggleAddTrip,
   onAskCopilot,
+  plannerEvidenceMode = false,
+  onExplain,
   nearbyPois = [],
   onSelectNearbyPoi,
 }: PoiDetailSectionProps) {
@@ -140,16 +145,38 @@ export default function PoiDetailSection({
   const liveStatus = typeof poi.opening_hours?.live_status === 'string'
     ? poi.opening_hours.live_status.trim()
     : '';
-  const priceDisplay = formatPriceRange(poi);
+  const priceDisplay = formatPriceRange(poi, plannerEvidenceMode);
   const hasCoordinates = Number.isFinite(poi.lat) && Number.isFinite(poi.lng);
-
+  const hasDetailCoordinates = hasCoordinates && (!plannerEvidenceMode || poi.detailEvidence?.coordinates === true);
+  const hasPlannerDetailFacts = Boolean(
+    poi.detailEvidence?.gallery
+    || poi.detailEvidence?.rating
+    || poi.detailEvidence?.greenScore
+    || poi.detailEvidence?.openingHours
+    || poi.detailEvidence?.price
+    || poi.detailEvidence?.visitDuration
+    || poi.detailEvidence?.description
+    || poi.address?.trim()
+    || poi.vibes?.length
+    || poi.eco_features?.length
+    || poi.phone_number
+    || poi.website_url
+    || poi.social_links?.facebook
+    || poi.ai_metadata?.plus_code
+    || featuredReviews.length
+  );
+  const gallerySourceImages = [
+    ...(poi.detailEvidence?.gallery && poi.imageSourceAvailable && poi.image ? [poi.image] : []),
+    ...(poi.detailEvidence?.gallery ? poi.gallery ?? [] : []),
+  ].filter((image, index, images) => Boolean(image) && images.indexOf(image) === index);
+  const visibleGalleryImages = plannerEvidenceMode ? gallerySourceImages : galleryImages;
   const facebookUrl = poi.social_links?.facebook?.trim()
     || (typeof meta?.facebook_url === 'string' ? meta.facebook_url.trim() : '')
     || '';
   const googleMapsUrl = poi.social_links?.google_maps?.trim()
     || (typeof meta?.google_maps_url === 'string' ? meta.google_maps_url.trim() : '')
     || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      hasCoordinates ? `${poi.lat},${poi.lng}` : [poi.name, poi.address, poi.city].filter(Boolean).join(', '),
+      hasDetailCoordinates ? `${poi.lat},${poi.lng}` : [poi.name, poi.address, poi.city].filter(Boolean).join(', '),
     )}`;
 
   const vibeBadges = useMemo(() => {
@@ -197,6 +224,7 @@ export default function PoiDetailSection({
   }, [poi.best_time]);
 
   const mindtripAiInsights = useMemo(() => {
+    if (plannerEvidenceMode) return null;
     if (poi.category === 'luu-tru') {
       return {
         questions: [
@@ -259,7 +287,7 @@ export default function PoiDetailSection({
       ],
       carbonSaved: '~2.2 – 3.5 kg CO₂/người khi dùng xe điện nội khu, xe buýt hoặc tàu hỏa',
     };
-  }, [poi.name, poi.category, poi.city, isCafe]);
+  }, [plannerEvidenceMode, poi.name, poi.category, poi.city, isCafe]);
 
   const handleShare = () => {
     navigator.clipboard?.writeText(window.location.href);
@@ -276,9 +304,9 @@ export default function PoiDetailSection({
   const detailContent = (
     <section
       className={
-        isMobileView
+        isMobileView && !plannerEvidenceMode
           ? 'fixed inset-0 z-50 w-full h-full bg-white flex flex-col overflow-hidden animate-fadeIn'
-          : 'flex-1 bg-white flex flex-col h-full relative overflow-hidden animate-fadeIn'
+          : `flex-1 bg-white flex flex-col h-full relative overflow-hidden animate-fadeIn${plannerEvidenceMode ? ' poi-detail-planner-container' : ''}`
       }
       data-purpose="RightDetailSection"
     >
@@ -295,6 +323,18 @@ export default function PoiDetailSection({
         }
         .poi-detail-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(0, 0, 0, 0.35);
+        }
+        .poi-detail-planner-container {
+          container-type: inline-size;
+          container-name: poi-detail;
+        }
+        .poi-planner-facts-grid { grid-template-columns: minmax(0, 1fr) !important; }
+        @container poi-detail (min-width: 36rem) {
+          .poi-planner-facts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        }
+        @container poi-detail (min-width: 48rem) {
+          .poi-planner-gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+          .poi-planner-gallery > :first-child { grid-column: span 2; grid-row: span 2; aspect-ratio: auto; }
         }
       `}</style>
 
@@ -315,6 +355,16 @@ export default function PoiDetailSection({
         </div>
 
         <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
+          {plannerEvidenceMode && onExplain && (
+            <button
+              type="button"
+              onClick={onExplain}
+              className="inline-flex min-h-[40px] items-center rounded-full border border-emerald-800 px-3.5 text-xs font-semibold text-emerald-950 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+              aria-haspopup="dialog"
+            >
+              Vì sao gợi ý?
+            </button>
+          )}
           <button
             type="button"
             aria-pressed={isFavorite}
@@ -351,9 +401,9 @@ export default function PoiDetailSection({
             type="button"
             aria-label="Xem vị trí bản đồ"
             onClick={onViewOnMap || onClose}
-            disabled={!hasCoordinates}
+            disabled={!hasDetailCoordinates}
             className="min-w-[40px] min-h-[40px] rounded-full border border-neutral-200 flex items-center justify-center text-neutral-700 hover:bg-neutral-50 hover:text-neutral-950 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-            title={hasCoordinates ? 'Xem vị trí bản đồ' : 'Chưa có tọa độ chính xác'}
+            title={hasDetailCoordinates ? 'Xem vị trí bản đồ' : 'Chưa có tọa độ chính xác'}
           >
             <svg className="w-4 h-4 stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeLinecap="round" strokeLinejoin="round" />
@@ -380,10 +430,15 @@ export default function PoiDetailSection({
         <h1 className="text-xl sm:text-[23px] font-bold tracking-tight text-neutral-950 mt-2 mb-2 leading-snug font-heading">
           {poi.name}
         </h1>
+        {plannerEvidenceMode && !hasPlannerDetailFacts && (
+          <p className="mb-4 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 text-sm text-neutral-700" role="status">
+            Chưa có thêm thông tin chi tiết được xác thực cho địa điểm này.
+          </p>
+        )}
 
         {/* Dòng thông tin tóm tắt: Sao + Số đánh giá + Khu vực + Danh mục + Điểm Xanh */}
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[13px] text-neutral-700 mb-5 font-medium">
-          {poi.rating > 0 && (
+          {poi.rating > 0 && (!plannerEvidenceMode || poi.detailEvidence?.rating) && (
             <span className="inline-flex items-center gap-1 font-semibold text-neutral-900">
               <span className="text-amber-500" aria-hidden="true">★</span>
               <span>{poi.rating.toFixed(1)}</span>
@@ -404,18 +459,45 @@ export default function PoiDetailSection({
           </span>
           <span className="text-neutral-300" aria-hidden="true">•</span>
           <span className="text-neutral-600">{categoryName}</span>
-          {poi.isGreen && (
+          {plannerEvidenceMode && poi.detailEvidence?.greenScore && (
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-900">
+              Green Score {poi.ecoScore}/100
+            </span>
+          )}
+          {poi.isGreen && (!plannerEvidenceMode || poi.detailEvidence?.greenStatus) && (
             <span 
               className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-3 py-1 text-xs font-bold text-emerald-900 shadow-2xs cursor-help"
               title="Địa điểm du lịch xanh: Thân thiện môi trường, tiết kiệm năng lượng và bảo tồn văn hóa địa phương"
             >
               <span aria-hidden="true">🌱</span>
-              <span>Địa điểm xanh</span>
+              <span>{plannerEvidenceMode ? 'Nhãn xanh theo dữ liệu địa điểm' : 'Địa điểm xanh'}</span>
             </span>
           )}
         </div>
 
         {/* 3A. Lưới 5 ảnh thực tế Desktop (>= 640px): Bento chuẩn Mindtrip */}
+        {plannerEvidenceMode ? (
+          visibleGalleryImages.length > 0 && (
+            <div className="poi-planner-gallery grid grid-cols-2 gap-2 overflow-hidden rounded-[20px]">
+              {visibleGalleryImages.slice(0, 5).map((image, index) => (
+                <div key={`${poi.id}-detail-image-${index}`} className={index === 0 ? 'col-span-2 aspect-[16/9] overflow-hidden rounded-xl bg-neutral-100' : 'aspect-[4/3] overflow-hidden rounded-xl bg-neutral-100'}>
+                  <PoiImage
+                    src={image}
+                    alt={`${poi.name} ${index === 0 ? 'ảnh chính' : `ảnh ${index + 1}`}`}
+                    poiId={poi.id}
+                    poiName={poi.name}
+                    category={poi.category}
+                    city={poi.city}
+                    priority={index === 0}
+                    fallbackMode="neutral"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          <>
         <div
           className="hidden sm:grid w-full aspect-[2/1] rounded-[20px] overflow-hidden grid-rows-2"
           style={{
@@ -482,6 +564,8 @@ export default function PoiDetailSection({
             </div>
           ))}
         </div>
+          </>
+        )}
 
         {/* 4. Tabs Navigation */}
         <div
@@ -551,8 +635,8 @@ export default function PoiDetailSection({
             {/* 1. Lưới thông tin thiết thực cho du khách (Đưa lên đầu ngay dưới ảnh) */}
             <div className="space-y-3">
               <h2 className="text-base font-bold text-neutral-950 font-heading">Thông tin cần biết cho chuyến đi</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
+              <div className={`grid grid-cols-1 ${plannerEvidenceMode ? 'poi-planner-facts-grid' : 'sm:grid-cols-2'} gap-3`}>
+                <div hidden={plannerEvidenceMode && !poi.address} className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
                   <div className="text-xs font-semibold text-neutral-500">📍 Địa chỉ cụ thể</div>
                   <p className="text-[13.5px] font-medium text-neutral-900 leading-snug">
                     {poi.address || `${poi.city}, Việt Nam`}
@@ -562,7 +646,7 @@ export default function PoiDetailSection({
                   )}
                 </div>
 
-                <div className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
+                <div hidden={plannerEvidenceMode && !poi.detailEvidence?.openingHours} className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
                   <div className="text-xs font-semibold text-neutral-500">🕒 Giờ mở cửa</div>
                   <p className="text-[13.5px] font-medium text-neutral-900 leading-snug">
                     {poi.openHours || '07:30 – 17:30'}
@@ -578,14 +662,14 @@ export default function PoiDetailSection({
                   )}
                 </div>
 
-                <div className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
+                <div hidden={plannerEvidenceMode && !priceDisplay} className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
                   <div className="text-xs font-semibold text-neutral-500">🎟️ Mức giá tham khảo</div>
                   <p className="text-[13.5px] font-medium text-neutral-900 leading-snug">
                     {priceDisplay}
                   </p>
                 </div>
 
-                <div className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
+                <div hidden={plannerEvidenceMode && !poi.detailEvidence?.visitDuration} className="rounded-xl bg-neutral-50 border border-neutral-200/80 p-3.5 space-y-1">
                   <div className="text-xs font-semibold text-neutral-500">⏱️ Thời lượng gợi ý</div>
                   <p className="text-[13.5px] font-medium text-neutral-900 leading-snug">
                     {poi.visitDuration}
@@ -595,9 +679,9 @@ export default function PoiDetailSection({
             </div>
 
             {/* 2. Giới thiệu & Điểm nhấn trải nghiệm */}
-            <div className="space-y-3 pt-1">
+            <div hidden={plannerEvidenceMode && !poi.detailEvidence?.description && vibeBadges.length === 0} className="space-y-3 pt-1">
               <h2 className="text-base font-bold text-neutral-950 font-heading">Giới thiệu địa điểm</h2>
-              <p className="text-neutral-700 text-[14.5px] leading-relaxed font-normal whitespace-pre-line">
+              <p hidden={plannerEvidenceMode && !poi.detailEvidence?.description} className="text-neutral-700 text-[14.5px] leading-relaxed font-normal whitespace-pre-line">
                 {cleanDescription(poi.description)}
               </p>
 
@@ -617,7 +701,9 @@ export default function PoiDetailSection({
             </div>
 
             {/* 3. Tiêu chí Du lịch Xanh & Bền vững (Chỉ hiện khi đạt chuẩn xanh, KHÔNG số % ảo) */}
-            {(poi.isGreen || (poi.eco_features && poi.eco_features.length > 0)) && (
+            {(plannerEvidenceMode
+              ? ((poi.detailEvidence?.greenStatus && poi.isGreen) || Boolean(poi.eco_features?.length))
+              : (poi.isGreen || (poi.eco_features && poi.eco_features.length > 0))) && (
               <div className="rounded-2xl bg-neutral-50 border border-neutral-200/80 p-4 sm:p-5 space-y-3">
                 <div className="flex items-center gap-2 text-sm font-bold text-neutral-950 font-heading">
                   <span aria-hidden="true">🌱</span>
@@ -625,18 +711,23 @@ export default function PoiDetailSection({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-xs font-semibold">
+                  {!plannerEvidenceMode && <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-xs font-semibold">
                     <span>✓</span>
                     <span>Đạt tiêu chuẩn Điểm đến Xanh GreenTrip</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-neutral-700 border border-neutral-200/80 text-xs font-medium">
+                  </span>}
+                  <span hidden={plannerEvidenceMode} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-neutral-700 border border-neutral-200/80 text-xs font-medium">
                     <span>✓</span>
                     <span>Ưu tiên nông sản & văn hóa bản địa</span>
                   </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-neutral-700 border border-neutral-200/80 text-xs font-medium">
+                  <span hidden={plannerEvidenceMode} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-neutral-700 border border-neutral-200/80 text-xs font-medium">
                     <span>✓</span>
                     <span>Giảm thiểu rác thải nhựa dùng một lần</span>
                   </span>
+                  {plannerEvidenceMode && poi.isGreen && poi.detailEvidence?.greenStatus && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
+                      Được gắn nhãn xanh trong dữ liệu địa điểm
+                    </span>
+                  )}
                   {poi.eco_features && poi.eco_features.map((feat) => (
                     <span
                       key={feat}
@@ -710,7 +801,7 @@ export default function PoiDetailSection({
             </div>
 
             {/* 4B. Mindtrip AI Insights: Có thể bạn muốn hỏi AI + Review AI (Pros/Cons) + Carbon Estimator + Cross-selling */}
-            {onAskCopilot && (
+            {mindtripAiInsights && onAskCopilot && (
               <div className="rounded-2xl bg-neutral-50 border border-neutral-200/80 p-4 sm:p-5 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-base font-bold text-neutral-950 font-heading flex items-center gap-1.5">
@@ -734,6 +825,7 @@ export default function PoiDetailSection({
               </div>
             )}
 
+            {mindtripAiInsights && (
             <div className="rounded-2xl bg-white border border-neutral-200/90 p-4 sm:p-5 space-y-3.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-base font-bold text-neutral-950 font-heading flex items-center gap-1.5">
@@ -772,7 +864,9 @@ export default function PoiDetailSection({
                 </div>
               </div>
             </div>
+            )}
 
+            {!plannerEvidenceMode && mindtripAiInsights && (
             <div className="rounded-2xl bg-emerald-50/60 border border-emerald-200/80 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="space-y-0.5">
                 <div className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
@@ -787,8 +881,9 @@ export default function PoiDetailSection({
                 Green Score {poi.ecoScore ?? 90}/100
               </span>
             </div>
+            )}
 
-            {nearbyPois.length > 0 && (
+            {nearbyPois.length > 0 && !plannerEvidenceMode && (
               <div className="space-y-3 pt-1">
                 <h2 className="text-base font-bold text-neutral-950 font-heading flex items-center gap-1.5">
                   <span aria-hidden="true">📍</span>
@@ -826,7 +921,7 @@ export default function PoiDetailSection({
               <div className="space-y-3.5 pt-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-base font-bold text-neutral-950 font-heading">Đánh giá từ du khách</h2>
-                  <span className="text-xs font-semibold text-neutral-500">
+                  <span hidden={plannerEvidenceMode && !poi.detailEvidence?.rating} className="text-xs font-semibold text-neutral-500">
                     ★ {poi.rating.toFixed(1)} / 5.0
                     {reviewCount ? ` · Theo Google Maps (${reviewCount.toLocaleString('vi-VN')} đánh giá)` : ''}
                   </span>
@@ -873,7 +968,7 @@ export default function PoiDetailSection({
           <div className="space-y-4 text-sm mt-5 animate-fadeIn">
             <h2 className="font-bold text-neutral-950 text-base font-heading">Mẹo trải nghiệm & Du lịch bền vững</h2>
 
-            <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 space-y-2">
+            <div hidden={plannerEvidenceMode && !transportTip} className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 space-y-2">
               <div className="font-semibold text-emerald-950 flex items-center gap-2">
                 <span aria-hidden="true">🚲</span>
                 <span>Phương tiện & Lộ trình xanh đề xuất</span>
@@ -884,7 +979,7 @@ export default function PoiDetailSection({
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-2">
+            <div hidden={plannerEvidenceMode && formattedBestTimes.length === 0} className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-2">
               <div className="font-semibold text-neutral-950 flex items-center gap-2">
                 <span aria-hidden="true">⏱️</span>
                 <span>Khung giờ lý tưởng trong ngày</span>
@@ -941,7 +1036,7 @@ export default function PoiDetailSection({
         {activeTab === 'location' && (
           <div className="space-y-4 mt-5 animate-fadeIn">
             <div className="p-4 sm:p-5 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-3 text-sm">
-              <div>
+              <div hidden={plannerEvidenceMode && !poi.address && !plusCode}>
                 <p className="font-bold text-neutral-950">Địa chỉ chi tiết:</p>
                 <p className="text-neutral-700 mt-1">{poi.address || `${poi.city}, Việt Nam`}</p>
                 {plusCode && <p className="text-xs text-neutral-600 mt-1">Mã Plus Google Maps: {plusCode}</p>}
@@ -950,7 +1045,7 @@ export default function PoiDetailSection({
               <div>
                 <p className="font-bold text-neutral-950">Tọa độ địa lý (WGS84):</p>
                 <p className="text-neutral-700 font-mono text-xs mt-1">
-                  {hasCoordinates ? `${poi.lat.toFixed(6)}, ${poi.lng.toFixed(6)}` : 'Chưa có tọa độ chính xác'}
+                  {hasDetailCoordinates ? `${poi.lat.toFixed(6)}, ${poi.lng.toFixed(6)}` : 'Chưa có tọa độ chính xác'}
                 </p>
               </div>
 
@@ -958,10 +1053,10 @@ export default function PoiDetailSection({
                 <button
                   type="button"
                   onClick={onViewOnMap || onClose}
-                  disabled={!hasCoordinates}
+                  disabled={!hasDetailCoordinates}
                   className="inline-flex items-center gap-1.5 min-h-[40px] px-4 bg-black text-white text-xs font-semibold rounded-full hover:bg-neutral-800 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
                 >
-                  <span>{hasCoordinates ? 'Mở trên bản đồ tương tác' : 'Chưa có vị trí trên bản đồ'}</span>
+                  <span>{hasDetailCoordinates ? 'Mở trên bản đồ tương tác' : 'Chưa có vị trí trên bản đồ'}</span>
                   <span aria-hidden="true">→</span>
                 </button>
                 <a
@@ -1017,7 +1112,7 @@ export default function PoiDetailSection({
     </section>
   );
 
-  if (isMobileView && typeof document !== 'undefined') {
+  if (isMobileView && !plannerEvidenceMode && typeof document !== 'undefined') {
     return createPortal(detailContent, document.body);
   }
 

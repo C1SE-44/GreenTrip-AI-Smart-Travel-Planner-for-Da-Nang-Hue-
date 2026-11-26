@@ -270,7 +270,7 @@ def test_scenario_15_carbon_emission_factors():
     from app.trips.itinerary_constraints import TRANSPORT_EMISSION_FACTORS_G_PER_KM
     assert TRANSPORT_EMISSION_FACTORS_G_PER_KM["driving"] == 171
     assert TRANSPORT_EMISSION_FACTORS_G_PER_KM["motorcycle"] == 72
-    assert TRANSPORT_EMISSION_FACTORS_G_PER_KM["transit"] == 40
+    assert TRANSPORT_EMISSION_FACTORS_G_PER_KM["transit"] == 42  # Updated: chuẩn hoá lên 42 g/km theo IPCC/QCVN (BUG-01)
     assert TRANSPORT_EMISSION_FACTORS_G_PER_KM["walking"] == 0
 
     out_moto = generate_itinerary(

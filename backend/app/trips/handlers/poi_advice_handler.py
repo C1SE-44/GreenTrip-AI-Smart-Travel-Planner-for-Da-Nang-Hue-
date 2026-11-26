@@ -292,7 +292,7 @@ def handle_poi_advice(
             except Exception:
                 pass
 
-        if (not gallery_list or len(gallery_list) < 5) and curated and "gallery" in curated:
+        if not gallery_list and curated and "gallery" in curated:
             gallery_list = curated["gallery"]
 
         row_city = "Huế" if "hue" in str(city_name or "").lower() else "Đà Nẵng"

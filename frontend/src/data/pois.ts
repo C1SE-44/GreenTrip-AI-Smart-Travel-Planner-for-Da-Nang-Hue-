@@ -382,30 +382,18 @@ export function getDeterministicImage(name: string, id: string | number, categor
 }
 
 export function getGalleryImages(poi: Poi): string[] {
-  const base = (poi.gallery && poi.gallery.length > 0) ? poi.gallery : [poi.image];
-  const result: string[] = [poi.image, ...base.filter((img) => img !== poi.image)];
-
-  if (result.length >= 5) {
-    return result.slice(0, 5);
-  }
-
-  // Pad remaining slots only using the place's own authentic photos to avoid irrelevant stock photos
-  // Bổ sung các ảnh đẹp cùng danh mục để bộ sưu tập 5 ảnh luôn phong phú và thực tế
-  const categoryPool = DEFAULT_IMAGES_BY_CATEGORY[poi.category] || DEFAULT_IMAGES_BY_CATEGORY['canh-quan'];
-  let poolIdx = 0;
-  while (result.length < 5 && poolIdx < categoryPool.length) {
-    const candidate = categoryPool[poolIdx++];
-    if (!result.includes(candidate)) {
-      result.push(candidate);
+  const candidates = [poi.image, ...(Array.isArray(poi.gallery) ? poi.gallery : [])];
+  const unique: string[] = [];
+  for (const raw of candidates) {
+    const url = typeof raw === 'string' ? raw.trim() : '';
+    if (url && !unique.includes(url)) {
+      unique.push(url);
+    }
+    if (unique.length >= 5) {
+      break;
     }
   }
-
-  // Nếu vẫn chưa đủ thì mới cycle từ base
-  while (result.length < 5) {
-    const cyclePhoto = base[result.length % base.length] || poi.image;
-    result.push(cyclePhoto);
-  }
-  return result;
+  return unique;
 }
 
 export function normalizeCategory(value?: string | null): PoiCategory {
@@ -543,13 +531,6 @@ export function normalizePoi(item: NormalizablePoiInput | null | undefined, allo
       const gSet = new Set(['my-khe', 'ngu-hanh-son', 'linh-ung-son-tra', 'cau-rong', 'madame-lan', 'dai-noi', 'thien-mu', 'khai-dinh', 'tu-duc', 'cau-truong-tien']);
       item.isGreen = gSet.has(String(item.id)) || Boolean(item.ecoScore && item.ecoScore >= 75 && !['ba-na-hills', 'cho-han', 'cho-dong-ba', 'mi-quang', 'bun-bo-hue'].includes(String(item.id)));
     }
-    if (String(item.name).includes('Cầu Rồng') || String(item.id).includes('cau-rong')) {
-      item.image = 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp';
-      item.gallery = [
-        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp',
-        'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp',
-      ];
-    }
     if (item.ai_metadata) {
       item.ai_metadata = sanitizePoiAiMetadata(
         item.ai_metadata,
@@ -585,11 +566,7 @@ export function normalizePoi(item: NormalizablePoiInput | null | undefined, allo
     subTitle = parenMatch[2].trim();
   }
 
-  let image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id ?? item.poi_id ?? cleanName, category, city);
-  // Đảm bảo Cầu Rồng luôn hiển thị ảnh thực tế cầu rồng phun lửa Đà Nẵng, không dùng ảnh Cầu Vàng Bà Nà
-  if (cleanName.includes('Cầu Rồng') || String(item.id).includes('cau-rong')) {
-    image = 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c4ecef3d-5946-4bd8-974e-fd36c7aa9a7e.webp';
-  }
+  const image = item.image_url?.trim() || getDeterministicImage(cleanName, item.id ?? item.poi_id ?? cleanName, category, city);
   const gallery = Array.isArray(item.gallery_urls) && item.gallery_urls.length > 0 ? item.gallery_urls : undefined;
 
   const rawRating = Number(item.ai_metadata?.raw_rating);

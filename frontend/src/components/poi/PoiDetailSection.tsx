@@ -419,72 +419,92 @@ export default function PoiDetailSection({
           )}
         </div>
 
-        {/* 3A. Lưới 5 ảnh thực tế Desktop (>= 640px): Bento chuẩn Mindtrip */}
-        <div
-          className="hidden sm:grid w-full aspect-[2/1] rounded-[20px] overflow-hidden grid-rows-2"
-          style={{
-            gridTemplateColumns: '2.06fr 1fr 1fr',
-            gap: '12px',
-          }}
-        >
-          <div className="row-span-2 col-span-1 h-full w-full relative overflow-hidden bg-neutral-100 group">
-            <PoiImage
-              alt={poi.name}
-              poiId={poi.id}
-              poiName={poi.name}
-              category={poi.category}
-              city={poi.city}
-              fallbackSeed={`${poi.id}_0`}
-              priority
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              src={galleryImages[0]}
-            />
-          </div>
-          {[1, 2, 3, 4].map((idx) => (
-            <div key={idx} className="row-span-1 col-span-1 h-full w-full relative overflow-hidden bg-neutral-100 group">
-              <PoiImage
-                alt={`${poi.name} - ảnh ${idx + 1}`}
-                poiId={poi.id}
-                poiName={poi.name}
-                category={poi.category}
-                city={poi.city}
-                fallbackSeed={`${poi.id}_${idx}`}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                src={galleryImages[idx]}
-              />
-            </div>
-          ))}
-        </div>
+        {/* 3A. Lưới ảnh thực tế Desktop (>= 640px): co giãn theo đúng số ảnh thật (1–5 ảnh), không độn ảnh khác */}
+        {(() => {
+          const desktopPhotos = galleryImages.slice(0, 5);
+          const count = desktopPhotos.length;
+          if (count === 0) return null;
+          const desktopGridStyle =
+            count === 3
+              ? { gridTemplateColumns: '1.65fr 1fr', gap: '12px' }
+              : count === 4
+                ? { gridTemplateColumns: '1.8fr 1fr 1fr', gap: '12px' }
+                : count >= 5
+                  ? { gridTemplateColumns: '2.06fr 1fr 1fr', gap: '12px' }
+                  : { gap: '12px' };
+          const gridClass =
+            count === 1
+              ? 'hidden sm:grid w-full aspect-[2.1/1] rounded-[20px] overflow-hidden grid-cols-1'
+              : count === 2
+                ? 'hidden sm:grid w-full aspect-[2.1/1] rounded-[20px] overflow-hidden grid-cols-2'
+                : 'hidden sm:grid w-full aspect-[2/1] rounded-[20px] overflow-hidden grid-rows-2';
 
-        {/* 3B. Lưới 5 ảnh thực tế Mobile (< 640px, tối ưu 320px không cắt méo) */}
+          return (
+            <div className={gridClass} style={desktopGridStyle}>
+              {desktopPhotos.map((src, idx) => {
+                const spanClass =
+                  count >= 3 && idx === 0
+                    ? 'row-span-2 col-span-1'
+                    : count === 4 && idx === 1
+                      ? 'row-span-1 col-span-2'
+                      : 'row-span-1 col-span-1';
+                return (
+                  <div key={`${src}-${idx}`} className={`${spanClass} h-full w-full relative overflow-hidden bg-neutral-100 group`}>
+                    <PoiImage
+                      alt={idx === 0 ? poi.name : `${poi.name} - ảnh ${idx + 1}`}
+                      poiId={poi.id}
+                      poiName={poi.name}
+                      category={poi.category}
+                      city={poi.city}
+                      fallbackSeed={`${poi.id}_${idx}`}
+                      priority={idx === 0}
+                      className={`w-full h-full object-cover group-hover:scale-105 transition-transform ${idx === 0 ? 'duration-500' : 'duration-300'}`}
+                      src={src}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* 3B. Lưới ảnh thực tế Mobile (< 640px, tối ưu 320px không cắt méo) */}
         <div className="grid sm:hidden grid-cols-2 gap-2 rounded-2xl overflow-hidden">
-          <div className="col-span-2 aspect-[16/10] w-full bg-neutral-100 overflow-hidden">
-            <PoiImage
-              alt={poi.name}
-              poiId={poi.id}
-              poiName={poi.name}
-              category={poi.category}
-              city={poi.city}
-              fallbackSeed={`${poi.id}_0`}
-              priority
-              className="w-full h-full object-cover"
-              src={galleryImages[0]}
-            />
-          </div>
-          {[1, 2, 3, 4].map((idx) => (
-            <div key={idx} className="aspect-[4/3] w-full bg-neutral-100 overflow-hidden">
+          {galleryImages[0] && (
+            <div className="col-span-2 aspect-[16/10] w-full bg-neutral-100 overflow-hidden">
               <PoiImage
-                alt={`${poi.name} - ảnh ${idx + 1}`}
+                alt={poi.name}
                 poiId={poi.id}
                 poiName={poi.name}
                 category={poi.category}
                 city={poi.city}
-                fallbackSeed={`${poi.id}_${idx}`}
+                fallbackSeed={`${poi.id}_0`}
+                priority
                 className="w-full h-full object-cover"
-                src={galleryImages[idx]}
+                src={galleryImages[0]}
               />
             </div>
-          ))}
+          )}
+          {galleryImages.slice(1, 5).map((src, idx, rest) => {
+            const isOddLast = rest.length % 2 === 1 && idx === rest.length - 1;
+            return (
+              <div
+                key={src}
+                className={`${isOddLast ? 'col-span-2 aspect-[16/9]' : 'aspect-[4/3]'} w-full bg-neutral-100 overflow-hidden`}
+              >
+                <PoiImage
+                  alt={`${poi.name} - ảnh ${idx + 2}`}
+                  poiId={poi.id}
+                  poiName={poi.name}
+                  category={poi.category}
+                  city={poi.city}
+                  fallbackSeed={`${poi.id}_${idx + 1}`}
+                  className="w-full h-full object-cover"
+                  src={src}
+                />
+              </div>
+            );
+          })}
         </div>
 
         {/* 4. Tabs Navigation */}

@@ -106,7 +106,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
           AI sắp xếp<br />mọi cung<br />đường.
         </span>
       ),
-      desc: 'Trợ lý du lịch tự động sắp xếp thứ tự điểm đến, phương tiện và quán ăn — tính toán bằng thuật toán OSRM gom cụm Hải Châu – Sơn Trà, không chạy ziczac qua cầu, tiết kiệm hơn 50% thời gian ngồi trên xe.',
+      desc: 'Trợ lý du lịch tự động sắp xếp thứ tự điểm đến, phương tiện và quán ăn theo cụm gần nhau Hải Châu – Sơn Trà, không chạy vòng qua cầu, tiết kiệm hơn 50% thời gian di chuyển.',
       img: '/images/landing/studio/plan_haivan_pass_real.webp',
       imgAlt: 'Cung đường Đèo Hải Vân hùng vĩ ven biển nối Đà Nẵng - Huế',
       widgets: (
@@ -121,7 +121,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
               <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
-                <span className="line-through text-neutral-400 font-normal">2h 35m / 42.8 km</span> ➔ Lộ trình OSRM: 1h 15m (-52%).
+                <span className="line-through text-neutral-400 font-normal">2h 35m / 42.8 km</span> → Tuyến tối ưu: 1h 15m (-52%).
               </p>
             </div>
           </div>
@@ -139,7 +139,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
               <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
-                In-Planner Copilot: Chiều nay ngắm hoàng hôn đèo nhé?
+                Trợ lý du lịch AI: Chiều nay ngắm hoàng hôn đèo nhé?
               </p>
             </div>
           </div>
@@ -241,7 +241,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                 <div className="h-1.5 w-12 rounded-full bg-neutral-200" />
               </div>
               <p className="text-[13px] font-bold text-neutral-900 whitespace-nowrap">
-                04. Bản đồ số: Tương tác OSRM hai chiều.
+                04. Bản đồ số: Tương tác lộ trình hai chiều.
               </p>
             </div>
           </div>

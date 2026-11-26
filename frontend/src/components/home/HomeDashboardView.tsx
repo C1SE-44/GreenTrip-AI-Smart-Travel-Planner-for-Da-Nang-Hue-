@@ -50,7 +50,7 @@ const MUST_TRY_PACKAGES = [
     badge: 'Must Try 🔥',
     ecoScore: '92/100',
     co2Saved: 'Giảm ~1.5kg CO₂',
-    image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/413f8945-85d0-40a0-afde-5fe0c4443fa7.webp',
     description: 'Bánh xèo Bà Dưỡng, Cầu Rồng phun lửa, chợ đêm Sơn Trà và dạo mát sông Hàn.',
     stops: ['Bánh xèo Bà Dưỡng', 'Cầu Rồng', 'Chợ đêm Sơn Trà', 'Cầu Tình Yêu'],
   },
@@ -62,7 +62,7 @@ const MUST_TRY_PACKAGES = [
     badge: 'Di sản UNESCO 🏛️',
     ecoScore: '95/100',
     co2Saved: 'Giảm ~2.1kg CO₂',
-    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/18e393a3-1ee4-486f-9954-4d1f4c727fc9.webp',
     description: 'Khám phá Đại Nội Huế, Chùa Thiên Mụ cổ kính, Lăng Khải Định và thưởng thức cơm hến vỉa hè.',
     stops: ['Đại Nội Huế', 'Chùa Thiên Mụ', 'Lăng Khải Định', 'Cơm Hến Bà Cam', 'Cầu Trường Tiền'],
   },
@@ -74,7 +74,7 @@ const MUST_TRY_PACKAGES = [
     badge: 'Xanh Sinh Thái 🌿',
     ecoScore: '98/100',
     co2Saved: 'Giảm ~3.0kg CO₂',
-    image: 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?w=800&auto=format&fit=crop&q=80',
+    image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/177df420-aec0-4eca-8443-b373893bf6fe.webp',
     description: 'Khám phá thiên nhiên nguyên sơ, ngắm Voọc chà vá chân nâu, viếng Chùa Linh Ứng và tắm biển.',
     stops: ['Chùa Linh Ứng Bãi Bụt', 'Đỉnh Bàn Cờ', 'Bãi biển Mỹ Khê'],
   },
@@ -253,14 +253,14 @@ export default function HomeDashboardView({
               <div className="relative w-28 h-20 group-hover:scale-105 transition-transform duration-300">
                 <div className="absolute left-0 bottom-0 w-16 h-18 rounded-lg overflow-hidden shadow-md -rotate-6 border-2 border-white/80">
                   <img
-                    src="https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=300&auto=format&fit=crop&q=80"
+                    src="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/7208b278-a7f6-43c7-af11-21aad93744c9.webp"
                     alt="Chùa Linh Ứng"
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="absolute right-0 top-0 w-16 h-18 rounded-lg overflow-hidden shadow-md rotate-6 border-2 border-white/80">
                   <img
-                    src="https://images.unsplash.com/photo-1507034589631-9433cc6bc453?w=300&auto=format&fit=crop&q=80"
+                    src="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/e6d32403-30c9-4de2-b111-96b8fddae21f.webp"
                     alt="Ẩm thực"
                     className="w-full h-full object-cover"
                   />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Compass, CalendarCheck, Heart, LogIn, LogOut } from 'lucide-react';
+import { Menu, X, Compass, CalendarCheck, Heart, Sparkles, LogIn, LogOut } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import LoginModal from '@/components/auth/LoginModal';
 import OnboardingModal from '@/components/auth/OnboardingModal';
@@ -8,6 +8,7 @@ import { clearAuthSession } from '@/services/auth';
 
 const navItems = [
   { to: '/explore', label: 'Khám Phá', icon: Compass },
+  { to: '/chat', label: 'Trợ Lý AI', icon: Sparkles },
   { to: '/planner', label: 'Lịch Trình', icon: CalendarCheck },
   { to: '/saved', label: 'Đã Lưu', icon: Heart },
 ];

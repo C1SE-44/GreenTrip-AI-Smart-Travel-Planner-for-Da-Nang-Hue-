@@ -38,7 +38,12 @@ def get_poi_explanation_facts(
                 seen.add(signature)
                 facts.append(fact)
 
-        return POIExplanationFactsResponse(poi=poi, facts=facts)
+        return POIExplanationFactsResponse(
+            poi=poi,
+            facts=facts,
+            explanation_source=payload.get("explanation_source"),
+            green_score_breakdown=payload.get("green_score_breakdown"),
+        )
     except Exception as exc:
         logger.warning("Knowledge Graph explanation service is unavailable.")
         raise ExplanationServiceUnavailable from exc

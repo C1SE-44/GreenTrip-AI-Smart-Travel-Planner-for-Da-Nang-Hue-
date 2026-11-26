@@ -105,8 +105,25 @@ _FREE_LANDMARK_KEYWORDS = (
     "thiên mụ",
     "mỹ khê",
     "cầu rồng",
+    "cầu sông hàn",
+    "cầu trường tiền",
+    "cầu tràng tiền",
+    "cầu tình yêu",
     "vọng cảnh",
     "phố cổ",
+    "chợ cồn",
+    "chợ hàn",
+    "chợ đông ba",
+    "bãi biển",
+    "biển non nước",
+    "công viên",
+    "đồi thiên an",
+    "phá tam giang",
+    "đầm chuồn",
+    "rú chá",
+    "làng hương",
+    "bãi bụt",
+    "bãi rạng",
 )
 
 
@@ -157,7 +174,12 @@ def normalize_poi_price_display(
     elif any(k in cat_lower for k in ("ẩm thực", "quán ăn", "nhà hàng", "food")):
         unit = "phần"
         default_range = "45.000 – 95.000 ₫"
-    elif (not raw or "miễn phí" in raw.lower()) and any(k in name_padded for k in _FREE_LANDMARK_KEYWORDS):
+    elif (
+        (estimated_cost is not None and estimated_cost == 0)
+        or (not raw or "miễn phí" in raw.lower())
+    ) and any(k in name_padded for k in _FREE_LANDMARK_KEYWORDS):
+        return "Miễn phí tham quan"
+    elif estimated_cost is not None and estimated_cost == 0 and (not raw or "miễn phí" in raw.lower()):
         return "Miễn phí tham quan"
     else:
         unit = "vé"

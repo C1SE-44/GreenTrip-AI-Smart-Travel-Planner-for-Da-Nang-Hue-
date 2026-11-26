@@ -60,7 +60,12 @@ import {
   type ItineraryDay,
   type ItineraryStop,
 } from '@/services/itineraryService';
-import { FormattedCopilotMessage, type CopilotChatMessageItem } from './copilotMessageMarkdown';
+import {
+  FormattedCopilotMessage,
+  sanitizeCopilotReplyText,
+  type CopilotChatMessageItem,
+  type CopilotEntityLookupItem,
+} from './copilotMessageMarkdown';
 import {
   MODAL_CATEGORY_TABS,
   parseCategoryBudgets,
@@ -364,18 +369,29 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     const destCity = isHue(trip.destination) ? 'Huế' : 'Đà Nẵng';
     return allPois.filter((p) => normalizeCity(p.city) === destCity).slice(0, 3);
   }, [allPois, trip.destination]);
+  const singleDestinationCity = useMemo<PoiCity | null>(() => {
+    const lower = (trip.destination || '').toLowerCase();
+    const hasHue = lower.includes('huế') || lower.includes('hue');
+    const hasDn = lower.includes('đà nẵng') || lower.includes('da nang');
+    if (hasHue && !hasDn) return 'Huế';
+    if (hasDn && !hasHue) return 'Đà Nẵng';
+    return null;
+  }, [trip.destination]);
+
   const relevantPois = useMemo(() => {
     const map = new Map<string, Poi>();
+    const matchesTripCity = (city?: string) =>
+      !singleDestinationCity || !city || normalizeCity(city) === singleDestinationCity;
 
     // 1. POIs do AI Copilot gợi ý trong cuộc hội thoại
     recommendedPois.forEach((p) => {
-      if (p.lat && p.lng) map.set(p.id, p);
+      if (p.lat && p.lng && matchesTripCity(p.city)) map.set(p.id, p);
     });
 
     // 2. POIs trong Ý tưởng chuyến đi
     tripIdeas.forEach((id) => {
       const found = allPois.find((p) => p.id === id || p.name.toLowerCase() === id.toLowerCase());
-      if (found && found.lat && found.lng) map.set(found.id, found);
+      if (found && found.lat && found.lng && matchesTripCity(found.city)) map.set(found.id, found);
     });
 
     // 3. POIs trong Lịch trình chuyến đi (nếu có)
@@ -407,7 +423,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
     }
 
     return Array.from(map.values());
-  }, [allPois, tripIdeas, recommendedPois, itineraryPlan, trip.destination]);
+  }, [allPois, tripIdeas, recommendedPois, itineraryPlan, trip.destination, singleDestinationCity]);
 
   // Bộ lọc danh mục địa điểm gợi ý hiển thị ở cột giữa
   const displayedRecommendedPois = useMemo(() => {
@@ -432,14 +448,15 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
 
       // 3. Fallback cho custom idea hoặc POI thêm từ bên ngoài
       const cleanName = id.startsWith('custom-') ? id.replace(/^custom-\d+-?/, '') || id : id;
+      const hueTrip = isHue(trip.destination);
       return {
         id,
         name: cleanName,
         category: 'canh-quan' as const,
-        city: (isHue(trip.destination) ? 'Huế' : 'Đà Nẵng') as PoiCity,
-        lat: 16.0544,
-        lng: 108.2022,
-        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80',
+        city: (hueTrip ? 'Huế' : 'Đà Nẵng') as PoiCity,
+        lat: hueTrip ? 16.4637 : 16.0544,
+        lng: hueTrip ? 107.5909 : 108.2022,
+        image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ce249bef-0477-4a46-a19c-735b3db10498.webp',
         description: 'Địa điểm bạn đã thêm vào ý tưởng chuyến đi.',
         rating: 4.8,
         visitDuration: '1–2 giờ',
@@ -818,29 +835,38 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       visitDuration: '1–2 giờ',
       isGreen: (p.green_score || 90) >= 80,
       ecoScore: p.green_score || 90,
-      estimatedCost: p.estimated_cost || 60000,
+      estimatedCost: p.estimated_cost ?? 0,
     };
     handleAddPoiToItinerary(poiForStop, targetDayNum);
     setSelectedMapPoiId(poiForStop.id);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Bảng tra cứu thực thể cho Inline Entity Linking trong tin nhắn Copilot
+  // Bảng tra cứu thực thể cho Inline Entity Linking trong tin nhắn Copilot (khóa theo tỉnh khi đi 1 thành phố)
   const chatEntityLookup = useMemo(() => {
-    const map = new Map<string, { id: string; name: string }>();
-    allPois.forEach((p) => map.set(p.id, { id: p.id, name: p.name }));
-    recommendedPois.forEach((p) => map.set(p.id, { id: p.id, name: p.name }));
+    const map = new Map<string, CopilotEntityLookupItem>();
+    const matchesCity = (city?: string) =>
+      !singleDestinationCity || !city || normalizeCity(city) === singleDestinationCity;
+
+    allPois.forEach((p) => {
+      if (matchesCity(p.city)) map.set(p.id, { id: p.id, name: p.name, city: p.city });
+    });
+    recommendedPois.forEach((p) => {
+      if (matchesCity(p.city)) map.set(p.id, { id: p.id, name: p.name, city: p.city });
+    });
     chatMessages.forEach((m) => {
       (m.suggestedPois || []).forEach((sp) => {
         const found = allPois.find(
           (ap) => ap.id === sp.id || ap.name.toLowerCase() === sp.name.toLowerCase()
         );
+        const cityVal = sp.city || found?.city;
+        if (!matchesCity(cityVal)) return;
         const targetId = found ? found.id : sp.id;
-        map.set(targetId, { id: targetId, name: sp.name });
+        map.set(targetId, { id: targetId, name: sp.name, city: cityVal });
       });
     });
     return Array.from(map.values());
-  }, [allPois, recommendedPois, chatMessages]);
+  }, [allPois, recommendedPois, chatMessages, singleDestinationCity]);
 
   // Đường nối thứ tự điểm dừng (1 -> 2 -> 3) trên PoiMap khi Copilot trả về gợi ý
   const { copilotRouteCoordinates, copilotNumberedOrderMap } = useMemo(() => {
@@ -934,14 +960,16 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           );
           const cat = foundInAll?.category || normalizeCategory(sp.category);
           const city = foundInAll?.city || normalizeCity(sp.city || trip.destination);
+          const fallbackLat = city === 'Huế' ? 16.4637 : 16.0615;
+          const fallbackLng = city === 'Huế' ? 107.5909 : 108.2235;
           return {
             ...(foundInAll || {}),
             id: foundInAll?.id || sp.id,
             name: foundInAll?.name || sp.name,
             category: cat,
             city,
-            lat: sp.lat || foundInAll?.lat || 16.0615 + i * 0.004,
-            lng: sp.lng || foundInAll?.lng || 108.2235 + i * 0.004,
+            lat: sp.lat || foundInAll?.lat || fallbackLat + i * 0.004,
+            lng: sp.lng || foundInAll?.lng || fallbackLng + i * 0.004,
             image:
               sp.image_url ||
               foundInAll?.image ||
@@ -952,7 +980,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             visitDuration: foundInAll?.visitDuration || '1–2 giờ',
             isGreen: (sp.green_score || 90) >= 80,
             ecoScore: sp.green_score || 90,
-            estimatedCost: sp.estimated_cost || foundInAll?.estimatedCost || 50000,
+            estimatedCost: sp.estimated_cost ?? foundInAll?.estimatedCost ?? 0,
           };
         });
         setRecommendedPois(mappedCopilotPois);
@@ -1074,7 +1102,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       const newAiMsg: CopilotChatMessageItem = {
         id: aiMsgId,
         sender: 'ai',
-        text: res.reply_text,
+        text: sanitizeCopilotReplyText(res.reply_text, promptToSend),
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         suggestedPois: res.suggested_pois || [],
         avoidNotice: res.avoid_notice || null,
@@ -1098,7 +1126,12 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
       console.warn('Copilot backend call error, falling back locally:', err);
       // Fallback cục bộ thông minh nếu backend đang offline để giao diện luôn phản hồi mượt mà
       const lower = promptToSend.toLowerCase();
-      let fallbackText = `Tôi đã ghi nhận câu hỏi: "${promptToSend}". Dựa trên chuyến đi ${trip.destination}, các điểm tham quan xanh và ẩm thực đặc sản đều đã sẵn sàng!`;
+      const hasSocialLink = /(?:tiktok\.com|vt\.tiktok\.com|facebook\.com|fb\.watch|instagram\.com|youtu\.be|youtube\.com)/i.test(
+        promptToSend
+      );
+      let fallbackText = hasSocialLink
+        ? sanitizeCopilotReplyText('Please wait...', promptToSend)
+        : `Mình đã ghi nhận yêu cầu của bạn cho chuyến đi ${trip.destination}. Bạn hãy nhập tên địa điểm hoặc nhu cầu cụ thể để mình tra cứu chính xác nhé!`;
       let fallbackPois: CopilotSuggestedPoi[] = [];
       let avoidNotice: string | null = null;
       let greenImpact: string | null = null;
@@ -1113,7 +1146,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-veg-01',
             name: 'An Nhiên Garden Vegetarian',
             category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/49256b15-a119-401a-8767-bdd1a5f8bdaa.webp',
             green_score: 94,
             rating: 4.9,
             address: 'Tỉnh lộ 10, Phú Thượng, Phú Vang, Thừa Thiên Huế',
@@ -1124,7 +1157,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-veg-02',
             name: 'Roots Plant-based Cafe',
             category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/cce05cd8-9e38-460a-b60c-485fb94261e2.webp',
             green_score: 92,
             rating: 4.8,
             address: 'An Thượng 30, Bắc Mỹ Phú, Ngũ Hành Sơn, Đà Nẵng',
@@ -1140,7 +1173,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-indoor-01',
             name: 'Bảo tàng Điêu khắc Chăm',
             category: 'Di tích',
-            image_url: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/eac0aae8-f54f-4661-8a1e-2134f0e5f45d.webp',
             green_score: 95,
             rating: 4.7,
             address: 'Số 2, đường 2 Tháng 9, Hải Châu, Đà Nẵng',
@@ -1151,7 +1184,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-indoor-02',
             name: 'Cà phê Không Gian Xưa',
             category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/d58fe815-4aa1-45b2-831a-11b97e130918.webp',
             green_score: 90,
             rating: 4.6,
             address: '402 Điện Biên Phủ, Thanh Khê, Đà Nẵng',
@@ -1166,7 +1199,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-cafe-01',
             name: 'Đi Lạc Coffee – Specialty Coffee Roastery',
             category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/b0abc908-fe78-4ea0-8c07-48b98b59957f.webp',
             green_score: 92,
             rating: 4.9,
             address: 'Hải Châu, Đà Nẵng',
@@ -1177,7 +1210,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
             id: 'dn-cafe-02',
             name: 'De.Linh Coffee & Espresso',
             category: 'Quán ăn',
-            image_url: 'https://images.unsplash.com/photo-1498804103079-a6351b050096?w=800&auto=format&fit=crop&q=80',
+            image_url: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/646feb12-7f06-4599-8f28-6aae293a29de.webp',
             green_score: 91,
             rating: 5.0,
             address: '09 Lê Hồng Phong, Huế',
@@ -1490,6 +1523,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     <FormattedCopilotMessage
                       text={msg.text}
                       entityLookup={chatEntityLookup}
+                      preferredCity={trip.destination}
                       onHoverPoi={handleDebouncedHover}
                       onSelectPoi={(poiId) => setSelectedMapPoiId(poiId)}
                     />
@@ -1600,21 +1634,39 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                                 <h5 className="font-bold text-[13px] text-gray-900 truncate group-hover:text-emerald-800 transition-colors">
                                   {p.name}
                                 </h5>
-                                <span className="text-[10.5px] px-1.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 font-semibold shrink-0">
-                                  🌱 {p.green_score || 90}/100
-                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExplanationPoi({
+                                      id: p.id,
+                                      name: p.name,
+                                      snippet: p.kg_explanation || p.swap_reason || undefined,
+                                    });
+                                  }}
+                                  className="text-xs px-2 py-0.5 rounded-full bg-emerald-100/90 hover:bg-emerald-200/90 text-emerald-900 font-semibold shrink-0 inline-flex items-center gap-1 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                                  title="Bấm để xem giải thích 4 trụ cột Điểm xanh"
+                                >
+                                  <span>🌱 {p.green_score || 90}/100</span>
+                                  <span className="underline decoration-emerald-700/50">Vì sao?</span>
+                                </button>
                                 {p.rating && (
-                                  <span className="text-[11px] font-semibold text-amber-600 flex items-center gap-0.5 shrink-0">
+                                  <span className="text-xs font-semibold text-amber-700 flex items-center gap-0.5 shrink-0">
                                     <Star size={11} className="fill-amber-500 text-amber-500" />
                                     {p.rating}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11.5px] text-gray-600 line-clamp-2 mt-0.5">
+                              <p className="text-xs text-neutral-600 line-clamp-2 mt-0.5">
                                 {p.kg_explanation || p.swap_reason || p.address}
                               </p>
+                              {p.eco_practices && p.eco_practices.length > 0 && (
+                                <p className="text-xs text-emerald-800 line-clamp-1 mt-0.5">
+                                  ✓ {p.eco_practices[0]}
+                                </p>
+                              )}
                               {(p.price_range_display || p.budget_delta) && (
-                                <p className="text-[10.5px] font-medium text-gray-500 mt-0.5">
+                                <p className="text-xs font-medium text-neutral-600 mt-0.5">
                                   💰 {p.price_range_display || p.budget_delta}
                                 </p>
                               )}
@@ -1676,6 +1728,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                     <FormattedCopilotMessage
                       text={streamingText}
                       entityLookup={chatEntityLookup}
+                      preferredCity={trip.destination}
                       onHoverPoi={handleDebouncedHover}
                       onSelectPoi={(poiId) => setSelectedMapPoiId(poiId)}
                     />
@@ -1702,7 +1755,8 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
           </div>
 
           {/* Chip gợi ý câu hỏi (3 chip động bám sát ngữ cảnh hội thoại) */}
-          <div className="flex flex-wrap gap-1.5 w-full pt-2 pb-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 w-full pt-2 pb-2 shrink-0">
+            <span className="text-xs font-medium text-neutral-600 mr-0.5">Gợi ý nhanh:</span>
             {quickPrompts.slice(0, 3).map((q, idx) => (
               <button
                 key={idx}
@@ -2016,7 +2070,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   {/* Left card: Sea / Beach (Tilted left) */}
                   <div className="absolute w-[110px] h-[135px] bg-white p-2 rounded-2xl shadow-lg border border-gray-100 transform -rotate-12 -translate-x-12 translate-y-3 z-0">
                     <img
-                      src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80"
+                      src="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/3868bb63-75e2-41a7-98fb-1b24501dc40b.webp"
                       alt="Biển Mỹ Khê"
                       className="w-full h-[95px] object-cover rounded-xl"
                     />
@@ -2024,7 +2078,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   {/* Right card: Scenic mountain (Tilted right) */}
                   <div className="absolute w-[110px] h-[135px] bg-white p-2 rounded-2xl shadow-lg border border-gray-100 transform rotate-12 translate-x-12 translate-y-2 z-0">
                     <img
-                      src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=300&q=80"
+                      src="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/f0a00581-4ed0-4210-ae87-9cd3484afa11.webp"
                       alt="Cầu Rồng & Núi Non"
                       className="w-full h-[95px] object-cover rounded-xl"
                     />
@@ -2032,7 +2086,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                   {/* Center card: Di tích Cố Đô (Straight / Slight tilt) */}
                   <div className="relative z-10 w-[115px] h-[140px] bg-white p-2 rounded-2xl shadow-xl border border-gray-200 transform -rotate-2">
                     <img
-                      src="https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=300&q=80"
+                      src="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/bdbe010b-df8e-452b-978f-6a4318baca2b.webp"
                       alt="Đại Nội Huế"
                       className="w-full h-[100px] object-cover rounded-xl"
                     />

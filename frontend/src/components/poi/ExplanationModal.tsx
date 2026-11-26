@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { getPoiExplanationFacts, type ExplanationFact, type PoiExplanationResponse } from '@/services/poiExplanation';
+import {
+  getPoiExplanationFacts,
+  type ExplanationFact,
+  type GreenScorePillar,
+  type PoiExplanationResponse,
+} from '@/services/poiExplanation';
 
 /** Maps KG relationship types to user-friendly Vietnamese labels. */
 const RELATIONSHIP_LABELS: Record<string, { icon: string; label: string }> = {
@@ -8,6 +13,8 @@ const RELATIONSHIP_LABELS: Record<string, { icon: string; label: string }> = {
   OFFERS_ACTIVITY: { icon: 'ph-bicycle', label: 'Hoạt động' },
   LOCATED_IN: { icon: 'ph-map-pin', label: 'Vị trí' },
   HAS_FEATURE: { icon: 'ph-star', label: 'Đặc điểm' },
+  HAS_ECO_PRACTICE: { icon: 'ph-leaf', label: 'Thực hành xanh' },
+  BEST_TIME: { icon: 'ph-clock', label: 'Giờ nên đi' },
   NEAR: { icon: 'ph-navigation-arrow', label: 'Lân cận' },
   BELONGS_TO: { icon: 'ph-folders', label: 'Thuộc về' },
 };
@@ -36,6 +43,8 @@ export default function ExplanationModal({
   const [fetchState, setFetchState] = useState<FetchState>('idle');
   const [facts, setFacts] = useState<ExplanationFact[]>([]);
   const [kgPoi, setKgPoi] = useState<PoiExplanationResponse['poi'] | null>(null);
+  const [pillars, setPillars] = useState<GreenScorePillar[]>([]);
+  const [sourceTag, setSourceTag] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
   const [loadedPoiId, setLoadedPoiId] = useState('');
@@ -54,6 +63,8 @@ export default function ExplanationModal({
     setLoadedPoiId(targetPoiId);
     setFacts([]);
     setKgPoi(null);
+    setPillars([]);
+    setSourceTag(null);
     setErrorMsg('');
 
     try {
@@ -71,6 +82,8 @@ export default function ExplanationModal({
       } else {
         setFacts(data.facts);
         setKgPoi(data.poi);
+        setPillars(Array.isArray(data.green_score_breakdown) ? data.green_score_breakdown : []);
+        setSourceTag(data.explanation_source ?? null);
         setFetchState('success');
       }
     } catch (err: unknown) {
@@ -276,6 +289,36 @@ export default function ExplanationModal({
                 >
                   Thử lại
                 </button>
+              </div>
+            )}
+
+            {/* Green Score 4-pillar breakdown */}
+            {visibleState === 'success' && pillars.length > 0 && (
+              <div className="mt-4 rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-emerald-950">Cách tính Điểm xanh (4 tiêu chí)</span>
+                  {sourceTag && (
+                    <span className="text-xs text-emerald-800">
+                      {sourceTag === 'neo4j' ? 'Đồ thị Tri thức' : 'Dữ liệu kiểm định dự phòng'}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {pillars.map((pillar) => (
+                    <div key={pillar.key} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-emerald-950">
+                        <span>{pillar.label} ({pillar.weight_pct}%)</span>
+                        <span className="font-bold">{pillar.score}/100</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-emerald-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-emerald-600"
+                          style={{ width: `${Math.max(10, Math.min(100, pillar.score))}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import Any, Literal
@@ -509,6 +510,19 @@ class CopilotSuggestedPoiItem(BaseModel):
     opening_hours_status: Literal["ok", "closed", "outside_hours", "unknown"] | None = None
     opening_hours_warning: str | None = None
     open_range_label: str | None = None
+
+    @field_validator("gallery_urls", mode="before")
+    @classmethod
+    def _coerce_gallery_urls(cls, value: Any) -> list[str] | None:
+        if value is None or value == "":
+            return None
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                return parsed if isinstance(parsed, list) else None
+            except ValueError:
+                return None
+        return value if isinstance(value, list) else None
 
 
 class CopilotChatResponse(BaseModel):

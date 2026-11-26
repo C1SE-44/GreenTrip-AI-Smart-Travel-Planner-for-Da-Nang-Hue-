@@ -65,18 +65,53 @@ from app.trips.text_utils import (
 logger = logging.getLogger(__name__)
 
 GREENTRIP_COPILOT_SYSTEM_PROMPT = """# ROLE & IDENTITY
-Bạn là **GreenTrip Copilot** — Chuyên gia Cố vấn Du lịch Bền vững (Eco-Travel Consultant) bản địa chuyên sâu về khu vực **Đà Nẵng, Huế và Hội An**.
-Phong cách giao tiếp của bạn: Thân thiện như một người bạn bản địa sành sỏi, sắc bén trong tư duy lập lịch trình, thẳng thắn đính chính các hiểu lầm của người dùng nhưng luôn lịch sự và đưa ra giải pháp thay thế hợp lý.
+Bạn là **GreenTrip AI** — Trợ lý cố vấn du lịch xanh bản địa chuyên sâu về khu vực **Đà Nẵng và Thừa Thiên Huế**.
+Phong cách giao tiếp: Tự nhiên, thân thiện như người bản địa, rõ ràng và súc tích.
 
-# 6 QUY TẮC CỐT LÕI (BẮT BUỘC TUÂN THỦ)
-1. Trả lời trực diện ngay câu đầu tiên (Direct Opening & No Repeated Greeting): TUYỆT ĐỐI KHÔNG mở đầu bằng "Chào bạn! Mình là GreenTrip Copilot..." từ tin nhắn thứ 2 trở đi. Giải quyết ngay trọng tâm câu hỏi ở câu đầu.
-2. Kiểm chứng Thực thể, Địa lý & Tính khả thi (Fact-Checking & Feasibility Guardrail): Bắt lỗi gán sai thành phố (VD: Cầu Vàng ở Đà Nẵng chứ không phải Huế), chặn lịch trình bất khả thi trong 1 ngày, đối chiếu toán học số đêm.
-3. Ghi nhớ Ràng buộc Ngầm Xuyên suốt (Persistent Constraints): Đi cùng người lớn tuổi/trẻ nhỏ (ưu tiên đường phẳng như Lăng Tự Đức, xe điện Đại Nội, ngồi xe ngắm cảnh Sơn Trà), mùa mưa tháng 10-12 (kèm phương án Indoor), hiểu tiếng lóng tiếng Việt (đn -> Đà Nẵng, rcm -> gợi ý, cf -> cà phê, chill/ko ồn ào -> yên tĩnh).
-4. Tư duy Đồ thị Tri thức & Lồng ghép Tiêu chí Xanh (KG Reasoning + Eco-Integration): Áp dụng công thức 3 lớp cho mỗi POI: **[Tên địa điểm]** — *(Lý do khớp trực tiếp từ kg_explanation)* + 🌱 *(Green Score & Điểm cộng bền vững / Mẹo di chuyển xanh)*.
-5. Bảo vệ Phạm vi Hệ thống (Strict Out-of-Scope Handling): Từ chối ngắn gọn, vui vẻ các câu hỏi ngoài phạm vi du lịch miền Trung và không trả về thẻ POI.
-6. Chiến thuật "Câu hỏi chốt hạ A/B" (Conversational Follow-up Hook): 100% câu trả lời kết thúc bằng 1 câu hỏi gợi mở đưa ra 2 lựa chọn cụ thể (A hoặc B) bám sát bước tiếp theo.
-7. Trung thực tuyệt đối với dữ liệu (Zero Hallucination Grounding): TUYỆT ĐỐI CHỈ nhắc tên địa điểm/quán ăn có trong RETRIEVED_POIS hoặc REFERENCE_DRAFT, cấm tự bịa thêm tên quán/địa điểm ngoài cơ sở dữ liệu; nếu REFERENCE_DRAFT có mục Điểm mạnh / Cần cân nhắc thì giữ nguyên cấu trúc đánh giá đó.
+# QUY TẮC CỐT LÕI (BẮT BUỘC TUÂN THỦ)
+1. Trả lời trực diện ngay câu đầu tiên: KHÔNG lặp lại lời chào máy móc từ tin nhắn thứ 2 trở đi.
+2. Khóa địa lý & tính khả thi: Tuyệt đối không lẫn địa điểm Đà Nẵng/Hội An vào lịch Huế và ngược lại; phân biệt rõ 3 Chùa Linh Ứng (Sơn Trà, Bà Nà, Ngũ Hành Sơn); không xếp đi Đà Nẵng và Huế trong cùng 1 ngày khi chưa tính 2–2,5 giờ qua đèo/hầm Hải Vân.
+3. Ghi nhớ ràng buộc xuyên suốt: Đi cùng người lớn tuổi/trẻ nhỏ (ưu tiên đường phẳng như Lăng Tự Đức, xe điện Đại Nội), mùa mưa tháng 9–1 (kèm phương án trong nhà).
+4. Giải thích Đồ thị Tri thức & Điểm xanh: Nêu rõ vì sao địa điểm phù hợp (tiện tuyến, ít phát thải, hỗ trợ cộng đồng địa phương hay hợp sở thích) kèm Điểm xanh.
+5. Ưu tiên cộng đồng địa phương & tránh lặp điểm đại trà: Xen kẽ tối thiểu 40–50% làng nghề, quán ăn bản địa, cơ sở lưu trú sinh thái có trong RETRIEVED_POIS thay vì chỉ lặp lại Đại Nội, Chùa Thiên Mụ, Lăng Khải Định.
+6. Cảnh báo quá tải giờ cao điểm & gợi ý phương tiện linh hoạt: Khi nhắc điểm phổ biến (Đại Nội, Cầu Rồng, Bà Nà Hills, Chùa Linh Ứng Sơn Trà, Chùa Thiên Mụ, Mỹ Khê), luôn nhắc khung giờ cao điểm và gợi ý giờ vắng hoặc điểm bản địa thay thế. Đề xuất phương tiện dựa theo quãng đường thực tế và số lượng người đi (không lặp máy móc xe đạp/xe điện ở mọi câu).
+7. Bảo vệ phạm vi & trung thực dữ liệu: Từ chối ngắn gọn câu hỏi ngoài Đà Nẵng – Huế; TUYỆT ĐỐI chỉ nhắc tên địa điểm có trong RETRIEVED_POIS hoặc REFERENCE_DRAFT.
+8. Câu kết gọn gàng: Kết thúc bằng đúng 1 câu hỏi ngắn tự nhiên (tối đa 25 từ) kết thúc bằng dấu `?`, không viết đoạn A/B dài dòng.
 """
+
+
+def handle_external_link_guidance(
+    message: str,
+    fact_check: dict[str, Any],
+    trip_context: TripContextPayload,
+    constraints: list[str],
+) -> CopilotChatResponse:
+    """Politely explain that external TikTok/video links cannot be opened directly and guide the user."""
+    platform = str(fact_check.get("platform") or "mạng xã hội")
+    dest = trip_context.destination or "Đà Nẵng & Huế"
+    reply_text = (
+        f"Hiện tại mình chưa thể mở và xem trực tiếp nội dung từ liên kết **{platform}** bạn vừa dán.\n\n"
+        f"Bạn chỉ cần gõ **tên địa điểm, tên quán hoặc mô tả ngắn trong video** (ví dụ: *quán cà phê sân vườn ở Huế* hay *bãi biển ít đông ở Đà Nẵng*), "
+        f"mình sẽ kiểm tra ngay tọa độ thật, giá tham khảo, giờ vắng khách và xếp vào lịch trình **{dest}** cho bạn. Bạn đang quan tâm đến điểm nào trong video đó?"
+    )
+    return CopilotChatResponse(
+        reply_text=reply_text,
+        intent="external_link_guidance",
+        intent_category="QA_AND_COMPARE",
+        reasoning_trace=(
+            f"1. Nhận diện liên kết ngoài ({platform}) trước bộ lọc toán học/out-of-scope.\n"
+            "2. Hướng dẫn người dùng nhập tên địa điểm hoặc mô tả ngắn để tra cứu trên dữ liệu đã kiểm định."
+        ),
+        recommended_poi_ids=[],
+        detected_constraints=constraints,
+        suggested_pois=[],
+        action_type="none",
+        next_suggested_prompts=[
+            f"Tìm quán ăn bản địa ít đông ở {dest}",
+            f"Gợi ý điểm xanh & làng nghề tại {dest}",
+            "Lên lịch trình 2 ngày tránh giờ cao điểm",
+        ],
+    )
 
 
 def handle_out_of_scope_request(
@@ -97,8 +132,8 @@ def handle_out_of_scope_request(
     )
 
     reply_text = (
-        f"Mình là chuyên gia bản địa chuyên sâu về du lịch xanh khu vực **Đà Nẵng – Huế – Hội An** nên xin phép không trả lời về **{topic_label}** nha! 🌱\n\n"
-        f"Quay lại hành trình **{dest} ({days} ngày)** của bạn: hiện tại bạn muốn mình ưu tiên **A — Tinh chỉnh lại các điểm tham quan & quán ăn bản địa theo từng ngày**, hay **B — Gợi ý các quán cà phê/điểm trú mưa chuẩn xanh** cho chuyến đi?"
+        f"Mình chuyên tư vấn du lịch xanh khu vực **Đà Nẵng – Huế – Hội An** nên chưa hỗ trợ về **{topic_label}**.\n\n"
+        f"Quay lại chuyến đi **{dest} ({days} ngày)**, bạn muốn mình gợi ý điểm bản địa hay tối ưu lịch từng ngày?"
     )
 
     return CopilotChatResponse(
@@ -203,8 +238,7 @@ def handle_city_comparison_consultative(
     )
 
     closing_hook = (
-        f"Bạn muốn mình thiết kế chi tiết lịch trình {days_num} ngày theo phương án **A — Dành trọn {days_num} ngày ở Đà Nẵng & Hội An** để nghỉ dưỡng biển và khám phá ẩm thực thảnh thơi, "
-        f"hay phương án **B — Chia {max(days_num - 2, 3)} ngày Đà Nẵng + {min(2, days_num - 1)} ngày Huế** (trải nghiệm tàu hỏa qua đèo Hải Vân)?"
+        f"Bạn muốn mình lên lịch chi tiết {days_num} ngày tại **{verdict_city}** hay chia kết hợp cả hai thành phố?"
     )
 
     reasoning_trace = (
@@ -239,19 +273,29 @@ def _query_curated_comparison_pois(
     primary_city: str,
     constraints: list[str],
 ) -> list[CopilotSuggestedPoiItem]:
-    """Fetch 3 iconic POIs (beach/nature + local food + heritage) for consultative comparison."""
+    """Fetch 3 iconic POIs matching primary_city (strict province isolation)."""
     items: list[CopilotSuggestedPoiItem] = []
+    city_lower = (primary_city or "").lower()
+    is_hue_only = ("huế" in city_lower or "hue" in city_lower) and "đà nẵng" not in city_lower and "da nang" not in city_lower
+    is_dn_only = ("đà nẵng" in city_lower or "da nang" in city_lower) and "huế" not in city_lower and "hue" not in city_lower
+    city_filter_sql = "AND ci.name ILIKE '%%Hue%%'" if is_hue_only else ("AND ci.name ILIKE '%%Da Nang%%'" if is_dn_only else "")
+    name_filter_sql = (
+        "(p.name ILIKE '%%Thủy Biều%%' OR p.name ILIKE '%%Tự Đức%%' OR p.name ILIKE '%%Bún Bò%%' OR p.name ILIKE '%%Đại Nội%%')"
+        if is_hue_only
+        else "(p.name ILIKE '%%Mỹ Khê%%' OR p.name ILIKE '%%Mì Quảng%%' OR p.name ILIKE '%%Bà Dưỡng%%' OR p.name ILIKE '%%Sơn Trà%%')"
+    )
     try:
         with connection.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT p.poi_id::text, p.name, c.name, p.sub_category, p.image_url,
                        p.green_score, p.satisfaction_score, p.address, p.estimated_cost, ci.name
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id
                 JOIN public.cities ci ON p.city_id = ci.city_id
                 WHERE p.is_active IS NOT FALSE
-                  AND (p.name ILIKE '%%Mỹ Khê%%' OR p.name ILIKE '%%Mì Quảng%%' OR p.name ILIKE '%%Bà Dưỡng%%' OR p.name ILIKE '%%Sơn Trà%%')
+                  {city_filter_sql}
+                  AND {name_filter_sql}
                 ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
                 LIMIT 3;
                 """
@@ -270,7 +314,7 @@ def _query_curated_comparison_pois(
                         category=r[2],
                         sub_category=r[3],
                         city=city_disp,
-                        image_url=r[4] or "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
+                        image_url=r[4] or "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp",
                         green_score=g_score,
                         rating=float(r[6] or 4.8),
                         address=r[7] or f"{city_disp}, Việt Nam",
@@ -299,7 +343,7 @@ def _query_curated_comparison_pois(
                     category=cat,
                     sub_category=sub,
                     city=city_disp,
-                    image_url="https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
+                    image_url="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp",
                     green_score=g_score,
                     rating=rating,
                     address=addr,
@@ -335,7 +379,7 @@ def handle_over_scheduling_guardrail(
         "- **Ngày 1 — Cụm Núi Chúa & Biển Đà Nẵng**: Sáng đi **Bà Nà Hills & Cầu Vàng** (07:30 – 14:00) — 🌱 *Đi cáp treo điện giảm khí thải leo đèo*; chiều về nghỉ ngơi và dạo bộ **Bãi biển Mỹ Khê**.\n"
         "- **Ngày 2 — Cụm Di sản Phía Nam (Đà Nẵng → Hội An)**: Chiều mát (14:30) ghé **Danh thắng Ngũ Hành Sơn** (có thang máy kính) rồi đi thẳng xuống **Phố cổ Hội An** dạo bộ phố đèn lồng — 🌱 *Khu phố cổ không tiếng động cơ xe máy*.\n"
         "- **Ngày 3 — Chuyến tàu Di sản vượt Đèo Hải Vân ra Huế**: Sáng đi **Tàu hỏa Di sản Đà Nẵng – Huế** ngắm vịnh Lăng Cô, chiều tham quan **Đại Nội Huế** và **Chùa Thiên Mụ** — 🌱 *Tàu hỏa giảm 75% CO2 so với xe cá nhân*.\n\n"
-        "Bạn muốn mình **A — Cập nhật ngay cấu trúc 3 ngày tách cụm này vào lịch trình của bạn**, hay **B — Giữ nguyên số ngày hiện tại và bỏ bớt Bà Nà Hills để ưu tiên đi sâu Đà Nẵng – Huế**?"
+        "Bạn muốn mình áp dụng cấu trúc 3 ngày tách cụm này vào lịch trình không?"
     )
 
     return CopilotChatResponse(
@@ -387,9 +431,7 @@ def handle_elderly_constraints_consultation(
     )
 
     closing_hook = (
-        "Để mình khóa phương án di chuyển êm ái nhất cho bố mẹ: bạn muốn gia đình đi lại giữa các điểm bằng "
-        "**A — Taxi điện Xanh SM / Ô tô điện đưa đón tận cửa từng điểm**, "
-        "hay **B — Kết hợp thêm trải nghiệm Tàu hỏa Di sản ngắm vịnh Lăng Cô (ghế mềm điều hòa)**?"
+        "Bạn muốn ưu tiên đi taxi điện tận cửa hay kết hợp thêm Tàu hỏa Di sản qua đèo Hải Vân cho bố mẹ?"
     )
 
     reasoning_trace = (
@@ -424,20 +466,29 @@ def _query_elderly_friendly_pois(
     is_both: bool,
     constraints: list[str],
 ) -> list[CopilotSuggestedPoiItem]:
-    """Fetch senior-friendly flat-path POIs from DB or curated fallback."""
+    """Fetch senior-friendly flat-path POIs strictly filtered by target province."""
     items: list[CopilotSuggestedPoiItem] = []
+    city_lower = (city_display or "").lower()
+    city_filter_sql = ""
+    if not is_both:
+        if "huế" in city_lower or "hue" in city_lower:
+            city_filter_sql = "AND ci.name ILIKE '%%Hue%%'"
+        else:
+            city_filter_sql = "AND ci.name ILIKE '%%Da Nang%%'"
     try:
         with connection.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT p.poi_id::text, p.name, c.name, p.sub_category, p.image_url,
                        p.green_score, p.satisfaction_score, p.address, p.estimated_cost, ci.name
                 FROM public.pois p
                 JOIN public.poi_categories c ON p.category_id = c.category_id
                 JOIN public.cities ci ON p.city_id = ci.city_id
                 WHERE p.is_active IS NOT FALSE
+                  {city_filter_sql}
                   AND (
                     p.name ILIKE '%%Tự Đức%%'
+                    OR p.name ILIKE '%%Thủy Biều%%'
                     OR p.name ILIKE '%%Linh Ứng%%'
                     OR p.name ILIKE '%%Sơn Trà%%'
                     OR p.name ILIKE '%%Cổ vật%%'
@@ -462,7 +513,7 @@ def _query_elderly_friendly_pois(
                         category=r[2],
                         sub_category=r[3],
                         city=c_disp,
-                        image_url=r[4] or "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
+                        image_url=r[4] or "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp",
                         green_score=g_score,
                         rating=float(r[6] or 4.8),
                         address=r[7] or f"{c_disp}, Việt Nam",
@@ -477,10 +528,13 @@ def _query_elderly_friendly_pois(
 
     if not items:
         fallback_defs = [
-            ("dn-son-tra-elderly", "Bán đảo Sơn Trà & Chùa Linh Ứng", "Cảnh quan và thiên nhiên", "peninsula", "Đà Nẵng", 96, 4.9, "Hoàng Sa, Thọ Quang, Sơn Trà, Đà Nẵng"),
+            ("dn-son-tra-elderly", "Bán đảo Sơn Trà & Chùa Linh Ứng Bãi Bụt", "Cảnh quan và thiên nhiên", "peninsula", "Đà Nẵng", 96, 4.9, "Hoàng Sa, Thọ Quang, Sơn Trà, Đà Nẵng"),
             ("hue-lang-tu-duc", "Lăng Tự Đức (Khiêm Lăng)", "Di tích lịch sử và văn hóa", "royal_mausoleums", "Huế", 95, 4.9, "Thôn Thượng Ba, Thủy Xuân, TP. Huế"),
             ("hue-bao-tang-co-vat", "Bảo tàng Cổ vật Cung đình Huế", "Di tích lịch sử và văn hóa", "museums_galleries", "Huế", 92, 4.7, "03 Lê Trực, Phú Hậu, TP. Huế"),
         ]
+        if not is_both:
+            want_hue = "huế" in city_lower or "hue" in city_lower
+            fallback_defs = [d for d in fallback_defs if (d[4] == "Huế") == want_hue]
         for pid, name, cat, sub, c_disp, g_score, rating, addr in fallback_defs:
             kg_exp, eco_list = build_kg_explanation_for_poi(name, cat, sub, c_disp, constraints)
             items.append(
@@ -490,7 +544,7 @@ def _query_elderly_friendly_pois(
                     category=cat,
                     sub_category=sub,
                     city=c_disp,
-                    image_url="https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
+                    image_url="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp",
                     green_score=g_score,
                     rating=rating,
                     address=addr,
@@ -503,51 +557,22 @@ def _query_elderly_friendly_pois(
 
 
 def _default_ab_hook_for_intent(sub_intent: str, city_display: str, current_day: int) -> str:
-    """Return a sharp, context-specific Mindtrip A/B closing question for each intent."""
+    """Return a concise, single-sentence Vietnamese follow-up question."""
     if sub_intent == "cafe_culture":
-        if "huế" in city_display.lower() and "đà nẵng" not in city_display.lower():
-            return (
-                "Bạn đang muốn tìm quán ở khu vực **A — Bờ Nam sông Hương (phố đi bộ, gần cầu Trường Tiền)** "
-                "hay **B — Khu vực quanh Đại Nội / Kim Long yên tĩnh** để mình ghim 2–3 quán gần bạn nhất?"
-            )
-        return (
-            "Bạn đang ở khu vực **A — Gần biển Mỹ Khê / Sơn Trà** "
-            "hay **B — Trung tâm quận Hải Châu** để mình lọc tiếp 2–3 quán yên tĩnh gần vị trí bạn nhất?"
-        )
+        return f"Bạn muốn mình ghim quán nào ở {city_display} vào Ngày {current_day}?"
     if sub_intent == "culinary_guide":
-        return (
-            f"Bạn muốn mình xếp các quán đặc sản tại {city_display} này vào **A — Bữa trưa Ngày {current_day} (kết hợp nghỉ trưa mát mẻ)** "
-            f"hay **B — Bữa tối Ngày {current_day} (kết hợp dạo phố đêm chuẩn xanh)**?"
-        )
+        return f"Bạn muốn xếp quán đặc sản {city_display} này vào bữa trưa hay bữa tối Ngày {current_day}?"
     if sub_intent == "swap_meal_vegetarian":
-        return (
-            f"Bạn muốn mình **A — Thay thế ngay quán chay có điểm xanh cao nhất vào bữa ăn Ngày {current_day}**, "
-            f"hay **B — Lưu cả 3 quán vào danh sách Ý tưởng (Saved Places)** để chọn linh hoạt khi đi?"
-        )
+        return f"Bạn muốn thay ngay quán chay này vào bữa ăn Ngày {current_day} hay lưu vào Ý tưởng?"
     if sub_intent == "rainy_day_alternatives":
-        return (
-            f"Nếu chiều Ngày {current_day} vẫn còn mưa, bạn nghiêng về phương án **A — Tham quan bảo tàng / không gian di sản trong nhà**, "
-            f"hay **B — Ngồi thưởng trà thảo mộc / workshop thủ công ấm cúng**?"
-        )
+        return f"Bạn muốn đổi điểm ngoài trời chiều Ngày {current_day} sang điểm trong nhà nào ở trên?"
     if sub_intent == "night_eco_activities":
-        return (
-            f"Cho buổi tối Ngày {current_day}, bạn thích nhịp độ **A — Tản bộ ngắm cầu sáng đèn & chợ đêm nhộn nhịp**, "
-            f"hay **B — Ngồi du thuyền / thưởng trà yên tĩnh ven sông**?"
-        )
+        return f"Buổi tối Ngày {current_day} bạn muốn tản bộ ven sông hay đi chợ đêm?"
     if sub_intent == "late_schedule_adjust":
-        return (
-            f"Để kịp giờ ăn tối Ngày {current_day}, bạn muốn **A — Chỉ giữ lại 1 điểm dừng nhanh 40 phút ngay trung tâm**, "
-            f"hay **B — Dời điểm tham quan chiều nay sang sáng ngày mai**?"
-        )
+        return f"Bạn muốn rút gọn còn 1 điểm gần trung tâm hay dời phần còn lại sang sáng mai?"
     if sub_intent == "poi_advice":
-        return (
-            f"Bạn muốn mình chèn điểm đến này vào **A — Buổi sáng sớm Ngày {current_day} (07:30 – 10:30, mát mẻ ít đông)** "
-            f"hay **B — Khung xế chiều Ngày {current_day} (15:30 – 17:30, đón hoàng hôn)**?"
-        )
-    return (
-        f"Để tiếp tục hoàn thiện lịch trình **{city_display}**, bạn muốn mình ưu tiên **A — Gợi ý chi tiết các quán ăn & cafe bản địa cho Ngày {current_day}**, "
-        f"hay **B — Cân đối lại nhịp độ di chuyển & phương án dự phòng thời tiết**?"
-    )
+        return f"Bạn muốn chèn điểm này vào sáng sớm Ngày {current_day} để tránh đông không?"
+    return f"Bạn muốn mình thêm điểm nào vào lịch Ngày {current_day} tại {city_display}?"
 
 
 def upgrade_handler_response_to_mindtrip_standard(
@@ -608,7 +633,7 @@ def upgrade_handler_response_to_mindtrip_standard(
                     category=cat,
                     sub_category=sub,
                     city=c_disp,
-                    image_url="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=80",
+                    image_url="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp",
                     green_score=g_score,
                     rating=rating,
                     address=addr,
@@ -781,15 +806,31 @@ def _try_gemini_synthesis(
             f"{m.get('role', 'user')}: {str(m.get('content', ''))[:250]}"
             for m in (trip_context.conversation_history or [])[-4:]
         ]
+        from app.trips.copilot_enrichment import estimate_trip_budget_summary, recommend_transport_for_leg
+
+        budget_info = estimate_trip_budget_summary(
+            days_count=trip_context.days_count,
+            num_people=trip_context.num_people,
+            budget_tier=trip_context.budget_tier,
+            total_budget=trip_context.total_budget,
+        )
+        recommended_transport = recommend_transport_for_leg(
+            distance_km=6.0,
+            num_people=trip_context.num_people,
+            constraints=constraints,
+            is_intercity="đà nẵng" in (trip_context.destination or "").lower() and "huế" in (trip_context.destination or "").lower(),
+        )
         prompt_payload = (
             f"MODE: {getattr(trip_context, 'mode', 'trip')} | "
             f"USER_PROFILE & CONSTRAINTS: destination={trip_context.destination}, days={trip_context.days_count}, "
             f"current_day={trip_context.current_day}, total_budget={trip_context.total_budget}, "
-            f"num_people={trip_context.num_people}, transport_mode={trip_context.transport_mode}, "
-            f"active_constraints={constraints}\n"
+            f"budget_tier={budget_info['tier_label']}, num_people={trip_context.num_people}, "
+            f"transport_mode={trip_context.transport_mode}, active_constraints={constraints}\n"
+            f"BUDGET_ESTIMATE_FOR_GROUP: {budget_info['summary_text']}\n"
+            f"CONTEXTUAL_TRANSPORT_TIP: {recommended_transport}\n"
             f"RECENT_HISTORY: {json.dumps(history_snippet, ensure_ascii=False)}\n"
             f"RETRIEVED_POIS & KG_PATHS: {json.dumps(pois_context, ensure_ascii=False)}\n"
-            f"STRICT_GROUNDING: Tuyệt đối chỉ nhắc tên địa điểm có trong RETRIEVED_POIS & KG_PATHS hoặc REFERENCE_DRAFT; cấm tự bịa thêm địa điểm mới. Nếu REFERENCE_DRAFT có mục Điểm mạnh / Cần cân nhắc thì giữ nguyên cấu trúc đó.\n"
+            f"STRICT_GROUNDING: Tuyệt đối chỉ nhắc tên địa điểm có trong RETRIEVED_POIS & KG_PATHS hoặc REFERENCE_DRAFT; cấm tự bịa thêm địa điểm mới. Lồng ghép số liệu BUDGET_ESTIMATE_FOR_GROUP và CONTEXTUAL_TRANSPORT_TIP thay vì trả lời chung chung; chỉ kết thúc bằng đúng 1 câu hỏi ngắn (<=25 từ).\n"
             f"REFERENCE_DRAFT (giữ nguyên các dữ kiện thực tế và tên địa điểm): {fallback_reply}\n"
             f"USER_MESSAGE: {user_message}"
         )

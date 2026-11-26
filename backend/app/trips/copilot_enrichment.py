@@ -5,10 +5,15 @@ from app.pois.price_normalizer import normalize_poi_price_display
 from app.trips.schemas import CopilotSuggestedPoiItem
 
 DEFAULT_POI_COORDS_KB: list[tuple[str, float, float]] = [
+    ("linh ứng bà nà", 15.9989, 107.9946),
+    ("linh ứng non nước", 16.0076, 108.2674),
+    ("linh ứng ngũ hành sơn", 16.0076, 108.2674),
+    ("linh ứng bãi bụt", 16.1046, 108.2789),
+    ("linh ứng sơn trà", 16.1046, 108.2789),
     ("cầu vàng", 15.9951, 107.9962),
     ("bà nà", 15.9977, 107.9881),
     ("sơn trà", 16.1060, 108.2615),
-    ("linh ứng", 16.0996, 108.2775),
+    ("linh ứng", 16.1046, 108.2789),
     ("ngũ hành sơn", 16.0038, 108.2631),
     ("mỹ khê", 16.0598, 108.2464),
     ("cầu rồng", 16.0611, 108.2275),
@@ -218,9 +223,11 @@ def build_kg_explanation_for_poi(
         eco_practices.append("Ưu tiên chuỗi cung ứng nông sản & nguyên liệu tươi sống tại địa phương (Food Miles thấp)")
     else:
         reasons.append(
-            f"Điểm trải nghiệm văn hóa – sinh thái tiêu biểu tại {city}, kết nối thuận tiện trong cụm lịch trình"
+            f"Điểm trải nghiệm văn hóa – bản địa tiêu biểu tại {city}, kết nối thuận tiện trong cụm lịch trình"
         )
-        eco_practices.append("Khuyến khích di chuyển xanh bằng xe điện hoặc tản bộ gom cụm")
+        eco_practices.append(
+            f"Điểm cộng đồng/bản địa tại {city} chú trọng bảo tồn cảnh quan và giảm rác thải nhựa một lần"
+        )
 
     # 2. Append constraint-specific tailoring if not already mentioned
     if "elderly_friendly" in constraints and not any("bằng phẳng" in r or "thang máy" in r or "xe điện" in r or "ô tô" in r for r in reasons):
@@ -229,6 +236,88 @@ def build_kg_explanation_for_poi(
         reasons.append("không gian trong nhà có mái che an toàn khi thời tiết tháng 10–12 có mưa")
 
     return "; ".join(reasons), eco_practices
+
+
+_DANANG_ENTITY_MARKERS = (
+    "đà nẵng", "da nang", "danang", "sơn trà", "mỹ khê", "hải châu", "ngũ hành sơn",
+    "bà nà", "cầu rồng", "cầu vàng", "chợ cồn", "chợ hàn", "linh ứng", "bãi bụt", "bãi rạng",
+    "hội an", "hoi an", "cẩm thanh", "trà quế", "sông hàn",
+)
+_HUE_ENTITY_MARKERS = (
+    "huế", "hue", "đại nội", "hoàng thành", "thiên mụ", "tự đức", "khải định",
+    "minh mạng", "chợ đông ba", "sông hương", "thủy biều", "rú chá", "đầm chuồn",
+    "vọng cảnh", "thủy xuân", "tam giang", "cồn hến",
+)
+
+
+def recommend_transport_for_leg(
+    distance_km: float,
+    num_people: int = 2,
+    constraints: list[str] | None = None,
+    is_intercity: bool = False,
+) -> str:
+    """Recommend practical, green transport based on real distance and group size."""
+    active = set(constraints or [])
+    has_family = "elderly_friendly" in active or "kid_friendly" in active or num_people >= 4
+    if is_intercity or distance_km >= 45.0:
+        return "Tàu hỏa Di sản Đà Nẵng – Huế (giảm ~75% CO₂ so với ô tô riêng, êm ái cho nhóm/gia đình)"
+    if distance_km <= 1.5 and "elderly_friendly" not in active:
+        return "Đi bộ gom cụm trong khu vực (0 g CO₂, thuận tiện khám phá phố và hẻm)"
+    if has_family:
+        return (
+            f"Taxi điện Xanh SM hoặc ô tô điện đi chung cho nhóm {max(2, num_people)} người "
+            "(êm ái, chia chi phí hợp lý và không phát thải trực tiếp)"
+        )
+    if distance_km <= 5.0:
+        return "Xe buýt công cộng hoặc xe đạp/taxi điện ngắn chặng tùy thời tiết"
+    return "Xe buýt công cộng tuyến nội đô hoặc taxi điện Xanh SM cho chặng dài"
+
+
+def estimate_trip_budget_summary(
+    days_count: int,
+    num_people: int = 2,
+    budget_tier: Any = None,
+    total_budget: float | None = None,
+) -> dict[str, Any]:
+    """Calculate transparent per-person and total-group budget ranges based on trip context."""
+    days = max(1, int(days_count or 3))
+    people = max(1, int(num_people or 1))
+    tier_raw = getattr(budget_tier, "value", budget_tier)
+    tier = str(tier_raw or "standard").lower()
+
+    tier_specs = {
+        "budget": ("$ Tiết kiệm", 550_000, 750_000, "homestay xanh/nhà nghỉ cộng đồng, quán ăn bản địa, xe buýt/đi bộ"),
+        "standard": ("$$ Tiêu chuẩn", 1_100_000, 1_550_000, "khách sạn/eco-lodge 3–4 sao, ẩm thực địa phương + vé tham quan, taxi điện chia nhóm"),
+        "luxury": ("$$$ Cao cấp", 2_400_000, 3_500_000, "eco-resort/boutique 4–5 sao, trải nghiệm riêng tư và xe điện đưa đón"),
+    }
+    tier_label, pp_min, pp_max, scope_desc = tier_specs.get(tier, tier_specs["standard"])
+    group_min = pp_min * days * people
+    group_max = pp_max * days * people
+
+    def _fmt(v: float) -> str:
+        return f"{int(round(v)):,} ₫".replace(",", ".")
+
+    cap_note = ""
+    if total_budget and total_budget > 0:
+        cap_note = f" (ngân sách bạn đặt: **{_fmt(total_budget)}** cho cả đoàn)"
+
+    summary_text = (
+        f"Ước tính hạng **{tier_label}** cho **{people} người × {days} ngày**: "
+        f"**{_fmt(group_min)} – {_fmt(group_max)}** cả đoàn "
+        f"(khoảng **{_fmt(pp_min)} – {_fmt(pp_max)}/người/ngày**){cap_note} — "
+        f"*đã tính gồm lưu trú ({scope_desc}), ăn uống, vé tham quan và đi lại nội tỉnh*."
+    )
+    return {
+        "tier": tier,
+        "tier_label": tier_label,
+        "days": days,
+        "num_people": people,
+        "per_person_day_min": pp_min,
+        "per_person_day_max": pp_max,
+        "group_total_min": group_min,
+        "group_total_max": group_max,
+        "summary_text": summary_text,
+    }
 
 
 def enrich_pois_with_kg_and_filter_city(
@@ -248,21 +337,33 @@ def enrich_pois_with_kg_and_filter_city(
     for idx, p in enumerate(pois):
         addr_lower = (p.address or "").lower()
         name_lower = (p.name or "").lower()
+        probe = f"{name_lower} {addr_lower} {(p.city or '').lower()}"
         poi_city = p.city or ""
 
+        is_hue_entity = any(tok in probe for tok in _HUE_ENTITY_MARKERS)
+        is_dn_or_ha_entity = any(tok in probe for tok in _DANANG_ENTITY_MARKERS)
+
         if not poi_city:
-            if "huế" in addr_lower or "hue" in addr_lower or "huế" in name_lower:
+            if is_hue_entity and not is_dn_or_ha_entity:
                 poi_city = "Huế"
-            elif "đà nẵng" in addr_lower or "da nang" in addr_lower or "hải châu" in addr_lower or "sơn trà" in addr_lower or "ngũ hành sơn" in addr_lower:
+            elif is_dn_or_ha_entity and not is_hue_entity:
                 poi_city = "Đà Nẵng"
             else:
                 poi_city = "Huế" if "huế" in target_lower and not is_both_cities else "Đà Nẵng"
 
         # Strict city isolation when user asked for a specific single city
         if not is_both_cities:
-            if "đà nẵng" in target_lower and ("huế" in poi_city.lower() or "huế" in name_lower or "hue" in name_lower):
+            if "đà nẵng" in target_lower and (
+                "huế" in poi_city.lower() or "hue" in poi_city.lower() or (is_hue_entity and not is_dn_or_ha_entity)
+            ):
                 continue
-            if "huế" in target_lower and ("đà nẵng" in poi_city.lower() or "da nang" in name_lower or "sơn trà" in name_lower):
+            if "huế" in target_lower and (
+                "đà nẵng" in poi_city.lower()
+                or "da nang" in poi_city.lower()
+                or "hội an" in probe
+                or "hoi an" in probe
+                or (is_dn_or_ha_entity and not is_hue_entity)
+            ):
                 continue
 
         kg_exp, eco_list = build_kg_explanation_for_poi(
@@ -309,8 +410,8 @@ def format_three_layer_poi_bullet(poi: CopilotSuggestedPoiItem) -> str:
 
 
 def ensure_closing_ab_hook(reply_text: str, default_hook: str) -> str:
-    """Ensure 100% of responses end with a concrete A/B conversational hook (Rule 6)."""
+    """Keep a concise single-sentence closing question without duplicating long A/B templates."""
     stripped = reply_text.strip()
-    if stripped.endswith("?") and (" hay " in stripped[-220:].lower() or "phương án" in stripped[-220:].lower()):
+    if stripped.endswith("?"):
         return stripped
     return f"{stripped}\n\n{default_hook}"

@@ -22,7 +22,7 @@ import {
 } from '@/components/explore/exploreUtils';
 export { SEEDED_SAMPLE_TRIPS };
 export type { ExploreTabId, UserTrip };
-import PoiMap from '@/components/poi/PoiMap';
+import PoiMap, { isPoiInsideBounds, type MapViewportBounds } from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import SavedPlacesView from '@/components/saved/SavedPlacesView';
 import BuildTripFromCollectionModal from '@/components/saved/BuildTripFromCollectionModal';
@@ -37,7 +37,12 @@ import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
 import { clearAuthSession, getMe, type UserProfile } from '@/services/auth';
 import { deleteMyTrip, getMyTrips } from '@/services/tripService';
-import { loadAccountTrips, tripStorageKey } from '@/utils/accountTrips';
+import {
+  loadAccountTrips,
+  readGuestTrips,
+  tripStorageKey,
+  writeGuestTrips,
+} from '@/utils/accountTrips';
 import { getPois, getAllPois } from '@/services/poi';
 import ExploreFilterModal, {
   type ExploreFilterValues,
@@ -87,7 +92,7 @@ const TABS: { id: ExploreTabId; label: string }[] = [
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'home' | 'explore' | 'trips' | 'saved' | 'chat' | 'profile' }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
+  const { savedIds, collections: savedCollections, pendingIds, openCollectionPicker } = useSavedPlaces();
   const [viewMode, setViewMode] = useState<'home' | 'explore' | 'trips' | 'saved' | 'chat' | 'profile'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
@@ -138,6 +143,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [location.state, navigate]);
 
   const [search, setSearch] = useState('');
+  const [mapAreaBounds, setMapAreaBounds] = useState<MapViewportBounds | null>(null);
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [activeTab, setActiveTab] = useState<ExploreTabId>('for-you');
@@ -260,6 +266,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [allPois, setAllPois] = useState<Poi[]>(pois);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const hasSavedForPlanner = Boolean(currentUser) && (savedIds.size > 0 || savedCollections.length > 0);
   const [profileLoading, setProfileLoading] = useState(true);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
@@ -360,16 +367,22 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [updateThumb, allPois]);
 
   useEffect(() => {
-    if (!tripsOwner || !currentUser || tripsOwner !== currentUser.user_id) return;
-    const storageKey = tripStorageKey(tripsOwner);
     const privateTrips = userTrips.filter((t) => !t.id.startsWith('sample-'));
+    if (!currentUser) {
+      if (!profileLoading) {
+        writeGuestTrips(localStorage, privateTrips);
+      }
+      return;
+    }
+    if (!tripsOwner || tripsOwner !== currentUser.user_id) return;
+    const storageKey = tripStorageKey(tripsOwner);
     if (!privateTrips.length && localStorage.getItem(storageKey) === null) return;
     try {
       localStorage.setItem(storageKey, JSON.stringify(privateTrips));
     } catch (e) {
       console.error(e);
     }
-  }, [userTrips, tripsOwner, currentUser]);
+  }, [userTrips, tripsOwner, currentUser, profileLoading]);
 
   useEffect(() => {
     let active = true;
@@ -383,8 +396,23 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         if (!active || requestId !== profileRequestId) return;
         setCurrentUser(profile);
         try {
+          const guestBeforeLogin = readGuestTrips(localStorage);
           const owned = await loadAccountTrips(localStorage, profile.user_id, getMyTrips);
           if (!active || requestId !== profileRequestId) return;
+          // Đồng bộ lịch trình tạm của Khách lên tài khoản sau khi đăng nhập
+          for (const guestTrip of guestBeforeLogin) {
+            try {
+              const rawPlan = localStorage.getItem(`greentrip_itinerary_${guestTrip.id}`);
+              if (rawPlan) {
+                const parsedPlan = JSON.parse(rawPlan);
+                if (parsedPlan && parsedPlan.trip_id) {
+                  void saveTripItinerary(parsedPlan).catch(() => undefined);
+                }
+              }
+            } catch {
+              // Ignore malformed draft itinerary
+            }
+          }
           const normalizedOwned = owned.map((t) => {
             const rawTitle = (t.title || '').trim();
             const isBadTitle = !rawTitle || rawTitle.length <= 3 || ['ư', 'a', 'ơi', 'alo'].includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().startsWith('bắt đầu');
@@ -395,8 +423,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
                 t.image ||
                 t.coverImage ||
                 (t.destination === 'Huế'
-                  ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
-                  : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
+                  ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ce249bef-0477-4a46-a19c-735b3db10498.webp'
+                  : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/fcef1de3-bd58-4eb0-ae95-7d6d8f77f93b.webp'),
             };
           });
           const quickTrip = quickLaunchTripRef.current;
@@ -418,7 +446,13 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           setCurrentUser(null);
           setTripsOwner(null);
           const quickTrip = quickLaunchTripRef.current;
-          setUserTrips(quickTrip ? [quickTrip, ...SEEDED_SAMPLE_TRIPS.filter((s) => s.id !== quickTrip.id)] : SEEDED_SAMPLE_TRIPS);
+          const savedGuestTrips = readGuestTrips(localStorage);
+          const guestList = quickTrip && !savedGuestTrips.some((t) => t.id === quickTrip.id)
+            ? [quickTrip, ...savedGuestTrips]
+            : savedGuestTrips;
+          const guestIds = new Set(guestList.map((t) => t.id));
+          const missingSamples = SEEDED_SAMPLE_TRIPS.filter((s) => !guestIds.has(s.id));
+          setUserTrips([...guestList, ...missingSamples]);
         }
       } finally {
         if (active && requestId === profileRequestId) setProfileLoading(false);
@@ -525,6 +559,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
   const filteredPois = useMemo(() => {
     const matched = allPois.filter((poi) => {
+      if (mapAreaBounds && !isPoiInsideBounds(poi, mapAreaBounds)) {
+        return false;
+      }
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
       let matchCat = true;
       if (categoryFilter === 'di-tich') {
@@ -749,11 +786,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       }
       return a.name.localeCompare(b.name, 'vi');
     });
-  }, [allPois, search, cityFilter, categoryFilter, filterValues, activeTab, savedIds]);
+  }, [allPois, search, cityFilter, categoryFilter, filterValues, activeTab, savedIds, mapAreaBounds]);
 
   // Đếm số lượng filter đang active chuẩn Mindtrip
   const activeFilterCount = useMemo(() => {
     let count = 0;
+    if (mapAreaBounds) count++;
     if (filterValues.budget !== 'all') count++;
     if (filterValues.ecoPriority !== 'all') count++;
     if (filterValues.ecoCertifiedOnly) count++;
@@ -772,7 +810,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     if (filterValues.freeTicketOnly) count++;
     if (filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50) count++;
     return count;
-  }, [filterValues]);
+  }, [filterValues, mapAreaBounds]);
 
   // Xác định chế độ xem tuyển chọn theo từng chuyên mục (Curated Sections Overview - Chuẩn Mindtrip):
   // Kích hoạt khi ở tab "Dành cho bạn", không tìm kiếm từ khóa, không ở mục 'đã lưu' và không chọn bộ lọc chuyên sâu
@@ -1429,24 +1467,56 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               <h1 className="text-[28px] sm:text-[32px] lg:text-[34px] font-bold text-gray-950 tracking-tight leading-none">
                 Lịch trình của bạn
               </h1>
-              <div className="ml-auto flex flex-wrap items-center gap-2 shrink-0">
+              {/* Chỉ hiển thị cặp nút hành động ở header khi đã có chuyến đi (tránh lặp 2 lần với Empty State giữa trang) */}
+              {!(tripsSubTab === 'trips' && userTrips.length === 0) && (
+                <div className="ml-auto flex flex-wrap items-center gap-2 shrink-0">
+                  {hasSavedForPlanner ? (
+                    <button
+                      type="button"
+                      onClick={() => setCollectionPlannerConfig({ collectionId: null })}
+                      className="whitespace-nowrap border border-emerald-800 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 min-h-[44px] h-[44px] sm:h-[40px] px-4 rounded-full text-[13.5px] font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    >
+                      <i className="ph ph-sparkle text-sm text-emerald-800" aria-hidden="true"></i>
+                      <span>Xếp lịch từ Kho đã lưu</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViewMode('explore');
+                        navigate('/explore');
+                      }}
+                      className="whitespace-nowrap border border-emerald-800 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 min-h-[44px] h-[44px] sm:h-[40px] px-4 rounded-full text-[13.5px] font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    >
+                      <i className="ph ph-compass text-sm text-emerald-800" aria-hidden="true"></i>
+                      <span>Khám phá &amp; lưu điểm</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsCreateTripModalOpen(true)}
+                    className="w-auto whitespace-nowrap bg-black text-white hover:bg-neutral-800 min-h-[44px] h-[44px] sm:h-[40px] px-5 sm:px-[36px] rounded-full text-[13.5px] font-semibold flex items-center gap-[14px] transition active:scale-95 shadow-xs cursor-pointer shrink-0"
+                  >
+                    <i className="ph ph-plus font-bold text-sm"></i>
+                    <span>Chuyến đi mới</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {!currentUser && userTrips.some((t) => !t.id.startsWith('sample-')) && (
+              <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs sm:text-[13px] text-emerald-950 leading-relaxed">
+                  <strong>Chế độ Khách:</strong> Các chuyến đi bạn vừa tạo đã được lưu tạm trên trình duyệt này. Đăng nhập để tự động đồng bộ vào tài khoản của bạn.
+                </p>
                 <button
                   type="button"
-                  onClick={() => setCollectionPlannerConfig({ collectionId: null })}
-                  className="whitespace-nowrap border border-emerald-800 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 min-h-[44px] h-[44px] sm:h-[40px] px-4 rounded-full text-[13.5px] font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  onClick={() => navigate('/login', { state: { returnTo: '/planner' } })}
+                  className="min-h-[40px] px-4 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                 >
-                  <i className="ph ph-sparkle text-sm text-emerald-800" aria-hidden="true"></i>
-                  <span>Xếp lịch từ Kho đã lưu</span>
-                </button>
-                <button
-                  onClick={() => setIsCreateTripModalOpen(true)}
-                  className="w-auto whitespace-nowrap bg-black text-white hover:bg-neutral-800 min-h-[44px] h-[44px] sm:h-[40px] px-5 sm:px-[36px] rounded-full text-[13.5px] font-semibold flex items-center gap-[14px] transition active:scale-95 shadow-xs cursor-pointer shrink-0"
-                >
-                  <i className="ph ph-plus font-bold text-sm"></i>
-                  <span>Chuyến đi mới</span>
+                  Đăng nhập &amp; đồng bộ
                 </button>
               </div>
-            </div>
+            )}
 
             {/* Section 2.2: Hàng Tab - Cỡ chữ 147px (text-[16px]), padding ngang 14px (px-[8px]), khoảng cách 2 chữ 48px (gap-[11px]), chữ cách gạch chân 38px (pb-[8px], -5%), gạch chân dày 3px (border-b-[1.5px]) */}
             <div className="flex items-center gap-[11px]">
@@ -1572,13 +1642,26 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                     >
                       Tạo chuyến đi đầu tiên
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setCollectionPlannerConfig({ collectionId: null })}
-                      className="border border-emerald-800 bg-emerald-50 text-emerald-950 px-6 h-[54px] rounded-full text-[15px] font-semibold hover:bg-emerald-100 transition cursor-pointer flex items-center justify-center shrink-0"
-                    >
-                      Xếp lịch từ Kho đã lưu
-                    </button>
+                    {hasSavedForPlanner ? (
+                      <button
+                        type="button"
+                        onClick={() => setCollectionPlannerConfig({ collectionId: null })}
+                        className="border border-emerald-800 bg-emerald-50 text-emerald-950 px-6 h-[54px] rounded-full text-[15px] font-semibold hover:bg-emerald-100 transition cursor-pointer flex items-center justify-center shrink-0"
+                      >
+                        Xếp lịch từ Kho đã lưu
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setViewMode('explore');
+                          navigate('/explore');
+                        }}
+                        className="border border-emerald-800 bg-emerald-50 text-emerald-950 px-6 h-[54px] rounded-full text-[15px] font-semibold hover:bg-emerald-100 transition cursor-pointer flex items-center justify-center shrink-0"
+                      >
+                        Khám phá &amp; lưu điểm yêu thích
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -1597,7 +1680,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                       >
                         <div className="relative aspect-[16/10] w-full bg-gray-100 overflow-hidden">
                           <img
-                            src={trip.image || 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'}
+                            src={trip.image || 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp'}
                             alt={trip.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
@@ -2027,6 +2110,9 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
                 addedTrips={addedTrips}
                 onToggleAddTrip={toggleAddTrip}
+                onSearchInArea={(bounds) => setMapAreaBounds(bounds)}
+                activeAreaFilter={Boolean(mapAreaBounds)}
+                onClearAreaFilter={() => setMapAreaBounds(null)}
               />
             )}
           </div>
@@ -2180,8 +2266,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 newTrip.coverImage ||
                 newTrip.image ||
                 (newTrip.destination === 'Huế'
-                  ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
-                  : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
+                  ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c107817a-7452-4385-b024-462f08e10dad.webp'
+                  : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/87930706-8d34-4e16-a21d-6cade6364cf1.webp'),
               tags: newTrip.tags || [
                 newTrip.destination,
                 newTrip.startDate || '4 ngày • Tháng 12',
@@ -2226,6 +2312,11 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           initialCollectionName={collectionPlannerConfig.collectionName ?? null}
           initialCollectionPois={collectionPlannerConfig.places ?? null}
           onClose={() => setCollectionPlannerConfig(null)}
+          onNavigateToExplore={() => {
+            setCollectionPlannerConfig(null);
+            setViewMode('explore');
+            navigate('/explore');
+          }}
           onConfirmBuild={async (payload) => {
             const tripId = currentUser ? `trip-col-${Date.now()}` : `trip-quick-${Date.now()}`;
             const syncedItinerary = {
@@ -2258,8 +2349,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               image:
                 firstPhoto ||
                 (payload.destination === 'Huế'
-                  ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=800&auto=format&fit=crop&q=80'
-                  : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80'),
+                  ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/d229571b-14fb-4357-aad6-af1547af7615.webp'
+                  : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/bd2020b0-bbb4-4379-a331-d3c7221c2fc1.webp'),
               tags: [
                 payload.destination,
                 `${payload.daysCount} ngày`,

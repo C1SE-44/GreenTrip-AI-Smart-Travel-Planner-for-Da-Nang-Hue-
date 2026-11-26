@@ -94,7 +94,7 @@ def handle_cafe_culture(
                 name = r[1]
                 category = r[2]
                 sub_cat = r[3] or "quán cafe"
-                image_url = r[4] or "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=80"
+                image_url = r[4] or "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/413f8945-85d0-40a0-afde-5fe0c4443fa7.webp"
                 green_score = format_green_score(r[5])
                 rating = float(r[6]) if r[6] is not None else 4.8
                 address = r[7] or "Đang cập nhật địa chỉ"

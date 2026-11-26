@@ -66,6 +66,15 @@ class ExplanationFact(BaseModel):
     target_name: str | None = None
 
 
+class GreenScorePillar(BaseModel):
+    key: str
+    label: str
+    weight_pct: int
+    score: int
+
+
 class POIExplanationFactsResponse(BaseModel):
     poi: ExplanationPOI
     facts: list[ExplanationFact]
+    explanation_source: str | None = None
+    green_score_breakdown: list[GreenScorePillar] | None = None

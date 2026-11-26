@@ -93,8 +93,8 @@ export default function TripHeader({
 
   const defaultImage =
     trip.destination === 'Huế'
-      ? 'https://images.unsplash.com/photo-1571508601891-ca5e7a713859?w=200&auto=format&fit=crop&q=80'
-      : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80';
+      ? 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ce249bef-0477-4a46-a19c-735b3db10498.webp'
+      : 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/fcef1de3-bd58-4eb0-ae95-7d6d8f77f93b.webp';
 
   return (
     <header className="no-print min-h-[112px] xl:min-h-[64px] relative px-4 sm:px-6 lg:px-[36px] pt-3 pb-[52px] xl:py-0 bg-white border-b border-gray-200/80 flex items-center justify-between gap-3 shrink-0 z-30 select-none">

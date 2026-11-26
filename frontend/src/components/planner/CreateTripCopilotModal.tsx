@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Minus, Plus, Calendar, Loader2, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import { validateTripParameters } from '@/services/tripService';
+import { getTripCoverFallback } from '@/components/explore/exploreUtils';
 
 export interface CreateTripCopilotModalProps {
   isOpen: boolean;
@@ -16,7 +17,6 @@ export interface CreateTripCopilotModalProps {
 import {
   buildDefaultMindtripItinerary,
   buildDefaultMindtripConversation,
-  type CopilotDayOutline,
   type CopilotTripMessage,
 } from './copilotTripData';
 import { extractTripIntentFromPrompt, type ExtractedTripIntent } from '@/utils/vietnamesePromptExtractor';
@@ -332,11 +332,7 @@ export default function CreateTripCopilotModal({
         ? (tripPrompt.trim().length > 50 ? tripPrompt.trim().slice(0, 50) + '...' : tripPrompt.trim())
         : `Hành trình ${normDest} ${validDays} ngày`;
 
-      const coverImage = normDest === 'Huế'
-        ? 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=800&q=80'
-        : normDest === 'Đà Nẵng'
-        ? 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80'
-        : 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&q=80';
+      const coverImage = getTripCoverFallback(normDest);
 
       const newTrip: UserTrip = {
         id: 'trip_' + Date.now(),
@@ -350,12 +346,8 @@ export default function CreateTripCopilotModal({
         status: 'upcoming',
         prompt: tripPrompt.trim(),
         totalBudget: estimatedBudget,
-        itineraryOutline: (validatedData.itinerary_outline && validatedData.itinerary_outline.length > 0)
-          ? (validatedData.itinerary_outline as unknown as CopilotDayOutline[]).map((d: CopilotDayOutline, idx: number) => ({
-              ...d,
-              stops: d.stops || buildDefaultMindtripItinerary(normDest, validDays)[idx]?.stops || [],
-            }))
-          : buildDefaultMindtripItinerary(normDest, validDays),
+        // Keep new trips empty until the traveler chooses places or requests smart scheduling.
+        itineraryOutline: [],
         copilotChatHistory: [
           ...(initialChatHistory ?? []),
           ...buildDefaultMindtripConversation(
@@ -384,9 +376,7 @@ export default function CreateTripCopilotModal({
         ? (tripPrompt.trim().length > 50 ? tripPrompt.trim().slice(0, 50) + '...' : tripPrompt.trim())
         : `Hành trình ${normDest} ${validDays} ngày`;
 
-      const coverImage = normDest === 'Huế'
-        ? 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=800&q=80'
-        : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80';
+      const coverImage = getTripCoverFallback(normDest);
       const pacing = estimatePacing(validDays);
 
       const newTrip: UserTrip = {
@@ -403,7 +393,7 @@ export default function CreateTripCopilotModal({
         totalBudget: estimatedBudget,
         pacingLevel: pacing.level,
         pacingLabel: pacing.label,
-        itineraryOutline: buildDefaultMindtripItinerary(normDest, validDays),
+        itineraryOutline: [],
         copilotChatHistory: [
           ...(initialChatHistory ?? []),
           ...buildDefaultMindtripConversation(

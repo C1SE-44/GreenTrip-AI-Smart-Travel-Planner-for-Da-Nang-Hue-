@@ -665,6 +665,7 @@ function isGenericFallbackImage(image: string | undefined): boolean {
 }
 
 function destinationCoverImage(destination: TripPackageDefinition['destination']): string {
+  if (destination === 'Đà Nẵng & Huế') return '/images/danang_hue_banner.jpg';
   return destination === 'Huế'
     ? '/images/landing/hue-hero-640.webp'
     : '/images/landing/danang-hero-640.webp';

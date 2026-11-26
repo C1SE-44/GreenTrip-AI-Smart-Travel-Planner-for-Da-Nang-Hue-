@@ -10,6 +10,9 @@ import {
 interface ItineraryCarbonBudgetPanelProps {
   totalRoadKm: number;
   carbon: ReturnType<typeof estimateCarbonFootprint>;
+  hasMeasurableDistance: boolean;
+  routeCoordinateCount: number;
+  routeStopCount: number;
   openingConflictCount: number;
   transportMode: RouteTransportMode;
   onChangeTransportMode: (mode: RouteTransportMode) => void;
@@ -24,6 +27,9 @@ interface ItineraryCarbonBudgetPanelProps {
 export default function ItineraryCarbonBudgetPanel({
   totalRoadKm,
   carbon,
+  hasMeasurableDistance,
+  routeCoordinateCount,
+  routeStopCount,
   openingConflictCount,
   transportMode,
   onChangeTransportMode,
@@ -40,13 +46,21 @@ export default function ItineraryCarbonBudgetPanel({
         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-800">
           <span className="inline-flex items-center gap-1.5 font-bold text-emerald-900">
             <Leaf size={14} className="text-emerald-700 shrink-0" />
-            <span>{totalRoadKm.toFixed(1)} km</span>
+            <span>
+              {hasMeasurableDistance
+                ? `~${totalRoadKm.toFixed(1)} km ước tính`
+                : 'Chưa đủ tọa độ để tính km'}
+            </span>
           </span>
-          <span className="text-gray-400" aria-hidden="true">·</span>
-          <span className="font-semibold text-gray-900">
-            {formatCarbonAmount(carbon.co2Grams)}
-          </span>
-          {carbon.savedPercent > 0 && totalRoadKm > 0 && (
+          {hasMeasurableDistance && (
+            <>
+              <span className="text-gray-400" aria-hidden="true">·</span>
+              <span className="font-semibold text-gray-900">
+                ~{formatCarbonAmount(carbon.co2Grams)}
+              </span>
+            </>
+          )}
+          {hasMeasurableDistance && carbon.savedPercent > 0 && totalRoadKm > 0 && (
             <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900">
               -{carbon.savedPercent}% so với ô tô
             </span>
@@ -99,6 +113,12 @@ export default function ItineraryCarbonBudgetPanel({
           );
         })}
       </div>
+      <p className="text-xs leading-5 text-gray-700">
+        Quãng đường là ước tính từ tọa độ các điểm, chưa phải chỉ đường giao thông thực tế. Phương tiện chỉ thay đổi ước tính CO₂.
+        {routeStopCount > routeCoordinateCount && (
+          <> Hiện có tọa độ cho {routeCoordinateCount}/{routeStopCount} địa điểm; quãng đường chỉ tính các chặng có đủ tọa độ.</>
+        )}
+      </p>
 
       {/* Real-time Budget Cap Summary (C_total vs B_max) */}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-emerald-200/70">

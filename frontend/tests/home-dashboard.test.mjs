@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const homeViewPath = path.resolve('src/components/home/HomeDashboardView.tsx');
+const tripPackagesPath = path.resolve('src/components/home/TripPackagesSection.tsx');
 const explorePagePath = path.resolve('src/pages/ExplorePage.tsx');
 const appPath = path.resolve('src/App.tsx');
 
@@ -19,7 +20,7 @@ test('Home View: App.tsx routes include /home', () => {
   assert.ok(content.includes('path="/home"'), 'Must define /home route in App.tsx');
 });
 
-test('Home View: HomeDashboardView renders 4 cards & Assistant setup matching Mindtrip', () => {
+test('Home View: HomeDashboardView renders four action cards and curated packages', () => {
   const content = fs.readFileSync(homeViewPath, 'utf8');
   
   // Card 1: Hoàn tất thiết lập trợ lý
@@ -32,11 +33,13 @@ test('Home View: HomeDashboardView renders 4 cards & Assistant setup matching Mi
   // Card 3: Lên kế hoạch chuyến đi
   assert.ok(content.includes('Lên kế hoạch chuyến đi'), 'Must have Card 3: Lên kế hoạch chuyến đi');
   
-  // Card 4: Diễn đàn & Gói Must-Try
-  assert.ok(content.includes('Diễn đàn & Gói Must-Try'), 'Must have Card 4: Diễn đàn & Gói Must-Try');
-  
-  // Must-Try packages
-  assert.ok(content.includes('MUST_TRY_PACKAGES'), 'Must contain curated packages list');
+  // Card 4 links to the current curated trip package section.
+  assert.ok(content.includes('Gói hành trình tuyển chọn'), 'Must have the curated packages card');
+  assert.ok(content.includes('MUST TRY'), 'Must label the curated packages card');
+  assert.ok(content.includes('<TripPackagesSection'), 'Must render the curated packages section');
+  const packagesContent = fs.readFileSync(tripPackagesPath, 'utf8');
+  assert.ok(packagesContent.includes('id="trip-packages"'), 'Must render the section targeted by the card');
+  assert.ok(packagesContent.includes('resolveTripPackages'), 'Must resolve curated packages from the POI catalog');
   
   // Floating Ask Chatbot input bar
   assert.ok(content.includes('Hỏi GreenTrip AI...'), 'Must contain placeholder Hỏi GreenTrip AI...');

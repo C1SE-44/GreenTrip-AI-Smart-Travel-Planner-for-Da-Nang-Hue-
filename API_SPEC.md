@@ -115,12 +115,12 @@
 
 ## 8. My Trips CRUD & PDF Export (`/my-trips`)
 
-> Router: `backend/app/trips/my_trips_router.py` · Schemas: `backend/app/trips/schemas.py` · FE: `frontend/src/services/tripService.ts`
+> Router: `backend/app/trips/my_trips_router.py` · Schemas: `backend/app/trips/schemas.py` · FE: `frontend/src/services/tripService.ts`, `frontend/src/services/itineraryService.ts`
 > **Toàn bộ endpoint bên dưới bắt buộc JWT (`get_current_user_id`)** và kiểm tra quyền sở hữu `user_id`.
 
 | Method | Path | Request Body chính | Response chính |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/my-trips` | `TripItinerarySyncRequest` | `201` `TripItineraryResponse` |
+| `POST` | `/my-trips` | `TripItinerarySyncRequest` | `201` `TripItineraryResponse` (tạo mới hoặc cập nhật lịch trình thuộc tài khoản hiện tại) |
 | `GET` | `/my-trips` | — | `MyTripSummaryResponse[]` (`trip_id`, `title`, `destination`, `start_date`, `days_count`, `total_stops`, `updated_at`) |
 | `GET` | `/my-trips/{trip_id}` | — | `TripItineraryResponse` |
 | `PATCH` | `/my-trips/{trip_id}` | `{ title?, destination?, start_date? }` | `TripItineraryResponse` |

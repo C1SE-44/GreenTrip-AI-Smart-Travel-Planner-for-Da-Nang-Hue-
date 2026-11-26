@@ -404,17 +404,20 @@ _PG_COORDS_PATCHED = False
 
 def get_connection() -> Any:
     """
-    Kết nối đến CSDL PostgreSQL nếu được cấu hình DATABASE_URL và khả dụng.
-    Nếu không có PostgreSQL (hoặc người dùng không bật Docker),
-    hệ thống tự động sử dụng CSDL SQLite cục bộ giúp tính năng Đăng nhập/Đăng ký hoạt động mượt mà.
+    Dùng PostgreSQL khi DATABASE_URL được cấu hình và chỉ dùng SQLite cục bộ khi biến này trống.
+    Nếu PostgreSQL đã được cấu hình nhưng không kết nối được, trả lỗi để API không báo lưu
+    thành công khi dữ liệu chưa được đồng bộ lên máy chủ.
     """
     global _POSTGRES_RETRY_AFTER, _PG_COORDS_PATCHED
     settings = get_settings()
+    database_url = settings.DATABASE_URL.strip()
 
-    if settings.DATABASE_URL and time.monotonic() >= _POSTGRES_RETRY_AFTER:
+    if database_url:
+        if time.monotonic() < _POSTGRES_RETRY_AFTER:
+            raise RuntimeError("PostgreSQL tạm thời không khả dụng; hệ thống từ chối lưu bản sao vào SQLite.")
         try:
             pg_conn = connect(
-                settings.DATABASE_URL,
+                database_url,
                 connect_timeout=3,
             )
             if not _PG_COORDS_PATCHED and hasattr(pg_conn, "cursor"):
@@ -433,13 +436,15 @@ def get_connection() -> Any:
                 except Exception:
                     if hasattr(pg_conn, "rollback"):
                         pg_conn.rollback()
+            _POSTGRES_RETRY_AFTER = 0.0
             return pg_conn
-        except Exception:
+        except Exception as error:
             _POSTGRES_RETRY_AFTER = time.monotonic() + _POSTGRES_RETRY_COOLDOWN_SECONDS
-            _POSTGRES_AVAILABLE = False
-            logger.warning(
-                "Không thể kết nối đến PostgreSQL bằng cấu hình hiện tại. Tự động chuyển sang CSDL SQLite cục bộ."
-            )
+            logger.exception("Không thể kết nối PostgreSQL đã cấu hình; không chuyển sang SQLite.")
+            raise RuntimeError("không thể kết nối cơ sở dữ liệu PostgreSQL đã cấu hình.") from error
+
+    if settings.APP_ENV in {"staging", "production", "prod"}:
+        raise RuntimeError("Môi trường đã triển khai yêu cầu cấu hình DATABASE_URL của PostgreSQL.")
 
     # Chế độ CSDL cục bộ (Không phụ thuộc Docker/Postgres ngoài)
     _SQLITE_DB_PATH.parent.mkdir(parents=True, exist_ok=True)

@@ -22,7 +22,7 @@ Nền tảng lập kế hoạch du lịch bền vững thông minh dành cho **�
 .
 ├── backend/
 │   ├── app/                # FastAPI modules (auth, pois, recommendations, saved_places, trips, itineraries)
-│   ├── migrations/         # SQL migrations (001 → 018) & hướng dẫn trong backend/migrations/README.md
+│   ├── migrations/         # SQL migrations (001 → 019) & hướng dẫn trong backend/migrations/README.md
 │   ├── neo4j/              # Schema, sample graph và Cypher queries
 │   ├── scripts/            # Scripts xử lý, kiểm định & nạp dữ liệu POI
 │   └── tests/              # Bộ test pytest cho API & data pipeline

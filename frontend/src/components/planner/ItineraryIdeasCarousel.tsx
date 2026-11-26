@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { ChevronRight, Clock, ExternalLink, Heart, MoreHorizontal, Phone, Trash2 } from 'lucide-react';
+import { Check, ChevronRight, Clock, ExternalLink, Heart, MoreHorizontal, Phone, Trash2, X } from 'lucide-react';
 import type { Poi } from '@/data/pois';
 import type { ItineraryDay } from '@/services/itineraryService';
 import { formatCategoryLabel, getCategoryIcon, getPoiImage } from './tripItineraryUtils';
@@ -67,6 +67,9 @@ export default function ItineraryIdeasCarousel({
           const isMenuOpen = activeIdeaMenuPoiId === poi.id;
           const isSaved = savedIds.has(String(poi.id)) || savedIds.has(poi.name);
           const contactLinks = poi.category === 'luu-tru' ? stayContactLinks(poi) : [];
+          const scheduledDay = days.find((day) =>
+            day.stops.some((stop) => stop.poi_id === poi.id || stop.stop_id === poi.id || stop.title.toLocaleLowerCase('vi-VN') === poi.name.toLocaleLowerCase('vi-VN'))
+          );
 
           return (
             <div
@@ -90,14 +93,28 @@ export default function ItineraryIdeasCarousel({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    onRemoveIdeaFromTrip(poi.id);
+                    onSetActiveIdeaMenuPoiId(null);
+                  }}
+                  aria-label={`Xóa ${poi.name} khỏi Ý tưởng và lịch trình`}
+                  title="Xóa khỏi Ý tưởng và lịch trình"
+                  className="w-10 h-10 rounded-full bg-black/55 hover:bg-rose-600 backdrop-blur-xs flex items-center justify-center text-white transition shadow-xs cursor-pointer active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onToggleSaved(String(poi.id), poi);
                   }}
-                  className={`w-7 h-7 rounded-full backdrop-blur-xs flex items-center justify-center transition shadow-xs cursor-pointer active:scale-90 ${
+                  className={`w-10 h-10 rounded-full backdrop-blur-xs flex items-center justify-center transition shadow-xs cursor-pointer active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
                     isSaved
                       ? 'bg-white/95 text-rose-500 hover:bg-white ring-1 ring-rose-200'
                       : 'bg-black/40 hover:bg-black/60 text-white'
                   }`}
                   title={isSaved ? 'Bỏ thích địa điểm' : 'Thả tim yêu thích (Lưu vào Đã lưu)'}
+                  aria-label={isSaved ? 'Bỏ thích địa điểm' : 'Lưu địa điểm vào Đã lưu'}
                 >
                   <Heart
                     size={14}
@@ -111,8 +128,9 @@ export default function ItineraryIdeasCarousel({
                     e.stopPropagation();
                     onSetActiveIdeaMenuPoiId(isMenuOpen ? null : poi.id);
                   }}
-                  className="w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xs flex items-center justify-center text-white transition shadow-xs cursor-pointer"
+                  className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xs flex items-center justify-center text-white transition shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   title="Tùy chọn địa điểm"
+                  aria-label={`Tùy chọn ${poi.name}`}
                 >
                   <MoreHorizontal size={14} />
                 </button>
@@ -210,7 +228,7 @@ export default function ItineraryIdeasCarousel({
                     }}
                     className="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-50 text-rose-600 font-medium flex items-center gap-2 cursor-pointer"
                   >
-                    <Trash2 size={13} /> Xóa khỏi Ý tưởng
+                    <Trash2 size={13} /> Xóa khỏi Ý tưởng và lịch trình
                   </button>
                 </div>
               )}
@@ -223,9 +241,9 @@ export default function ItineraryIdeasCarousel({
                 >
                   {poi.name}
                 </h3>
-                <p className="text-white/80 text-[11px] font-medium flex items-center gap-1 mt-0.5 truncate drop-shadow-xs">
-                  {getCategoryIcon(poi.category)}
-                  <span>{formatCategoryLabel(poi.category)}</span>
+                <p className="text-white/90 text-xs font-medium flex items-center gap-1 mt-0.5 truncate drop-shadow-xs">
+                  {scheduledDay ? <Check size={12} aria-hidden="true" /> : getCategoryIcon(poi.category)}
+                  <span>{scheduledDay ? `Đã xếp · Ngày ${scheduledDay.day_number}` : formatCategoryLabel(poi.category)}</span>
                 </p>
               </div>
             </div>

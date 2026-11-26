@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import logging
 from typing import Any
 import uuid
 
@@ -20,6 +21,8 @@ _UUID_TARGET_TABLES = {
     ("users", "user_id"),
     ("pois", "poi_id"),
 }
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_existing_uuid(cursor: Any, table: str, id_column: str, raw_value: str | None) -> str | None:
@@ -279,6 +282,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
     except HTTPException:
         raise
     except Exception as error:
+        logger.exception("Không thể lưu lịch trình vào cơ sở dữ liệu.")
         raise HTTPException(status_code=503, detail="Chưa thể lưu lịch trình vào cơ sở dữ liệu.") from error
 
 

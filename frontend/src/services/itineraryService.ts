@@ -664,22 +664,183 @@ export function stopFromPoi(poi: Poi, source: 'idea' | 'manual' | 'assistant' = 
   };
 }
 
-const itineraryWrites = new Map<string, Promise<TripItinerary>>();
+export interface ItinerarySaveResult {
+  itinerary: TripItinerary;
+  syncStatus: 'synced' | 'local' | 'guest';
+  syncMessage?: string;
+}
+
+const itineraryWrites = new Map<string, Promise<ItinerarySaveResult>>();
 const itineraryReads = new Map<string, Promise<TripItinerary>>();
+
+interface ItineraryStorageContext {
+  token: string | null;
+  scope: string;
+  itineraryKey: string;
+  pendingKey: string;
+  operationKey: string;
+}
+
+function readAccessToken(): string | null {
+  try {
+    return (typeof localStorage !== 'undefined' && localStorage.getItem('access_token')) ||
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('access_token')) || null;
+  } catch {
+    return null;
+  }
+}
+
+function accountSubject(token: string): string | null {
+  try {
+    const encodedPayload = token.split('.')[1];
+    if (encodedPayload && typeof atob === 'function') {
+      const normalized = encodedPayload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(encodedPayload.length / 4) * 4, '=');
+      const payload = JSON.parse(atob(normalized)) as { sub?: unknown };
+      if (typeof payload.sub === 'string' && payload.sub.trim()) return payload.sub.trim();
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function accountStorageScope(token: string): string {
+  const subject = accountSubject(token);
+  if (subject) return `account-${encodeURIComponent(subject)}`;
+  return `account-token-${stableStorageHash(token)}`;
+}
+
+function stableStorageHash(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(hash ^ value.charCodeAt(index), 0x01000193);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function storageContext(tripId: string, token = readAccessToken()): ItineraryStorageContext {
+  const scope = token ? accountStorageScope(token) : 'guest';
+  const suffix = token ? `${scope}_${tripId}` : tripId;
+  const itineraryKey = token
+    ? `greentrip_itinerary_${suffix}`
+    : `greentrip_itinerary_${tripId}`;
+  const pendingKey = token
+    ? `greentrip_itinerary_pending_${suffix}`
+    : `greentrip_itinerary_pending_${tripId}`;
+  return { token, scope, itineraryKey, pendingKey, operationKey: `${scope}:${tripId}` };
+}
+
+function readLocalValue(key: string): string | null {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalValue(key: string, value: string): boolean {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeLocalValue(key: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
+  } catch {
+    // A synced itinerary remains safe on the server if local cleanup is unavailable.
+  }
+}
+
+function adoptLegacyPendingItinerary(tripId: string, context: ItineraryStorageContext): string | null {
+  if (!context.token) return null;
+  const subject = accountSubject(context.token);
+  const belongsToCurrentAccount = isClientDraftTripId(tripId) || Boolean(
+    subject && (() => {
+      try {
+        const trips = JSON.parse(readLocalValue(`greentrip_user_trips:${subject}`) || '[]') as Array<{ id?: unknown }>;
+        return Array.isArray(trips) && trips.some((trip) => trip?.id === tripId);
+      } catch {
+        return false;
+      }
+    })()
+  );
+  if (!belongsToCurrentAccount) return null;
+
+  const legacyKey = `greentrip_itinerary_pending_${tripId}`;
+  const legacyRaw = readLocalValue(legacyKey);
+  if (!legacyRaw) return null;
+  try {
+    const legacyItinerary = JSON.parse(legacyRaw) as TripItinerary;
+    if (legacyItinerary.trip_id !== tripId) return null;
+    writeLocalValue(context.itineraryKey, legacyRaw);
+    writeLocalValue(context.pendingKey, legacyRaw);
+    return legacyRaw;
+  } catch {
+    return null;
+  }
+}
+
+function cachePendingItineraryFor(itinerary: TripItinerary, context: ItineraryStorageContext): boolean {
+  const stored = writeLocalValue(context.pendingKey, JSON.stringify(itinerary));
+  if (!stored) console.warn('Failed to cache pending itinerary locally');
+  return stored;
+}
+
+export function cachePendingItinerary(itinerary: TripItinerary): boolean {
+  return cachePendingItineraryFor(itinerary, storageContext(itinerary.trip_id));
+}
+
+export function hasPendingItinerarySync(tripId: string): boolean {
+  return readLocalValue(storageContext(tripId).pendingKey) !== null;
+}
 
 export function isClientDraftTripId(tripId: string): boolean {
   return tripId.startsWith('trip-quick-');
 }
 
+export function hasItineraryAccountSession(): boolean {
+  return Boolean(readAccessToken());
+}
+
+function saveItineraryLocally(
+  itinerary: TripItinerary,
+  storageKey: string
+): { itinerary: TripItinerary; stored: boolean } {
+  const localDraft = { ...itinerary, updated_at: new Date().toISOString() };
+  let stored = false;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(storageKey, JSON.stringify(localDraft));
+      stored = true;
+    }
+  } catch (error) {
+    console.warn('Failed to save itinerary locally', error);
+  }
+  return { itinerary: localDraft, stored };
+}
+
 export async function getTripItinerary(tripId: string): Promise<TripItinerary> {
-  const existingRead = itineraryReads.get(tripId);
+  const context = storageContext(tripId);
+  const existingRead = itineraryReads.get(context.operationKey);
   if (existingRead) return existingRead;
 
   const fetchPromise = (async () => {
-    await itineraryWrites.get(tripId)?.catch(() => undefined);
-    const key = `greentrip_itinerary_${tripId}`;
-    const cacheBeforeRead = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
-    if (isClientDraftTripId(tripId)) {
+    await itineraryWrites.get(context.operationKey)?.catch(() => undefined);
+    const pendingRaw = readLocalValue(context.pendingKey) || adoptLegacyPendingItinerary(tripId, context);
+    if (pendingRaw) {
+      try {
+        return JSON.parse(pendingRaw) as TripItinerary;
+      } catch (e) {
+        console.warn('Failed to parse pending itinerary draft', e);
+      }
+    }
+    const cacheBeforeRead = readLocalValue(context.itineraryKey);
+    if (!context.token) {
       if (cacheBeforeRead) {
         try {
           return JSON.parse(cacheBeforeRead) as TripItinerary;
@@ -690,21 +851,24 @@ export async function getTripItinerary(tripId: string): Promise<TripItinerary> {
       throw Object.assign(new Error('Chưa có lịch trình được lưu.'), { status: 404 });
     }
     try {
-      const remote = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(tripId)}/itinerary`);
+      const remote = await fetchJson<TripItinerary>(`/my-trips/${encodeURIComponent(tripId)}`, {
+        headers: { Authorization: `Bearer ${context.token}` },
+      });
       if (remote && remote.trip_id) {
-        try {
-          if (typeof localStorage !== 'undefined') {
-            const current = localStorage.getItem(key);
-            if (current && current !== cacheBeforeRead) return JSON.parse(current) as TripItinerary;
-            localStorage.setItem(key, JSON.stringify(remote));
-          }
-        } catch (e) {
-          console.warn('Failed to cache itinerary to localStorage', e);
-        }
+        const pendingAfterRead = readLocalValue(context.pendingKey);
+        if (pendingAfterRead) return JSON.parse(pendingAfterRead) as TripItinerary;
+        const current = readLocalValue(context.itineraryKey);
+        if (current && current !== cacheBeforeRead) return JSON.parse(current) as TripItinerary;
+        writeLocalValue(context.itineraryKey, JSON.stringify(remote));
         return remote;
       }
     } catch (err) {
-      const localRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+      const status = typeof err === 'object' && err !== null && 'status' in err && typeof err.status === 'number'
+        ? err.status
+        : null;
+      const localRaw = status === 404 || status === 401 || status === 403
+        ? null
+        : readLocalValue(context.itineraryKey);
       if (localRaw) {
         try {
           return JSON.parse(localRaw) as TripItinerary;
@@ -714,18 +878,18 @@ export async function getTripItinerary(tripId: string): Promise<TripItinerary> {
       }
       throw err;
     }
-    const localRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+    const localRaw = readLocalValue(context.itineraryKey);
     if (localRaw) {
       return JSON.parse(localRaw) as TripItinerary;
     }
     throw new Error(`Itinerary not found for trip ${tripId}`);
   })();
 
-  itineraryReads.set(tripId, fetchPromise);
+  itineraryReads.set(context.operationKey, fetchPromise);
   try {
     return await fetchPromise;
   } finally {
-    itineraryReads.delete(tripId);
+    itineraryReads.delete(context.operationKey);
   }
 }
 
@@ -773,19 +937,23 @@ export function scheduleError(next: TripItinerary, previous?: TripItinerary | nu
   return '';
 }
 
-export async function saveTripItinerary(itinerary: TripItinerary): Promise<TripItinerary> {
-  const storageKey = `greentrip_itinerary_${itinerary.trip_id}`;
-  const writePromise = (async () => {
+export async function saveTripItineraryWithStatus(itinerary: TripItinerary): Promise<ItinerarySaveResult> {
+  const context = storageContext(itinerary.trip_id);
+  const previousWrite = itineraryWrites.get(context.operationKey);
+  const writePromise: Promise<ItinerarySaveResult> = (async () => {
+    await previousWrite?.catch(() => undefined);
     let previous: TripItinerary | null = null;
     try {
-      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(storageKey) : null;
+      const raw = readLocalValue(context.itineraryKey);
       if (raw) previous = JSON.parse(raw) as TripItinerary;
     } catch {
       previous = null;
     }
-    if (!previous && !isClientDraftTripId(itinerary.trip_id)) {
+    if (!previous && context.token) {
       try {
-        previous = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(itinerary.trip_id)}/itinerary`);
+        previous = await fetchJson<TripItinerary>(`/my-trips/${encodeURIComponent(itinerary.trip_id)}`, {
+          headers: { Authorization: `Bearer ${context.token}` },
+        });
       } catch {
         previous = null;
       }
@@ -796,50 +964,71 @@ export async function saveTripItinerary(itinerary: TripItinerary): Promise<TripI
       throw new Error(validationMessage);
     }
 
+    const hasLocalDraft = cachePendingItineraryFor(itinerary, context);
+
+    if (!context.token) {
+      const localResult = saveItineraryLocally(itinerary, context.itineraryKey);
+      if (!hasLocalDraft && !localResult.stored) {
+        throw new Error('Trình duyệt không hỗ trợ lưu nháp lịch trình trên thiết bị này.');
+      }
+      return { itinerary: localResult.itinerary, syncStatus: 'guest' };
+    }
+
     try {
-      const saved = await fetchJson<TripItinerary>(`/trips/${encodeURIComponent(itinerary.trip_id)}/itinerary`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const saved = await fetchJson<TripItinerary>('/my-trips', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${context.token}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(itinerary),
       });
-      try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(storageKey, JSON.stringify(saved));
-        }
-      } catch (e) {
-        console.warn('Failed to save itinerary to localStorage', e);
+      writeLocalValue(context.itineraryKey, JSON.stringify(saved));
+      if (readLocalValue(context.pendingKey) === JSON.stringify(itinerary)) removeLocalValue(context.pendingKey);
+      if (context.token) {
+        removeLocalValue(`greentrip_itinerary_pending_${itinerary.trip_id}`);
+        removeLocalValue(`greentrip_itinerary_${itinerary.trip_id}`);
       }
-      return saved;
+      return { itinerary: saved, syncStatus: 'synced' };
     } catch (err) {
       console.warn('Backend saveTripItinerary failed, using local storage state', err);
       // Keep offline edits available locally, but do not hide server validation or
       // authorization errors: the UI needs to let travelers correct those cases.
       if (typeof err === 'object' && err !== null && 'status' in err && typeof err.status === 'number') {
+        const status = err.status;
+        if (status >= 500) {
+          const localResult = saveItineraryLocally(itinerary, context.itineraryKey);
+          if (!hasLocalDraft && !localResult.stored) throw new Error('Máy chủ lỗi và không thể lưu bản nháp trên thiết bị này.');
+          const message = status === 500
+            ? 'Máy chủ gặp lỗi (500). Bản nháp đã được giữ trên thiết bị; bạn có thể thử đồng bộ lại.'
+            : `Máy chủ tạm thời gặp lỗi (${status}). Bản nháp đã được giữ trên thiết bị; bạn có thể thử đồng bộ lại.`;
+          return { itinerary: localResult.itinerary, syncStatus: 'local', syncMessage: message };
+        }
         throw err;
       }
-      const fallback = {
-        ...itinerary,
-        updated_at: new Date().toISOString(),
+      const localResult = saveItineraryLocally(itinerary, context.itineraryKey);
+      if (!hasLocalDraft && !localResult.stored) throw new Error('Không kết nối được máy chủ và không thể lưu bản nháp trên thiết bị này.');
+      return {
+        itinerary: localResult.itinerary,
+        syncStatus: 'local',
+        syncMessage: 'Chưa kết nối được máy chủ. Bản nháp đã được giữ trên thiết bị; bạn có thể thử đồng bộ lại.',
       };
-      try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(storageKey, JSON.stringify(fallback));
-        }
-      } catch (e) {
-        console.warn('Failed to save itinerary to localStorage', e);
-      }
-      return fallback;
     }
   })();
 
-  itineraryWrites.set(itinerary.trip_id, writePromise);
+  itineraryWrites.set(context.operationKey, writePromise);
   try {
     return await writePromise;
   } finally {
-    if (itineraryWrites.get(itinerary.trip_id) === writePromise) {
-      itineraryWrites.delete(itinerary.trip_id);
+    if (itineraryWrites.get(context.operationKey) === writePromise) {
+      itineraryWrites.delete(context.operationKey);
     }
   }
+}
+
+export async function saveTripItinerary(itinerary: TripItinerary): Promise<TripItinerary> {
+  const result = await saveTripItineraryWithStatus(itinerary);
+  return result.itinerary;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -861,6 +1050,136 @@ export function dailyVisitCapacity(level: 'Relaxed' | 'Balanced' | 'Fast'): numb
   if (level === 'Relaxed') return 210;
   if (level === 'Fast') return 330;
   return 270;
+}
+
+export function dailyVisitStopTarget(level: 'Relaxed' | 'Balanced' | 'Fast'): number {
+  if (level === 'Relaxed') return 2;
+  if (level === 'Fast') return 5;
+  return 3;
+}
+
+type PlannerCity = string;
+
+function normalizePlannerText(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLocaleLowerCase('vi-VN').replace(/\s+/g, ' ').trim();
+}
+
+function plannerCity(city?: string | null): PlannerCity | null {
+  const value = city?.split(',')[0]?.trim();
+  if (!value) return null;
+  const normalized = normalizePlannerText(value);
+  if (/^da\s*nang$/.test(normalized)) return 'da nang';
+  if (/^hue$/.test(normalized)) return 'hue';
+  return normalized;
+}
+
+/** Assigns each city one contiguous date range so the smart schedule never zig-zags. */
+export function planDestinationCityBlocks(
+  days: ItineraryDay[],
+  candidates: Poi[],
+  destination: string,
+): Array<PlannerCity | null> | null {
+  if (days.length === 0) return null;
+
+  const candidateCounts = new Map<PlannerCity, number>();
+  const cityOrder: PlannerCity[] = [];
+  const registerCity = (city: PlannerCity | null, count = 1) => {
+    if (!city) return;
+    if (!candidateCounts.has(city)) cityOrder.push(city);
+    candidateCounts.set(city, (candidateCounts.get(city) || 0) + count);
+  };
+  const candidateIds = new Set<string>();
+  candidates.forEach((poi) => {
+    const city = plannerCity(poi.city);
+    if (city && !candidateIds.has(poi.id)) {
+      registerCity(city);
+      candidateIds.add(poi.id);
+    }
+  });
+  // Previously auto-scheduled stops also guide the block split, even if the idea list is stale.
+  days.flatMap((day) => day.stops)
+    .filter((stop) => stop.stop_type !== 'rest' && stop.source === 'assistant' && (!stop.poi_id || !candidateIds.has(stop.poi_id)))
+    .forEach((stop) => {
+      registerCity(plannerCity(stop.city));
+    });
+  const existingCounts = new Map<PlannerCity, number>();
+  days.flatMap((day) => day.stops)
+    .filter((stop) => stop.stop_type !== 'rest')
+    .forEach((stop) => {
+      const city = plannerCity(stop.city);
+      if (city) {
+        if (!candidateCounts.has(city)) registerCity(city);
+        existingCounts.set(city, (existingCounts.get(city) || 0) + 1);
+      }
+  });
+
+  const representedCities = cityOrder.filter((city) => (candidateCounts.get(city) || 0) > 0);
+  if (representedCities.length === 0) return null;
+
+  const destinationText = normalizePlannerText(destination);
+  const destinationPosition = (city: PlannerCity) => destinationText.indexOf(city);
+  const destinationOrderedCities = [...representedCities].sort((a, b) => {
+    const aIndex = destinationPosition(a);
+    const bIndex = destinationPosition(b);
+    if (aIndex >= 0 && bIndex >= 0) return aIndex - bIndex;
+    if (aIndex >= 0) return -1;
+    if (bIndex >= 0) return 1;
+    return cityOrder.indexOf(a) - cityOrder.indexOf(b);
+  });
+
+  const existingStopCities = days.map((day) => day.stops
+    .filter((stop) => stop.stop_type !== 'rest' && stop.source !== 'assistant')
+    .map((stop) => plannerCity(stop.city))
+    .filter((city): city is PlannerCity => Boolean(city)));
+  const manualOrder: PlannerCity[] = [];
+  existingStopCities.forEach((cities) => {
+    cities.forEach((city) => {
+      if (!manualOrder.includes(city)) manualOrder.push(city);
+    });
+  });
+  const assistantOrder: PlannerCity[] = [];
+  [...days]
+    .sort((a, b) => a.day_number - b.day_number)
+    .forEach((day) => [...day.stops]
+      .filter((stop) => stop.stop_type !== 'rest' && stop.source === 'assistant')
+      .sort((a, b) => a.sequence - b.sequence)
+      .forEach((stop) => {
+        const city = plannerCity(stop.city);
+        if (city && !assistantOrder.includes(city)) assistantOrder.push(city);
+      }));
+  const preferredOrder = manualOrder.length ? manualOrder : assistantOrder;
+  const routeOrder = preferredOrder.length
+    ? [...preferredOrder, ...destinationOrderedCities.filter((city) => !preferredOrder.includes(city))]
+    : destinationOrderedCities;
+  const cityWeight = (city: PlannerCity) => Math.max(
+    1,
+    (candidateCounts.get(city) || 0) + (existingCounts.get(city) || 0) * 3,
+  );
+  const selectedCities = routeOrder.slice(0, days.length);
+  if (selectedCities.length > days.length || selectedCities.length === 0) return null;
+
+  if (days.length === 1) {
+    const preferred = [...selectedCities].sort((a, b) => cityWeight(b) - cityWeight(a))[0];
+    return [preferred || null];
+  }
+
+  const weights = selectedCities.map(cityWeight);
+  const unallocatedDays = days.length - selectedCities.length;
+  const weightTotal = weights.reduce((total, weight) => total + weight, 0);
+  const exactExtras = weights.map((weight) => unallocatedDays * weight / weightTotal);
+  const allocations = exactExtras.map((extra) => 1 + Math.floor(extra));
+  let remaining = days.length - allocations.reduce((total, count) => total + count, 0);
+  const fractionalOrder = exactExtras.map((extra, index) => ({ index, fraction: extra - Math.floor(extra) }))
+    .sort((a, b) => b.fraction - a.fraction);
+  for (let index = 0; remaining > 0; index += 1, remaining -= 1) {
+    allocations[fractionalOrder[index % fractionalOrder.length].index] += 1;
+  }
+
+  return selectedCities.flatMap((city, index) => Array.from({ length: allocations[index] }, () => city));
+}
+
+export function excludeDismissedPois(pois: Poi[], dismissedIds: ReadonlySet<string>): Poi[] {
+  return pois.filter((poi) => !dismissedIds.has(poi.id));
 }
 
 export interface AutomaticPoiSelection {
@@ -885,7 +1204,7 @@ export function selectAutomaticPois(
   const visitRecommendations = recommendations.filter((poi) => poi.category !== 'luu-tru');
   const people = Math.max(1, trip.peopleCount || 1);
   const dayCount = Math.max(1, days.length);
-  const targetPerDay = pacing === 'Relaxed' ? 2 : pacing === 'Fast' ? 5 : 3;
+  const targetPerDay = dailyVisitStopTarget(pacing);
   const targetStops = dayCount * targetPerDay;
   const activityBudget = trip.costBreakdown?.activities_and_tickets
     ?? (trip.totalBudget != null ? trip.totalBudget * 0.25 : Number.POSITIVE_INFINITY);
@@ -1184,13 +1503,81 @@ export function calculateStopsPathKm(
   for (const stop of stops) {
     if (stop.stop_type === 'rest') continue;
     const coord = resolveStopCoordinates(stop, poiById);
-    if (!coord) continue;
+    if (!coord) {
+      prevCoord = null;
+      continue;
+    }
     if (prevCoord) {
       totalKm += (distanceKm(prevCoord, coord) ?? 0) * factor;
     }
     prevCoord = coord;
   }
   return Math.round(totalKm * 100) / 100;
+}
+
+export interface RouteCoordinateCoverage {
+  totalStops: number;
+  coordinateStops: number;
+  measurableLegs: number;
+  optimizableDays: number;
+}
+
+export function getRouteCoordinateCoverage(
+  days: ItineraryDay[],
+  poiById?: Map<string, Poi>
+): RouteCoordinateCoverage {
+  return days.reduce<RouteCoordinateCoverage>((coverage, day) => {
+    const places = day.stops.filter((stop) => stop.stop_type !== 'rest');
+    let coordinateCount = 0;
+    let measurableLegs = 0;
+    let previousStopHasCoordinates = false;
+    places.forEach((stop) => {
+      const hasCoordinates = resolveStopCoordinates(stop, poiById) !== null;
+      if (hasCoordinates) coordinateCount += 1;
+      if (hasCoordinates && previousStopHasCoordinates) measurableLegs += 1;
+      previousStopHasCoordinates = hasCoordinates;
+    });
+    return {
+      totalStops: coverage.totalStops + places.length,
+      coordinateStops: coverage.coordinateStops + coordinateCount,
+      measurableLegs: coverage.measurableLegs + measurableLegs,
+      optimizableDays: coverage.optimizableDays + Number(
+        places.length >= 3 && coordinateCount === places.length
+      ),
+    };
+  }, { totalStops: 0, coordinateStops: 0, measurableLegs: 0, optimizableDays: 0 });
+}
+
+export function removePoiStopsFromItinerary(
+  days: ItineraryDay[],
+  poiId: string,
+  poiName?: string
+): { days: ItineraryDay[]; removedCount: number } {
+  let removedCount = 0;
+  const nextDays = days.map((day) => {
+    const stops = day.stops.filter((stop) => {
+      const shouldRemove = stop.poi_id === poiId
+        || stop.stop_id === poiId
+        || (stop.stop_type === 'custom' && Boolean(poiName) && stop.title.trim() === poiName?.trim());
+      if (shouldRemove) removedCount += 1;
+      return !shouldRemove;
+    });
+    return { ...day, stops: stops.map((stop, index) => ({ ...stop, sequence: index })) };
+  });
+  return { days: nextDays, removedCount };
+}
+
+export function mergeAssistantStopsIntoIdeas(
+  ideaIds: string[],
+  stops: ItineraryStop[]
+): string[] {
+  const merged = new Set(ideaIds);
+  stops.forEach((stop) => {
+    if (stop.source === 'assistant' && stop.stop_type !== 'rest' && stop.poi_id) {
+      merged.add(stop.poi_id);
+    }
+  });
+  return [...merged];
 }
 
 export function orderSegmentNearestAnd2Opt(
@@ -1201,50 +1588,69 @@ export function orderSegmentNearestAnd2Opt(
   const coords = places.map((stop) => resolveStopCoordinates(stop, poiById));
   if (coords.some((c) => c === null)) return [...places];
 
-  const remaining = places.map((stop, idx) => ({ stop, coord: coords[idx]! }));
-  const ordered = [remaining.shift()!];
-  while (remaining.length) {
-    const current = ordered[ordered.length - 1];
-    let closestIndex = 0;
-    let closestDistance = Number.POSITIVE_INFINITY;
-    remaining.forEach((candidate, index) => {
-      const distance = distanceKm(current.coord, candidate.coord) ?? Number.POSITIVE_INFINITY;
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    });
-    ordered.push(remaining.splice(closestIndex, 1)[0]);
-  }
+  const route = places.map((stop, index) => ({ stop, coord: coords[index]! }));
+  const routeDistance = (ordered: typeof route) => ordered.slice(1).reduce((total, item, index) => (
+    total + (distanceKm(ordered[index].coord, item.coord) ?? 0)
+  ), 0);
+  const orderFromStart = (startIndex: number) => {
+    const remaining = [...route];
+    const ordered = [remaining.splice(startIndex, 1)[0]];
+    while (remaining.length) {
+      const current = ordered[ordered.length - 1];
+      let closestIndex = 0;
+      let closestDistance = Number.POSITIVE_INFINITY;
+      remaining.forEach((candidate, index) => {
+        const distance = distanceKm(current.coord, candidate.coord) ?? Number.POSITIVE_INFINITY;
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestIndex = index;
+        }
+      });
+      ordered.push(remaining.splice(closestIndex, 1)[0]);
+    }
 
-  const legDist = (a: number, b: number) => distanceKm(ordered[a].coord, ordered[b].coord) ?? 0;
-  // # ponytail: Cap 2-opt iterations to 16 passes on typical daily cluster sizes (< 15 stops).
-  for (let pass = 0; pass < 16; pass += 1) {
-    let improved = false;
-    for (let i = 1; i < ordered.length - 1; i += 1) {
-      for (let j = i + 1; j < ordered.length; j += 1) {
-        const before =
-          legDist(i - 1, i) + (j + 1 < ordered.length ? legDist(j, j + 1) : 0);
-        const after =
-          legDist(i - 1, j) + (j + 1 < ordered.length ? legDist(i, j + 1) : 0);
-        if (before - after > 1e-6) {
-          let left = i;
-          let right = j;
-          while (left < right) {
-            const tmp = ordered[left];
-            ordered[left] = ordered[right];
-            ordered[right] = tmp;
-            left += 1;
-            right -= 1;
+    const legDist = (a: number, b: number) => distanceKm(ordered[a].coord, ordered[b].coord) ?? 0;
+    // # ponytail: Cap 2-opt iterations to 16 passes on typical daily cluster sizes (< 15 stops).
+    for (let pass = 0; pass < 16; pass += 1) {
+      let improved = false;
+      for (let i = 1; i < ordered.length - 1; i += 1) {
+        for (let j = i + 1; j < ordered.length; j += 1) {
+          const before =
+            legDist(i - 1, i) + (j + 1 < ordered.length ? legDist(j, j + 1) : 0);
+          const after =
+            legDist(i - 1, j) + (j + 1 < ordered.length ? legDist(i, j + 1) : 0);
+          if (before - after > 1e-6) {
+            let left = i;
+            let right = j;
+            while (left < right) {
+              const tmp = ordered[left];
+              ordered[left] = ordered[right];
+              ordered[right] = tmp;
+              left += 1;
+              right -= 1;
+            }
+            improved = true;
           }
-          improved = true;
         }
       }
+      if (!improved) break;
     }
-    if (!improved) break;
+    return ordered;
+  };
+
+  // Try each start so the route does not depend on the order ideas arrived in.
+  let bestRoute = orderFromStart(0);
+  let bestDistance = routeDistance(bestRoute);
+  for (let startIndex = 1; startIndex < route.length; startIndex += 1) {
+    const candidateRoute = orderFromStart(startIndex);
+    const candidateDistance = routeDistance(candidateRoute);
+    if (candidateDistance < bestDistance - 1e-6) {
+      bestRoute = candidateRoute;
+      bestDistance = candidateDistance;
+    }
   }
 
-  return ordered.map((item) => item.stop);
+  return bestRoute.map((item) => item.stop);
 }
 
 export function reorderNearStops(stops: ItineraryStop[], poiById?: Map<string, Poi>): ItineraryStop[] {
@@ -1630,10 +2036,22 @@ export function checkStopOpeningHours(
 
 type VisitPeriod = 'morning' | 'afternoon' | 'evening';
 
+function normalizeExperienceText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('vi-VN')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 function experienceGroup(poi: Poi | undefined, stop: ItineraryStop): string {
-  const details = `${poi?.sub_category || ''} ${poi?.name || stop.title} ${poi?.category || stop.category || ''}`.toLocaleLowerCase('vi-VN');
-  if (/cafe|cà phê|coffee/.test(details)) return 'cafe';
-  if (/quan-an|quán ăn|nhà hàng|restaurant|food/.test(details)) return 'dining';
+  const details = normalizeExperienceText(
+    `${poi?.sub_category || ''} ${poi?.name || ''} ${stop.title} ${poi?.category || stop.category || ''}`,
+  );
+  if (/cafe|coffee|ca\s*phe|roastery/.test(details)) return 'cafe';
+  if (/quan an|nha hang|restaurant|food/.test(details)) return 'dining';
   return poi?.category || stop.category || 'other';
 }
 
@@ -1652,10 +2070,10 @@ function preferredVisitPeriods(poi?: Poi): VisitPeriod[] {
   }).filter((period, index, periods) => periods.indexOf(period) === index);
   if (recognized.length) return recognized;
 
-  const details = `${poi?.sub_category || ''} ${poi?.name || ''} ${poi?.category || ''}`.toLocaleLowerCase('vi-VN');
-  if (/cafe|cà phê|coffee/.test(details)) return ['afternoon', 'evening', 'morning'];
-  if (/quán ăn|nhà hàng|restaurant|food/.test(details)) return ['afternoon', 'evening', 'morning'];
-  if (/nightlife|bar|pub|đêm|night/.test(details)) return ['evening', 'afternoon', 'morning'];
+  const details = normalizeExperienceText(`${poi?.sub_category || ''} ${poi?.name || ''} ${poi?.category || ''}`);
+  if (/cafe|coffee|caphe|roastery/.test(details)) return ['morning', 'afternoon', 'evening'];
+  if (/quan an|nha hang|restaurant|food/.test(details)) return ['afternoon', 'evening', 'morning'];
+  if (/nightlife|bar|pub|dem|night/.test(details)) return ['evening', 'afternoon', 'morning'];
   return ['morning', 'afternoon', 'evening'];
 }
 
@@ -1704,31 +2122,143 @@ export function optimizeDays(
   days: ItineraryDay[],
   ideas: Poi[],
   dailyCapacity: number,
-  outlines: Array<{ day: number; focus_city?: string; rest_periods?: Array<{ time_range: string; activity: string; duration_minutes: number }> }> = []
+  outlines: Array<{ day: number; focus_city?: string; rest_periods?: Array<{ time_range: string; activity: string; duration_minutes: number }> }> = [],
+  dailyStopLimit = Number.POSITIVE_INFINITY,
+  destination = '',
 ): { days: ItineraryDay[]; assignedCount: number; unassignedCount: number; restCount: number } {
   const next = days.map((day) => ({ ...day, stops: [...day.stops] }));
+  const cityPlan = planDestinationCityBlocks(next, ideas, destination);
+  const poiById = new Map(ideas.map((poi) => [poi.id, poi]));
+  const displacedAssistantStops: Array<{ stop: ItineraryStop; dayIndex: number; stopIndex: number }> = [];
+  const relocatedUserStops: Array<{ stop: ItineraryStop; dayIndex: number }> = [];
+  if (cityPlan) {
+    next.forEach((day, dayIndex) => {
+      const plannedCity = cityPlan[dayIndex];
+      if (!plannedCity) return;
+      day.stops = day.stops.filter((stop, stopIndex) => {
+        const stopCity = stop.stop_type === 'rest' ? null : plannerCity(stop.city);
+        const hasMatchingDay = Boolean(stopCity && cityPlan.includes(stopCity));
+        if (!stopCity || stopCity === plannedCity || !hasMatchingDay) return true;
+        if (stop.source === 'assistant') {
+          displacedAssistantStops.push({ stop, dayIndex, stopIndex });
+          return false;
+        }
+        relocatedUserStops.push({ stop, dayIndex });
+        return false;
+      });
+    });
+
+    relocatedUserStops.forEach(({ stop, dayIndex }) => {
+      const stopCity = plannerCity(stop.city);
+      const matchingDays = cityPlan.flatMap((city, index) => city === stopCity ? [index] : []);
+      matchingDays.sort((a, b) => {
+        const load = (index: number) => next[index].stops
+          .filter((item) => item.stop_type !== 'rest')
+          .reduce((total, item) => total + minutesFor(item), 0);
+        return load(a) - load(b) || Math.abs(a - dayIndex) - Math.abs(b - dayIndex);
+      });
+      const targetDay = matchingDays[0];
+      if (targetDay !== undefined) next[targetDay].stops.push(stop);
+      else next[dayIndex].stops.push(stop);
+    });
+  }
+
+  const displacedAssistantStopIds = new Set(displacedAssistantStops.map(({ stop }) => stop.stop_id));
+  next.forEach((day, dayIndex) => {
+    day.stops = day.stops.filter((stop, stopIndex) => {
+      if (stop.source !== 'assistant' || stop.stop_type === 'rest') return true;
+
+      if (!displacedAssistantStopIds.has(stop.stop_id)) {
+        displacedAssistantStops.push({
+          stop,
+          dayIndex,
+          stopIndex,
+        });
+        displacedAssistantStopIds.add(stop.stop_id);
+      }
+      return false;
+    });
+  });
+
   const placed = new Set(next.flatMap((day) => day.stops.map((stop) => stop.poi_id).filter((id): id is string => Boolean(id))));
   const placedCustomNames = new Set(next.flatMap((day) => day.stops
     .filter((stop) => stop.stop_type === 'custom')
     .map((stop) => stop.title.trim().toLocaleLowerCase('vi-VN'))));
   const pending = ideas.filter((poi) => !placed.has(poi.id) && !(poi.id.startsWith('custom-') && placedCustomNames.has(poi.name.trim().toLocaleLowerCase('vi-VN'))));
-  const poiById = new Map(ideas.map((poi) => [poi.id, poi]));
+  const displacedPoiIds = new Set(displacedAssistantStops
+    .map(({ stop }) => stop.poi_id)
+    .filter((id): id is string => Boolean(id)));
+  const scheduleCandidates: Array<{
+    poi: Poi | null;
+    stop: ItineraryStop;
+    original?: { dayIndex: number; stopIndex: number };
+    rebalanceCafe?: boolean;
+  }> = [
+    ...displacedAssistantStops.map(({ stop, dayIndex, stopIndex }) => {
+      const poi = stop.poi_id ? poiById.get(stop.poi_id) || null : null;
+      return {
+        poi,
+        stop,
+        original: { dayIndex, stopIndex },
+        rebalanceCafe: experienceGroup(poi || undefined, stop) === 'cafe',
+      };
+    }),
+    ...pending
+      .filter((poi) => !displacedPoiIds.has(poi.id))
+      .map((poi) => ({ poi, stop: stopFromPoi(poi, 'assistant') })),
+  ];
   let assignedCount = 0;
   let unassignedCount = 0;
 
-  pending.forEach((poi) => {
-    const candidate = stopFromPoi(poi, 'assistant');
+  scheduleCandidates.forEach(({ poi, stop: candidate, original, rebalanceCafe }) => {
+    const candidateCity = plannerCity(candidate.city);
     const duration = minutesFor(candidate);
     let eligible = next
       .map((day, index) => ({ day, index, stops: day.stops.filter((stop) => stop.stop_type !== 'rest') }))
-      .filter(({ stops }) => stops.reduce((total, stop) => total + minutesFor(stop), 0) + duration <= dailyCapacity);
-    const isCafe = experienceGroup(poi, candidate) === 'cafe';
+      .filter(({ stops }) => stops.length < dailyStopLimit
+        && stops.reduce((total, stop) => total + minutesFor(stop), 0) + duration <= dailyCapacity)
+      .filter(({ index, stops }) => {
+        const plannedCity = cityPlan?.[index];
+        if (!cityPlan) return true;
+        if (!candidateCity || !plannedCity) return false;
+        if (candidateCity !== plannedCity) return false;
+        return stops.every((stop) => {
+          const scheduledCity = plannerCity(stop.city);
+          return !scheduledCity || scheduledCity === candidateCity;
+        });
+      });
+    const candidatePoi = poi || (candidate.poi_id ? poiById.get(candidate.poi_id) : undefined);
+    const isCafe = experienceGroup(candidatePoi || undefined, candidate) === 'cafe';
     if (isCafe) {
       eligible = eligible.filter(({ stops }) =>
-        stops.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length < 2);
+        stops.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length < 1);
     }
     if (!eligible.length) {
-      unassignedCount += 1;
+      if (rebalanceCafe) {
+        unassignedCount += 1;
+        return;
+      }
+      if (original) {
+        const matchingDays = cityPlan?.flatMap((city, index) => city === candidateCity ? [index] : []) || [];
+        matchingDays.sort((a, b) => {
+          const load = (index: number) => next[index].stops
+            .filter((item) => item.stop_type !== 'rest')
+            .reduce((total, item) => total + minutesFor(item), 0);
+          return load(a) - load(b) || Math.abs(a - original.dayIndex) - Math.abs(b - original.dayIndex);
+        });
+        const targetDay = matchingDays[0];
+        if (targetDay !== undefined) {
+          next[targetDay].stops.push(targetDay === original.dayIndex
+            ? candidate
+            : { ...candidate, start_time: null, end_time: null });
+        }
+        else {
+          const sourceDay = next[original.dayIndex];
+          sourceDay.stops.splice(Math.min(original.stopIndex, sourceDay.stops.length), 0, candidate);
+        }
+      } else {
+        unassignedCount += 1;
+      }
       return;
     }
     const canUseCafeFreeDay = isCafe && eligible.some(({ stops }) =>
@@ -1740,17 +2270,40 @@ export function optimizeDays(
     }
     eligible.sort((a, b) => {
       const cityPenalty = (stops: ItineraryStop[]) => stops.length && !stops.some((stop) => stop.city === candidate.city) ? 120 : 0;
-      const proximityPenalty = (stops: ItineraryStop[]) => {
-        const last = [...stops].reverse().find((stop) => stop.latitude != null && stop.longitude != null);
-        return last ? (distanceKm(last, candidate) ?? 0) * 8 : 0;
+      const routePenalty = (stops: ItineraryStop[]) => {
+        const places = [...stops, candidate].filter((stop) => stop.stop_type !== 'rest');
+        const coordinates = places.map((stop) => resolveStopCoordinates(stop, poiById));
+        if (places.length < 2 || coordinates.some((coordinate) => coordinate === null)) return 0;
+
+        const optimized = orderSegmentNearestAnd2Opt(places, poiById);
+        const legs = optimized.slice(1).map((stop, index) => {
+          const from = resolveStopCoordinates(optimized[index], poiById)!;
+          const to = resolveStopCoordinates(stop, poiById)!;
+          return (distanceKm(from, to) ?? 0) * ROAD_DETOUR_FACTOR;
+        });
+        const totalKm = legs.reduce((total, distance) => total + distance, 0);
+        const longestLegKm = Math.max(0, ...legs);
+        // A new day is preferable to making a traveler cross town for one stop.
+        return totalKm * 18 + longestLegKm ** 2 * 5;
       };
       const load = (stops: ItineraryStop[]) => stops.reduce((total, stop) => total + minutesFor(stop), 0);
       const cafeCount = (stops: ItineraryStop[]) => stops.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length;
-      const score = (stops: ItineraryStop[]) => load(stops) + cityPenalty(stops) + proximityPenalty(stops) + cafeCount(stops) * 90;
+      const score = (stops: ItineraryStop[]) => {
+        const hasPlaces = stops.some((stop) => stop.stop_type !== 'rest');
+        const openingDayPenalty = hasPlaces ? 0 : 120;
+        return load(stops) * 0.5
+          + cityPenalty(stops)
+          + routePenalty(stops)
+          + openingDayPenalty
+          + cafeCount(stops) * 90;
+      };
       return score(a.stops) - score(b.stops);
     });
     const selected = eligible[0].day;
-    selected.stops.push(candidate);
+    const selectedDayIndex = eligible[0].index;
+    selected.stops.push(original && selectedDayIndex !== original.dayIndex
+      ? { ...candidate, start_time: null, end_time: null }
+      : candidate);
     assignedCount += 1;
   });
 
@@ -1763,7 +2316,7 @@ export function optimizeDays(
       activity: 'Ăn trưa chậm rãi và nghỉ tại nơi lưu trú hoặc quán cà phê yên tĩnh.',
       duration_minutes: 90,
     }];
-    const proximityOrdered = reorderNearStops(day.stops);
+    const proximityOrdered = reorderNearStops(day.stops, poiById);
     const timedPlaces = setAssistantVisitTimes(proximityOrdered, poiById, periods);
     const orderedPlaces = timedPlaces.sort((a, b) => {
       if (a.start_time && b.start_time) return minutesFromTime(a.start_time) - minutesFromTime(b.start_time);

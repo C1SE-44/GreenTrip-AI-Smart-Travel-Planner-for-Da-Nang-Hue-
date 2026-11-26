@@ -32,6 +32,12 @@ export interface UserTrip {
   copilotChatHistory?: CopilotTripMessage[];
 }
 
+const KNOWN_MISMATCHED_TRIP_COVERS = [
+  'photo-1569154941061-e231b4725ef1',
+  'photo-1559592413-7cec4d0cae2b',
+  'photo-1506929562872-bb421503ef21',
+];
+
 export type ExploreTabId = 'for-you' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua' | 'luu-tru';
 
 export const CATEGORY_META: Record<PoiCategory, { icon: string; label: string }> = {
@@ -47,6 +53,40 @@ export const CITY_CENTERS: Record<string, { lat: number; lng: number }> = {
   'Huế': { lat: 16.4637, lng: 107.5909 },
   default: { lat: 16.0678, lng: 108.2208 },
 };
+
+export function getTripCoverFallback(destination: string): string {
+  const normalizedDestination = destination
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('vi-VN')
+    .replace(/đ/g, 'd');
+  const includesHue = normalizedDestination.includes('hue');
+  const includesDaNang = normalizedDestination.includes('da nang');
+
+  if ((includesHue && includesDaNang) || normalizedDestination.includes('mien trung')) {
+    return '/images/danang_hue_banner.jpg';
+  }
+  if (includesHue) return '/images/landing/hue-hero-640.webp';
+  return '/images/landing/danang-hero-640.webp';
+}
+
+export function resolveTripCoverImage(image: string | undefined, destination: string): string {
+  const candidate = image?.trim();
+
+  if (candidate?.startsWith('/') && !candidate.startsWith('//')) return candidate;
+
+  if (candidate) {
+    try {
+      const parsed = new URL(candidate);
+      const isKnownMismatchedCover = KNOWN_MISMATCHED_TRIP_COVERS.some((photoId) => parsed.pathname.includes(photoId));
+      if (!isKnownMismatchedCover && (parsed.protocol === 'https:' || parsed.protocol === 'http:')) return candidate;
+    } catch {
+      // Invalid image addresses use the local city artwork below.
+    }
+  }
+
+  return getTripCoverFallback(destination);
+}
 
 export function getDistanceFromLatLonInKm(
   lat1: number,
@@ -164,7 +204,7 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
     daysCount: 3,
     tags: ['Đà Nẵng & Huế', '3 Ngày', 'Lộ trình tối ưu OSRM', 'Xanh'],
     createdAt: '2026-11-08',
-    image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+    image: '/images/landing/danang-hero-640.webp',
     ideas: [
       '029a28df-b091-49d9-a911-738572c72464',
       'd58fe815-4aa1-45b2-831a-11b97e130918',
@@ -180,7 +220,7 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
     daysCount: 5,
     tags: ['Đà Nẵng & Huế', '5 Ngày', 'Di sản & Biển xanh'],
     createdAt: '2026-11-08',
-    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
+    image: '/images/danang_hue_banner.jpg',
   },
   {
     id: 'sample-central-vietnam-7d',
@@ -191,6 +231,6 @@ export const SEEDED_SAMPLE_TRIPS: UserTrip[] = [
     daysCount: 7,
     tags: ['Miền Trung', '7 Ngày', 'Tour gia đình'],
     createdAt: '2026-11-08',
-    image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800&auto=format&fit=crop&q=80',
+    image: '/images/danang_hue_banner.jpg',
   },
 ];

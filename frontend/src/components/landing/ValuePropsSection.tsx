@@ -298,7 +298,7 @@ export function ValuePropsSection({ onOpenSample }: ValuePropsSectionProps) {
                       key={f.id}
                       type="button"
                       onClick={() => scrollTo(f.id)}
-                      className={`rounded-full px-4 sm:px-5 py-1.5 text-xs sm:text-[13px] font-semibold transition-all cursor-pointer ${
+                      className={`aui-press rounded-full px-4 sm:px-5 py-1.5 text-xs sm:text-[13px] font-semibold cursor-pointer ${
                         f.id === feature.id
                           ? 'bg-white text-neutral-900 shadow-md'
                           : 'text-white/85 hover:text-white hover:bg-white/10'

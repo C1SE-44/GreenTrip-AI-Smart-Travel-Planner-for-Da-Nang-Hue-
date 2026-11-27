@@ -116,6 +116,14 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [initialView]);
 
   useEffect(() => {
+    if (initialView !== 'chat') return;
+    const q = new URLSearchParams(location.search).get('q');
+    if (q && q.trim()) {
+      setPendingChatPrompt(q.trim());
+    }
+  }, [initialView, location.search]);
+
+  useEffect(() => {
     if (initialView !== 'saved') return;
     const checkSavedPageAccess = () => {
       if (!(localStorage.getItem('access_token') || sessionStorage.getItem('access_token'))) {

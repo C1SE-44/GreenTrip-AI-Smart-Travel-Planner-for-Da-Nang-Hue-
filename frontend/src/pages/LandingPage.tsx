@@ -3,8 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { ArrowUpRight, ArrowRight, Leaf, ArrowDown } from 'lucide-react';
 import { HeroScenes } from '@/components/landing/HeroScenes';
 import { HeroSearchPill } from '@/components/landing/HeroSearchPill';
+import { ProblemComparisonSection } from '@/components/landing/ProblemComparisonSection';
 import { ValuePropsSection } from '@/components/landing/ValuePropsSection';
 import { HiddenGemsSection } from '@/components/landing/HiddenGemsSection';
+import { TravelerStoriesAndAboutSection } from '@/components/landing/TravelerStoriesAndAboutSection';
+import { LandingFaqSection } from '@/components/landing/LandingFaqSection';
 import '@/components/landing/landing.css';
 
 const SampleItineraryModal = lazy(() => import('@/components/landing/SampleItineraryModal').then(m => ({default:m.SampleItineraryModal})));
@@ -69,7 +72,7 @@ export default function LandingPage() {
                 hoặc hỏi Trợ lý AI để thiết kế riêng.
               </p>
 
-              {/* Hero Search Pill */}
+              {/* Hero Search Pill (2 Tabs: Sample vs AI Chat) */}
               <HeroSearchPill
                 city={city}
                 days={days}
@@ -77,77 +80,33 @@ export default function LandingPage() {
                 onDaysChange={setDays}
                 onSubmit={() => openSample()}
               />
-
-              <div className="mt-4 flex items-center justify-center">
-                <Link
-                  to="/chat"
-                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-neutral-900 shadow-xs border border-neutral-200/80 hover:bg-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-                >
-                  <span>Chưa biết đi đâu? Hỏi Trợ lý AI ngay</span>
-                  <ArrowRight size={13} aria-hidden="true" />
-                </Link>
-              </div>
             </div>
 
-            <a href="#core-values" className="hero-scroll" aria-label="Xem GreenTrip giúp bạn thế nào">
+            <a href="#problem" className="hero-scroll" aria-label="Xem vì sao chọn GreenTrip AI">
               <ArrowDown size={20} aria-hidden="true" />
             </a>
           </section>
 
-          {/* SECTION 2: HOW IT WORKS (3 TABS) + TESTIMONIALS */}
+          {/* SECTION 2: PROBLEM VS SOLUTION */}
+          <ProblemComparisonSection onOpenSample={() => openSample()} />
+
+          {/* SECTION 3: SOLUTION / HOW IT WORKS (3 PANELS) */}
           <div id="core-values">
             <ValuePropsSection onOpenSample={() => openSample()} />
           </div>
 
-          {/* SECTION 3: CURATED SPOTS & HIDDEN GEMS (EXACTLY 4 CARDS) */}
+          {/* SECTION 4: PROOF / PORTFOLIO & CURATED SPOTS */}
           <HiddenGemsSection
             onOpenSampleForCity={(c, d) => openSample(c, d)}
           />
 
-          {/* SECTION 3.5: TRUST & FAQ STRIP */}
-          <section
-            aria-label="Câu hỏi thường gặp"
-            className="section-width py-10 md:py-12"
-          >
-            <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
-              <div className="text-center mb-6">
-                <span className="inline-block text-xs font-semibold uppercase tracking-wider text-emerald-800 mb-1.5">
-                  Rõ ràng trước khi xuất phát
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
-                  Mọi thắc mắc phổ biến, trả lời gọn trong 10 giây
-                </h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <article className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-2xs">
-                  <h3 className="text-sm font-semibold text-neutral-900 mb-1.5">
-                    Có mất phí để lập lịch trình không?
-                  </h3>
-                  <p className="text-xs sm:text-[13px] text-neutral-600 leading-relaxed">
-                    Miễn phí hoàn toàn cho việc khám phá địa điểm, hỏi Trợ lý AI, tối ưu tuyến đường xanh và xuất lịch trình PDF.
-                  </p>
-                </article>
-                <article className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-2xs">
-                  <h3 className="text-sm font-semibold text-neutral-900 mb-1.5">
-                    Địa điểm gợi ý có thực tế không?
-                  </h3>
-                  <p className="text-xs sm:text-[13px] text-neutral-600 leading-relaxed">
-                    Hơn 575 địa điểm tại Đà Nẵng và Huế được chuẩn hóa tọa độ, giờ mở cửa và chi phí tham khảo theo từng tuyến đường.
-                  </p>
-                </article>
-                <article className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-2xs">
-                  <h3 className="text-sm font-semibold text-neutral-900 mb-1.5">
-                    Có thể tự chỉnh lại lịch trình AI tạo?
-                  </h3>
-                  <p className="text-xs sm:text-[13px] text-neutral-600 leading-relaxed">
-                    Có. Bạn thêm, bớt hoặc kéo thả đổi thứ tự từng điểm dừng theo ngày và lưu lại trực tiếp trong tài khoản cá nhân.
-                  </p>
-                </article>
-              </div>
-            </div>
-          </section>
+          {/* SECTION 5 & 6: PROOF / TESTIMONIALS + ABOUT US */}
+          <TravelerStoriesAndAboutSection onOpenSample={(c, d) => openSample(c, d)} />
 
-          {/* SECTION 4: EDITORIAL CLOSING PHOTO CTA */}
+          {/* SECTION 7: INTERACTIVE FAQ ACCORDION */}
+          <LandingFaqSection />
+
+          {/* SECTION 8: EDITORIAL CLOSING PHOTO CTA */}
           <section className="closing-photo section-width">
             <img
               src="/images/landing/closing-resort-1400.webp"
@@ -166,37 +125,154 @@ export default function LandingPage() {
               <p>
                 Chọn nơi muốn đến, số ngày bạn có. GreenTrip làm phần còn lại.
               </p>
-              <button className="button" onClick={() => openSample()}>
-                Xem lịch trình mẫu <ArrowRight size={18} aria-hidden="true" />
-              </button>
+              <div className="closing-photo-actions">
+                <button className="button aui-press" onClick={() => openSample()}>
+                  Xem lịch trình mẫu <ArrowRight size={18} aria-hidden="true" />
+                </button>
+                <Link to="/chat" className="closing-photo-secondary aui-press">
+                  Hỏi Trợ lý AI <ArrowUpRight size={16} aria-hidden="true" />
+                </Link>
+              </div>
             </div>
           </section>
         </main>
 
-        {/* FOOTER */}
-        <footer className="site-footer section-width">
-          <div>
-            <a className="logo" href="#">
-              <Leaf size={25} aria-hidden="true" />
-              greentrip
-            </a>
-            <p>
-              Du lịch thông minh, bắt đầu từ những lựa chọn của bạn.
-              <br />
-              Đà Nẵng · Huế
-            </p>
+        {/* SECTION 9: STRUCTURED MULTI-COLUMN FOOTER */}
+        <footer className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 border-t border-neutral-200/80 pt-14 pb-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10">
+            <div className="lg:col-span-5">
+              <a className="logo" href="#">
+                <Leaf size={25} aria-hidden="true" />
+                greentrip
+              </a>
+              <p className="mt-4 max-w-sm text-sm text-[#575048] leading-relaxed">
+                Du lịch thông minh &amp; bền vững cho hành trình Đà Nẵng – Huế. Tối ưu cung đường xanh từ hơn 575 địa điểm chuẩn hóa.
+              </p>
+            </div>
+
+            <div className="lg:col-span-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-900 mb-3">
+                Khám phá
+              </h2>
+              <ul className="space-y-1 text-sm">
+                <li>
+                  <Link
+                    to="/explore"
+                    className="aui-press inline-flex min-h-[40px] items-center !text-[#575048] hover:!text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Khám phá điểm đến
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/chat"
+                    className="aui-press inline-flex min-h-[40px] items-center !text-[#575048] hover:!text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Trợ lý AI
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/planner"
+                    className="aui-press inline-flex min-h-[40px] items-center gap-1 !text-[#575048] hover:!text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    <span>Lập lịch trình</span>
+                    <ArrowUpRight size={14} aria-hidden="true" />
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/saved"
+                    className="aui-press inline-flex min-h-[40px] items-center !text-[#575048] hover:!text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Địa điểm đã lưu
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div className="lg:col-span-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-900 mb-3">
+                Lịch trình gợi ý
+              </h2>
+              <ul className="space-y-1 text-sm">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => openSample('danang', 2)}
+                    className="aui-press inline-flex min-h-[40px] items-center text-left !text-[#575048] hover:!text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Đà Nẵng 2 ngày
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => openSample('hue', 2)}
+                    className="aui-press inline-flex min-h-[40px] items-center text-left !text-[#575048] hover:!text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Huế Cố Đô 2 ngày
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => openSample('danang_hue', 3)}
+                    className="aui-press inline-flex min-h-[40px] items-center text-left !text-[#575048] hover:!text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Liên tuyến Đà Nẵng – Huế 3 ngày
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div className="lg:col-span-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-900 mb-3">
+                Tìm hiểu thêm
+              </h2>
+              <ul className="space-y-1 text-sm">
+                <li>
+                  <a
+                    href="#problem"
+                    className="aui-press inline-flex min-h-[40px] items-center !text-[#575048] hover:!text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Vì sao chọn GreenTrip
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#core-values"
+                    className="aui-press inline-flex min-h-[40px] items-center !text-[#575048] hover:!text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Cách hoạt động
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#about-us"
+                    className="aui-press inline-flex min-h-[40px] items-center !text-[#575048] hover:!text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Về chúng tôi
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#faq"
+                    className="aui-press inline-flex min-h-[40px] items-center !text-[#575048] hover:!text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Câu hỏi thường gặp
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
-          <div className="footer-links">
-            <Link to="/explore">Khám phá điểm đến</Link>
-            <Link to="/chat">Trợ lý AI</Link>
-            <button onClick={() => openSample()}>Xem lịch mẫu</button>
-            <Link to="/planner">
-              Lập lịch trình <ArrowUpRight size={14} aria-hidden="true" />
-            </Link>
+
+          <div className="mt-10 pt-6 border-t border-neutral-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[#575048]">
+            <span>
+              © {new Date().getFullYear()} GreenTrip AI · Dự án du lịch thông minh &amp; xanh.
+            </span>
+            <span>Đà Nẵng · Đèo Hải Vân · Huế</span>
           </div>
-          <span className="copyright">
-            © {new Date().getFullYear()} GreenTrip AI · Dự án du lịch thông minh &amp; xanh.
-          </span>
         </footer>
 
         {/* RICH SAMPLE ITINERARY MODAL */}

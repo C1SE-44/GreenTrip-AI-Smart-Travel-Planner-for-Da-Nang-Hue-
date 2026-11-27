@@ -124,7 +124,7 @@ def test_get_carbon_estimate(registry):
     )
     assert res["success"] is True
     data = res["data"]
-    assert data["co2_kg"] == 3.4
+    assert data["co2_kg"] == 3.42  # Updated: hệ số xe hơi 171 g/km → 20 km × 0.171 = 3.42 kg (BUG-01)
     assert data["potential_savings_co2_kg"] > 0
 
 

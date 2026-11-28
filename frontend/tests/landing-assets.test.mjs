@@ -23,7 +23,11 @@ test('Studio cards ship complete local artwork within a 3 MB budget',()=>{
 
 test('trip cover images use destination-specific local fallbacks for broken or unsafe URLs',async()=>{
   const source=readFileSync(path.join(root,'src/components/explore/exploreUtils.ts'),'utf8');
-  const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+  const standaloneSource=source.replace(
+    /^import \{ buildDefaultMindtripItinerary, type CopilotTripMessage \} from '@\/components\/planner\/copilotTripData';\s*$/m,
+    'const buildDefaultMindtripItinerary = () => [];',
+  );
+  const compiled=ts.transpileModule(standaloneSource,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
   const {getTripCoverFallback,resolveTripCoverImage}=await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 
   const danang='/images/landing/danang-hero-640.webp';

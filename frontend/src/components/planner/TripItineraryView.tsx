@@ -41,12 +41,16 @@ import {
   type Poi,
   type PoiCategory,
   type PoiCity,
+  computeGreenScoreBreakdown,
+  evaluateCrowdProfile,
   evaluateLocalAuthentic,
   getDeterministicImage,
+  isTimeInCrowdPeakWindow,
   normalizeCategory,
   normalizeCity,
   normalizePoi,
 } from '@/data/pois';
+import ExplanationModal from '@/components/poi/ExplanationModal';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
 import CentralVietnamAdvisoryBanner from '@/components/planner/CentralVietnamAdvisoryBanner';
@@ -79,6 +83,7 @@ import {
   optimizeItineraryRouteOrder,
   estimateCarbonFootprint,
   formatCarbonAmount,
+  detectSameDayIntercityConflict,
   checkStopOpeningHours,
   isPoiOutdoor,
   suggestIndoorAlternativesForDay,
@@ -86,6 +91,8 @@ import {
   getStopShortReason,
   computeTripBudgetSummary,
   computeDayFatigue,
+  computeItineraryResearchMetrics,
+  optimizeItineraryWithTradeoff,
   clearOverlappingVisitTimes,
   dailyVisitCapacity,
   excludeDismissedPois,
@@ -93,6 +100,7 @@ import {
   selectAutomaticPois,
   optimizeDays,
   buildFallbackRoadCorridor,
+  type OptimizationTradeoffMode,
   type RouteTransportMode,
   type TripItinerary,
   type ItineraryDay,
@@ -223,8 +231,8 @@ export default function TripItineraryView({
     }
   }, [dismissedRecommendationIds, trip.id]);
 
-  // State giao diện
-  const [expandIdeas, setExpandIdeas] = useState(true);
+  // State giao diện (Ý tưởng thu gọn mặc định khi đã có lịch trình để ưu tiên hiển thị Ngày 1 ngay tầm mắt)
+  const [expandIdeas, setExpandIdeas] = useState<boolean>(() => !trip.itineraryOutline?.length);
   const [ideasFilter, setIdeasFilter] = useState<'all' | 'quan-an' | 'di-tich' | 'canh-quan' | 'chua' | 'luu-tru' | 'unplaced'>('all');
   const [showIdeasFilterMenu, setShowIdeasFilterMenu] = useState(false);
   const [showIdeasMoreMenu, setShowIdeasMoreMenu] = useState(false);
@@ -325,7 +333,7 @@ export default function TripItineraryView({
             name: customName,
             city: /hue|huế/i.test(trip.destination) ? 'Huế' : 'Đà Nẵng',
             category: 'quan-an' as PoiCategory,
-            image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+            image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/17c7f7b4-2b14-4939-a1f6-4da042a320a7.webp',
             address: 'Địa điểm tự thêm',
             description: 'Địa điểm do bạn thêm vào chuyến đi.',
             lat: 16.0678,
@@ -939,9 +947,13 @@ export default function TripItineraryView({
   const tripRouteSummary = useMemo(() => {
     let totalRoadKm = 0;
     let openingConflictCount = 0;
+    let intercityConflictCount = 0;
 
     for (const day of plan.days) {
       totalRoadKm += calculateStopsPathKm(day.stops, poiById, true);
+      if (detectSameDayIntercityConflict(day, poiById)) {
+        intercityConflictCount += 1;
+      }
       for (const stop of day.stops) {
         if (stop.stop_type === 'rest') continue;
         const matched = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
@@ -960,10 +972,23 @@ export default function TripItineraryView({
       routeCoverage,
       hasMeasurableDistance: routeCoverage.measurableLegs > 0,
       openingConflictCount,
+      intercityConflictCount,
     };
   }, [plan.days, poiById, transportMode]);
 
-  // Tối ưu cụm điểm giảm zig-zag cho toàn bộ các ngày
+  const [tradeoffMode, setTradeoffMode] = useState<OptimizationTradeoffMode>('fast');
+  const [lastOptimizeUndo, setLastOptimizeUndo] = useState<{
+    days: ItineraryDay[];
+    transportMode: RouteTransportMode;
+  } | null>(null);
+  const [explainPoiTarget, setExplainPoiTarget] = useState<Poi | null>(null);
+
+  const researchMetrics = useMemo(
+    () => computeItineraryResearchMetrics(plan.days, poiById, transportMode),
+    [plan.days, poiById, transportMode]
+  );
+
+  // Tối ưu cụm điểm giảm zig-zag cho toàn bộ các ngày (có lưu snapshot Hoàn tác)
   const handleOptimizeAllDays = () => {
     const coverage = getRouteCoordinateCoverage(plan.days, poiById);
     if (coverage.optimizableDays === 0) {
@@ -974,8 +999,13 @@ export default function TripItineraryView({
       );
       return;
     }
+    const prevSnapshot = {
+      days: plan.days.map((day) => ({ ...day, stops: day.stops.map((stop) => ({ ...stop })) })),
+      transportMode,
+    };
     const res = optimizeItineraryRouteOrder(plan.days, poiById);
     if (res.reorderedDaysCount > 0) {
+      setLastOptimizeUndo(prevSnapshot);
       persistPlan({ ...plan, days: res.days });
       const savedCarbon = estimateCarbonFootprint(res.totalSavedKm * 1000, transportMode);
       setOptimizeFeedback(
@@ -984,6 +1014,59 @@ export default function TripItineraryView({
     } else {
       setOptimizeFeedback('Thứ tự các điểm hiện tại đã tối ưu theo cụm gần nhất, chưa phát hiện đoạn vòng lặp.');
     }
+  };
+
+  // Tối ưu đa mục tiêu theo chế độ đánh đổi (Nhanh nhất / Tiết kiệm / Xanh & Ít đông) + Hoàn tác
+  const handleApplyTradeoffOptimize = (mode: OptimizationTradeoffMode) => {
+    setTradeoffMode(mode);
+    const prevSnapshot = {
+      days: plan.days.map((d) => ({ ...d, stops: d.stops.map((s) => ({ ...s })) })),
+      transportMode,
+    };
+    const res = optimizeItineraryWithTradeoff(
+      plan.days,
+      allPois,
+      mode,
+      transportMode,
+      trip.peopleCount || 2
+    );
+    setLastOptimizeUndo(prevSnapshot);
+    if (res.recommendedTransportMode !== transportMode) {
+      setTransportMode(res.recommendedTransportMode);
+    }
+    persistPlan({ ...plan, days: res.days });
+    setOptimizeFeedback(res.summaryText);
+  };
+
+  const handleUndoOptimize = () => {
+    if (!lastOptimizeUndo) return;
+    persistPlan({ ...plan, days: lastOptimizeUndo.days });
+    setTransportMode(lastOptimizeUndo.transportMode);
+    setLastOptimizeUndo(null);
+    setOptimizeFeedback('Đã hoàn tác về phương án lịch trình và phương tiện trước đó.');
+  };
+
+  // Dời nhanh điểm trùng giờ cao điểm sang khung sáng sớm vắng khách (07:30)
+  const handleShiftStopOffPeak = (dayNumber: number, stopId: string) => {
+    const nextDays = plan.days.map((d) => {
+      if (d.day_number !== dayNumber) return d;
+      const updatedStops = d.stops.map((s) => {
+        if (s.stop_id !== stopId) return s;
+        const dur = Math.max(45, s.duration_minutes || 90);
+        const endMins = 7 * 60 + 30 + dur;
+        const hh = String(Math.floor(endMins / 60)).padStart(2, '0');
+        const mm = String(endMins % 60).padStart(2, '0');
+        return {
+          ...s,
+          start_time: '07:30',
+          end_time: `${hh}:${mm}`,
+          comment: s.comment ? `${s.comment} · Đã dời sớm tránh giờ cao điểm` : 'Đã dời sớm 07:30 để tránh giờ cao điểm',
+        };
+      });
+      return { ...d, stops: updatedStops };
+    });
+    persistPlan({ ...plan, days: nextDays });
+    setOptimizeFeedback('Đã dời điểm tham quan sang khung 07:30 sáng sớm để tránh giờ cao điểm.');
   };
 
   // Tối ưu cụm điểm giảm zig-zag cho một ngày cụ thể
@@ -1435,7 +1518,7 @@ export default function TripItineraryView({
         name,
         city: /hue|huế/i.test(trip.destination) ? 'Huế' : 'Đà Nẵng',
         category: 'quan-an',
-        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+        image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ff000b3f-3970-4eb9-9ba4-32a800f2d800.webp',
         address: 'Địa điểm tự thêm',
         description: '',
         lat: 16.0678,
@@ -1503,7 +1586,7 @@ export default function TripItineraryView({
             name: stop.title,
             city: (stop.city as PoiCity) || 'Đà Nẵng',
             category: (stop.category as PoiCategory) || 'quan-an',
-            image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+            image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/cce05cd8-9e38-460a-b60c-485fb94261e2.webp',
             address: stop.address || '',
             description: '',
             lat: stop.latitude,
@@ -1812,6 +1895,16 @@ export default function TripItineraryView({
           advisories={evaluateCentralVietnamAdvisories(trip, plan, allPois)}
           onOpenChecklist={() => setIsChecklistModalOpen(true)}
           onAddHueDay={handleAddDay}
+          onSwapOutdoorForRain={() => {
+            const targetDay =
+              plan.days.find(
+                (d) =>
+                  suggestIndoorAlternativesForDay(d, allPois, usedPoiIds, trip.destination).length > 0
+              ) || plan.days[0];
+            if (targetDay) {
+              handleSwapRainyDay(targetDay.day_number);
+            }
+          }}
           className="px-4 sm:px-6 py-2 bg-white border-b border-gray-100 shrink-0"
         />
       )}
@@ -2303,6 +2396,12 @@ export default function TripItineraryView({
                     transportMode={transportMode}
                     onChangeTransportMode={setTransportMode}
                     onOptimizeAllDays={handleOptimizeAllDays}
+                    intercityConflictCount={tripRouteSummary.intercityConflictCount}
+                    tradeoffMode={tradeoffMode}
+                    onApplyTradeoffOptimize={handleApplyTradeoffOptimize}
+                    canUndoOptimize={Boolean(lastOptimizeUndo)}
+                    onUndoOptimize={handleUndoOptimize}
+                    researchMetrics={researchMetrics}
                     budgetSummary={budgetSummary}
                     peopleCount={trip.peopleCount || 1}
                     formatVnd={formatVnd}
@@ -2648,26 +2747,62 @@ export default function TripItineraryView({
                                             </div>
                                           )}
 
-                                        {!isRest && matchedPoi && evaluateLocalAuthentic(matchedPoi).isCrowded && (
-                                          <div className="no-print mt-1.5 flex flex-wrap items-center gap-2">
-                                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900">
-                                              Khu vực đông khách
-                                            </span>
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setPreferLocalAuthentic(true);
-                                                setNearbyPickerTarget({
-                                                  dayNumber: day.day_number,
-                                                  stopId: stop.stop_id,
-                                                });
-                                              }}
-                                              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline underline-offset-2 cursor-pointer"
-                                            >
-                                              Đổi điểm bản địa ít đông
-                                            </button>
-                                          </div>
-                                        )}
+                                        {!isRest && matchedPoi && (() => {
+                                          const crowd = evaluateCrowdProfile(matchedPoi);
+                                          const inPeak = isTimeInCrowdPeakWindow(stop.start_time, crowd);
+                                          const isCrowded = crowd.level === 'high' || evaluateLocalAuthentic(matchedPoi).isCrowded;
+                                          return (
+                                            <div className="no-print mt-1.5 flex flex-wrap items-center gap-2">
+                                              {isCrowded && (
+                                                <span
+                                                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                                                    inPeak
+                                                      ? 'border-rose-300 bg-rose-50 text-rose-900'
+                                                      : 'border-amber-200 bg-amber-50 text-amber-900'
+                                                  }`}
+                                                  title={crowd.offPeakTip || 'Điểm phổ biến thường đông vào khung giờ cao điểm'}
+                                                >
+                                                  {inPeak
+                                                    ? `Quá tải giờ cao điểm (${crowd.peakHours})`
+                                                    : crowd.peakHours
+                                                      ? `Đông khách (${crowd.peakHours})`
+                                                      : 'Khu vực đông khách'}
+                                                </span>
+                                              )}
+                                              {inPeak && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleShiftStopOffPeak(day.day_number, stop.stop_id)}
+                                                  className="text-xs font-bold text-amber-900 hover:text-black underline underline-offset-2 cursor-pointer"
+                                                >
+                                                  Dời sang 07:30 (giờ vắng)
+                                                </button>
+                                              )}
+                                              {isCrowded && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setPreferLocalAuthentic(true);
+                                                    setNearbyPickerTarget({
+                                                      dayNumber: day.day_number,
+                                                      stopId: stop.stop_id,
+                                                    });
+                                                  }}
+                                                  className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline underline-offset-2 cursor-pointer"
+                                                >
+                                                  Đổi điểm bản địa ít đông
+                                                </button>
+                                              )}
+                                              <button
+                                                type="button"
+                                                onClick={() => setExplainPoiTarget(matchedPoi)}
+                                                className="text-xs font-semibold text-neutral-600 hover:text-emerald-900 underline underline-offset-2 cursor-pointer"
+                                              >
+                                                Vì sao chọn?
+                                              </button>
+                                            </div>
+                                          );
+                                        })()}
                                       </div>
 
                                       {/* Ghi chú Note */}
@@ -2937,10 +3072,22 @@ export default function TripItineraryView({
                                             : Footprints;
                                     return (
                                       <div className="min-h-[44px] ml-7 pl-6 border-l-2 border-[#ddd] flex flex-wrap items-center gap-2.5 text-xs text-gray-700 font-semibold animate-fadeIn">
-                                        <LegIcon size={13} className="text-emerald-700 shrink-0" aria-hidden="true" />
-                                        <span>~{transitDistKm.toFixed(1)} km</span>
-                                        <span className="text-gray-400" aria-hidden="true">·</span>
-                                        <span className="text-emerald-800">{formatCarbonAmount(legCarbon.co2Grams)}</span>
+                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold shadow-2xs">
+                                          <LegIcon size={13} className="text-emerald-700 shrink-0" aria-hidden="true" />
+                                          <span>
+                                            {transportMode === 'driving'
+                                              ? 'Ô tô'
+                                              : transportMode === 'motorcycle'
+                                                ? 'Xe máy'
+                                                : transportMode === 'transit'
+                                                  ? 'Xe buýt điện'
+                                                  : 'Đi bộ'}
+                                          </span>
+                                          <span className="text-gray-300">·</span>
+                                          <span>~{transitDistKm.toFixed(1)} km</span>
+                                          <span className="text-gray-300">·</span>
+                                          <span className="text-emerald-800">{formatCarbonAmount(legCarbon.co2Grams)}</span>
+                                        </div>
                                         <a
                                           href={getGoogleMapsDirectionsUrl(
                                             stop.latitude ?? matchedPoi?.lat,
@@ -3032,6 +3179,7 @@ export default function TripItineraryView({
         ════════════════════════════════════════════════════════ */}
         {!isDrawerMode && (
           <ItineraryMapPanel
+            tripId={trip.id}
             isMapExpanded={isMapExpanded}
             onToggleExpand={() => {
               setIsMapExpanded((prev) => !prev);
@@ -3108,6 +3256,16 @@ export default function TripItineraryView({
           onChangeValue={setDayEditorValue}
           onClose={() => setDayEditor(null)}
           onSave={saveDayEditor}
+        />
+      )}
+
+      {explainPoiTarget && (
+        <ExplanationModal
+          poiId={explainPoiTarget.id}
+          poiName={explainPoiTarget.name}
+          explanationSnippet={computeGreenScoreBreakdown(explainPoiTarget).summaryReason}
+          isOpen={Boolean(explainPoiTarget)}
+          onClose={() => setExplainPoiTarget(null)}
         />
       )}
     </div>

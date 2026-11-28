@@ -145,7 +145,7 @@ def handle_smart_concierge(
                         OR p.name ILIKE '%%huyền không%%'
                         OR p.name ILIKE '%%từ hiếu%%'
                       )
-                    ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
+                    ORDER BY CASE WHEN p.sub_category IN ('craft_village', 'craft_villages', 'eco_village', 'eco_lodge', 'homestay', 'green_vegetarian', 'traditional_noodles') THEN 0 ELSE 1 END, p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
                     LIMIT 4;
                 """
                 cur.execute(query, (city_pattern, is_both))
@@ -161,7 +161,7 @@ def handle_smart_concierge(
                         JOIN public.cities ci ON p.city_id = ci.city_id
                         WHERE p.is_active IS NOT FALSE AND (ci.name ILIKE %s OR %s = TRUE)
                           AND (c.name ILIKE '%%cảnh quan%%' OR c.name ILIKE '%%di tích%%')
-                        ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
+                        ORDER BY CASE WHEN p.sub_category IN ('craft_village', 'craft_villages', 'eco_village', 'lagoon_waterway', 'wetland_lagoon_rivers') THEN 0 ELSE 1 END, p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
                         LIMIT 1
                     )
                     UNION ALL
@@ -175,7 +175,7 @@ def handle_smart_concierge(
                         JOIN public.cities ci ON p.city_id = ci.city_id
                         WHERE p.is_active IS NOT FALSE AND (ci.name ILIKE %s OR %s = TRUE)
                           AND c.name ILIKE '%%ẩm thực%%'
-                        ORDER BY p.satisfaction_score DESC NULLS LAST, p.green_score DESC NULLS LAST
+                        ORDER BY CASE WHEN p.sub_category IN ('green_vegetarian', 'traditional_noodles', 'street_bites_rolls') THEN 0 ELSE 1 END, p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
                         LIMIT 1
                     )
                     UNION ALL
@@ -201,7 +201,7 @@ def handle_smart_concierge(
                 name = r[1]
                 category = r[2]
                 sub_cat = r[3] or "điểm đến"
-                image_url = r[4] or "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80"
+                image_url = r[4] or "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp"
                 green_score = format_green_score(r[5])
                 rating = float(r[6]) if r[6] is not None else 4.8
                 address = r[7] or "Đang cập nhật địa chỉ"
@@ -272,8 +272,31 @@ def handle_smart_concierge(
             "Phần lớn điểm sinh thái & làng nghề miễn phí hoặc vé 20.000 – 100.000 ₫/người.",
         )
 
+    from app.trips.copilot_enrichment import estimate_trip_budget_summary, recommend_transport_for_leg
+
+    budget_calc = estimate_trip_budget_summary(
+        days_count=days,
+        num_people=trip_context.num_people,
+        budget_tier=trip_context.budget_tier,
+        total_budget=trip_context.total_budget,
+    )
+    transport_tip = recommend_transport_for_leg(
+        distance_km=6.0,
+        num_people=trip_context.num_people,
+        constraints=trip_context.active_constraints,
+        is_intercity=is_both,
+    )
+    poi_lines = "\n".join(
+        f"- **{p.name}** ({p.city or dest}) — Green Score **{p.green_score}/100**: {p.swap_reason}"
+        for p in suggested_pois[:3]
+    )
+    poi_section = f"\n\n**Gợi ý điểm đến xanh & cộng đồng nổi bật tại {dest}:**\n{poi_lines}" if poi_lines else ""
+
     reply_text = (
-        f"Dựa trên hành trình **{dest} ({days} ngày)**, mình gợi ý trước một số điểm dừng đạt điểm xanh cao và được đánh giá tốt để bạn cân nhắc thêm vào lịch trình:"
+        f"Dựa trên ngữ cảnh **{dest} · {days} ngày · {budget_calc['num_people']} người · {budget_calc['tier_label']}**, "
+        f"mình đã lọc sẵn các điểm cộng đồng/bản địa chuẩn xanh (xen kẽ làng nghề, quán địa phương thay vì chỉ lặp lại điểm đại trà):{poi_section}\n\n"
+        f"- **Dự trù chi phí**: {budget_calc['summary_text']}\n"
+        f"- **Phương tiện phù hợp**: {transport_tip}."
     )
 
     return (
@@ -282,6 +305,6 @@ def handle_smart_concierge(
         "view_on_map",
         prompts,
         None,
-        None,
-        None,
+        "Ưu tiên điểm bản địa có mật độ khách hợp lý và phương tiện ít phát thải theo nhóm thực tế.",
+        budget_calc["summary_text"],
     )

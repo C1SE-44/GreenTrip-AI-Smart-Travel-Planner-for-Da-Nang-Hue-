@@ -400,6 +400,7 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
 _POSTGRES_RETRY_COOLDOWN_SECONDS = 30.0
 _POSTGRES_RETRY_AFTER: float = 0.0
 _PG_COORDS_PATCHED = False
+_PG_MIGRATION_019_PATCHED = False
 
 
 def get_connection() -> Any:
@@ -408,7 +409,7 @@ def get_connection() -> Any:
     Nếu PostgreSQL đã được cấu hình nhưng không kết nối được, trả lỗi để API không báo lưu
     thành công khi dữ liệu chưa được đồng bộ lên máy chủ.
     """
-    global _POSTGRES_RETRY_AFTER, _PG_COORDS_PATCHED
+    global _POSTGRES_RETRY_AFTER, _PG_COORDS_PATCHED, _PG_MIGRATION_019_PATCHED
     settings = get_settings()
     database_url = settings.DATABASE_URL.strip()
 
@@ -437,6 +438,19 @@ def get_connection() -> Any:
                     if hasattr(pg_conn, "rollback"):
                         pg_conn.rollback()
             _POSTGRES_RETRY_AFTER = 0.0
+
+            if not _PG_MIGRATION_019_PATCHED and hasattr(pg_conn, "cursor"):
+                try:
+                    with pg_conn.cursor() as cur:
+                        cur.execute("ALTER TABLE public.itinerary_stops ADD COLUMN IF NOT EXISTS transport_mode VARCHAR(50);")
+                        cur.execute("ALTER TABLE public.itinerary_days ADD COLUMN IF NOT EXISTS custom_segment_modes TEXT;")
+                    pg_conn.commit()
+                    _PG_MIGRATION_019_PATCHED = True
+                except Exception as m_exc:
+                    logger.warning("Postgres migration 019 check: %s", m_exc)
+                    if hasattr(pg_conn, "rollback"):
+                        pg_conn.rollback()
+
             return pg_conn
         except Exception as error:
             _POSTGRES_RETRY_AFTER = time.monotonic() + _POSTGRES_RETRY_COOLDOWN_SECONDS

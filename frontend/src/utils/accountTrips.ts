@@ -24,26 +24,63 @@ function readTrips(storage: Storage, key: string): UserTrip[] | null {
   }
 }
 
-export function loadGuestTrips(storage: Storage): UserTrip[] {
+export function readGuestTrips(storage: Storage): UserTrip[] {
   return readTrips(storage, GUEST_TRIPS_STORAGE_KEY) || [];
+}
+
+export function loadGuestTrips(storage: Storage): UserTrip[] {
+  return readGuestTrips(storage);
+}
+
+export function writeGuestTrips(storage: Storage, trips: UserTrip[]): void {
+  const privateGuestTrips = trips.filter((trip) => !trip.id.startsWith('sample-'));
+  try {
+    if (privateGuestTrips.length === 0) {
+      storage.removeItem(GUEST_TRIPS_STORAGE_KEY);
+    } else {
+      storage.setItem(GUEST_TRIPS_STORAGE_KEY, JSON.stringify(privateGuestTrips));
+    }
+  } catch {
+    // Ignore storage quota errors.
+  }
 }
 
 export function saveGuestTrips(storage: Storage, trips: UserTrip[]): boolean {
   try {
     const guestTrips = trips.filter((trip) => !trip.id.startsWith('sample-'));
-    storage.setItem(GUEST_TRIPS_STORAGE_KEY, JSON.stringify(guestTrips));
+    if (guestTrips.length === 0) storage.removeItem(GUEST_TRIPS_STORAGE_KEY);
+    else storage.setItem(GUEST_TRIPS_STORAGE_KEY, JSON.stringify(guestTrips));
     return true;
   } catch {
     return false;
   }
 }
 
+export function clearGuestTrips(storage: Storage): void {
+  try {
+    storage.removeItem(GUEST_TRIPS_STORAGE_KEY);
+  } catch {
+    // Ignore storage access errors.
+  }
+}
+
+export function mergeGuestTripsIntoOwned(
+  owned: UserTrip[],
+  guestTrips: UserTrip[]
+): { merged: UserTrip[]; newlyMerged: UserTrip[] } {
+  const ownedIds = new Set(owned.map((trip) => trip.id));
+  const newlyMerged: UserTrip[] = [];
+  for (const guestTrip of guestTrips) {
+    if (!guestTrip.id.startsWith('sample-') && !ownedIds.has(guestTrip.id)) {
+      ownedIds.add(guestTrip.id);
+      newlyMerged.push(guestTrip);
+    }
+  }
+  return { merged: [...newlyMerged, ...owned], newlyMerged };
+}
+
 export function loadCachedAccountTrips(storage: Storage, userId: string): UserTrip[] {
-  return mergePendingDrafts(
-    storage,
-    userId,
-    readTrips(storage, tripStorageKey(userId)) || []
-  );
+  return mergePendingDrafts(storage, userId, readTrips(storage, tripStorageKey(userId)) || []);
 }
 
 function pendingItineraryKeyPrefix(userId: string): string {
@@ -59,13 +96,11 @@ function loadPendingAccountTrips(storage: Storage, userId: string, cached: UserT
     for (let index = 0; index < storage.length; index += 1) {
       const key = storage.key(index);
       if (!key?.startsWith(prefix)) continue;
-
       try {
         const raw = storage.getItem(key);
         if (!raw) continue;
         const value: unknown = JSON.parse(raw);
         if (!value || typeof value !== 'object') continue;
-
         const itinerary = value as {
           trip_id?: unknown;
           title?: unknown;
@@ -74,17 +109,11 @@ function loadPendingAccountTrips(storage: Storage, userId: string, cached: UserT
           start_date?: unknown;
         };
         if (
-          typeof itinerary.trip_id !== 'string' ||
-          itinerary.trip_id.startsWith('sample-') ||
-          key !== `${prefix}${itinerary.trip_id}` ||
-          typeof itinerary.title !== 'string' ||
-          typeof itinerary.destination !== 'string' ||
-          typeof itinerary.days_count !== 'number' ||
-          !Number.isInteger(itinerary.days_count) ||
-          itinerary.days_count < 1 ||
-          itinerary.days_count > 31
+          typeof itinerary.trip_id !== 'string' || itinerary.trip_id.startsWith('sample-') ||
+          key !== `${prefix}${itinerary.trip_id}` || typeof itinerary.title !== 'string' ||
+          typeof itinerary.destination !== 'string' || typeof itinerary.days_count !== 'number' ||
+          !Number.isInteger(itinerary.days_count) || itinerary.days_count < 1 || itinerary.days_count > 31
         ) continue;
-
         const cachedTrip = cachedById.get(itinerary.trip_id);
         pending.push({
           ...cachedTrip,
@@ -101,9 +130,8 @@ function loadPendingAccountTrips(storage: Storage, userId: string, cached: UserT
       }
     }
   } catch {
-    // Keep the account list usable when browser storage is disabled or unavailable.
+    // Keep the account list usable when browser storage is unavailable.
   }
-
   return pending;
 }
 
@@ -127,6 +155,7 @@ export async function loadAccountTrips(
   // Cache is a migration backup, never proof of ownership or the source of current server data.
   const cached = readTrips(storage, tripStorageKey(userId)) || [];
   const legacy = readTrips(storage, 'greentrip_user_trips') || [];
+  const guestDrafts = readGuestTrips(storage);
   const owned = await getOwned();
   const result: UserTrip[] = [];
   for (const remote of owned) {
@@ -134,7 +163,10 @@ export async function loadAccountTrips(
       result.push(remote);
       continue;
     }
-    const previous = cached.find((t) => t.id === remote.trip_id) || legacy.find((t) => t.id === remote.trip_id);
+    const previous =
+      cached.find((t) => t.id === remote.trip_id) ||
+      guestDrafts.find((t) => t.id === remote.trip_id) ||
+      legacy.find((t) => t.id === remote.trip_id);
     const trip: UserTrip = {
       ...previous,
       id: remote.trip_id,
@@ -160,5 +192,22 @@ export async function loadAccountTrips(
       }
     }
   }
+
+  if (guestDrafts.length > 0) {
+    const { newlyMerged } = mergeGuestTripsIntoOwned(result, guestDrafts);
+    for (const draft of newlyMerged) {
+      if (migrate) {
+        try {
+          result.unshift(await migrate(draft));
+        } catch {
+          result.unshift(draft);
+        }
+      } else {
+        result.unshift(draft);
+      }
+    }
+    clearGuestTrips(storage);
+  }
+
   return result;
 }

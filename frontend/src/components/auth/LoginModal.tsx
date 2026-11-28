@@ -1,8 +1,25 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ArrowLeft, RefreshCw, Mail } from 'lucide-react';
-import { login, signup, googleLogin, checkEmail, verifyOtp, resendOtp, ApiError } from '@/services/auth';
+import {
+  Eye,
+  EyeOff,
+  ArrowLeft,
+  RefreshCw,
+  Mail,
+  Check,
+  Leaf,
+} from 'lucide-react';
+import {
+  login,
+  signup,
+  googleLogin,
+  checkEmail,
+  verifyOtp,
+  resendOtp,
+  saveAuthSession,
+  ApiError,
+} from '@/services/auth';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -12,15 +29,46 @@ interface LoginModalProps {
   onRegisterSuccess?: () => void;
 }
 
-// Mock "database" mẫu dự phòng
-const MOCK_USERS: Record<string, string> = {
-  'admin@gmail.com': '1111',
-};
-
 type Step = 'email' | 'login' | 'register' | 'otp';
+
+const CLIENT_EMAIL_RE = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function suggestDisplayNameFromEmail(rawEmail: string): string {
+  const localPart = (rawEmail.split('@')[0] || '').trim();
+  if (!localPart) return '';
+  const cleaned = localPart.replace(/[._-]+/g, ' ').replace(/\d+$/g, '').trim();
+  if (!cleaned) return localPart;
+  return cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function syncOnboardingNameToStorage(fullName: string): void {
+  const trimmed = fullName.trim();
+  if (!trimmed) return;
+  try {
+    const parts = trimmed.split(/\s+/);
+    const firstName = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+    const lastName = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+    const existingRaw = localStorage.getItem('greentrip_onboarding_profile');
+    const existing = existingRaw ? (JSON.parse(existingRaw) as Record<string, unknown>) : {};
+    localStorage.setItem(
+      'greentrip_onboarding_profile',
+      JSON.stringify({
+        ...existing,
+        firstName: existing.firstName || firstName,
+        lastName: existing.lastName || lastName,
+      })
+    );
+  } catch {
+    // Ignore browser storage errors cleanly
+  }
 }
 
 export default function LoginModal({
@@ -35,8 +83,6 @@ export default function LoginModal({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // 6 ô OTP rời
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
@@ -54,7 +100,6 @@ export default function LoginModal({
     setMounted(true);
   }, []);
 
-  // Đếm ngược 60s cho mã OTP
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     if (countdown > 0) {
@@ -65,28 +110,31 @@ export default function LoginModal({
     };
   }, [countdown]);
 
-  // Khóa cuộn trang khi modal mở
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
+    if (!isOpen) {
       document.body.style.overflow = 'unset';
+      return;
     }
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !loading) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
       document.body.style.overflow = 'unset';
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, loading, onClose]);
 
-  // Reset form khi đóng modal
   useEffect(() => {
     if (!isOpen) {
       const timer = setTimeout(() => {
         setStep('email');
         setEmail('');
         setPassword('');
-        setConfirmPassword('');
         setShowPassword(false);
-        setShowConfirmPassword(false);
         setOtpDigits(['', '', '', '', '', '']);
         setCountdown(0);
         setError('');
@@ -98,7 +146,6 @@ export default function LoginModal({
     }
   }, [isOpen]);
 
-  // Focus ô OTP đầu tiên khi vào step 'otp'
   useEffect(() => {
     if (step === 'otp') {
       const timer = setTimeout(() => {
@@ -108,14 +155,11 @@ export default function LoginModal({
     }
   }, [step]);
 
-  const hasUppercase = /[A-Z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSymbol = /[^A-Za-z0-9]/.test(password);
+  const hasMinLength = password.length >= 8;
 
   const handleOtpChange = (index: number, value: string) => {
     const cleanVal = value.replace(/\D/g, '');
 
-    // Nếu paste cả chuỗi (vd paste 6 số)
     if (cleanVal.length > 1) {
       const pasted = cleanVal.slice(0, 6).split('');
       const newDigits = [...otpDigits];
@@ -133,7 +177,6 @@ export default function LoginModal({
     setOtpDigits(newDigits);
     setError('');
 
-    // Tự động nhảy sang ô tiếp theo
     if (cleanVal && index < 5) {
       otpInputsRef.current[index + 1]?.focus();
     }
@@ -145,20 +188,22 @@ export default function LoginModal({
         otpInputsRef.current[index - 1]?.focus();
       }
     } else if (e.key === 'Enter') {
-      handleContinue();
+      void handleContinue();
     }
   };
 
   const handleResendOtp = async () => {
     if (!email) return;
     setError('');
+    if (!otpSessionToken) {
+      setError('Phiên xác thực OTP không hợp lệ. Vui lòng đăng nhập lại.');
+      return;
+    }
     try {
-      if (otpSessionToken) {
-        await resendOtp({
-          email: email.trim().toLowerCase(),
-          otp_session_token: otpSessionToken,
-        });
-      }
+      await resendOtp({
+        email: email.trim().toLowerCase(),
+        otp_session_token: otpSessionToken,
+      });
       setCountdown(60);
       setOtpDigits(['', '', '', '', '', '']);
       otpInputsRef.current[0]?.focus();
@@ -170,7 +215,7 @@ export default function LoginModal({
   const handleGoogleClick = async () => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId || !window.google?.accounts?.id) {
-      setError('Đang chuẩn bị xác thực Google...');
+      setError('Xác thực Google chưa sẵn sàng. Bạn có thể dùng email ở trên.');
       return;
     }
 
@@ -183,7 +228,9 @@ export default function LoginModal({
             setLoading(true);
             const res = await googleLogin(response.credential);
             if (res.access_token || !res.require_otp) {
-              window.dispatchEvent(new Event('auth-change'));
+              if (res.access_token) {
+                saveAuthSession(res.access_token);
+              }
               onClose();
               if (onLoginSuccess) onLoginSuccess();
               else navigate('/explore');
@@ -207,44 +254,59 @@ export default function LoginModal({
     }
   };
 
+  const switchToRegisterStep = () => {
+    setStep('register');
+    setError('');
+    setAttemptedSubmit(false);
+  };
+
+  const switchToLoginStep = () => {
+    setStep('login');
+    setError('');
+    setAttemptedSubmit(false);
+  };
+
   const handleContinue = async () => {
     setError('');
     setAttemptedSubmit(true);
 
-    // BƯỚC 1: Nhập email (Tự động kiểm tra tài khoản đã tồn tại hay chưa)
+    // BƯỚC 1: Nhập email -> Tự nhận diện tài khoản cũ hoặc mới
     if (step === 'email') {
       const cleanEmail = email.trim().toLowerCase();
-      if (!cleanEmail || !cleanEmail.includes('@')) {
-        setError('Vui lòng nhập email hợp lệ.');
+      if (!cleanEmail || !CLIENT_EMAIL_RE.test(cleanEmail)) {
+        setError('Vui lòng nhập địa chỉ email hợp lệ (ví dụ: ten@gmail.com).');
         return;
       }
       setLoading(true);
       try {
         const check = await checkEmail(cleanEmail);
+        setEmail(cleanEmail);
         setAttemptedSubmit(false);
         if (check.exists) {
-          setStep('login');
+          switchToLoginStep();
         } else {
-          setStep('register');
+          switchToRegisterStep();
         }
-      } catch {
-        // Fallback kiểm tra mock nếu offline hoặc kiểm tra ban đầu
-        if (MOCK_USERS[cleanEmail] || initialMode === 'login') {
-          setStep('login');
-        } else {
-          setStep('register');
+      } catch (err: unknown) {
+        if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+          setError(err.message);
+          return;
         }
+        setError(getErrorMessage(err, 'Không thể kết nối máy chủ. Vui lòng thử lại.'));
       } finally {
         setLoading(false);
       }
     }
-    // BƯỚC 2A: Đăng nhập (tài khoản đã tồn tại)
+    // BƯỚC 2A: Đăng nhập (1 ô mật khẩu duy nhất)
     else if (step === 'login') {
+      if (!password) {
+        setError('Vui lòng nhập mật khẩu của bạn.');
+        return;
+      }
       setLoading(true);
       try {
         const res = await login({ email: email.trim().toLowerCase(), password });
-        localStorage.setItem('access_token', res.access_token);
-        window.dispatchEvent(new Event('auth-change'));
+        saveAuthSession(res.access_token);
         onClose();
         if (onLoginSuccess) {
           onLoginSuccess();
@@ -252,45 +314,33 @@ export default function LoginModal({
           navigate('/explore');
         }
       } catch (err: unknown) {
-        // Fallback kiểm tra mock nếu offline hoặc tài khoản mẫu
-        const correctPass = MOCK_USERS[email.toLowerCase()];
-        if (correctPass && password === correctPass) {
-          localStorage.setItem('access_token', 'mock-user-token');
-          window.dispatchEvent(new Event('auth-change'));
-          onClose();
-          if (onLoginSuccess) onLoginSuccess();
-          else navigate('/explore');
-          return;
-        }
-        setError(getErrorMessage(err, 'Mật khẩu không đúng, vui lòng thử lại.'));
+        setError(getErrorMessage(err, 'Email hoặc mật khẩu không chính xác.'));
       } finally {
         setLoading(false);
       }
     }
-    // BƯỚC 2B: Thiết lập mật khẩu đăng ký
+    // BƯỚC 2B: Đăng ký tối giản chuẩn Wanderlog (chỉ Email + 1 ô Mật khẩu >= 8 ký tự, tự động tạo tên từ email)
     else if (step === 'register') {
-      if (!hasUppercase || !hasNumber || !hasSymbol) {
-        return;
-      }
-      if (!confirmPassword) {
-        setError('Vui lòng nhập lại mật khẩu.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setError('Mật khẩu nhập lại không khớp.');
+      const cleanName = suggestDisplayNameFromEmail(email) || email.split('@')[0] || 'Du khách';
+      if (!hasMinLength) {
+        setError('Mật khẩu cần có ít nhất 8 ký tự.');
         return;
       }
 
       setLoading(true);
       try {
         const res = await signup({
-          full_name: email.split('@')[0],
+          full_name: cleanName,
           email: email.trim().toLowerCase(),
           password,
         });
 
+        syncOnboardingNameToStorage(cleanName);
+
         if (res.access_token || !res.require_otp) {
-          window.dispatchEvent(new Event('auth-change'));
+          if (res.access_token) {
+            saveAuthSession(res.access_token);
+          }
           onClose();
           if (onRegisterSuccess) {
             onRegisterSuccess();
@@ -313,7 +363,7 @@ export default function LoginModal({
       } catch (err: unknown) {
         if (err instanceof ApiError && err.status === 409) {
           setStep('login');
-          setError('Email đã được đăng ký. Vui lòng nhập mật khẩu để đăng nhập.');
+          setError('Email này đã có tài khoản. Vui lòng nhập mật khẩu để đăng nhập.');
           return;
         }
         setError(getErrorMessage(err, 'Đăng ký thất bại. Vui lòng thử lại.'));
@@ -321,28 +371,27 @@ export default function LoginModal({
         setLoading(false);
       }
     }
-    // BƯỚC 3: Xác thực mã OTP qua Gmail
+    // BƯỚC 3: Xác thực OTP (nếu bật 2FA)
     else if (step === 'otp') {
       const fullOtp = otpDigits.join('');
       if (fullOtp.length < 6) {
-        setError('Vui lòng nhập đầy đủ 6 chữ số mã xác thực.');
+        setError('Vui lòng nhập đủ 6 chữ số mã xác thực.');
+        return;
+      }
+      if (!otpSessionToken) {
+        setError('Phiên xác thực đã hết hạn. Vui lòng thử lại.');
         return;
       }
 
       setLoading(true);
       try {
-        if (otpSessionToken) {
-          const res = await verifyOtp({
-            email: email.trim().toLowerCase(),
-            otp_code: fullOtp,
-            otp_session_token: otpSessionToken,
-          });
-          localStorage.setItem('access_token', res.access_token);
-        } else {
-          localStorage.setItem('access_token', 'mock-user-token');
-        }
+        const res = await verifyOtp({
+          email: email.trim().toLowerCase(),
+          otp_code: fullOtp,
+          otp_session_token: otpSessionToken,
+        });
+        saveAuthSession(res.access_token);
 
-        window.dispatchEvent(new Event('auth-change'));
         onClose();
         if (onRegisterSuccess) {
           onRegisterSuccess();
@@ -365,37 +414,47 @@ export default function LoginModal({
   const isRegister = step === 'register';
   const isEmailStep = step === 'email';
   const isOtpStep = step === 'otp';
-  const showPasswordErrors = isRegister && attemptedSubmit && (!hasUppercase || !hasNumber || !hasSymbol);
-  const fullOtp = otpDigits.join('');
+  const showPasswordErrors = isRegister && attemptedSubmit && !hasMinLength;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="greentrip-auth-modal-title"
+    >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-[4px] animate-fadeIn"
+        className="absolute inset-0 bg-black/45 backdrop-blur-[3px] animate-fadeIn"
         onClick={onClose}
       />
 
-      {/* Modal Card */}
-      <div className="relative w-full max-w-[480px] max-h-[92vh] overflow-y-auto rounded-[28px] bg-white px-9 pt-9 pb-8 shadow-2xl animate-fadeInScale border border-gray-100/80">
-        {/* Navigation Top Bar: Back & Close Buttons */}
-        <div className="flex items-center justify-between mb-5">
-          {isOtpStep ? (
+      {/* Modal Card — Tối giản, thoáng đãng chuẩn Mindtrip / Wanderlog */}
+      <div className="relative w-full max-w-[430px] max-h-[92vh] overflow-y-auto rounded-[26px] bg-white px-7 pt-7 pb-6 shadow-2xl animate-fadeInScale border border-gray-100">
+        {/* Top Bar */}
+        <div className="flex items-center justify-between mb-4">
+          {!isEmailStep ? (
             <button
+              type="button"
               onClick={() => {
-                setStep('register');
+                setStep(isOtpStep ? 'register' : 'email');
                 setError('');
+                setAttemptedSubmit(false);
               }}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-600 hover:text-black hover:bg-gray-100 transition-colors cursor-pointer"
               aria-label="Quay lại"
             >
               <ArrowLeft size={18} />
             </button>
           ) : (
-            <div className="w-9 h-9" />
+            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800">
+              <Leaf size={14} className="text-emerald-600" />
+              <span>GreenTrip AI</span>
+            </div>
           )}
 
           <button
+            type="button"
             onClick={onClose}
             className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-100 transition-colors text-base cursor-pointer"
             aria-label="Đóng"
@@ -404,146 +463,133 @@ export default function LoginModal({
           </button>
         </div>
 
-        {/* Header Icon & Brand Badge */}
-        <div className="flex items-center gap-2 mb-2">
-          {isOtpStep ? (
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
+        {isOtpStep && (
+          <div className="mb-2">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Mail size={20} />
             </div>
-          ) : (
-            <span className="text-3xl leading-none">👋</span>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Title */}
-        <h2 className="font-heading text-[1.65rem] font-extrabold tracking-tight text-gray-950 leading-tight">
-          {isEmailStep && 'Welcome to GreenTrip'}
-          {isLogin && 'Chào mừng trở lại!'}
-          {isRegister && 'Tạo tài khoản'}
-          {isOtpStep && 'Xác thực tài khoản'}
+        {/* Title — Tối giản chuẩn Mindtrip AI (không có phụ đề thừa ở các bước chính) */}
+        <h2
+          id="greentrip-auth-modal-title"
+          className={`font-heading text-2xl font-extrabold tracking-tight text-gray-950 leading-tight ${
+            isOtpStep ? 'mb-1' : 'mb-5'
+          }`}
+        >
+          {isEmailStep &&
+            (initialMode === 'register' ? 'Tạo tài khoản miễn phí' : 'Đăng nhập hoặc Đăng ký')}
+          {isLogin && 'Đăng nhập'}
+          {isRegister && 'Tạo mật khẩu'}
+          {isOtpStep && 'Nhập mã xác thực'}
         </h2>
 
-        {/* Subtitle */}
-        {isLogin && (
-          <p className="mt-1.5 mb-6 text-[14px] font-normal text-gray-500">
-            Nhập mật khẩu để tiếp tục.
-          </p>
-        )}
-        {isRegister && (
-          <p className="mt-1.5 mb-6 text-[14px] font-normal text-gray-500">
-            Đăng ký GreenTrip nhanh chóng và miễn phí.
-          </p>
-        )}
         {isOtpStep && (
-          <p className="mt-1.5 mb-6 text-[14px] font-normal text-gray-500 leading-relaxed">
-            Mã xác thực 6 chữ số đã được gửi tới Gmail:
-            <br />
-            <span className="font-semibold text-gray-900 inline-flex items-center gap-1.5 mt-0.5">
-              {email}
-            </span>
-          </p>
+          <p className="mb-5 text-sm text-gray-600">Mã 6 chữ số đã được gửi tới {email}</p>
         )}
 
         {/* Form Body */}
-        <div className={isEmailStep ? 'mt-4' : 'mt-0'}>
-          {/* 1. Email Step */}
+        <div>
+          {/* 1. Email Step (Mindtrip pill input style) */}
           {isEmailStep && (
-            <input
-              type="email"
-              placeholder="Email của bạn"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
-              autoFocus
-              className="w-full rounded-full border border-gray-300 px-5 py-3.5 text-[15px] font-normal text-gray-900 placeholder:text-gray-400 placeholder:font-light focus:border-black focus:outline-none focus:ring-1 focus:ring-black transition-all mb-3"
-            />
+            <div className="mb-3">
+              <label htmlFor="greentrip-auth-email" className="sr-only">
+                Địa chỉ email
+              </label>
+              <input
+                id="greentrip-auth-email"
+                type="email"
+                autoComplete="email"
+                placeholder="Nhập địa chỉ email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError('');
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && void handleContinue()}
+                autoFocus
+                className="w-full rounded-full border border-gray-300 px-5 py-3.5 text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black transition-all"
+              />
+            </div>
           )}
 
-          {/* 2. Email preview pill (khi ở bước Login hoặc Register) */}
+          {/* 2. Email pill ở bước Login / Register */}
           {(isLogin || isRegister) && (
-            <div className="flex items-center justify-between rounded-full border border-gray-200 bg-gray-50/80 px-5 py-3 mb-3">
-              <span className="text-[14px] font-normal text-gray-700 truncate mr-2">{email}</span>
+            <div className="flex items-center justify-between rounded-full border border-gray-200 bg-gray-50 px-5 py-2.5 mb-3">
+              <span className="text-sm font-medium text-gray-800 truncate mr-2">{email}</span>
               <button
                 type="button"
                 onClick={() => {
                   setStep('email');
                   setPassword('');
-                  setConfirmPassword('');
                   setError('');
+                  setAttemptedSubmit(false);
                 }}
-                className="text-[13px] font-bold text-gray-600 hover:text-black transition-colors shrink-0 cursor-pointer"
+                className="text-xs font-bold text-emerald-800 hover:text-black transition-colors shrink-0 cursor-pointer"
               >
                 Đổi
               </button>
             </div>
           )}
 
-          {/* 3. Password input (Login hoặc Register) */}
+          {/* 3. Ô mật khẩu duy nhất chuẩn Wanderlog (không có ô Họ tên, không có ô Nhập lại mật khẩu) */}
           {(isLogin || isRegister) && (
-            <div className="relative mb-2">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Mật khẩu"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
-                autoFocus
-                className={`w-full rounded-full border px-5 py-3.5 pr-12 text-[15px] font-normal text-gray-900 placeholder:text-gray-400 placeholder:font-light focus:outline-none transition-all ${
-                  showPasswordErrors
-                    ? 'border-[#E25C43] focus:border-[#E25C43] focus:ring-1 focus:ring-[#E25C43]'
-                    : 'border-gray-300 focus:border-black focus:ring-1 focus:ring-black'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition-colors cursor-pointer"
-                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+            <div className="mb-3">
+              {isRegister && (
+                <div className="flex items-center justify-between px-1 mb-1.5">
+                  <label htmlFor="greentrip-auth-password" className="text-xs font-semibold text-gray-700">
+                    Mật khẩu
+                  </label>
+                  <span
+                    className={`inline-flex items-center gap-1 text-xs font-medium ${
+                      hasMinLength
+                        ? 'text-emerald-700'
+                        : showPasswordErrors
+                          ? 'text-[#C83E2B]'
+                          : 'text-gray-500'
+                    }`}
+                  >
+                    {hasMinLength && <Check size={13} strokeWidth={2.5} />}
+                    <span>{hasMinLength ? 'Đủ 8+ ký tự' : 'Tối thiểu 8 ký tự'}</span>
+                  </span>
+                </div>
+              )}
+              <div className="relative">
+                <input
+                  id="greentrip-auth-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={isLogin ? 'current-password' : 'new-password'}
+                  placeholder={isLogin ? 'Mật khẩu của bạn' : 'Nhập mật khẩu (từ 8 ký tự)'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) setError('');
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && void handleContinue()}
+                  autoFocus
+                  className={`w-full rounded-full border px-5 py-3.5 pr-12 text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all ${
+                    showPasswordErrors
+                      ? 'border-[#E25C43] focus:border-[#E25C43] focus:ring-1 focus:ring-[#E25C43]'
+                      : 'border-gray-300 focus:border-black focus:ring-1 focus:ring-black'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:text-black transition-colors cursor-pointer"
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Registration Password Requirements Checklist */}
-          {showPasswordErrors && (
-            <div className="mb-3 px-2 text-[13px] text-[#E25C43] flex flex-col gap-1 font-normal">
-              {!hasUppercase && <span>• Phải chứa ít nhất một chữ cái viết hoa.</span>}
-              {!hasNumber && <span>• Phải chứa ít nhất một số</span>}
-              {!hasSymbol && <span>• Phải chứa ít nhất một ký hiệu</span>}
-            </div>
-          )}
-
-          {/* Confirm Password input (chỉ ở bước Đăng ký) */}
-          {isRegister && (
-            <div className="relative mb-3">
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                placeholder="Nhập lại mật khẩu"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
-                className={`w-full rounded-full border px-5 py-3.5 pr-12 text-[15px] font-normal text-gray-900 placeholder:text-gray-400 placeholder:font-light focus:outline-none transition-all ${
-                  attemptedSubmit && confirmPassword && password !== confirmPassword
-                    ? 'border-[#E25C43] focus:border-[#E25C43] focus:ring-1 focus:ring-[#E25C43]'
-                    : 'border-gray-300 focus:border-black focus:ring-1 focus:ring-black'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword((v) => !v)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition-colors cursor-pointer"
-                aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-              >
-                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          )}
-
-          {/* 4. OTP Step (Giao diện 6 ô chuẩn Mindtrip / FinTech hiện đại) */}
+          {/* 4. OTP Step */}
           {isOtpStep && (
-            <div className="py-2 mb-6">
-              <div className="flex items-center justify-between gap-2.5 max-w-[360px] mx-auto">
+            <div className="py-2 mb-5">
+              <div className="flex items-center justify-between gap-2 max-w-[340px] mx-auto">
                 {otpDigits.map((digit, idx) => (
                   <input
                     key={idx}
@@ -552,35 +598,34 @@ export default function LoginModal({
                     }}
                     type="text"
                     inputMode="numeric"
+                    autoComplete={idx === 0 ? 'one-time-code' : 'off'}
                     pattern="[0-9]*"
                     maxLength={1}
                     value={digit}
+                    aria-label={`Chữ số OTP thứ ${idx + 1}`}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                    className={`w-12 h-14 text-center text-xl font-bold rounded-2xl border transition-all outline-none ${
+                    className={`w-11 h-13 text-center text-xl font-bold rounded-xl border transition-all outline-none ${
                       digit
-                        ? 'border-black bg-gray-50/50 text-black shadow-xs'
-                        : 'border-gray-200 bg-white text-gray-900 hover:border-gray-300 focus:border-black focus:ring-2 focus:ring-black/10'
+                        ? 'border-black bg-gray-50 text-black'
+                        : 'border-gray-200 bg-white text-gray-900 focus:border-black'
                     }`}
                   />
                 ))}
               </div>
 
-              {/* Hàng đếm ngược gửi lại mã */}
-              <div className="mt-5 text-center text-[13px] text-gray-500 flex items-center justify-center gap-1.5">
-                <span>Bạn chưa nhận được mã?</span>
+              <div className="mt-4 text-center text-xs text-gray-600 flex items-center justify-center gap-1.5">
+                <span>Chưa nhận được mã?</span>
                 {countdown > 0 ? (
-                  <span className="font-medium text-gray-400">
-                    Gửi lại ({countdown}s)
-                  </span>
+                  <span className="font-medium text-gray-500">Gửi lại ({countdown}s)</span>
                 ) : (
                   <button
                     type="button"
-                    onClick={handleResendOtp}
+                    onClick={() => void handleResendOtp()}
                     className="inline-flex items-center gap-1 font-bold text-black hover:underline cursor-pointer"
                   >
                     <RefreshCw size={12} />
-                    <span>Gửi lại ngay</span>
+                    <span>Gửi lại</span>
                   </button>
                 )}
               </div>
@@ -589,42 +634,68 @@ export default function LoginModal({
 
           {/* Error Message */}
           {error && (
-            <p className="mb-3.5 text-[13.5px] font-normal text-[#E25C43] px-2 text-center animate-fadeIn">
+            <p
+              role="alert"
+              className="mb-3 rounded-xl bg-red-50 border border-red-200/80 py-2 px-3 text-xs font-medium text-[#C83E2B] text-center animate-fadeIn"
+            >
               {error}
             </p>
           )}
 
-          {/* CTA Button */}
+          {/* CTA Button — Pill button chuẩn Mindtrip AI */}
           <button
-            onClick={handleContinue}
+            type="button"
+            onClick={() => void handleContinue()}
             disabled={loading}
-            className={`w-full rounded-full py-3.5 text-[15px] font-bold text-white transition-all cursor-pointer shadow-sm active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2 ${
-              isOtpStep && fullOtp.length < 6
-                ? 'bg-black/90 hover:bg-black'
-                : 'bg-black hover:bg-gray-900'
-            }`}
+            className="w-full min-h-12 rounded-full py-3.5 text-[15px] font-bold text-white bg-black hover:bg-gray-900 transition-all cursor-pointer shadow-xs active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading && <RefreshCw className="h-4 w-4 animate-spin text-white" />}
             {isEmailStep && 'Tiếp tục'}
             {isLogin && 'Đăng nhập'}
-            {isRegister && 'Tiếp tục'}
-            {isOtpStep && 'Xác nhận & Hoàn tất'}
+            {isRegister && 'Tạo tài khoản'}
+            {isOtpStep && 'Xác nhận'}
           </button>
+
+          {/* Chuyển nhanh 1 chạm */}
+          {isLogin && (
+            <div className="mt-3 text-center text-xs text-gray-600">
+              <span>Chưa có tài khoản? </span>
+              <button
+                type="button"
+                onClick={switchToRegisterStep}
+                className="font-bold text-emerald-800 hover:underline cursor-pointer"
+              >
+                Tạo tài khoản mới
+              </button>
+            </div>
+          )}
+          {isRegister && (
+            <div className="mt-3 text-center text-xs text-gray-600">
+              <span>Đã có tài khoản? </span>
+              <button
+                type="button"
+                onClick={switchToLoginStep}
+                className="font-bold text-emerald-800 hover:underline cursor-pointer"
+              >
+                Đăng nhập
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Divider & Google (chỉ hiển thị ở bước Email và Login/Register) */}
-        {!isOtpStep && (
+        {/* Google Login (chỉ hiển thị ở bước Email để giao diện bước Mật khẩu thật gọn) */}
+        {isEmailStep && (
           <>
-            <div className="flex items-center gap-4 my-5">
+            <div className="flex items-center gap-3 my-4">
               <div className="h-px flex-1 bg-gray-200" />
-              <span className="text-sm font-light text-gray-500">hoặc</span>
+              <span className="text-xs text-gray-400">hoặc</span>
               <div className="h-px flex-1 bg-gray-200" />
             </div>
 
             <button
               type="button"
-              onClick={handleGoogleClick}
-              className="flex items-center justify-center gap-3 w-full rounded-full border border-gray-300 bg-white px-6 py-3.5 text-[14px] font-bold text-black hover:bg-gray-50 transition-colors mb-5 cursor-pointer shadow-xs active:scale-[0.99]"
+              onClick={() => void handleGoogleClick()}
+              className="flex items-center justify-center gap-2.5 w-full min-h-12 rounded-full border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer"
             >
               <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
                 <path
@@ -644,20 +715,8 @@ export default function LoginModal({
                   fill="#EA4335"
                 />
               </svg>
-              <span>Continue with Google</span>
+              <span>Tiếp tục với Google</span>
             </button>
-
-            <p className="text-center text-[11px] font-light leading-relaxed text-gray-400">
-              Bằng cách tiếp tục, bạn đồng ý với{' '}
-              <a href="#" className="underline hover:text-black">
-                Điều khoản dịch vụ
-              </a>{' '}
-              của GreenTrip và xác nhận rằng bạn đã đọc{' '}
-              <a href="#" className="underline hover:text-black">
-                Chính sách bảo mật
-              </a>{' '}
-              của chúng tôi.
-            </p>
           </>
         )}
       </div>

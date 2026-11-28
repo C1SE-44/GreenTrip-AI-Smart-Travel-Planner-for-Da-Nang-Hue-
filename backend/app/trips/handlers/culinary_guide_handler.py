@@ -10,8 +10,8 @@ from typing import Any
 from psycopg import Connection
 from app.trips.schemas import CopilotSuggestedPoiItem, TripContextPayload
 from app.trips.handlers.swap_meal_handler import format_green_score
-from app.trips.copilot_consultant import resolve_effective_city, normalize_vietnamese_query
-from app.trips.text_utils import contains_any_phrase, strip_vietnamese_accents
+from app.trips.copilot_consultant import resolve_effective_city
+from app.trips.text_utils import contains_any_phrase, normalize_vietnamese_query, strip_vietnamese_accents
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ def handle_culinary_guide(
                 name = r[1]
                 category = r[2]
                 sub_cat = r[3] or "ẩm thực"
-                image_url = r[4] or "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80"
+                image_url = r[4] or "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/2a9fc4ea-ced9-4156-b2a0-4d0c1efb1494.webp"
                 green_score = format_green_score(r[5])
                 rating = float(r[6]) if r[6] is not None else 4.7
                 address = r[7] or "Đang cập nhật địa chỉ"

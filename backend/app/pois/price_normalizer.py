@@ -105,8 +105,55 @@ _FREE_LANDMARK_KEYWORDS = (
     "thiên mụ",
     "mỹ khê",
     "cầu rồng",
+    "cầu sông hàn",
+    "cầu trường tiền",
+    "cầu tràng tiền",
+    "cầu tình yêu",
     "vọng cảnh",
     "phố cổ",
+    "chợ cồn",
+    "chợ hàn",
+    "chợ đông ba",
+    "bãi biển",
+    "biển non nước",
+    "công viên",
+    "đồi thiên an",
+    "phá tam giang",
+    "đầm chuồn",
+    "rú chá",
+    "làng hương",
+    "bãi bụt",
+    "bãi rạng",
+)
+
+# Public markets, walking streets, public bridges, and churches that are strictly free to enter
+_ALWAYS_FREE_ENTRY_KEYWORDS = (
+    " chợ cồn ",
+    " chợ hàn ",
+    " chợ đông ba ",
+    " chợ an cựu ",
+    " chợ bến ngự ",
+    " phố đi bộ ",
+    " chu văn an ",
+    " công viên apec ",
+    " công viên biển đông ",
+    " cầu rồng ",
+    " cầu trường tiền ",
+    " cầu tràng tiền ",
+    " cầu tình yêu ",
+    " cầu sông hàn ",
+    " cầu quay sông hàn ",
+    " cầu gỗ lim ",
+    " cầu dã viên ",
+    " cầu nguyễn hoàng ",
+    " cầu thuận phước ",
+    " cầu trần thị lý ",
+    " cầu ngói thanh toàn ",
+    " linh ứng bãi bụt ",
+    " chùa thiên mụ ",
+    " nhà thờ con gà ",
+    " nhà thờ chính tòa ",
+    " nhà thờ phủ cam ",
 )
 
 
@@ -129,6 +176,20 @@ def normalize_poi_price_display(
     raw = (raw_price_display or "").strip()
 
     is_stay = any(k in cat_lower for k in _STAY_CATEGORY_TOKENS) or sub_lower in _STAY_SUBCATEGORIES
+    is_food_or_drink_cat = any(k in cat_lower for k in ("ẩm thực", "quán ăn", "nhà hàng", "food", *_CAFE_CATEGORY_TOKENS))
+
+    # Strictly free-entry public markets, walking streets, public bridges, and free landmarks
+    if not is_stay and not is_food_or_drink_cat:
+        if any(k in name_padded for k in _ALWAYS_FREE_ENTRY_KEYWORDS) or sub_lower in ("market", "walking_street"):
+            return "Miễn phí tham quan"
+        if (
+            estimated_cost is not None
+            and estimated_cost == 0
+            and " cầu vàng " not in name_padded
+            and " bà nà " not in name_padded
+            and (not raw or "miễn phí" in raw.lower() or "50.000 – 150.000" in raw)
+        ):
+            return "Miễn phí tham quan"
 
     if is_stay:
         unit = "đêm"
@@ -157,7 +218,12 @@ def normalize_poi_price_display(
     elif any(k in cat_lower for k in ("ẩm thực", "quán ăn", "nhà hàng", "food")):
         unit = "phần"
         default_range = "45.000 – 95.000 ₫"
-    elif (not raw or "miễn phí" in raw.lower()) and any(k in name_padded for k in _FREE_LANDMARK_KEYWORDS):
+    elif (
+        (estimated_cost is not None and estimated_cost == 0)
+        or (not raw or "miễn phí" in raw.lower())
+    ) and any(k in name_padded for k in _FREE_LANDMARK_KEYWORDS):
+        return "Miễn phí tham quan"
+    elif estimated_cost is not None and estimated_cost == 0 and (not raw or "miễn phí" in raw.lower()):
         return "Miễn phí tham quan"
     else:
         unit = "vé"

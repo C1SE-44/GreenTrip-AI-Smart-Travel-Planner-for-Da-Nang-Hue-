@@ -84,7 +84,7 @@ def handle_swap_meal(
                 name = r[1]
                 category = r[2]
                 sub_category = r[3] or "vegetarian"
-                image_url = r[4] or "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=80"
+                image_url = r[4] or "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/2a9fc4ea-ced9-4156-b2a0-4d0c1efb1494.webp"
                 green_score = format_green_score(r[5])
                 rating = float(r[6]) if r[6] is not None else 4.8
                 address = r[7] or "Đang cập nhật địa chỉ"

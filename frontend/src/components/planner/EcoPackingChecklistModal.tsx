@@ -323,30 +323,30 @@ export function TripExportToolbar({
           <button
             type="button"
             onClick={() => setShowPackingModal(true)}
-            className="min-h-[40px] px-3 rounded-full border border-emerald-700/30 bg-emerald-50/70 hover:bg-emerald-100/70 hover:border-emerald-800 text-xs font-bold text-emerald-900 inline-flex items-center gap-1.5 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            className="min-h-8 px-2.5 rounded-full border border-emerald-700/30 bg-emerald-50/70 hover:bg-emerald-100/70 hover:border-emerald-800 text-xs font-bold text-emerald-900 inline-flex items-center gap-1 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
             title="Mở checklist hành trang xanh theo thời tiết"
           >
-            <Backpack size={14} className="shrink-0" />
+            <Backpack size={13} className="shrink-0" />
             <span>Hành trang xanh</span>
           </button>
 
           <button
             type="button"
             onClick={handleExportIcs}
-            className="min-h-[40px] px-3 rounded-full border border-neutral-300 bg-white hover:border-neutral-900 hover:bg-neutral-50 text-xs font-semibold text-neutral-800 inline-flex items-center gap-1.5 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            className="min-h-8 px-2.5 rounded-full border border-neutral-300 bg-white hover:border-neutral-900 hover:bg-neutral-50 text-xs font-semibold text-neutral-800 inline-flex items-center gap-1 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
             title="Tải tệp lịch .ics (múi giờ Asia/Ho_Chi_Minh)"
           >
-            <Download size={14} className="shrink-0" />
+            <Download size={13} className="shrink-0" />
             <span>Xuất .ics</span>
           </button>
 
           <button
             type="button"
             onClick={handlePrint}
-            className="min-h-[40px] px-3 rounded-full border border-neutral-300 bg-white hover:border-neutral-900 hover:bg-neutral-50 text-xs font-semibold text-neutral-800 inline-flex items-center gap-1.5 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            className="min-h-8 px-2.5 rounded-full border border-neutral-300 bg-white hover:border-neutral-900 hover:bg-neutral-50 text-xs font-semibold text-neutral-800 inline-flex items-center gap-1 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
             title="In hoặc lưu PDF lịch trình chuyến đi"
           >
-            <Printer size={14} className="shrink-0" />
+            <Printer size={13} className="shrink-0" />
             <span>In / PDF</span>
           </button>
         </div>

@@ -104,7 +104,7 @@ export default function AddToTripModal({
                       className="group flex min-h-[84px] w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-800 sm:gap-4 sm:px-3"
                     >
                       <img
-                        src={trip.coverImage || trip.image || 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=200&auto=format&fit=crop&q=80'}
+                        src={trip.coverImage || trip.image || 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp'}
                         alt=""
                         loading="lazy"
                         className="h-14 w-14 shrink-0 rounded-xl bg-neutral-100 object-cover sm:h-16 sm:w-16"

@@ -11,12 +11,14 @@ export interface CreateTripCopilotModalProps {
   onCreated?: (trip: UserTrip, options?: { openInItinerary?: boolean }) => void;
   initialPrompt?: string;
   initialChatHistory?: CopilotTripMessage[];
+  initialItineraryOutline?: CopilotDayOutline[];
   defaultOpenItinerary?: boolean;
 }
 
 import {
   buildDefaultMindtripItinerary,
   buildDefaultMindtripConversation,
+  type CopilotDayOutline,
   type CopilotTripMessage,
 } from './copilotTripData';
 import { extractTripIntentFromPrompt, type ExtractedTripIntent } from '@/utils/vietnamesePromptExtractor';
@@ -37,6 +39,7 @@ export default function CreateTripCopilotModal({
   onCreated,
   initialPrompt,
   initialChatHistory,
+  initialItineraryOutline,
   defaultOpenItinerary = false,
 }: CreateTripCopilotModalProps) {
   const [tripPrompt, setTripPrompt] = useState('');
@@ -346,8 +349,8 @@ export default function CreateTripCopilotModal({
         status: 'upcoming',
         prompt: tripPrompt.trim(),
         totalBudget: estimatedBudget,
-        // Keep new trips empty until the traveler chooses places or requests smart scheduling.
-        itineraryOutline: [],
+        // Only a selected package supplies an outline; normal new trips start empty.
+        itineraryOutline: initialItineraryOutline?.length ? initialItineraryOutline : [],
         copilotChatHistory: [
           ...(initialChatHistory ?? []),
           ...buildDefaultMindtripConversation(
@@ -393,7 +396,7 @@ export default function CreateTripCopilotModal({
         totalBudget: estimatedBudget,
         pacingLevel: pacing.level,
         pacingLabel: pacing.label,
-        itineraryOutline: [],
+        itineraryOutline: initialItineraryOutline?.length ? initialItineraryOutline : [],
         copilotChatHistory: [
           ...(initialChatHistory ?? []),
           ...buildDefaultMindtripConversation(

@@ -5,9 +5,21 @@ export interface SseParsedEvent {
   data: string;
 }
 
+export interface RagSourceItem {
+  title: string;
+  city: string;
+  category: string;
+  snippet: string;
+  source: string;
+  score?: number;
+}
+
 export interface CopilotStreamCallbacks {
   onStatus?: (message: string) => void;
   onDelta?: (chunk: string) => void;
+  onToken?: (token: string) => void;
+  onSources?: (sources: RagSourceItem[]) => void;
+  onToolResult?: (toolsUsed: string[]) => void;
   signal?: AbortSignal;
 }
 
@@ -20,6 +32,7 @@ export interface TripContextPayload {
   current_stop_name?: string | null;
   current_stop_id?: string | null;
   saved_ideas?: string[];
+  suggested_places?: string[];
   traveler_name?: string | null;
   companions?: string | null;
   preferences?: string[];
@@ -61,9 +74,44 @@ export interface CopilotSuggestedPoi {
   open_range_label?: string | null;
 }
 
+export interface CopilotAttachmentPayload {
+  type: 'file' | 'link' | 'receipt';
+  url?: string;
+  file_name?: string;
+  mime_type?: string;
+  content_base64?: string;
+  extracted_text?: string;
+}
+
 export interface CopilotChatRequest {
   message: string;
   trip_context: TripContextPayload;
+  attachment?: CopilotAttachmentPayload;
+}
+
+export interface CopilotExtractedPlace {
+  name: string;
+  timestamp?: string | null;
+  place_type: string;
+  context?: string;
+  is_specific?: boolean;
+  city?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  source?: string;
+}
+
+export interface CopilotReceiptBooking {
+  booking_type: string;
+  title: string;
+  city: string;
+  date_str?: string | null;
+  checkout_str?: string | null;
+  time_str?: string | null;
+  estimated_cost_vnd?: number | null;
+  confirmation_code?: string | null;
+  is_duplicate?: boolean;
+  auto_synced_day?: number | null;
 }
 
 export interface CopilotChatResponse {
@@ -77,6 +125,8 @@ export interface CopilotChatResponse {
   fact_check_warning?: string | null;
   target_slot?: string | null;
   suggested_pois: CopilotSuggestedPoi[];
+  extracted_places?: CopilotExtractedPlace[];
+  receipt_booking?: CopilotReceiptBooking | null;
   action_type: 'replace_stop' | 'add_stop' | 'mutate_itinerary' | 'view_on_map' | 'none' | string;
   next_suggested_prompts?: string[];
   avoid_notice?: string | null;
@@ -89,6 +139,11 @@ export interface CopilotChatResponse {
   updated_days_count?: number | null;
   updated_destination?: string | null;
   mutation_summary?: string[];
+  tools_used?: string[];
+  sources?: RagSourceItem[];
+  session_id?: string | null;
+  data?: Record<string, unknown> | null;
+  created_at?: string | null;
 }
 
 export async function sendCopilotChat(
@@ -179,9 +234,17 @@ export async function streamCopilotChat(
       }
       if (item.event === 'status' && typeof parsed.message === 'string') {
         callbacks?.onStatus?.(parsed.message);
-      } else if (item.event === 'delta' && typeof parsed.text === 'string') {
+      } else if (
+        (item.event === 'token' || item.event === 'delta') &&
+        typeof parsed.text === 'string'
+      ) {
+        callbacks?.onToken?.(parsed.text);
         callbacks?.onDelta?.(parsed.text);
-      } else if (item.event === 'done') {
+      } else if (item.event === 'sources' && Array.isArray(parsed.sources)) {
+        callbacks?.onSources?.(parsed.sources as RagSourceItem[]);
+      } else if (item.event === 'tool_result' && Array.isArray(parsed.tools_used)) {
+        callbacks?.onToolResult?.(parsed.tools_used as string[]);
+      } else if (item.event === 'complete' || item.event === 'done') {
         finalPayload = parsed as unknown as CopilotChatResponse;
       } else if (item.event === 'error') {
         throw new Error(

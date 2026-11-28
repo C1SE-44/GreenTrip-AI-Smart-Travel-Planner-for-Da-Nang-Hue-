@@ -39,8 +39,8 @@ def test_migration_018_defines_expected_3nf_constraints_and_indexes() -> None:
         assert token in sql, f"Migration 018 missing required element: {token}"
 
 
-def test_migration_019_fixes_account_itinerary_upsert_and_optional_stops() -> None:
-    sql_path = BACKEND_ROOT / "migrations" / "019_fix_my_trips_itinerary_upsert.sql"
+def test_migration_020_fixes_account_itinerary_upsert_and_optional_stops() -> None:
+    sql_path = BACKEND_ROOT / "migrations" / "020_fix_my_trips_itinerary_upsert.sql"
     sql = sql_path.read_text(encoding="utf-8")
 
     assert "CREATE UNIQUE INDEX IF NOT EXISTS idx_itineraries_trip_id" in sql

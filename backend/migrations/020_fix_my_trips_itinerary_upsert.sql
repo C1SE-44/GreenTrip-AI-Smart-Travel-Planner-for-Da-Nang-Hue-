@@ -1,4 +1,4 @@
--- Migration 019: Make the unified itinerary schema compatible with authenticated upserts.
+-- Migration 020: Make the unified itinerary schema compatible with authenticated upserts.
 -- Migration 014 adds trip_id to databases created from the legacy 008 schema, but does
 -- not make it unique; the /my-trips upsert requires a unique conflict target.
 -- Legacy 008 also made poi_id NOT NULL, although rest/custom stops do not have a POI.
@@ -12,7 +12,7 @@ BEGIN
         FROM public.itineraries
         WHERE trip_id IS NULL OR BTRIM(trip_id) = ''
     ) THEN
-        RAISE EXCEPTION 'Migration 019 cannot make itineraries.trip_id unique: null or empty trip IDs exist.';
+        RAISE EXCEPTION 'Migration 020 cannot make itineraries.trip_id unique: null or empty trip IDs exist.';
     END IF;
 
     IF EXISTS (
@@ -21,7 +21,7 @@ BEGIN
         GROUP BY trip_id
         HAVING COUNT(*) > 1
     ) THEN
-        RAISE EXCEPTION 'Migration 019 cannot make itineraries.trip_id unique: duplicate trip IDs exist.';
+        RAISE EXCEPTION 'Migration 020 cannot make itineraries.trip_id unique: duplicate trip IDs exist.';
     END IF;
 END
 $$;

@@ -3,10 +3,13 @@ import { createPortal } from 'react-dom';
 import type { Poi, FeaturedReview, MenuItem } from '@/data/pois';
 import {
   categoryLabels,
+  computeGreenScoreBreakdown,
+  evaluateCrowdProfile,
   getGalleryImages,
   SUB_CATEGORY_LABELS,
   VIBE_LABELS,
 } from '@/data/pois';
+import ExplanationModal from '@/components/poi/ExplanationModal';
 import PoiImage from '@/components/ui/PoiImage';
 
 interface PoiDetailSectionProps {
@@ -65,6 +68,7 @@ export default function PoiDetailSection({
 }: PoiDetailSectionProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'guides' | 'location'>('overview');
   const [isMenuZoomOpen, setIsMenuZoomOpen] = useState(false);
+  const [isKgModalOpen, setIsKgModalOpen] = useState(false);
   const [localAddedToTrip, setLocalAddedToTrip] = useState(false);
   const isAdded = isAddedToTrip !== undefined ? isAddedToTrip : localAddedToTrip;
 
@@ -415,72 +419,92 @@ export default function PoiDetailSection({
           )}
         </div>
 
-        {/* 3A. Lưới 5 ảnh thực tế Desktop (>= 640px): Bento chuẩn Mindtrip */}
-        <div
-          className="hidden sm:grid w-full aspect-[2/1] rounded-[20px] overflow-hidden grid-rows-2"
-          style={{
-            gridTemplateColumns: '2.06fr 1fr 1fr',
-            gap: '12px',
-          }}
-        >
-          <div className="row-span-2 col-span-1 h-full w-full relative overflow-hidden bg-neutral-100 group">
-            <PoiImage
-              alt={poi.name}
-              poiId={poi.id}
-              poiName={poi.name}
-              category={poi.category}
-              city={poi.city}
-              fallbackSeed={`${poi.id}_0`}
-              priority
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              src={galleryImages[0]}
-            />
-          </div>
-          {[1, 2, 3, 4].map((idx) => (
-            <div key={idx} className="row-span-1 col-span-1 h-full w-full relative overflow-hidden bg-neutral-100 group">
-              <PoiImage
-                alt={`${poi.name} - ảnh ${idx + 1}`}
-                poiId={poi.id}
-                poiName={poi.name}
-                category={poi.category}
-                city={poi.city}
-                fallbackSeed={`${poi.id}_${idx}`}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                src={galleryImages[idx]}
-              />
-            </div>
-          ))}
-        </div>
+        {/* 3A. Lưới ảnh thực tế Desktop (>= 640px): co giãn theo đúng số ảnh thật (1–5 ảnh), không độn ảnh khác */}
+        {(() => {
+          const desktopPhotos = galleryImages.slice(0, 5);
+          const count = desktopPhotos.length;
+          if (count === 0) return null;
+          const desktopGridStyle =
+            count === 3
+              ? { gridTemplateColumns: '1.65fr 1fr', gap: '12px' }
+              : count === 4
+                ? { gridTemplateColumns: '1.8fr 1fr 1fr', gap: '12px' }
+                : count >= 5
+                  ? { gridTemplateColumns: '2.06fr 1fr 1fr', gap: '12px' }
+                  : { gap: '12px' };
+          const gridClass =
+            count === 1
+              ? 'hidden sm:grid w-full aspect-[2.1/1] rounded-[20px] overflow-hidden grid-cols-1'
+              : count === 2
+                ? 'hidden sm:grid w-full aspect-[2.1/1] rounded-[20px] overflow-hidden grid-cols-2'
+                : 'hidden sm:grid w-full aspect-[2/1] rounded-[20px] overflow-hidden grid-rows-2';
 
-        {/* 3B. Lưới 5 ảnh thực tế Mobile (< 640px, tối ưu 320px không cắt méo) */}
+          return (
+            <div className={gridClass} style={desktopGridStyle}>
+              {desktopPhotos.map((src, idx) => {
+                const spanClass =
+                  count >= 3 && idx === 0
+                    ? 'row-span-2 col-span-1'
+                    : count === 4 && idx === 1
+                      ? 'row-span-1 col-span-2'
+                      : 'row-span-1 col-span-1';
+                return (
+                  <div key={`${src}-${idx}`} className={`${spanClass} h-full w-full relative overflow-hidden bg-neutral-100 group`}>
+                    <PoiImage
+                      alt={idx === 0 ? poi.name : `${poi.name} - ảnh ${idx + 1}`}
+                      poiId={poi.id}
+                      poiName={poi.name}
+                      category={poi.category}
+                      city={poi.city}
+                      fallbackSeed={`${poi.id}_${idx}`}
+                      priority={idx === 0}
+                      className={`w-full h-full object-cover group-hover:scale-105 transition-transform ${idx === 0 ? 'duration-500' : 'duration-300'}`}
+                      src={src}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* 3B. Lưới ảnh thực tế Mobile (< 640px, tối ưu 320px không cắt méo) */}
         <div className="grid sm:hidden grid-cols-2 gap-2 rounded-2xl overflow-hidden">
-          <div className="col-span-2 aspect-[16/10] w-full bg-neutral-100 overflow-hidden">
-            <PoiImage
-              alt={poi.name}
-              poiId={poi.id}
-              poiName={poi.name}
-              category={poi.category}
-              city={poi.city}
-              fallbackSeed={`${poi.id}_0`}
-              priority
-              className="w-full h-full object-cover"
-              src={galleryImages[0]}
-            />
-          </div>
-          {[1, 2, 3, 4].map((idx) => (
-            <div key={idx} className="aspect-[4/3] w-full bg-neutral-100 overflow-hidden">
+          {galleryImages[0] && (
+            <div className="col-span-2 aspect-[16/10] w-full bg-neutral-100 overflow-hidden">
               <PoiImage
-                alt={`${poi.name} - ảnh ${idx + 1}`}
+                alt={poi.name}
                 poiId={poi.id}
                 poiName={poi.name}
                 category={poi.category}
                 city={poi.city}
-                fallbackSeed={`${poi.id}_${idx}`}
+                fallbackSeed={`${poi.id}_0`}
+                priority
                 className="w-full h-full object-cover"
-                src={galleryImages[idx]}
+                src={galleryImages[0]}
               />
             </div>
-          ))}
+          )}
+          {galleryImages.slice(1, 5).map((src, idx, rest) => {
+            const isOddLast = rest.length % 2 === 1 && idx === rest.length - 1;
+            return (
+              <div
+                key={src}
+                className={`${isOddLast ? 'col-span-2 aspect-[16/9]' : 'aspect-[4/3]'} w-full bg-neutral-100 overflow-hidden`}
+              >
+                <PoiImage
+                  alt={`${poi.name} - ảnh ${idx + 2}`}
+                  poiId={poi.id}
+                  poiName={poi.name}
+                  category={poi.category}
+                  city={poi.city}
+                  fallbackSeed={`${poi.id}_${idx + 1}`}
+                  className="w-full h-full object-cover"
+                  src={src}
+                />
+              </div>
+            );
+          })}
         </div>
 
         {/* 4. Tabs Navigation */}
@@ -773,20 +797,56 @@ export default function PoiDetailSection({
               </div>
             </div>
 
-            <div className="rounded-2xl bg-emerald-50/60 border border-emerald-200/80 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="space-y-0.5">
-                <div className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                  <span aria-hidden="true">🌱</span>
-                  <span>Ước tính Giảm Phát thải (Carbon Footprint Estimator)</span>
+            {(() => {
+              const breakdown = computeGreenScoreBreakdown(poi);
+              const crowd = evaluateCrowdProfile(poi);
+              return (
+                <div className="rounded-2xl bg-emerald-50/60 border border-emerald-200/80 p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                        <span aria-hidden="true">🌱</span>
+                        <span>Điểm xanh {breakdown.totalScore}/100 &amp; Lý do đề xuất</span>
+                      </div>
+                      <p className="text-xs text-emerald-900">
+                        {breakdown.summaryReason} {mindtripAiInsights.carbonSaved}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsKgModalOpen(true)}
+                      className="inline-flex min-h-[36px] items-center self-start sm:self-center px-3 py-1.5 rounded-full bg-white border border-emerald-300 hover:bg-emerald-100 text-xs font-bold text-emerald-900 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    >
+                      Vì sao chọn? (Đồ thị Tri thức)
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {breakdown.pillars.map((pillar) => (
+                      <div key={pillar.key} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs text-emerald-950">
+                          <span>{pillar.label} ({pillar.weightPct}%)</span>
+                          <span className="font-bold">{pillar.score}/100</span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-emerald-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-emerald-600"
+                            style={{ width: `${pillar.score}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {crowd.peakHours && (
+                    <div className="rounded-xl bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-950">
+                      <strong>Mức độ đông đúc ({crowd.label}):</strong> Giờ cao điểm thường rơi vào{' '}
+                      <strong>{crowd.peakHours}</strong>. {crowd.offPeakTip}.
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-emerald-900">
-                  {mindtripAiInsights.carbonSaved}
-                </p>
-              </div>
-              <span className="inline-flex items-center self-start sm:self-center px-3 py-1 rounded-full bg-white border border-emerald-200 text-xs font-bold text-emerald-800 shrink-0">
-                Green Score {poi.ecoScore ?? 90}/100
-              </span>
-            </div>
+              );
+            })()}
 
             {nearbyPois.length > 0 && (
               <div className="space-y-3 pt-1">
@@ -1013,6 +1073,15 @@ export default function PoiDetailSection({
           </div>
         </div>,
         document.body
+      )}
+      {isKgModalOpen && (
+        <ExplanationModal
+          poiId={poi.id}
+          poiName={poi.name}
+          explanationSnippet={computeGreenScoreBreakdown(poi).summaryReason}
+          isOpen={isKgModalOpen}
+          onClose={() => setIsKgModalOpen(false)}
+        />
       )}
     </section>
   );

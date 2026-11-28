@@ -25,8 +25,9 @@ def handle_travel_tips(
     """
     msg = normalize_vietnamese_query(message)
     folded_msg = strip_vietnamese_accents(msg)
-    city_pattern, is_both = normalize_city_query(trip_context.destination)
-    is_hue = "hue" in trip_context.destination.lower() or "huế" in trip_context.destination.lower()
+    from app.trips.copilot_intent import resolve_effective_city
+    city_pattern, is_both, city_display = resolve_effective_city(message, trip_context.destination)
+    is_hue = city_display == "Huế"
 
     is_souvenir = contains_any_phrase(
         msg,
@@ -94,15 +95,19 @@ def handle_travel_tips(
                 name = r[1]
                 category = r[2]
                 sub_cat = r[3] or "điểm đến"
-                image_url = r[4] or "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=900&q=80"
+                image_url = r[4] or "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp"
                 green_score = format_green_score(r[5])
                 rating = float(r[6]) if r[6] is not None else 4.8
                 address = r[7] or "Đang cập nhật địa chỉ"
                 cost = float(r[8]) if r[8] is not None else None
                 meta = r[9] if isinstance(r[9], dict) else {}
+                row_city_raw = str(r[10] or "")
+                row_city = "Huế" if "hue" in row_city_raw.lower() else "Đà Nẵng"
                 gallery = r[11] if r[11] else None
 
                 price_display = meta.get("price_range_display") if isinstance(meta, dict) else None
+                if cost is not None and cost == 0:
+                    price_display = "Miễn phí tham quan"
 
                 suggested_pois.append(
                     CopilotSuggestedPoiItem(
@@ -110,12 +115,13 @@ def handle_travel_tips(
                         name=name,
                         category=category,
                         sub_category=sub_cat,
+                        city=row_city,
                         image_url=image_url,
                         green_score=green_score,
                         rating=rating,
                         address=address,
-                        swap_reason="Địa điểm văn hóa mua sắm và tham quan tiêu biểu đạt tiêu chuẩn xanh",
-                        distance_info="Thuận tiện di chuyển trong trung tâm",
+                        swap_reason=f"Địa điểm văn hóa – bản địa tiêu biểu tại {row_city} đạt chuẩn xanh",
+                        distance_info=f"Thuận tiện di chuyển trong khu vực {row_city}",
                         estimated_cost=cost,
                         price_range_display=price_display,
                         budget_delta="Phù hợp chi tiêu thông minh",
@@ -159,37 +165,62 @@ def handle_travel_tips(
         green_impact = "Ưu tiên bao bì giấy mộc, lá chuối tự nhiên và nói không với túi nilon một lần."
 
     elif is_budget or is_transport:
-        headline = f"Bí quyết tối ưu chi phí và di chuyển xanh thông minh cho chuyến đi {'Huế' if is_hue else 'Đà Nẵng'}:"
+        from app.trips.copilot_enrichment import estimate_trip_budget_summary, recommend_transport_for_leg
+
+        budget_calc = estimate_trip_budget_summary(
+            days_count=trip_context.days_count,
+            num_people=trip_context.num_people,
+            budget_tier=trip_context.budget_tier,
+            total_budget=trip_context.total_budget,
+        )
+        short_leg_tip = recommend_transport_for_leg(3.5, trip_context.num_people, trip_context.active_constraints)
+        long_leg_tip = recommend_transport_for_leg(12.0, trip_context.num_people, trip_context.active_constraints)
+        bus_note = (
+            "Xe buýt nội đô Huế và tuyến đi làng nghề/đầm phá (giá vé 7.000 – 15.000 ₫/lượt)."
+            if is_hue
+            else "Xe buýt công cộng Danabus (R16A, R6A) kết nối trung tâm với mức vé 5.000 – 10.000 ₫/lượt."
+        )
+        headline = f"Dự toán ngân sách và gợi ý phương tiện xanh thực tế cho chuyến đi **{city_display}** ({budget_calc['days']} ngày · {budget_calc['num_people']} người):"
         sections = (
-            "**1. Dự toán ngân sách thực tế theo ngày**\n"
-            "- **Du lịch tiết kiệm (Eco Backpacker)**: ~450.000 – 650.000 ₫/người/ngày (Homestay xanh, ăn uống quán vỉa hè bản địa, xe đạp/xe buýt công cộng).\n"
-            "- **Tiêu chuẩn thoải mái**: ~1.100.000 – 1.600.000 ₫/người/ngày (Khách sạn 3–4 sao, ăn hải sản/nhà hàng phong cách, taxi điện).\n\n"
-            "**2. Phương tiện di chuyển xanh khuyến nghị**\n"
-            "- **Taxi điện Xanh SM**: Êm ái, không mùi xăng xe, không phát thải CO2 trực tiếp, giá cước rõ ràng không lo bị tính cước gian lận.\n"
-            "- **Xe buýt công cộng Danabus**: Tuyến R16A, R6A kết nối trung tâm thành phố với mức vé trợ giá chỉ 5.000 – 10.000 ₫/lượt.\n"
-            "- **Tản bộ & Xe đạp**: Rất thích hợp dạo ven sông Hàn, đường Bạch Đằng hoặc bờ sông Hương rợp bóng cây xanh."
+            f"**1. Dự toán ngân sách theo ngữ cảnh đã chọn**\n"
+            f"- {budget_calc['summary_text']}\n"
+            f"- *Ghi chú*: Chi phí vé vào cửa các điểm cộng đồng/chợ truyền thống (Chợ Cồn, Chợ Đông Ba, bãi biển) là **0 ₫**, riêng nhóm di tích Huế có thể mua vé tuyến để tiết kiệm.\n\n"
+            f"**2. Phương tiện khuyến nghị theo cự ly & nhóm {budget_calc['num_people']} người**\n"
+            f"- **Chặng ngắn trong cụm (≤ 4 km)**: {short_leg_tip}.\n"
+            f"- **Chặng xa ngoại ô (8 – 20 km)**: {long_leg_tip}.\n"
+            f"- **Giao thông công cộng**: {bus_note}"
         )
         tips = (
-            "- **Mẹo tiết kiệm vé**: Mua vé tham quan theo combo tuyến lăng tẩm (ở Huế) hoặc đặt trước vé trực tuyến để nhận ưu đãi xanh."
+            "- **Mẹo tiết kiệm vé**: Mua vé tham quan theo combo tuyến lăng tẩm (ở Huế) hoặc gom điểm theo cùng cụm địa lý để giảm 25–35% quãng đường di chuyển."
         )
         prompts = [
-            "Tuyến xe buýt đi từ sân bay về trung tâm?",
-            "Gợi ý khách sạn xanh đạt chuẩn thân thiện môi trường",
-            "Lên lịch trình 3 ngày tiết kiệm chi phí",
+            f"Lên lịch {budget_calc['days']} ngày ở {city_display} sát ngân sách này",
+            f"Gợi ý điểm cộng đồng miễn phí hoặc giá rẻ ở {city_display}",
+            "So sánh chi phí đi taxi điện và xe buýt cho cả nhóm",
         ]
-        budget_impact = "Tiết kiệm 20–30% chi phí di chuyển khi dùng phương tiện công cộng và xe điện."
-        green_impact = "Cắt giảm đáng kể lượng phát thải carbon trên mỗi chặng đường di chuyển."
+        budget_impact = budget_calc["summary_text"]
+        green_impact = "Chọn phương tiện đúng cự ly giúp giảm 30–60% phát thải CO₂ so với đi xe riêng phân tán."
 
     elif is_family:
-        headline = f"Kinh nghiệm du lịch thảnh thơi dành cho gia đình có trẻ em và người lớn tuổi tại {'Huế' if is_hue else 'Đà Nẵng'}:"
-        sections = (
-            "**1. Chọn lọc điểm đến bằng phẳng, dễ tiếp cận**\n"
-            "- **Ngũ Hành Sơn**: Nên sử dụng hệ thống thang máy kính lên Chùa Linh Ứng non nước, tránh leo bậc dốc cao.\n"
-            "- **Bảo tàng Điêu khắc Chăm / Bảo tàng Mỹ thuật**: Không gian trưng bày râm mát, có ghế nghỉ chân, giàu kiến thức giáo dục cho trẻ nhỏ.\n"
-            "- **Công viên APEC / Bờ sông Hàn**: Không gian mở an toàn, thoáng đãng để bé chạy nhảy và người lớn hóng gió.\n\n"
-            "**2. Nhịp độ lịch trình (Pacing)**\n"
-            "- Chỉ nên sắp xếp tối đa 2–3 điểm dừng/ngày, dành 12:00 – 14:30 nghỉ trưa tại khách sạn để giữ sức khỏe cho cả nhà."
-        )
+        headline = f"Kinh nghiệm du lịch thảnh thơi dành cho gia đình có trẻ em và người lớn tuổi tại {city_display}:"
+        if is_hue:
+            sections = (
+                "**1. Chọn lọc điểm đến bằng phẳng, dễ tiếp cận tại Huế**\n"
+                "- **Làng sinh thái Thủy Biều**: Đường làng phẳng rợp bóng vườn bưởi Thanh Trà, có thể đi xe điện nội làng và ngâm chân thảo mộc.\n"
+                "- **Lăng Tự Đức & Đại Nội Huế**: Có lối đi phẳng và xe điện hỗ trợ (nên tránh Lăng Khải Định có 127 bậc dốc).\n"
+                "- **Bảo tàng Cổ vật Cung đình Huế**: Không gian mát mẻ trong nhà, phù hợp nghỉ chân giữa trưa.\n\n"
+                "**2. Nhịp độ lịch trình (Pacing)**\n"
+                "- Chỉ nên sắp xếp tối đa 2–3 điểm dừng/ngày, dành 12:00 – 14:30 nghỉ trưa tại khách sạn để giữ sức khỏe cho cả nhà."
+            )
+        else:
+            sections = (
+                "**1. Chọn lọc điểm đến bằng phẳng, dễ tiếp cận tại Đà Nẵng**\n"
+                "- **Ngũ Hành Sơn**: Nên sử dụng hệ thống thang máy kính lên Chùa Linh Ứng Non Nước, tránh leo bậc dốc cao.\n"
+                "- **Bảo tàng Điêu khắc Chăm / Bảo tàng Mỹ thuật**: Không gian trưng bày râm mát, có ghế nghỉ chân, giàu kiến thức giáo dục cho trẻ nhỏ.\n"
+                "- **Công viên APEC / Bờ sông Hàn**: Không gian mở an toàn, thoáng đãng để bé chạy nhảy và người lớn hóng gió.\n\n"
+                "**2. Nhịp độ lịch trình (Pacing)**\n"
+                "- Chỉ nên sắp xếp tối đa 2–3 điểm dừng/ngày, dành 12:00 – 14:30 nghỉ trưa tại khách sạn để giữ sức khỏe cho cả nhà."
+            )
         tips = (
             "- Chuẩn bị sẵn bình nước giữ nhiệt, quạt cầm tay và mũ rộng vành chống nắng cho bé và ông bà."
         )

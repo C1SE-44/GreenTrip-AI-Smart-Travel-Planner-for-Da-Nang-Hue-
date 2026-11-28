@@ -1,0 +1,808 @@
+{
+  "benchmark_metadata": {
+    "total_questions": 50
+  },
+  "execution_mode": "deterministic_grounded_fallback",
+  "total_questions": 50,
+  "metrics": {
+    "grounded_answer_rate_percent": 64.0,
+    "citation_correctness_percent": 98.0,
+    "tool_selection_rate_percent": 48.0,
+    "unsupported_claims_percent": 0.0
+  },
+  "by_category": {
+    "out_of_scope_insufficient": {
+      "count": 5,
+      "grounded_percent": 100.0,
+      "citation_percent": 100.0,
+      "tool_percent": 100.0,
+      "unsupported_percent": 0.0
+    },
+    "cultural_history": {
+      "count": 7,
+      "grounded_percent": 42.9,
+      "citation_percent": 100.0,
+      "tool_percent": 71.4,
+      "unsupported_percent": 0.0
+    },
+    "danang_tourism": {
+      "count": 10,
+      "grounded_percent": 50.0,
+      "citation_percent": 100.0,
+      "tool_percent": 20.0,
+      "unsupported_percent": 0.0
+    },
+    "eco_tourism": {
+      "count": 5,
+      "grounded_percent": 40.0,
+      "citation_percent": 80.0,
+      "tool_percent": 20.0,
+      "unsupported_percent": 0.0
+    },
+    "food_specialties": {
+      "count": 8,
+      "grounded_percent": 87.5,
+      "citation_percent": 100.0,
+      "tool_percent": 37.5,
+      "unsupported_percent": 0.0
+    },
+    "hue_tourism": {
+      "count": 10,
+      "grounded_percent": 90.0,
+      "citation_percent": 100.0,
+      "tool_percent": 30.0,
+      "unsupported_percent": 0.0
+    },
+    "prices_opening_hours": {
+      "count": 5,
+      "grounded_percent": 20.0,
+      "citation_percent": 100.0,
+      "tool_percent": 100.0,
+      "unsupported_percent": 0.0
+    }
+  },
+  "details": [
+    {
+      "id": "DN-01",
+      "category": "danang_tourism",
+      "question": "Đà Nẵng có những bãi biển xanh và điểm ngắm hoàng hôn nào đẹp?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Chênh Cafe**: Điểm xanh: Địa điểm ngắm hoàng hôn buông xuống vịnh Đà Nẵng và cửa sông Hàn lãng mạn bậc nhất....",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 42.59
+    },
+    {
+      "id": "DN-02",
+      "category": "danang_tourism",
+      "question": "Bán đảo Sơn Trà có những hoạt động du lịch sinh thái gì?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng & Huế:\n- **Làng sinh thái Thủy Biều**: Làng sinh thái Thủy Biều (Huế) - Di tích lịch sử và văn hóa. Mô tả: Ngôi l...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 9.17
+    },
+    {
+      "id": "DN-03",
+      "category": "danang_tourism",
+      "question": "Cầu Rồng phun lửa và phun nước vào những ngày nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng & Huế:\n- **Phá Tam Giang (Khu Đầm Chuồn)**: Phá Tam Giang (Khu Đầm Chuồn) (Huế) - Cảnh quan và thiên nhiên. Lưu ý...",
+      "tools_used": [],
+      "sources_count": 1,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 10.09
+    },
+    {
+      "id": "DN-04",
+      "category": "danang_tourism",
+      "question": "Khu du lịch sinh thái Ngầm Đôi ở Đà Nẵng có gì hấp dẫn?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Khu du lịch sinh thái Ngầm Đôi**: Khu du lịch sinh thái Ngầm Đôi (Đà Nẵng) - Cảnh quan và thiên nhiên. Mô tả...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 8.54
+    },
+    {
+      "id": "DN-05",
+      "category": "danang_tourism",
+      "question": "Tuyến phố du lịch Hà Bổng có thực hành tiêu chí du lịch xanh không?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng & Huế:\n- **Suối Voi (Khu Du Lịch Suối Mè)**: Suối Voi (Khu Du Lịch Suối Mè) (Huế) - Cảnh quan và thiên nhiên. Lưu...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 11.97
+    },
+    {
+      "id": "DN-06",
+      "category": "danang_tourism",
+      "question": "Núi Ngũ Hành Sơn gồm những ngọn núi nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng & Huế:\n- **Chùa Phật Đứng**: Chùa Phật Đứng (Hue) - Tâm linh và chùa thiền. Địa chỉ: Núi Tứ Tượng, Huế. Mô tả: Đị...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 9.07
+    },
+    {
+      "id": "DN-07",
+      "category": "danang_tourism",
+      "question": "Bảo tàng Điêu khắc Chăm Đà Nẵng lưu giữ bộ sưu tập gì?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Bảo Tàng Điêu Khắc Chăm Đà Nẵng**: Bảo Tàng Điêu Khắc Chăm Đà Nẵng (Đà Nẵng) - Di tích lịch sử và văn hóa. L...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 36.46
+    },
+    {
+      "id": "DN-08",
+      "category": "danang_tourism",
+      "question": "Bảo tàng Đồng Đình nằm ở đâu và có phong cách gì?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng & Huế:\n- **Bảo Tàng Cổ Vật Cung Đình Huế**: Bảo Tàng Cổ Vật Cung Đình Huế (Huế) - Di tích lịch sử và văn hóa. Lưu...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 19.29
+    },
+    {
+      "id": "DN-09",
+      "category": "danang_tourism",
+      "question": "Trải nghiệm ngắm bình minh trên biển Đà Nẵng ở bãi nào yên bình nhất?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Bãi biển Mân Thái (Chèo SUP đón bình minh)**: Bãi biển Mân Thái (Chèo SUP đón bình minh) (Đà Nẵng) - Cảnh qu...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 9.39
+    },
+    {
+      "id": "DN-10",
+      "category": "danang_tourism",
+      "question": "Đèo Hải Vân nối giữa Đà Nẵng và tỉnh nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Đèo Hải Vân**: Đèo Hải Vân (Đà Nẵng) - Cảnh quan và thiên nhiên. Lưu ý thời tiết / mùa: Mùa hè khô ráo mát m...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 7.82
+    },
+    {
+      "id": "HUE-01",
+      "category": "hue_tourism",
+      "question": "Đại Nội Huế bao gồm những khu vực chính nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Đại Nội Huế (Hoàng Thành & Tử Cấm Thành)**: Đại Nội Huế (Hoàng Thành & Tử Cấm Thành) (Huế) - Di tích lịch sử và ...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 8.31
+    },
+    {
+      "id": "HUE-02",
+      "category": "hue_tourism",
+      "question": "Chùa Thiên Mụ nằm bên bờ dòng sông nào tại Huế?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Chùa Thiên Mụ**: Chùa Thiên Mụ (Hue) - Tâm linh và chùa thiền. Địa chỉ: Bên dòng sông Hương, Huế. Mô tả: Ngôi ch...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 20.78
+    },
+    {
+      "id": "HUE-03",
+      "category": "hue_tourism",
+      "question": "Làng sinh thái Thủy Biều tại Huế nổi tiếng với loại cây ăn quả nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Làng sinh thái Thủy Biều**: Làng sinh thái Thủy Biều (Huế) - Di tích lịch sử và văn hóa. Mô tả: Ngôi làng cổ ven...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 9.33
+    },
+    {
+      "id": "HUE-04",
+      "category": "hue_tourism",
+      "question": "Cầu ngói Thanh Toàn ở Huế có niên đại và kiến trúc độc đáo gì?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Cầu ngói Thanh Toàn**: Cầu ngói Thanh Toàn (Huế) - Di tích lịch sử và văn hóa. Mô tả: Cây cầu gỗ mái ngói lưu ly...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 11.01
+    },
+    {
+      "id": "HUE-05",
+      "category": "hue_tourism",
+      "question": "Lăng Khải Định có điểm gì khác biệt so với các lăng tẩm khác?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng & Huế:\n- **Lăng Khải Định (Ứng Lăng)**: Lăng Khải Định (Ứng Lăng) (Huế) - Di tích lịch sử và văn hóa. Lưu ý thời ...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 20.03
+    },
+    {
+      "id": "HUE-06",
+      "category": "hue_tourism",
+      "question": "Lăng Tự Đức mang phong cách kiến trúc và không gian như thế nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng & Huế:\n- **Lăng Hoàng đế Tự Đức (Khiêm Lăng)**: Thời điểm lý tưởng: 07:30 – 10:00, 15:00 – 17:00.\n- **Chùa Quốc Â...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 8.17
+    },
+    {
+      "id": "HUE-07",
+      "category": "hue_tourism",
+      "question": "Rừng Rú Chá tại Huế là hệ sinh thái rừng gì?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Rừng Rú Chá**: Rừng Rú Chá (Huế) - Cảnh quan và thiên nhiên. Mô tả: Khu rừng ngập mặn nguyên sinh quý hiếm cách ...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 9.47
+    },
+    {
+      "id": "HUE-08",
+      "category": "hue_tourism",
+      "question": "Chợ Đông Ba nằm ở đâu tại Huế?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Chợ Đông Ba**: Chợ Đông Ba (Huế) - Di tích lịch sử và văn hóa. Lưu ý thời tiết / mùa: Mở cửa đón khách quanh năm...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 10.01
+    },
+    {
+      "id": "HUE-09",
+      "category": "hue_tourism",
+      "question": "Bảo tàng Cổ vật Cung đình Huế nằm trong điện nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Bảo Tàng Cổ Vật Cung Đình Huế**: Bảo Tàng Cổ Vật Cung Đình Huế (Huế) - Di tích lịch sử và văn hóa. Lưu ý thời ti...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 18.86
+    },
+    {
+      "id": "HUE-10",
+      "category": "hue_tourism",
+      "question": "Đầm Chuồn thuộc hệ thống đầm phá nào ở Huế?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Đầm Chuồn**: Đầm Chuồn (Huế) - Cảnh quan và thiên nhiên. Mô tả: Đầm nước lợ thuộc hệ thống phá Tam Giang lớn nhấ...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 9.38
+    },
+    {
+      "id": "FOOD-01",
+      "category": "food_specialties",
+      "question": "Thành phần truyền thống của một tô Mỳ Quảng Đà Nẵng gồm những gì?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Mì Quảng Bà Vị**: Mì Quảng Bà Vị (Đà Nẵng) - local_specialty. Món đặc trưng: Mỳ Quảng Tôm Thịt: Tôm đất rim ...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 9.23
+    },
+    {
+      "id": "FOOD-02",
+      "category": "food_specialties",
+      "question": "Món Bún Bò Huế có hương vị đặc trưng bắt nguồn từ gia vị nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Bún Bò Bà Gái**: Điểm xanh: Thịt bắp bò hoa tươi lấy từ trang trại địa phương hàng ngày.\n- **Bún Bò Bà Gái**: Bú...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 20.55
+    },
+    {
+      "id": "FOOD-03",
+      "category": "food_specialties",
+      "question": "Ở Huế có những món bánh truyền thống nổi tiếng nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Chùa Từ Đàm**: Chùa Từ Đàm (Hue) - Tâm linh và chùa thiền. Địa chỉ: Cách trung tâm thành phố Huế 2km. Mô tả: Ngô...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 9.37
+    },
+    {
+      "id": "FOOD-04",
+      "category": "food_specialties",
+      "question": "Nhà hàng Chay Sân Mây ở Huế có đặc điểm ẩm thực và không gian ra sao?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Nhà hàng Chay Liên Hoa**: Nhà hàng Chay Liên Hoa (Huế) - Ẩm thực và quán ăn. Mô tả: Quán chay lâu năm gắn liền v...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 9.12
+    },
+    {
+      "id": "FOOD-05",
+      "category": "food_specialties",
+      "question": "Bánh tráng cuốn thịt heo Đà Nẵng dùng loại nước chấm đặc biệt nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Quán Mậu - Bánh Tráng Cuốn Thịt Heo**: Điểm xanh: Thịt heo hai đầu da luộc chuẩn chỉ, mắm nêm cá cơm nguyên ...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 10.24
+    },
+    {
+      "id": "FOOD-06",
+      "category": "food_specialties",
+      "question": "Ẩm thực chay ở Huế bắt nguồn từ truyền thống văn hóa nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Sân Mây Vegetarian Restaurant**: Hạn chế rác thải nhựa / ưu tiên nguyên liệu địa phương. Điểm xanh: Nhà rường cổ...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 20.39
+    },
+    {
+      "id": "FOOD-07",
+      "category": "food_specialties",
+      "question": "Chè hẻm ở Huế có những loại chè độc đáo nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Chè Hẻm Hùng Vương**: Điểm xanh: Nồi chè đỗ ngự, chè hạt sen bọc nhãn lồng, chè bột lọc bọc heo quay mặn ngọt tr...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 18.14
+    },
+    {
+      "id": "FOOD-08",
+      "category": "food_specialties",
+      "question": "Món Gỏi cá Nam Ô Đà Nẵng có hai cách thưởng thức nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Làng Nước Mắm Nam Ô**: Làng Nước Mắm Nam Ô (Đà Nẵng) - Di tích lịch sử và văn hóa. Lưu ý thời tiết / mùa: Mở...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 10.45
+    },
+    {
+      "id": "CULT-01",
+      "category": "cultural_history",
+      "question": "Nhã nhạc cung đình Huế được UNESCO công nhận là di sản gì?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Nhà Hàng Cung Đình – KS Hương Giang**: Điểm xanh: Trải nghiệm trang phục vua chúa thưởng thức nhã nhạc cung đình...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 9.72
+    },
+    {
+      "id": "CULT-02",
+      "category": "cultural_history",
+      "question": "Thành Điện Hải ở Đà Nẵng có ý nghĩa lịch sử gì trong kháng chiến chống Pháp?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Bảo Tàng Đà Nẵng (Thành Điện Hải)**: Bảo Tàng Đà Nẵng (Thành Điện Hải) (Đà Nẵng) - Di tích lịch sử và văn hó...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 24.37
+    },
+    {
+      "id": "CULT-03",
+      "category": "cultural_history",
+      "question": "Chùa Linh Ứng Bãi Bụt có bức tượng Phật nào nổi tiếng?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng & Huế:\n- **Chùa Phật Đứng**: Chùa Phật Đứng (Hue) - Tâm linh và chùa thiền. Địa chỉ: Núi Tứ Tượng, Huế. Mô tả: Đị...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 19.18
+    },
+    {
+      "id": "CULT-04",
+      "category": "cultural_history",
+      "question": "Ý nghĩa kiến trúc của Cột cờ Kỳ Đài trước Đại Nội Huế là gì?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Hoàng Thành Huế (Đại Nội Huế)**: Hoàng Thành Huế (Đại Nội Huế) (Huế) - Di tích lịch sử và văn hóa. Mô tả: Trái t...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 9.66
+    },
+    {
+      "id": "CULT-05",
+      "category": "cultural_history",
+      "question": "Nghề gốm cổ truyền Sa Huỳnh và Chăm Pa được trưng bày ở bảo tàng nào tại Đà Nẵng?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Bảo tàng Đồng Đình**: Bảo tàng Đồng Đình (Da Nang) - Di tích lịch sử và văn hóa. Địa chỉ: Suối Bụt, đường Ho...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 23.37
+    },
+    {
+      "id": "CULT-06",
+      "category": "cultural_history",
+      "question": "Văn hóa Nhà rường Huế có đặc trưng kết cấu như thế nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Không Gian Văn Hóa Lục Bộ**: Không Gian Văn Hóa Lục Bộ (Huế) - Di tích lịch sử và văn hóa. Lưu ý thời tiết / mùa...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 18.14
+    },
+    {
+      "id": "CULT-07",
+      "category": "cultural_history",
+      "question": "Hội đồng đánh giá di sản đánh giá thế nào về hệ thống lăng tẩm Huế?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Huế:\n- **Lăng Hoàng đế Tự Đức (Khiêm Lăng)**: Lăng Hoàng đế Tự Đức (Khiêm Lăng) (Huế) - Di tích lịch sử và văn hóa. Mô tả...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 18.09
+    },
+    {
+      "id": "ECO-01",
+      "category": "eco_tourism",
+      "question": "Tiêu chí du lịch xanh của GreenTrip bao gồm những khía cạnh nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng & Huế:\n- **Bảo tàng Mỹ thuật Cung đình Huế**: Bảo tàng Mỹ thuật Cung đình Huế (Hue) - Di tích lịch sử và văn hóa....",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 7.54
+    },
+    {
+      "id": "ECO-02",
+      "category": "eco_tourism",
+      "question": "Tại sao GreenTrip khuyến khích du khách đi tàu hỏa qua đèo Hải Vân?",
+      "status": "success",
+      "reply_text": "Địa điểm 'greentrip khuyến khích du khách đi tàu hỏa qua đèo hải vân' được đề xuất dựa trên điểm đánh giá du lịch bền vững và phân bổ lộ trình xanh tối ưu.",
+      "tools_used": [
+        "get_poi_explanation"
+      ],
+      "sources_count": 0,
+      "grounded": true,
+      "citation_correct": false,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 189.38
+    },
+    {
+      "id": "ECO-03",
+      "category": "eco_tourism",
+      "question": "Mô hình du lịch nông nghiệp hữu cơ An Nhiên Farm ở Đà Nẵng có hoạt động gì?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **An Nhiên Farm**: An Nhiên Farm (Đà Nẵng) - Cảnh quan và thiên nhiên. Lưu ý thời tiết / mùa: Mở cửa đón khách...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 32.45
+    },
+    {
+      "id": "ECO-04",
+      "category": "eco_tourism",
+      "question": "Làng rau Trà Quế có bí quyết bón phân xanh tự nhiên nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng & Huế:\n- **Angarden - Coffee Workshop Huế**: Angarden - Coffee Workshop Huế (Huế) - Quán cafe giải khát. Mô tả: Q...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 29.82
+    },
+    {
+      "id": "ECO-05",
+      "category": "eco_tourism",
+      "question": "Khách sạn và homestay xanh ở Đà Nẵng thực hiện biện pháp gì để tiết kiệm năng lượng?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Omandala Vietnam - Sound Healing**: Omandala Vietnam - Sound Healing (Đà Nẵng) - Tâm linh & Tôn giáo. Lưu ý ...",
+      "tools_used": [],
+      "sources_count": 3,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": false,
+      "unsupported_claim": false,
+      "latency_ms": 84.16
+    },
+    {
+      "id": "PRICE-01",
+      "category": "prices_opening_hours",
+      "question": "Giá vé vào cổng Bảo Tàng Điêu Khắc Chăm Đà Nẵng bao nhiêu?",
+      "status": "success",
+      "reply_text": "Rất tiếc, hiện tại hệ thống chưa có dữ liệu giá vé chính thức được xác thực cho địa điểm bạn hỏi. Bạn nên liên hệ trước ban quản lý hoặc trang chính thức.",
+      "tools_used": [
+        "search_pois",
+        "get_poi_details"
+      ],
+      "sources_count": 0,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 46.19
+    },
+    {
+      "id": "PRICE-02",
+      "category": "prices_opening_hours",
+      "question": "Vé vào cổng Quần thể Di tích Cố đô Huế (Đại Nội) nằm trong khung giá nào?",
+      "status": "success",
+      "reply_text": "Rất tiếc, hiện tại hệ thống chưa có dữ liệu giá vé chính thức được xác thực cho địa điểm bạn hỏi. Bạn nên liên hệ trước ban quản lý hoặc trang chính thức.",
+      "tools_used": [
+        "search_pois",
+        "get_poi_details"
+      ],
+      "sources_count": 0,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 43.53
+    },
+    {
+      "id": "PRICE-03",
+      "category": "prices_opening_hours",
+      "question": "Giá vé vào danh thắng Ngũ Hành Sơn Đà Nẵng khoảng bao nhiêu?",
+      "status": "success",
+      "reply_text": "Rất tiếc, hiện tại hệ thống chưa có dữ liệu giá vé chính thức được xác thực cho địa điểm bạn hỏi. Bạn nên liên hệ trước ban quản lý hoặc trang chính thức.",
+      "tools_used": [
+        "search_pois",
+        "get_poi_details"
+      ],
+      "sources_count": 0,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 22.92
+    },
+    {
+      "id": "PRICE-04",
+      "category": "prices_opening_hours",
+      "question": "Bảo tàng Mỹ thuật Đà Nẵng mở cửa trong khung giờ nào?",
+      "status": "success",
+      "reply_text": "Thông tin xác thực từ cẩm nang du lịch Đà Nẵng:\n- **Bảo Tàng Mỹ Thuật Đà Nẵng**: Bảo Tàng Mỹ Thuật Đà Nẵng (Đà Nẵng) - Di tích lịch sử và văn hóa. Lưu ý thời ti...",
+      "tools_used": [
+        "search_pois"
+      ],
+      "sources_count": 3,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 42.44
+    },
+    {
+      "id": "PRICE-05",
+      "category": "prices_opening_hours",
+      "question": "Tham quan Chùa Linh Ứng Bãi Bụt Sơn Trà có mất vé vào cổng không?",
+      "status": "success",
+      "reply_text": "Rất tiếc, hiện tại hệ thống chưa có dữ liệu giá vé chính thức được xác thực cho địa điểm bạn hỏi. Bạn nên liên hệ trước ban quản lý hoặc trang chính thức.",
+      "tools_used": [
+        "search_pois",
+        "get_poi_details"
+      ],
+      "sources_count": 0,
+      "grounded": false,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 16.32
+    },
+    {
+      "id": "OOS-01",
+      "category": "out_of_scope_insufficient",
+      "question": "Gợi ý cho mình các địa điểm du lịch nổi tiếng ở thủ đô Paris nước Pháp?",
+      "status": "success",
+      "reply_text": "Hiện tại trong nguồn dữ liệu du lịch đã kiểm duyệt của GreenTrip chưa có tài liệu cụ thể về câu hỏi này. Bạn có thể cho em biết cụ thể địa danh bạn muốn tìm kiế...",
+      "tools_used": [],
+      "sources_count": 0,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 0.56
+    },
+    {
+      "id": "OOS-02",
+      "category": "out_of_scope_insufficient",
+      "question": "Viết giúp mình đoạn mã Python kết nối cơ sở dữ liệu MongoDB?",
+      "status": "success",
+      "reply_text": "Hiện tại trong nguồn dữ liệu du lịch đã kiểm duyệt của GreenTrip chưa có tài liệu cụ thể về câu hỏi này. Bạn có thể cho em biết cụ thể địa danh bạn muốn tìm kiế...",
+      "tools_used": [],
+      "sources_count": 0,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 0.22
+    },
+    {
+      "id": "OOS-03",
+      "category": "out_of_scope_insufficient",
+      "question": "Cho mình danh sách các quán ăn ngon nhất ở quận Hoàn Kiếm Hà Nội?",
+      "status": "success",
+      "reply_text": "Hiện tại trong nguồn dữ liệu du lịch đã kiểm duyệt của GreenTrip chưa có tài liệu cụ thể về câu hỏi này. Bạn có thể cho em biết cụ thể địa danh bạn muốn tìm kiế...",
+      "tools_used": [],
+      "sources_count": 0,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 0.13
+    },
+    {
+      "id": "OOS-04",
+      "category": "out_of_scope_insufficient",
+      "question": "Tỷ giá đồng Yên Nhật hôm nay đổi ra VND là bao nhiêu?",
+      "status": "success",
+      "reply_text": "Hiện tại trong nguồn dữ liệu du lịch đã kiểm duyệt của GreenTrip chưa có tài liệu cụ thể về câu hỏi này. Bạn có thể cho em biết cụ thể địa danh bạn muốn tìm kiế...",
+      "tools_used": [],
+      "sources_count": 0,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 0.12
+    },
+    {
+      "id": "OOS-05",
+      "category": "out_of_scope_insufficient",
+      "question": "Số điện thoại cá nhân riêng tư của quản lý khách sạn X là gì?",
+      "status": "success",
+      "reply_text": "Hiện tại trong nguồn dữ liệu du lịch đã kiểm duyệt của GreenTrip chưa có tài liệu cụ thể về câu hỏi này. Bạn có thể cho em biết cụ thể địa danh bạn muốn tìm kiế...",
+      "tools_used": [],
+      "sources_count": 0,
+      "grounded": true,
+      "citation_correct": true,
+      "tool_correct": true,
+      "unsupported_claim": false,
+      "latency_ms": 0.13
+    }
+  ]
+}

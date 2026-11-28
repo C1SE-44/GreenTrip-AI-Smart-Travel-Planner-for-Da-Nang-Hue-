@@ -2,7 +2,7 @@
 
 Danh sách và thứ tự chạy tuần tự các SQL migration cho PostgreSQL / Supabase của **GreenTrip AI**.
 
-## Thứ tự chạy chuẩn (`001` → `019`)
+## Thứ tự chạy chuẩn (`001` → `020`)
 
 Chạy lần lượt theo đúng số thứ tự tăng dần:
 
@@ -26,7 +26,8 @@ Chạy lần lượt theo đúng số thứ tự tăng dần:
 | 016 | `016_add_user_avatar_path.sql` | Bổ sung cột `avatar_path` cho `public.users` |
 | 017 | `017_create_poi_images_bucket.sql` | Tạo bucket công khai `poi-images` (5MB, JPEG/PNG/WebP) trên Supabase Storage |
 | 018 | `018_db_3nf_fk_indexes_and_audit.sql` | Bật `pg_trgm`, đánh GIN/Composite Index, ràng buộc `CHECK`, khóa ngoại `owner_user_id`/`poi_uuid`, tạo bảng `admin_audit_logs` |
-| 019 | `019_fix_my_trips_itinerary_upsert.sql` | Bổ sung unique index cho `itineraries.trip_id` để API `/my-trips` upsert được trên schema cũ; cho phép điểm nghỉ/địa điểm tự thêm có `poi_id = NULL` |
+| 019 | `019_add_segment_transport_mode.sql` | Bổ sung phương tiện cho từng chặng và cấu hình phương tiện tùy chỉnh theo ngày |
+| 020 | `020_fix_my_trips_itinerary_upsert.sql` | Bổ sung unique index cho `itineraries.trip_id` để API `/my-trips` upsert được trên schema cũ; cho phép điểm nghỉ/địa điểm tự thêm có `poi_id = NULL` |
 
 ## Thư mục `manual/` (Chạy thủ công khi cần, không thuộc chuỗi migrate tự động)
 
@@ -35,5 +36,5 @@ Chạy lần lượt theo đúng số thứ tự tăng dần:
 
 ## Quy ước đánh số mới
 
-- Mỗi migration mới tiếp theo phải dùng số thứ tự duy nhất tăng dần (`020_<short_snake_description>.sql`, `021_...`), không đặt trùng số.
+- Mỗi migration mới tiếp theo phải dùng số thứ tự duy nhất tăng dần (`021_<short_snake_description>.sql`, `022_...`), không đặt trùng số.
 - Các script data-patch / rollback chạy tay theo từng đợt dữ liệu đặt trong `manual/`.

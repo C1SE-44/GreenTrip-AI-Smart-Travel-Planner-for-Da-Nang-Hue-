@@ -30,12 +30,18 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _POIS_CSV_PATH = _PROJECT_ROOT / "data" / "processed" / "all_pois_cleaned.csv"
 _CONTACTS_CACHE_PATH = _PROJECT_ROOT / "data" / "processed" / "poi_contacts_cache.json"
 
-# Urban Vietnam passenger-km emissions baseline (g CO2e/km), aligned with frontend Part 1
+from app.emission_factors import (
+    EMISSION_FACTORS_CONFIG,
+    get_emission_factor_g_pkm,
+    calculate_carbon_footprint,
+)
+
+# Urban Vietnam passenger-km emissions baseline (g CO2e/km), derived from unified config
 TRANSPORT_EMISSION_FACTORS_G_PER_KM: dict[str, int] = {
-    "driving": 171,
-    "motorcycle": 72,
-    "transit": 40,
-    "walking": 0,
+    "driving": int(get_emission_factor_g_pkm("taxi_car")),
+    "motorcycle": int(get_emission_factor_g_pkm("motorcycle")),
+    "transit": int(get_emission_factor_g_pkm("public_bus")),
+    "walking": int(get_emission_factor_g_pkm("walking")),
 }
 
 TRANSPORT_LABELS_VI: dict[str, str] = {
@@ -639,6 +645,18 @@ def optimize_outline_routes_and_co2(
     saved_vs_car_grams = max(0, baseline_car_grams - co2_grams)
     saved_route_grams = round(saved_km * factor)
     saved_vs_car_percent = round((saved_vs_car_grams / baseline_car_grams) * 100) if baseline_car_grams > 0 else 0
+    # 1 mature tree absorbs ~22 kg CO2/year (~60 g CO2/day)
+    tree_days_equivalent = round((saved_vs_car_grams + saved_route_grams) / 60.0, 1)
+
+    from app.trips.copilot_enrichment import recommend_transport_for_leg
+
+    avg_day_km = total_after_km / max(1, len(outline))
+    recommended_transport_tip = recommend_transport_for_leg(
+        distance_km=avg_day_km,
+        num_people=max(1, trip_context.num_people or 2),
+        constraints=trip_context.active_constraints,
+        is_intercity=avg_day_km >= 45.0,
+    )
 
     return {
         "transport_mode": mode,
@@ -652,6 +670,8 @@ def optimize_outline_routes_and_co2(
         "saved_vs_car_grams": saved_vs_car_grams,
         "saved_vs_car_percent": saved_vs_car_percent,
         "saved_route_grams": saved_route_grams,
+        "tree_days_equivalent": tree_days_equivalent,
+        "recommended_transport_tip": recommended_transport_tip,
     }
 
 

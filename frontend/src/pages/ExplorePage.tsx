@@ -7,7 +7,7 @@ import TripCalendarView from '@/components/planner/TripCalendarView';
 import { MorphFavoriteButton, MorphAddButton } from '@/components/ui/MorphButton';
 import CreateTripCopilotModal from '@/components/planner/CreateTripCopilotModal';
 import IdeationChatView from '@/components/planner/IdeationChatView';
-import type { CopilotTripMessage } from '@/components/planner/copilotTripData';
+import type { CopilotDayOutline, CopilotTripMessage } from '@/components/planner/copilotTripData';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, normalizePois, isCuratedHighlight, evaluateLocalAuthentic } from '@/data/pois';
 import ExplorePoiCard from '@/components/explore/ExplorePoiCard';
@@ -24,7 +24,7 @@ import {
 } from '@/components/explore/exploreUtils';
 export { SEEDED_SAMPLE_TRIPS };
 export type { ExploreTabId, UserTrip };
-import PoiMap from '@/components/poi/PoiMap';
+import PoiMap, { isPoiInsideBounds, type MapViewportBounds } from '@/components/poi/PoiMap';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import SavedPlacesView from '@/components/saved/SavedPlacesView';
 import BuildTripFromCollectionModal from '@/components/saved/BuildTripFromCollectionModal';
@@ -44,7 +44,15 @@ import Logo from '@/components/ui/Logo';
 import { fetchJson } from '@/lib/api';
 import { clearAuthSession, getMe, type UserProfile } from '@/services/auth';
 import { deleteMyTrip, getMyTrips } from '@/services/tripService';
-import { loadAccountTrips, loadCachedAccountTrips, loadGuestTrips, saveGuestTrips, tripStorageKey } from '@/utils/accountTrips';
+import {
+  loadAccountTrips,
+  loadCachedAccountTrips,
+  loadGuestTrips,
+  readGuestTrips,
+  saveGuestTrips,
+  tripStorageKey,
+  writeGuestTrips,
+} from '@/utils/accountTrips';
 import { getPois, getAllPois } from '@/services/poi';
 import ExploreFilterModal, {
   type ExploreFilterValues,
@@ -94,14 +102,16 @@ const TABS: { id: ExploreTabId; label: string }[] = [
 export default function ExplorePage({ initialView = 'explore' }: { initialView?: 'home' | 'explore' | 'trips' | 'saved' | 'chat' | 'profile' }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { savedIds, pendingIds, openCollectionPicker } = useSavedPlaces();
+  const { savedIds, collections: savedCollections, pendingIds, openCollectionPicker } = useSavedPlaces();
   const [viewMode, setViewMode] = useState<'home' | 'explore' | 'trips' | 'saved' | 'chat' | 'profile'>(initialView);
   const [activeOverviewTrip, setActiveOverviewTrip] = useState<UserTrip | null>(null);
   const [isCreateTripModalOpen, setIsCreateTripModalOpen] = useState(false);
   const [ideationDraft, setIdeationDraft] = useState<{
     initialPrompt: string;
     chatHistory: CopilotTripMessage[];
+    itineraryOutline?: CopilotDayOutline[];
   } | null>(null);
+  const [pendingChatPrompt, setPendingChatPrompt] = useState<string | null>(null);
   const [addToTripSelection, setAddToTripSelection] = useState<AddToTripSelection | null>(null);
   const [pendingAddToTripPoiIds, setPendingAddToTripPoiIds] = useState<string[] | null>(null);
   const [pendingPackageLaunch, setPendingPackageLaunch] = useState<TripPackageLaunch | null>(null);
@@ -131,6 +141,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const quickLaunchTripRef = useRef<UserTrip | null>(null);
 
   const [search, setSearch] = useState('');
+  const [mapAreaBounds, setMapAreaBounds] = useState<MapViewportBounds | null>(null);
   const [cityFilter, setCityFilter] = useState<CityFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [activeTab, setActiveTab] = useState<ExploreTabId>('for-you');
@@ -182,13 +193,8 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const handleOpenTripsView = () => {
     setViewMode('trips');
     setSelectedTripForDetails(null);
-    if (userTrips.length > 0) {
-      setActiveOverviewTrip(userTrips[0]);
-      setActiveTripSubTab('ideas');
-    } else {
-      setActiveOverviewTrip(null);
-      setIsCreateTripModalOpen(true);
-    }
+    setActiveOverviewTrip(null);
+    setActiveTripSubTab('ideas');
     navigate('/planner');
   };
 
@@ -258,6 +264,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [allPois, setAllPois] = useState<Poi[]>(() => mergeTripPackagePois(pois));
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const hasSavedForPlanner = Boolean(currentUser) && (savedIds.size > 0 || savedCollections.length > 0);
   const [profileLoading, setProfileLoading] = useState(true);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
@@ -440,16 +447,22 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   }, [updateThumb, allPois]);
 
   useEffect(() => {
-    if (!tripsOwner || !currentUser || tripsOwner !== currentUser.user_id) return;
-    const storageKey = tripStorageKey(tripsOwner);
     const privateTrips = userTrips.filter((t) => !t.id.startsWith('sample-'));
+    if (!currentUser) {
+      if (!profileLoading) {
+        writeGuestTrips(localStorage, privateTrips);
+      }
+      return;
+    }
+    if (!tripsOwner || tripsOwner !== currentUser.user_id) return;
+    const storageKey = tripStorageKey(tripsOwner);
     if (!privateTrips.length && localStorage.getItem(storageKey) === null) return;
     try {
       localStorage.setItem(storageKey, JSON.stringify(privateTrips));
     } catch (e) {
       console.error(e);
     }
-  }, [userTrips, tripsOwner, currentUser]);
+  }, [userTrips, tripsOwner, currentUser, profileLoading]);
 
   useEffect(() => {
     if (profileLoading || currentUser) return;
@@ -468,15 +481,30 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
         if (!active || requestId !== profileRequestId) return;
         setCurrentUser(profile);
         try {
+          const guestBeforeLogin = readGuestTrips(localStorage);
           const owned = await loadAccountTrips(localStorage, profile.user_id, getMyTrips);
           if (!active || requestId !== profileRequestId) return;
+          // Đồng bộ lịch trình tạm của Khách lên tài khoản sau khi đăng nhập
+          for (const guestTrip of guestBeforeLogin) {
+            try {
+              const rawPlan = localStorage.getItem(`greentrip_itinerary_${guestTrip.id}`);
+              if (rawPlan) {
+                const parsedPlan = JSON.parse(rawPlan);
+                if (parsedPlan && parsedPlan.trip_id) {
+                  void saveTripItineraryWithStatus(parsedPlan).catch(() => undefined);
+                }
+              }
+            } catch {
+              // Ignore malformed draft itinerary
+            }
+          }
           const normalizedOwned = owned.map((t) => {
             const rawTitle = (t.title || '').trim();
             const isBadTitle = !rawTitle || rawTitle.length <= 3 || ['ư', 'a', 'ơi', 'alo'].includes(rawTitle.toLowerCase()) || rawTitle.toLowerCase().startsWith('bắt đầu');
             return {
               ...t,
               title: isBadTitle ? `Chuyến đi ${t.destination || 'Đà Nẵng & Huế'}` : t.title,
-              image: resolveTripCoverImage(t.image || t.coverImage, t.destination),
+image: resolveTripCoverImage(t.image || t.coverImage, t.destination),
             };
           });
           const quickTrip = quickLaunchTripRef.current;
@@ -503,7 +531,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
           setTripsOwner(null);
           setTripLoadError(null);
           const quickTrip = quickLaunchTripRef.current;
-          const guestTrips = loadGuestTrips(localStorage);
+const guestTrips = loadGuestTrips(localStorage);
           const restoredTrips = quickTrip && !guestTrips.some((trip) => trip.id === quickTrip.id)
             ? [quickTrip, ...guestTrips]
             : guestTrips;
@@ -619,6 +647,9 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
 
   const filteredPois = useMemo(() => {
     const matched = allPois.filter((poi) => {
+      if (mapAreaBounds && !isPoiInsideBounds(poi, mapAreaBounds)) {
+        return false;
+      }
       const matchCity = cityFilter === 'all' || poi.city === cityFilter;
       let matchCat = true;
       if (categoryFilter === 'di-tich') {
@@ -843,11 +874,12 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
       }
       return a.name.localeCompare(b.name, 'vi');
     });
-  }, [allPois, search, cityFilter, categoryFilter, filterValues, activeTab, savedIds]);
+  }, [allPois, search, cityFilter, categoryFilter, filterValues, activeTab, savedIds, mapAreaBounds]);
 
   // Đếm số lượng filter đang active chuẩn Mindtrip
   const activeFilterCount = useMemo(() => {
     let count = 0;
+    if (mapAreaBounds) count++;
     if (filterValues.budget !== 'all') count++;
     if (filterValues.ecoPriority !== 'all') count++;
     if (filterValues.ecoCertifiedOnly) count++;
@@ -866,7 +898,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
     if (filterValues.freeTicketOnly) count++;
     if (filterValues.greenWeight !== 50 || filterValues.budgetWeight !== 50) count++;
     return count;
-  }, [filterValues]);
+  }, [filterValues, mapAreaBounds]);
 
   // Xác định chế độ xem tuyển chọn theo từng chuyên mục (Curated Sections Overview - Chuẩn Mindtrip):
   // Kích hoạt khi ở tab "Dành cho bạn", không tìm kiếm từ khóa, không ở mục 'đã lưu' và không chọn bộ lọc chuyên sâu
@@ -1235,8 +1267,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                             : 'text-gray-600 hover:text-black hover:bg-gray-100 font-medium'
                         }`}
                       >
-                        <span className="text-amber-400 text-xs">💡</span>
-                        <span className="truncate">Ý tưởng</span>
+                        <span className="text-emerald-400 text-xs">💬</span>
+                        <span className="truncate">Trợ lý &amp; Tổng quan</span>
                       </button>
 
                       {/* Nhánh 2: Kế hoạch chi tiết */}
@@ -1460,10 +1492,18 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
             setPendingPackageLaunch(packageLaunch ?? null);
             setPendingAddToTripPoiIds(packageLaunch?.poiIds ?? null);
             setIdeationDraft(packageLaunch ? {
-              initialPrompt: `Tạo chuyến đi ${defaultDest} ${packageLaunch.daysCount} ngày theo gói “${defaultTitle}”. Giữ lịch trình các điểm theo đúng từng ngày của gói.`,
+              initialPrompt: 'Tạo chuyến đi ' + String(defaultDest || '') + ' ' + packageLaunch.daysCount + ' ngày theo gói ' + String(defaultTitle || '') + '. Giữ lịch trình các điểm theo đúng từng ngày của gói.',
+              chatHistory: [],
+            } : (defaultDest || defaultTitle) ? {
+              initialPrompt: [defaultTitle, defaultDest].filter(Boolean).join(' tại '),
               chatHistory: [],
             } : null);
             setIsCreateTripModalOpen(true);
+          }}
+          onNavigateToChat={(promptText) => {
+            if (promptText) setPendingChatPrompt(promptText);
+            setViewMode('chat');
+            navigate('/chat');
           }}
           pois={allPois}
           poisLoading={loading}
@@ -1573,24 +1613,56 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               <h1 className="text-[28px] sm:text-[32px] lg:text-[34px] font-bold text-gray-950 tracking-tight leading-none">
                 Lịch trình của bạn
               </h1>
-              <div className="ml-auto flex flex-wrap items-center gap-2 shrink-0">
+              {/* Chỉ hiển thị cặp nút hành động ở header khi đã có chuyến đi (tránh lặp 2 lần với Empty State giữa trang) */}
+              {!(tripsSubTab === 'trips' && userTrips.length === 0) && (
+                <div className="ml-auto flex flex-wrap items-center gap-2 shrink-0">
+                  {hasSavedForPlanner ? (
+                    <button
+                      type="button"
+                      onClick={() => setCollectionPlannerConfig({ collectionId: null })}
+                      className="whitespace-nowrap border border-emerald-800 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 min-h-[44px] h-[44px] sm:h-[40px] px-4 rounded-full text-[13.5px] font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    >
+                      <i className="ph ph-sparkle text-sm text-emerald-800" aria-hidden="true"></i>
+                      <span>Xếp lịch từ Kho đã lưu</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViewMode('explore');
+                        navigate('/explore');
+                      }}
+                      className="whitespace-nowrap border border-emerald-800 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 min-h-[44px] h-[44px] sm:h-[40px] px-4 rounded-full text-[13.5px] font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                    >
+                      <i className="ph ph-compass text-sm text-emerald-800" aria-hidden="true"></i>
+                      <span>Khám phá &amp; lưu điểm</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsCreateTripModalOpen(true)}
+                    className="w-auto whitespace-nowrap bg-black text-white hover:bg-neutral-800 min-h-[44px] h-[44px] sm:h-[40px] px-5 sm:px-[36px] rounded-full text-[13.5px] font-semibold flex items-center gap-[14px] transition active:scale-95 shadow-xs cursor-pointer shrink-0"
+                  >
+                    <i className="ph ph-plus font-bold text-sm"></i>
+                    <span>Chuyến đi mới</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {!currentUser && userTrips.some((t) => !t.id.startsWith('sample-')) && (
+              <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs sm:text-[13px] text-emerald-950 leading-relaxed">
+                  <strong>Chế độ Khách:</strong> Các chuyến đi bạn vừa tạo đã được lưu tạm trên trình duyệt này. Đăng nhập để tự động đồng bộ vào tài khoản của bạn.
+                </p>
                 <button
                   type="button"
-                  onClick={() => setCollectionPlannerConfig({ collectionId: null })}
-                  className="whitespace-nowrap border border-emerald-800 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 min-h-[44px] h-[44px] sm:h-[40px] px-4 rounded-full text-[13.5px] font-semibold flex items-center gap-2 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  onClick={() => navigate('/login', { state: { returnTo: '/planner' } })}
+                  className="min-h-[40px] px-4 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                 >
-                  <i className="ph ph-sparkle text-sm text-emerald-800" aria-hidden="true"></i>
-                  <span>Xếp lịch từ Kho đã lưu</span>
-                </button>
-                <button
-                  onClick={() => setIsCreateTripModalOpen(true)}
-                  className="w-auto whitespace-nowrap bg-black text-white hover:bg-neutral-800 min-h-[44px] h-[44px] sm:h-[40px] px-5 sm:px-[36px] rounded-full text-[13.5px] font-semibold flex items-center gap-[14px] transition active:scale-95 shadow-xs cursor-pointer shrink-0"
-                >
-                  <i className="ph ph-plus font-bold text-sm"></i>
-                  <span>Chuyến đi mới</span>
+                  Đăng nhập &amp; đồng bộ
                 </button>
               </div>
-            </div>
+            )}
 
             {/* Section 2.2: Hàng Tab - Cỡ chữ 147px (text-[16px]), padding ngang 14px (px-[8px]), khoảng cách 2 chữ 48px (gap-[11px]), chữ cách gạch chân 38px (pb-[8px], -5%), gạch chân dày 3px (border-b-[1.5px]) */}
             <div className="flex items-center gap-[11px]">
@@ -1720,13 +1792,26 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                     >
                       Tạo chuyến đi đầu tiên
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setCollectionPlannerConfig({ collectionId: null })}
-                      className="border border-emerald-800 bg-emerald-50 text-emerald-950 px-6 h-[54px] rounded-full text-[15px] font-semibold hover:bg-emerald-100 transition cursor-pointer flex items-center justify-center shrink-0"
-                    >
-                      Xếp lịch từ Kho đã lưu
-                    </button>
+                    {hasSavedForPlanner ? (
+                      <button
+                        type="button"
+                        onClick={() => setCollectionPlannerConfig({ collectionId: null })}
+                        className="border border-emerald-800 bg-emerald-50 text-emerald-950 px-6 h-[54px] rounded-full text-[15px] font-semibold hover:bg-emerald-100 transition cursor-pointer flex items-center justify-center shrink-0"
+                      >
+                        Xếp lịch từ Kho đã lưu
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setViewMode('explore');
+                          navigate('/explore');
+                        }}
+                        className="border border-emerald-800 bg-emerald-50 text-emerald-950 px-6 h-[54px] rounded-full text-[15px] font-semibold hover:bg-emerald-100 transition cursor-pointer flex items-center justify-center shrink-0"
+                      >
+                        Khám phá &amp; lưu điểm yêu thích
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -1745,7 +1830,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                       >
                         <div className="relative aspect-[16/10] w-full bg-gray-100 overflow-hidden">
                           <img
-                            src={resolveTripCoverImage(trip.image || trip.coverImage, trip.destination)}
+src={resolveTripCoverImage(trip.image || trip.coverImage, trip.destination)}
                             alt={trip.title}
                             onError={(event) => {
                               const fallback = getTripCoverFallback(trip.destination);
@@ -1847,8 +1932,11 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
       ) : viewMode === 'chat' ? (
         <IdeationChatView
           allPois={allPois}
-          onCreateTripFromIdea={({ initialPrompt, selectedPoiIds, chatHistory }) => {
-            setIdeationDraft({ initialPrompt, chatHistory });
+          currentUserName={currentUser?.full_name}
+          initialPrompt={pendingChatPrompt}
+          onConsumedInitialPrompt={() => setPendingChatPrompt(null)}
+          onCreateTripFromIdea={({ initialPrompt, selectedPoiIds, chatHistory, itineraryOutline }) => {
+            setIdeationDraft({ initialPrompt, chatHistory, itineraryOutline });
             setPendingAddToTripPoiIds(selectedPoiIds.length > 0 ? selectedPoiIds : null);
             setIsCreateTripModalOpen(true);
           }}
@@ -2177,6 +2265,9 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
                 onToggleFavorite={(_id, poi) => { if (poi) openCollectionPicker(poi); }}
                 addedTrips={addedTrips}
                 onToggleAddTrip={toggleAddTrip}
+                onSearchInArea={(bounds) => setMapAreaBounds(bounds)}
+                activeAreaFilter={Boolean(mapAreaBounds)}
+                onClearAreaFilter={() => setMapAreaBounds(null)}
               />
             )}
           </div>
@@ -2303,6 +2394,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           isOpen={isCreateTripModalOpen}
           initialPrompt={ideationDraft?.initialPrompt}
           initialChatHistory={ideationDraft?.chatHistory}
+          initialItineraryOutline={ideationDraft?.itineraryOutline}
           onClose={() => {
             setIsCreateTripModalOpen(false);
             setPendingAddToTripPoiIds(null);
@@ -2337,7 +2429,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               id: newTrip.id || `trip-${Date.now()}`,
               savedPlaces,
               ideas,
-              image: coverImage,
+image: coverImage,
               coverImage,
               tags: newTrip.tags || [
                 pendingPackageLaunch?.destination ?? newTrip.destination,
@@ -2385,6 +2477,11 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           initialCollectionName={collectionPlannerConfig.collectionName ?? null}
           initialCollectionPois={collectionPlannerConfig.places ?? null}
           onClose={() => setCollectionPlannerConfig(null)}
+          onNavigateToExplore={() => {
+            setCollectionPlannerConfig(null);
+            setViewMode('explore');
+            navigate('/explore');
+          }}
           onConfirmBuild={async (payload) => {
             const tripId = currentUser ? `trip-col-${Date.now()}` : `trip-quick-${Date.now()}`;
             const syncedItinerary = {
@@ -2404,7 +2501,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
               createdAt: new Date().toISOString(),
               savedPlaces: payload.savedPoiIds,
               ideas: payload.savedPoiIds,
-              image: resolveTripCoverImage(firstPhoto, payload.destination),
+image: resolveTripCoverImage(firstPhoto, payload.destination),
               tags: [
                 payload.destination,
                 `${payload.daysCount} ngày`,

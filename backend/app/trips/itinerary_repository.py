@@ -116,6 +116,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         ("comment", "TEXT"),
         ("latitude", "REAL"),
         ("longitude", "REAL"),
+        ("transport_mode", "TEXT"),
     ]:
         if col not in stop_columns:
             cursor.execute(f"ALTER TABLE itinerary_stops ADD COLUMN {col} {col_type}")
@@ -162,6 +163,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         ("note", "TEXT NOT NULL DEFAULT ''"),
         ("theme", "TEXT"),
         ("focus_city", "TEXT"),
+        ("custom_segment_modes", "TEXT"),
     ]:
         if col not in day_columns:
             cursor.execute(f"ALTER TABLE itinerary_days ADD COLUMN {col} {col_type}")
@@ -194,6 +196,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         ("comment", "TEXT"),
         ("latitude", "REAL"),
         ("longitude", "REAL"),
+        ("transport_mode", "TEXT"),
     ]:
         if col not in stop_columns:
             cursor.execute(f"ALTER TABLE itinerary_stops ADD COLUMN {col} {col_type}")

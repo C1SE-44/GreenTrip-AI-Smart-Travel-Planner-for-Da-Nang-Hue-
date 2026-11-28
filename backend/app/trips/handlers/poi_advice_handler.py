@@ -50,11 +50,11 @@ CURATED_POI_ADVICE: dict[str, dict[str, Any]] = {
         "budget_impact": "Điểm đến hoàn toàn miễn phí vé vào cổng, chỉ phát sinh chi phí di chuyển (~80.000 – 150.000 ₫/chiều).",
         "green_impact": "Hành trình khuyến khích bảo vệ môi trường, ngắm thú hoang dã văn minh không để lại rác thải nhựa.",
         "gallery": [
-            "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1528127269322-539801943592?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=800&auto=format&fit=crop&q=80",
+            "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp",
+            "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/93f9fa97-d463-4f8c-8081-61a20a542587.webp",
+            "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/5ca0cfd4-6576-47ed-892d-571fe2a5e9cc.webp",
+            "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/818378e4-c149-492e-818d-a22efb8d0572.webp",
+            "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/61b4a4f1-ad26-54e8-a1fe-cfc5e65fd119.webp",
         ],
     },
     "cầu rồng": {
@@ -119,10 +119,18 @@ CURATED_POI_ADVICE: dict[str, dict[str, Any]] = {
 }
 
 
-def extract_advice_target(message: str) -> str | None:
-    """Extract known place identifier from natural user query."""
+def extract_advice_target(message: str, fallback_city: str | None = None) -> str | None:
+    """Extract known place identifier from natural user query with strict Linh Ung disambiguation."""
     msg = normalize_vietnamese_query(message)
     folded_msg = strip_vietnamese_accents(msg)
+
+    # Disambiguate the 3 Linh Ung pagodas BEFORE generic Sơn Trà / Bà Nà / Ngũ Hành Sơn checks
+    if contains_any_phrase(msg, folded_msg, ["linh ứng"], ["linh ung"]):
+        if contains_any_phrase(msg, folded_msg, ["bà nà"], ["ba na"]):
+            return "chùa linh ứng bà nà"
+        if contains_any_phrase(msg, folded_msg, ["non nước", "ngũ hành sơn"], ["non nuoc", "ngu hanh son"]):
+            return "chùa linh ứng non nước"
+        return "chùa linh ứng bãi bụt"
 
     # Check specific curated targets first
     if contains_any_phrase(msg, folded_msg, ["sơn trà"], ["son tra"]):
@@ -133,8 +141,6 @@ def extract_advice_target(message: str) -> str | None:
         return "cầu rồng"
     if contains_any_phrase(msg, folded_msg, ["nam sơn"], ["nam son"]):
         return "chùa nam sơn"
-    if contains_any_phrase(msg, folded_msg, ["linh ứng"], ["linh ung"]):
-        return "chùa linh ứng"
     if contains_any_phrase(msg, folded_msg, ["ngũ hành sơn", "non nước"], ["ngu hanh son", "non nuoc"]):
         return "ngũ hành sơn"
     if contains_any_phrase(msg, folded_msg, ["bàn cờ"], ["dinh ban co"]):
@@ -147,7 +153,13 @@ def extract_advice_target(message: str) -> str | None:
         return "thiên mụ"
     if contains_any_phrase(msg, folded_msg, ["khải định"], ["khai dinh"]):
         return "khải định"
+    if contains_any_phrase(msg, folded_msg, ["tự đức"], ["tu duc"]):
+        return "lăng tự đức"
+    if contains_any_phrase(msg, folded_msg, ["thủy biều"], ["thuy bieu"]):
+        return "thủy biều"
 
+    if fallback_city and ("huế" in fallback_city.lower() or "hue" in fallback_city.lower()):
+        return "thủy biều"
     return None
 
 
@@ -161,7 +173,8 @@ def handle_poi_advice(
     Returns:
         (reply_text, suggested_pois, action_type, next_prompts, avoid_notice, green_impact, budget_impact)
     """
-    target_key = extract_advice_target(message) or "bán đảo sơn trà"
+    dest = trip_context.destination or "Đà Nẵng"
+    target_key = extract_advice_target(message, fallback_city=dest) or "bán đảo sơn trà"
     curated = CURATED_POI_ADVICE.get(target_key)
     
     # Query database for authentic POI data
@@ -185,8 +198,9 @@ def handle_poi_advice(
         FROM public.pois p
         JOIN public.poi_categories c ON p.category_id = c.category_id
         JOIN public.cities ci ON p.city_id = ci.city_id
-        WHERE p.name ILIKE %s
-        ORDER BY p.popularity_score DESC NULLS LAST
+        WHERE p.is_active IS NOT FALSE
+          AND p.name ILIKE %s
+        ORDER BY p.green_score DESC NULLS LAST, p.satisfaction_score DESC NULLS LAST
         LIMIT 1;
     """
     
@@ -265,7 +279,7 @@ def handle_poi_advice(
         
         green_int = format_green_score(green_score)
         rating_flt = round(float(sat_score or 4.8), 1)
-        fallback_hero = "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80"
+        fallback_hero = "https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/c4ecef3d-5946-4bd8-974e-fd36c7aa9a7e.webp"
         
         gallery_list = None
         if isinstance(gallery, list) and len(gallery) > 0:
@@ -278,23 +292,25 @@ def handle_poi_advice(
             except Exception:
                 pass
 
-        if (not gallery_list or len(gallery_list) < 5) and curated and "gallery" in curated:
+        if not gallery_list and curated and "gallery" in curated:
             gallery_list = curated["gallery"]
 
+        row_city = "Huế" if "hue" in str(city_name or "").lower() else "Đà Nẵng"
         suggested_pois.append(
             CopilotSuggestedPoiItem(
                 id=poi_id,
                 name=name,
                 category=category_name,
                 sub_category=sub_cat,
+                city=row_city,
                 image_url=hero_img or fallback_hero,
                 green_score=green_int,
                 rating=rating_flt,
-                address=address or f"{city_name}, Việt Nam",
+                address=address or f"{row_city}, Việt Nam",
                 swap_reason=swap_reason,
                 distance_info=distance_info,
-                estimated_cost=float(cost) if cost else None,
-                price_range_display="Miễn phí vé tham quan" if not cost or cost == 0 else f"{int(cost):,} ₫/người",
+                estimated_cost=float(cost) if cost is not None else None,
+                price_range_display="Miễn phí tham quan" if (cost is not None and cost == 0) else (f"{int(cost):,} ₫/người" if cost else None),
                 budget_delta=budget_delta,
                 carbon_saved=carbon_saved,
                 gallery_urls=gallery_list,

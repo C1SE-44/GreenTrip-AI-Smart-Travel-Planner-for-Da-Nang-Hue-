@@ -66,7 +66,7 @@
 | :--- | :--- | :---: | :--- | :--- |
 | `GET` | `/pois/weights` | Public | Slider weight query params (`PB08`, gồm `local_authentic_only`) | `ParsedSliderWeights` |
 | `GET` | `/pois` | Public | `page` (≥ 1), `limit`, `city`, `category`, `sub_category`, `cuisine`, `budget_tier`, `local_authentic_only`, slider weights... | `{ items: POIResponse[], pagination: { page, limit, total, total_pages, has_next, has_previous } }` *(gồm thêm trường tùy chọn `popularity_score`)* |
-| `GET` | `/pois/{poi_id}/explanation-facts` | Public | `poi_id` | `{ poi: { id, name, is_local_business, local_business_type, source }, facts: [{ relationship, target_type, target_key, target_name }] }` |
+| `GET` | `/pois/{poi_id}/explanation-facts` | Public | `poi_id` | `{ poi: { id, name, is_local_business, local_business_type, source }, facts: [{ relationship, target_type, target_key, target_name }], explanation_source?, green_score_breakdown?: [{ key, label, weight_pct, score }] }` |
 
 ---
 
@@ -76,7 +76,7 @@
 
 | Method | Path | Auth | Request Body chính | Response chính |
 | :--- | :--- | :---: | :--- | :--- |
-| `POST` | `/v1/recommendations/poi` | Public | `{ destination?, interests?, budget_band?, budget_tier?, ideas?, trip_days?, green_priority?, top_k?, trip_data?, slider_weights? }` | `{ status, total, data: RecommendationPOI[] }` *(mỗi item gồm `poi_id`, `name`, `category_name`, `sub_category`, `match_score`, `estimated_cost`, `green_score`, `is_local_business`, `best_time`, `opening_hours`...)* |
+| `POST` | `/v1/recommendations/poi` | Public | `{ destination?, interests?, budget_band?, budget_tier?, ideas?, trip_days?, green_priority?, optimization_mode? ('balanced'|'fast'|'budget'|'green_local'), top_k?, trip_data?, slider_weights? }` | `{ status, total, data: RecommendationPOI[] }` *(mỗi item gồm `poi_id`, `name`, `category_name`, `sub_category`, `match_score`, `estimated_cost`, `green_score`, `is_local_business`, `best_time`, `opening_hours`...)* |
 
 ---
 
@@ -109,7 +109,7 @@
 | `POST` | `/trips/validate-parameters` | Public | `{ destination, days, total_budget?, budget_tier?, dining_tier?, lodging_tier?, activities_tier?, num_people, start_date?, preferences? }` | `{ valid, message, data: ValidatedTripData }` |
 | `GET` | `/trips/{trip_id}/itinerary` | Optional JWT (owner check nếu trip gắn user) | Path `trip_id` | `TripItineraryResponse` (`trip_id`, `title`, `destination`, `start_date`, `days_count`, `days`, `updated_at`) |
 | `PUT` | `/trips/{trip_id}/itinerary` | Optional JWT (owner check nếu trip gắn user) | `TripItinerarySyncRequest`: `{ trip_id, title, destination, start_date, days_count, days: ItineraryDay[] }` | `TripItineraryResponse` |
-| `POST` | `/trips/copilot/chat` | Public + Rate Limit (20/60s) | `{ message, trip_context: TripContextPayload }` | `CopilotChatResponse`: `{ reply_text, intent, intent_category, reasoning_trace, recommended_poi_ids, detected_constraints, trip_memory, fact_check_warning, target_slot, suggested_pois, action_type, next_suggested_prompts }` |
+| `POST` | `/trips/copilot/chat` | Public + Rate Limit (20/60s) | `{ message, trip_context: TripContextPayload (gồm destination, days_count, num_people, budget_tier, suggested_places...), attachment? }` | `CopilotChatResponse`: `{ reply_text, intent, intent_category, reasoning_trace, recommended_poi_ids, detected_constraints, trip_memory, fact_check_warning, target_slot, suggested_pois, extracted_places, receipt_booking, action_type, next_suggested_prompts }` |
 
 ---
 

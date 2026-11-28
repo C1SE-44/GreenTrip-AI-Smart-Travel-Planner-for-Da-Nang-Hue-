@@ -69,7 +69,7 @@ Hãy đọc câu hỏi của du khách và ngữ cảnh chuyến đi, trả về
 }
 Quy tắc phân loại:
 - Câu hỏi không thuộc du lịch Đà Nẵng / Huế / Hội An (ví dụ: Phú Quốc, Hà Nội, giá vàng, viết code, chứng khoán, giải toán) -> OUT_OF_SCOPE / out_of_scope.
-- Hỏi đổi món/quán không thịt/thuần thực vật/chay -> ITINERARY_MUTATION / swap_meal_vegetarian / constraint "vegetarian".
+- Hỏi đổi món/quán thanh đạm/nhẹ bụng/không thịt/thuần thực vật/chay -> ITINERARY_MUTATION / swap_meal_vegetarian / constraint "vegetarian".
 - Hỏi khi trời âm u/mưa/trú mưa/có mái che -> POI_RECOMMENDATION / rainy_day_alternatives / constraint "rainy_season".
 - Nhắc người già, bố mẹ đau chân/đau khớp/xe lăn -> thêm constraint "elderly_friendly".
 - Trễ giờ/chậm tiến độ/rút gọn lịch -> ITINERARY_MUTATION / late_schedule_adjust.
@@ -249,11 +249,12 @@ def classify_copilot_request_hybrid(
 
             final_category: IntentCategoryType = regex_category
             final_intent = regex_intent
-            if regex_intent != "itinerary_mutation" and (
-                regex_intent == "general_chat" or gemini_res.confidence >= 0.85
-            ):
+            if regex_intent == "general_chat":
+                if not (gemini_res.sub_intent == "itinerary_mutation" and gemini_res.mutation_action == "none"):
+                    final_category = gemini_res.intent_category
+                    final_intent = gemini_res.sub_intent
+            elif gemini_res.sub_intent == regex_intent and gemini_res.confidence >= 0.85:
                 final_category = gemini_res.intent_category
-                final_intent = gemini_res.sub_intent
 
             updates: dict[str, Any] = {}
             if gemini_res.target_day is not None:

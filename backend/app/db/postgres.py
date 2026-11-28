@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import sqlite3
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -15,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 # Đường dẫn tệp SQLite cục bộ khi không có PostgreSQL / Docker
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
-_SQLITE_DB_PATH = _PROJECT_ROOT / "data" / "greentrip_local.db"
+_DEFAULT_SQLITE_DB_PATH = _PROJECT_ROOT / "data" / "greentrip_local.db"
+_SQLITE_DB_PATH = _DEFAULT_SQLITE_DB_PATH
 
 
 def _sqlite_custom_like(pattern: Any, string: Any) -> bool:
@@ -169,8 +171,12 @@ class SQLiteConnectionWrapper:
         self._conn.close()
 
 
-def _ensure_sqlite_tables(conn: sqlite3.Connection):
-    """Tự động khởi tạo bảng users, email_otps, cities, poi_categories, pois nếu chưa có trong CSDL cục bộ."""
+def _initialize_sqlite_tables_and_reference_data(
+    conn: sqlite3.Connection,
+    *,
+    import_pois: bool,
+) -> None:
+    """Create local schema and optionally load the bundled POI reference data."""
     conn.execute("""
     CREATE TABLE IF NOT EXISTS users (
         user_id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
@@ -295,7 +301,7 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
         ])
 
     cur.execute("SELECT count(*) FROM pois")
-    if cur.fetchone()[0] == 0:
+    if import_pois and cur.fetchone()[0] == 0:
         csv_path = _PROJECT_ROOT / "data" / "processed" / "all_pois_cleaned.csv"
         if csv_path.exists():
             import csv
@@ -380,25 +386,67 @@ def _ensure_sqlite_tables(conn: sqlite3.Connection):
             except Exception as e:
                 logger.warning("Không thể nạp POIs vào CSDL SQLite: %s", e)
 
-    # Correct corrupted downtown geocoding for Ba Na Wax Museum if an existing DB row carries old coords
-    try:
-        cur.execute(
-            """
-            UPDATE pois
-            SET latitude = 15.9977, longitude = 107.9885
-            WHERE poi_id = '5c0d99bb-4e57-4869-8fdc-38470cf34a0d'
-              AND latitude BETWEEN 16.07 AND 16.08
-            """
-        )
-    except Exception:
-        pass
+    if import_pois:
+        # Correct corrupted downtown geocoding if an existing row carries old coordinates.
+        try:
+            cur.execute(
+                """
+                UPDATE pois
+                SET latitude = 15.9977, longitude = 107.9885
+                WHERE poi_id = '5c0d99bb-4e57-4869-8fdc-38470cf34a0d'
+                  AND latitude BETWEEN 16.07 AND 16.08
+                """
+            )
+        except Exception:
+            pass
 
     conn.commit()
+
+
+def _ensure_sqlite_tables(conn: sqlite3.Connection) -> None:
+    """Create local SQLite schema without importing the POI catalogue."""
+    _initialize_sqlite_tables_and_reference_data(conn, import_pois=False)
+
+
+def _bootstrap_sqlite_reference_data(
+    conn: sqlite3.Connection,
+    *,
+    import_pois: bool = True,
+) -> None:
+    """Initialize local reference rows and optionally import the bundled POI CSV."""
+    _initialize_sqlite_tables_and_reference_data(conn, import_pois=import_pois)
 
 
 # ponytail: 30s monotonic cooldown on Postgres connection failure instead of sticky disable; replace with pool/probe if needed
 _POSTGRES_RETRY_COOLDOWN_SECONDS = 30.0
 _POSTGRES_RETRY_AFTER: float = 0.0
+
+
+def _resolve_sqlite_path(settings: Any) -> Path:
+    """Choose the configured SQLite file or the development default."""
+    app_env = str(getattr(settings, "APP_ENV", "development")).strip().lower()
+    setting_name = "TEST_DATABASE_PATH" if app_env == "test" else "SQLITE_DATABASE_PATH"
+    configured_path = str(getattr(settings, setting_name, "") or "").strip()
+    if configured_path:
+        return Path(configured_path).expanduser()
+    if app_env == "test":
+        return Path(tempfile.gettempdir()) / f"greentrip-test-{os.getpid()}.sqlite3"
+    return _SQLITE_DB_PATH
+
+
+def _open_sqlite(database_path: Path) -> SQLiteConnectionWrapper:
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(str(database_path), check_same_thread=False)
+    connection.create_function("like", 2, _sqlite_custom_like)
+    return SQLiteConnectionWrapper(connection)
+
+
+def _ensure_temporary_database_path(database_path: Path) -> Path:
+    temp_root = Path(tempfile.gettempdir()).resolve()
+    resolved_path = database_path.expanduser().resolve()
+    if not resolved_path.is_relative_to(temp_root):
+        raise RuntimeError("Test database path must be inside the system temporary directory.")
+    return resolved_path
 
 
 def get_connection() -> Any:
@@ -410,6 +458,15 @@ def get_connection() -> Any:
     global _POSTGRES_RETRY_AFTER
     settings = get_settings()
     database_url = settings.DATABASE_URL.strip()
+    app_env = str(getattr(settings, "APP_ENV", "development")).strip().lower()
+    running_pytest = bool(os.getenv("PYTEST_CURRENT_TEST"))
+
+    if running_pytest and database_url and app_env in {"staging", "production", "prod"}:
+        raise RuntimeError("pytest requires an isolated test database provider.")
+
+    if app_env == "test":
+        test_path = _ensure_temporary_database_path(_resolve_sqlite_path(settings))
+        return _open_sqlite(test_path)
 
     if database_url:
         if time.monotonic() < _POSTGRES_RETRY_AFTER:
@@ -425,15 +482,19 @@ def get_connection() -> Any:
             logger.exception("Không thể kết nối PostgreSQL đã cấu hình; không chuyển sang SQLite.")
             raise RuntimeError("không thể kết nối cơ sở dữ liệu PostgreSQL đã cấu hình.") from error
 
-    if settings.APP_ENV in {"staging", "production", "prod"}:
+    if app_env in {"staging", "production", "prod"}:
         raise RuntimeError("Môi trường đã triển khai yêu cầu cấu hình DATABASE_URL của PostgreSQL.")
 
     # Chế độ CSDL cục bộ (Không phụ thuộc Docker/Postgres ngoài)
-    _SQLITE_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    sqlite_conn = sqlite3.connect(
-        str(_SQLITE_DB_PATH),
-        check_same_thread=False,
-    )
-    sqlite_conn.create_function("like", 2, _sqlite_custom_like)
-    _ensure_sqlite_tables(sqlite_conn)
-    return SQLiteConnectionWrapper(sqlite_conn)
+    if not bool(getattr(settings, "SQLITE_FALLBACK_ENABLED", False)) and not running_pytest:
+        raise RuntimeError("Set SQLITE_FALLBACK_ENABLED=true to explicitly enable development SQLite.")
+
+    sqlite_path = _resolve_sqlite_path(settings)
+    if running_pytest:
+        if sqlite_path == _DEFAULT_SQLITE_DB_PATH:
+            sqlite_path = Path(tempfile.gettempdir()) / f"greentrip-pytest-{os.getpid()}.sqlite3"
+        sqlite_path = _ensure_temporary_database_path(sqlite_path)
+
+    sqlite_conn = _open_sqlite(sqlite_path)
+    _bootstrap_sqlite_reference_data(sqlite_conn._conn, import_pois=True)
+    return sqlite_conn

@@ -1,5 +1,7 @@
 """Dedicated tests verifying fixes for the 8 reported bugs in Route & Transport Recommendation."""
 
+from pathlib import Path
+
 import pytest
 from app.emission_factors import (
     calculate_carbon_footprint,
@@ -84,9 +86,20 @@ def test_bug03_osrm_legs_distance_used_when_available():
 # ------------------------------------------------------------------------------
 # 4. BUG-04 Tests: Custom Segment Modes DB Persistence
 # ------------------------------------------------------------------------------
-def test_bug04_save_and_retrieve_custom_segment_modes():
+def test_bug04_save_and_retrieve_custom_segment_modes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
     """Verify saving custom segment modes in database table."""
+    from app.config import Settings
+    from app.db import postgres
     from app.itineraries import repository
+
+    settings = Settings(APP_ENV="development", DATABASE_URL="", SQLITE_FALLBACK_ENABLED=True)
+    monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", tmp_path / "custom-segment-modes.sqlite3")
+    monkeypatch.setattr(postgres, "get_settings", lambda: settings)
+    monkeypatch.setattr(repository, "get_settings", lambda: settings)
+    repository.seed_sample_itineraries()
 
     itin_id = "sample-danang-hue-3d"
     success = repository.save_itinerary_day_custom_segment_modes(

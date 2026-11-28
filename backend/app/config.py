@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True
     DATABASE_URL: str = ""
     SQLITE_FALLBACK_ENABLED: bool = False
+    SQLITE_DATABASE_PATH: str = ""
+    TEST_DATABASE_PATH: str = ""
     SUPABASE_URL: str = ""
     SUPABASE_PUBLISHABLE_KEY: str = ""
     SUPABASE_SECRET_KEY: str = ""

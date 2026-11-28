@@ -131,10 +131,10 @@ def use_isolated_itinerary_fixtures(monkeypatch: pytest.MonkeyPatch) -> None:
         poi = SAMPLE_POIS.get(poi_id)
         return {"poi_id": poi_id, **poi} if poi else None
 
-    monkeypatch.setattr(repository, "get_itinerary", get_itinerary)
-    monkeypatch.setattr(repository, "get_itinerary_day", get_itinerary_day)
-    monkeypatch.setattr(repository, "get_itinerary_day_stops", get_itinerary_day_stops)
-    monkeypatch.setattr(repository, "get_poi_by_id", get_poi_by_id)
+    monkeypatch.setattr(itinerary_repository, "get_itinerary", get_itinerary)
+    monkeypatch.setattr(itinerary_repository, "get_itinerary_day", get_itinerary_day)
+    monkeypatch.setattr(itinerary_repository, "get_itinerary_day_stops", get_itinerary_day_stops)
+    monkeypatch.setattr(itinerary_repository, "get_poi_by_id", get_poi_by_id)
     monkeypatch.setattr(
         "app.itineraries.routing_service.fetch_osrm_json",
         lambda *_args, **_kwargs: None,

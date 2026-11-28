@@ -317,6 +317,9 @@ class FakeDriver:
 def test_repository_reuses_existing_query_once_with_stable_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from app.db import neo4j as neo4j_mod
+
+    neo4j_mod.reset_neo4j_cooldown()
     session = FakeSession(
         FakeRecord(
             poi={"id": str(POI_ID), "name": "Sample"},

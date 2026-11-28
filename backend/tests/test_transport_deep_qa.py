@@ -4,11 +4,16 @@ Tests all 22 failure modes, abnormal inputs, edge boundaries, and multi-day scen
 """
 
 import math
+from pathlib import Path
 from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.config import Settings
+from app.db import postgres
+from app.itineraries import repository as itinerary_repository
 from app.itineraries.schemas import RouteStop, ComputeRouteRequest, UpdateSegmentTransportRequest
 from app.itineraries.transport_service import (
     evaluate_segment_transport_options,
@@ -22,6 +27,15 @@ from app.tools.schemas import RecommendTransportModeInput
 from app.tools.implementations import recommend_transport_mode
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def seeded_itinerary_database(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    settings = Settings(APP_ENV="development", DATABASE_URL="", SQLITE_FALLBACK_ENABLED=True)
+    monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", tmp_path / "transport-deep-qa.sqlite3")
+    monkeypatch.setattr(postgres, "get_settings", lambda: settings)
+    monkeypatch.setattr(itinerary_repository, "get_settings", lambda: settings)
+    itinerary_repository.seed_sample_itineraries()
 
 
 # ------------------------------------------------------------------------------

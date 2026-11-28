@@ -240,7 +240,7 @@ def fetch_local_authentic_poi_ids() -> set[str]:
 def fetch_poi_explanation_facts(poi_id: str) -> dict[str, Any] | None:
     clean_id = str(poi_id).strip()
     try:
-        driver = get_driver()
+        driver = None if is_neo4j_in_cooldown() else get_driver()
         if driver is not None and EXPLANATION_QUERY:
             settings = get_settings()
             with driver.session(

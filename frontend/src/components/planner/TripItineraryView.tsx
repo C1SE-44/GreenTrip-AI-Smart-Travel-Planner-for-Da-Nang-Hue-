@@ -90,6 +90,7 @@ import {
   getRoutePositionsForStops,
   calculateStopsPathKm,
   getRouteCoordinateCoverage,
+  removePoiStopsFromItinerary,
   mergeAssistantStopsIntoIdeas,
   dailyVisitStopTarget,
   optimizeDayRouteOrder,
@@ -2099,6 +2100,23 @@ export default function TripItineraryView({
     onUpdateTrip?.({ ...trip, ideas: nextIdeas });
   };
 
+  const handleRemoveIdeaFromTrip = (poiId: string) => {
+    const poi = poiById.get(poiId)
+      ?? allPois.find((item) => item.id === poiId || item.name === poiId)
+      ?? ideaPois.find((item) => item.id === poiId || item.name === poiId);
+    handleToggleIdeaInTrip(poiId, 'remove');
+    setDismissedRecommendationIds((current) => [...new Set([...current, poiId])]);
+    setSmartScheduleUndoPlan(null);
+
+    const removed = removePoiStopsFromItinerary(plan.days, poiId, poi?.name);
+    if (removed.removedCount > 0) {
+      persistPlan({ ...plan, days: removed.days });
+      setAssistantInsight(`Đã gỡ ${poi?.name || 'địa điểm'} khỏi Ý tưởng và ${removed.removedCount} vị trí trong lịch. GreenTrip sẽ không tự gợi ý lại điểm này.`);
+    } else {
+      setAssistantInsight(`Đã gỡ ${poi?.name || 'địa điểm'} khỏi Ý tưởng. GreenTrip sẽ không tự gợi ý lại điểm này.`);
+    }
+  };
+
   const runSmartSchedule = (requestedPacing: 'Relaxed' | 'Balanced' | 'Fast' = pacingLevel) => {
     if (isLoading) return;
     setPacingOverride(requestedPacing);
@@ -4040,7 +4058,7 @@ export default function TripItineraryView({
                 days={plan.days}
                 section={tripPanelSection}
                 onChangeSection={setTripPanelSection}
-                onRemovePoi={(poiId) => handleToggleIdeaInTrip(poiId, 'remove')}
+                onRemovePoi={handleRemoveIdeaFromTrip}
                 onOpenPoiDetails={(poiId) => {
                   setIdeasRightPanelMode('map');
                   setSelectedMapPoiId(poiId);

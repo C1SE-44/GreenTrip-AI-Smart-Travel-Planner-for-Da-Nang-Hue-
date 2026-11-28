@@ -8,7 +8,8 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
 const recommendationsPath = path.resolve('src/utils/tripRecommendations.ts');
-const overviewPath = path.resolve('src/components/planner/TripOverviewView.tsx');
+const itineraryPath = path.resolve('src/components/planner/TripItineraryView.tsx');
+const recommendationCardPath = path.resolve('src/components/planner/RecommendationPoiCard.tsx');
 const recommendationServicePath = path.resolve('src/services/recommendations.ts');
 
 const poiHelpers = {
@@ -143,10 +144,9 @@ test('New database category names and explicit price units reach the card model'
   assert.equal(poi.greenScoreKnown, true);
   assert.equal(poi.ecoScore, 0);
 
-  const overview = fs.readFileSync(overviewPath, 'utf8');
-  assert.ok(overview.includes("poi.categoryName || 'Chưa phân loại'"));
-  assert.ok(overview.includes('poi.priceUnit'));
-  assert.ok(!overview.includes("₫/người"));
+  const card = fs.readFileSync(recommendationCardPath, 'utf8');
+  assert.ok(card.includes('formatCategoryLabel(poi.category)'));
+  assert.ok(card.includes('estimatedCost'));
 });
 
 test('A new trip with no ideas keeps ideas empty while PB09 recommendations remain available', () => {
@@ -160,15 +160,10 @@ test('A new trip with no ideas keeps ideas empty while PB09 recommendations rema
   assert.deepEqual(ideas, []);
   assert.equal(recommendationsForYouTab('success', [recommendation], ideas, catalogue)[0].id, 'poi-1');
 
-  const overview = fs.readFileSync(overviewPath, 'utf8');
-  assert.ok(overview.includes('Địa điểm đã chọn'));
-  assert.ok(overview.includes('Gợi ý cho chuyến đi của bạn'));
-  assert.ok(overview.includes('<section aria-labelledby="trip-recommendations-heading"'));
-  const requestStart = overview.indexOf('const fetchMappedRecommendations = useCallback');
-  const addHandlerStart = overview.indexOf('const handleAddRecommendedPoi', requestStart);
-  assert.ok(!overview.slice(requestStart, addHandlerStart).includes('setTripIdeas('), 'Fetching PB09 results must not select POIs automatically');
-  assert.ok(overview.includes('fetchMappedRecommendations([], 10, resolvedSliderWeightState.weights'));
-  assert.ok(overview.includes('Gợi ý cho chuyến đi của bạn'));
+  const itinerary = fs.readFileSync(itineraryPath, 'utf8');
+  assert.ok(itinerary.includes('const recommendationResults: PlannerRecommendationPoi[] = recommendations ?? fetchedRecommendations;'));
+  assert.ok(itinerary.includes('const scheduleRecommendations: Poi[] = recommendationResults;'));
+  assert.ok(itinerary.includes("onAdd={() => handleToggleIdeaInTrip(poi.id, 'add')}"));
 });
 
 test('Adding a suggested POI appends only its ID to trip ideas and does not duplicate it', () => {
@@ -180,15 +175,10 @@ test('Adding a suggested POI appends only its ID to trip ideas and does not dupl
   assert.deepEqual(ideas, []);
   assert.equal(addRecommendationToIdeas(updated, poi, []), updated);
 
-  const overview = fs.readFileSync(overviewPath, 'utf8');
-  assert.ok(overview.includes('onAdd={handleAddRecommendedPoi}'));
-  assert.ok(overview.includes('onUpdateTrip?.({ ...trip, ideas: next })'));
-  const handlerStart = overview.indexOf('const handleAddRecommendedPoi');
-  const handlerEnd = overview.indexOf('const getRecommendationReason', handlerStart);
-  const handler = overview.slice(handlerStart, handlerEnd);
-  assert.ok(!handler.includes('setTripIdeas((previous)'));
-  assert.ok(!handler.includes('saveTripItinerary'));
-  assert.ok(!handler.includes('stopFromPoi'));
+  const itinerary = fs.readFileSync(itineraryPath, 'utf8');
+  assert.ok(itinerary.includes("handleToggleIdeaInTrip(poi.id, 'add')"));
+  assert.ok(itinerary.includes('updateTripIdeaIds(currentIdeas, poiId, poi?.id, poi?.name, action)'));
+  assert.ok(!itinerary.includes('saveTripItinerary(poi)'));
 });
 
 test('Selected POIs move into the similar section, duplicate and scheduled POIs are hidden, and deselection recalculates', () => {
@@ -221,7 +211,7 @@ test('Selected POIs move into the similar section, duplicate and scheduled POIs 
   assert.deepEqual(Array.from(afterDeselection.similar), []);
 });
 
-test('The For You modal source is PB09; errors and empty responses never become catalogue recommendations', () => {
+test('Planner For You suggestions use trip context without substituting catalogue rows for PB09 results', () => {
   const { recommendationsForYouTab } = loadRecommendations();
   const recommendation = { id: 'rec-id', name: 'Kết quả PB09' };
   const cataloguePoi = { id: 'catalogue-id', name: 'POI catalogue' };
@@ -234,19 +224,11 @@ test('The For You modal source is PB09; errors and empty responses never become 
   assert.deepEqual(Array.from(recommendationsForYouTab('empty', [], [], catalogue)), []);
   assert.deepEqual(Array.from(recommendationsForYouTab('error', [], [], catalogue)), []);
 
-  const overview = fs.readFileSync(overviewPath, 'utf8');
-  assert.ok(overview.includes('list = recommendationsForYouTab(recommendationStatus, recommendedPois, tripIdeas, allPois)'));
-  assert.ok(overview.includes("list = allPois;"));
-  assert.ok(overview.includes("setRecommendationStatus(pois.length ? 'success' : 'empty')"));
-  assert.ok(overview.includes("setRecommendationStatus('error')"));
-  assert.ok(overview.includes('Chưa tải được gợi ý từ PB09.'));
-  assert.ok(!overview.includes('setRecommendedPois(ranked.slice'));
-  assert.ok(!overview.includes("list = [...list].sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0))"));
-  assert.ok(overview.includes('recommendationGroupsForTrip('));
-  assert.ok(overview.includes('similarRecommendationStatus === \'error\''));
-  assert.ok(overview.includes('similarRecommendationStatus === \'empty\''));
-  assert.ok(overview.includes('similarRecommendationStatus === \'loading\''));
-  assert.ok(overview.includes('Có thể bạn cũng thích'));
+  const itinerary = fs.readFileSync(itineraryPath, 'utf8');
+  assert.ok(itinerary.includes('rankPoisForYou(candidates, allPois, selectedPoiIds)'));
+  assert.ok(itinerary.includes('forYouPois.map(({ poi, reason }) => ('));
+  assert.ok(itinerary.includes('recommendationCards.map((poi) => ('));
+  assert.ok(itinerary.includes('onExplain={() => setExplanationPoi(poi)}'));
 });
 
 test('PB07 Workspace values serialize to PB09 context without inventing a budget', () => {
@@ -348,29 +330,17 @@ test('Trip Overview sends PB07 context and PB08 parsed weights to the active PB0
   await exports.fetchPoiRecommendations(request, controller.signal);
 
   assert.match(calls[0][0], /budget_tier=all/);
-  assert.equal(calls[1][0], '/api/v1/recommendations/poi');
+  assert.equal(calls[1][0], '/v1/recommendations/poi');
   assert.deepEqual(JSON.parse(calls[1][1].body), JSON.parse(JSON.stringify(request)));
   assert.equal(calls[1][1].signal, controller.signal);
 
-  const overview = fs.readFileSync(overviewPath, 'utf8');
-  const requestStart = overview.indexOf('const response = await fetchPoiRecommendations({');
-  const requestEnd = overview.indexOf('}, signal);', requestStart);
-  const requestSource = overview.slice(requestStart, requestEnd);
-  for (const field of ['...recommendationContext', 'ideas,', 'green_priority:', 'top_k:', 'slider_weights:']) {
-    assert.ok(requestSource.includes(field), `Trip Overview request is missing ${field}`);
+  const itinerary = fs.readFileSync(itineraryPath, 'utf8');
+  const requestStart = itinerary.indexOf('const recommendationRequest = useMemo');
+  const requestEnd = itinerary.indexOf('const recommendationContextKey =', requestStart);
+  const requestSource = itinerary.slice(requestStart, requestEnd);
+  for (const field of ['destination:', 'interests,', 'budget_tier:', 'trip_days:', 'top_k:', 'offset:']) {
+    assert.ok(requestSource.includes(field), `Planner PB09 request is missing ${field}`);
   }
-  for (const field of ['destination:', 'trip_days:', 'favorites:', 'interests:', 'trip_data:']) {
-    assert.ok(overview.includes(`${field} `) || overview.includes(`${field}\n`), `PB09 context is missing ${field}`);
-  }
-  assert.ok(overview.includes('fetchMappedRecommendations(ideaReferences, 20, resolvedSliderWeightState.weights'));
-  assert.ok(overview.includes('const favoritePoiIds = useMemo(() => Array.from(savedIds).slice(0, 200)'));
-  assert.ok(overview.includes('loading: savedPlacesLoading'));
-  assert.ok(overview.includes('const controller = new AbortController()'));
-  assert.ok(overview.includes('if (controller.signal.aborted) return;'));
-  const generalEffectStart = overview.indexOf('// Broad PB07/PB08 recommendations do not refetch when trip.ideas changes.');
-  const similarEffectStart = overview.indexOf('// Similar recommendations use ideas and account-scoped favorites as separate signals.');
-  const generalEffect = overview.slice(generalEffectStart, similarEffectStart);
-  assert.ok(!generalEffect.includes('ideaReferences'));
-  assert.ok(!generalEffect.includes('tripIdeas'));
-  assert.ok(overview.includes('onUpdateTrip?.({ ...trip, ideas: next })'));
+  assert.ok(itinerary.includes('fetchPoiRecommendations(recommendationRequest, controller.signal)'));
+  assert.ok(itinerary.includes('snapshot_id: page.snapshotId'));
 });

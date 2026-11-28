@@ -4,9 +4,26 @@ import {
   normalizeCity,
   type Poi,
 } from '@/data/pois';
-import type { ValidatedTripData } from '@/services/tripService';
+import type { CostBreakdown, MatchedPOI, DailyItineraryOutline, ValidatedTripData } from '@/services/tripService';
 
 export type RecommendationLoadState = 'loading' | 'success' | 'empty' | 'error';
+type OptionalRecommendationTripData = Omit<ValidatedTripData,
+  'total_budget' | 'daily_budget_per_person' | 'budget_tier' | 'is_budget_sufficient' |
+  'min_recommended_budget' | 'cost_breakdown'
+> & {
+  total_budget: number | null;
+  daily_budget_per_person: number | null;
+  budget_tier: ValidatedTripData['budget_tier'] | null;
+  is_budget_sufficient: boolean | null;
+  min_recommended_budget: number | null;
+  cost_breakdown: CostBreakdown | null;
+  budget_amount: number | null;
+  budget_scope: 'PER_PERSON' | 'TOTAL_GROUP' | null;
+  budget_traveler_count: number | null;
+  matched_pois: MatchedPOI[];
+  itinerary_outline: DailyItineraryOutline[];
+};
+
 export type RecommendedPoi = Poi & {
   matchScore?: number;
   greenScoreKnown: boolean;
@@ -78,16 +95,16 @@ export interface RecommendationTripWorkspaceInput {
   categoryBudgets: { dining: string; lodging: string; activities: string };
 }
 
-function tierForRecommendation(value: string): ValidatedTripData['budget_tier'] {
+function tierForRecommendation(value: string): ValidatedTripData['budget_tier'] | undefined {
   if (value === '$' || value === 'budget') return 'budget';
   if (value === '$$' || value === 'standard') return 'standard';
   if (value === '$$$' || value === '$$$$' || value === 'luxury' || value === 'upgrade') return 'luxury';
-  return null;
+  return undefined;
 }
 
 export function buildRecommendationTripData(
   trip: RecommendationTripWorkspaceInput,
-): ValidatedTripData {
+): OptionalRecommendationTripData {
   const days = Number.isInteger(trip.daysCount) && (trip.daysCount ?? 0) > 0
     ? trip.daysCount as number
     : 1;

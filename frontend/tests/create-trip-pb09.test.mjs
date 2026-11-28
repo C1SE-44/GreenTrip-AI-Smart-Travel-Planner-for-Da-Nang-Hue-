@@ -38,27 +38,30 @@ test('Create trip modal retains its original fields and behavior', () => {
 
 test('preferences open as an optional multi-select modal and persist with the trip', () => {
   const modal = fs.readFileSync(modalPath, 'utf8');
+  const preferencesModal = fs.readFileSync(path.resolve('src/components/planner/TripPreferencesModal.tsx'), 'utf8');
   for (const interest of [
     'beach', 'nature', 'culture', 'food', 'coffee', 'checkin',
     'adventure', 'relaxation', 'spiritual', 'local',
   ]) {
-    assert.ok(modal.includes(`id: '${interest}'`), `missing preference code: ${interest}`);
+    assert.ok(preferencesModal.includes(`id: '${interest}'`), `missing preference code: ${interest}`);
   }
   assert.ok(modal.includes('Sở thích'));
-  assert.ok(modal.includes('placeholder="Ví dụ: Thích nơi yên tĩnh, ngắm bình minh, ăn món địa phương..."'));
-  assert.ok(modal.includes('aria-pressed={selected}'));
+  assert.ok(preferencesModal.includes('placeholder="Ví dụ: Thích nơi yên tĩnh, ngắm bình minh, ăn món địa phương..."'));
+  assert.ok(preferencesModal.includes('aria-pressed={selected}'));
   assert.ok(modal.includes('setShowInterestsModal(false)'));
+  assert.ok(modal.includes('totalBudget: enteredTotalBudget'));
+  assert.ok(modal.includes('Number.isSafeInteger(customBudgetVnd)'));
   assert.ok(modal.includes('labels.length > 2 ?'));
   assert.ok(modal.includes('return \'Chưa chọn\''));
   assert.equal(modal.split('preferences: selectedInterests,').length - 1, 3);
   assert.equal(modal.split('preferenceText: preferenceText.trim() || undefined,').length - 1, 2);
 
   const itinerary = fs.readFileSync(itineraryPath, 'utf8');
-  assert.ok(itinerary.includes('trip.preferenceText?.trim()'));
+  assert.ok(itinerary.includes('recommendationTrip.preferenceText?.trim()'));
   assert.ok(itinerary.includes('trip.recommendationTripData'));
 });
 
-test('existing checkbox route and explicit POI selection remain connected', () => {
+test('PB09 recommendation fetch and explicit POI selection remain connected', () => {
   const modal = fs.readFileSync(modalPath, 'utf8');
   assert.ok(modal.includes('cb(newTrip, { openInItinerary: openDirectlyToItinerary })'));
 
@@ -66,14 +69,16 @@ test('existing checkbox route and explicit POI selection remain connected', () =
   assert.ok(explore.includes("setActiveTripSubTab(options?.openInItinerary ? 'itinerary' : 'ideas')"));
 
   const itinerary = fs.readFileSync(itineraryPath, 'utf8');
-  const fetchStart = itinerary.indexOf('const response = await fetchPoiRecommendations({');
-  const mappedStart = itinerary.indexOf('const mapped = response.data.flatMap', fetchStart);
+  const requestStart = itinerary.indexOf('const recommendationRequest = useMemo');
+  const requestEnd = itinerary.indexOf('const recommendationContextKey =', requestStart);
+  const requestSource = itinerary.slice(requestStart, requestEnd);
+  const fetchStart = itinerary.indexOf('const response = await fetchPoiRecommendations(recommendationRequest');
+  const mappedStart = itinerary.indexOf('const mapped = mapRecommendationRecords(', fetchStart);
   assert.ok(fetchStart >= 0 && mappedStart > fetchStart);
-  const requestSource = itinerary.slice(fetchStart, mappedStart);
   assert.ok(requestSource.includes('interests,'));
-  assert.ok(requestSource.includes('trip.recommendationTripData'));
-  assert.ok(!requestSource.includes('setTripIdeas('));
-  assert.ok(itinerary.includes('onClick={() => handleToggleIdeaInTrip(poi.id)}'));
+  assert.ok(requestSource.includes('recommendationTrip.recommendationTripData'));
+  assert.ok(itinerary.includes('response.data,'));
+  assert.ok(itinerary.includes("onAdd={() => handleToggleIdeaInTrip(poi.id, 'add')}"));
 
   const recommendationService = fs.readFileSync(recommendationServicePath, 'utf8');
   assert.ok(recommendationService.includes("'/v1/recommendations/poi'"));

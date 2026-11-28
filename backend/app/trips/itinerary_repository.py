@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import logging
 from typing import Any
 import uuid
 
@@ -20,6 +21,8 @@ _UUID_TARGET_TABLES = {
     ("users", "user_id"),
     ("pois", "poi_id"),
 }
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_existing_uuid(cursor: Any, table: str, id_column: str, raw_value: str | None) -> str | None:
@@ -113,6 +116,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         ("comment", "TEXT"),
         ("latitude", "REAL"),
         ("longitude", "REAL"),
+        ("transport_mode", "TEXT"),
     ]:
         if col not in stop_columns:
             cursor.execute(f"ALTER TABLE itinerary_stops ADD COLUMN {col} {col_type}")
@@ -159,6 +163,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         ("note", "TEXT NOT NULL DEFAULT ''"),
         ("theme", "TEXT"),
         ("focus_city", "TEXT"),
+        ("custom_segment_modes", "TEXT"),
     ]:
         if col not in day_columns:
             cursor.execute(f"ALTER TABLE itinerary_days ADD COLUMN {col} {col_type}")
@@ -191,6 +196,7 @@ def _ensure_local_tables(connection: Any, cursor: Any) -> None:
         ("comment", "TEXT"),
         ("latitude", "REAL"),
         ("longitude", "REAL"),
+        ("transport_mode", "TEXT"),
     ]:
         if col not in stop_columns:
             cursor.execute(f"ALTER TABLE itinerary_stops ADD COLUMN {col} {col_type}")
@@ -279,6 +285,7 @@ def save_itinerary(payload: TripItinerarySyncRequest, user_id: str | None) -> Tr
     except HTTPException:
         raise
     except Exception as error:
+        logger.exception("Không thể lưu lịch trình vào cơ sở dữ liệu.")
         raise HTTPException(status_code=503, detail="Chưa thể lưu lịch trình vào cơ sở dữ liệu.") from error
 
 

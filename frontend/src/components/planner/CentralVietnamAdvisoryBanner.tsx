@@ -6,6 +6,7 @@ export interface CentralVietnamAdvisoryBannerProps {
   advisories: CentralVietnamAdvisory[];
   onOpenChecklist?: () => void;
   onAddHueDay?: () => void;
+  onSwapOutdoorForRain?: () => void;
   className?: string;
 }
 
@@ -13,6 +14,7 @@ export default function CentralVietnamAdvisoryBanner({
   advisories,
   onOpenChecklist,
   onAddHueDay,
+  onSwapOutdoorForRain,
   className = '',
 }: CentralVietnamAdvisoryBannerProps) {
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
@@ -73,7 +75,18 @@ export default function CentralVietnamAdvisoryBanner({
               </p>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+              {onSwapOutdoorForRain &&
+                (adv.id === 'rainy-season-central' || adv.id === 'beach-rip-current') && (
+                  <button
+                    type="button"
+                    onClick={onSwapOutdoorForRain}
+                    className="min-h-8 px-2.5 rounded-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    <CloudRain size={12} aria-hidden="true" />
+                    <span>Đổi điểm trong nhà</span>
+                  </button>
+                )}
               {adv.actionLabel && !actionDisabled && (
                 <button
                   type="button"

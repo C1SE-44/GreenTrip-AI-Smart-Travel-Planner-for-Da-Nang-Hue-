@@ -33,6 +33,7 @@ import {
   Share2,
   Sparkles,
   Briefcase,
+  SlidersHorizontal,
 } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import { rankPoisForYou } from '@/components/explore/exploreUtils';
@@ -51,14 +52,18 @@ import {
   type Poi,
   type PoiCategory,
   type PoiCity,
+  computeGreenScoreBreakdown,
+  evaluateCrowdProfile,
   evaluateLocalAuthentic,
   getDeterministicImage,
+  isTimeInCrowdPeakWindow,
   normalizeCategory,
   normalizeCity,
   normalizePoi,
   normalizePois,
 } from '@/data/pois';
 import { getPoisByIds } from '@/services/poi';
+import ExplanationModal from '@/components/poi/ExplanationModal';
 import { useSavedPlaces } from '@/context/SavedPlacesContext';
 import { TripExportToolbar } from '@/components/planner/EcoPackingChecklistModal';
 import CentralVietnamAdvisoryBanner from '@/components/planner/CentralVietnamAdvisoryBanner';
@@ -69,7 +74,11 @@ import {
   hydrateItineraryWithPois,
   matchPoiForStop,
   getTripItinerary,
-  saveTripItinerary,
+  saveTripItineraryWithStatus,
+  type ItinerarySaveResult,
+  cachePendingItinerary,
+  hasPendingItinerarySync,
+  hasItineraryAccountSession,
   stopFromPoi,
   alignItineraryToTrip,
   normalizeLegacyLunchBreaks,
@@ -80,10 +89,14 @@ import {
   updateDateRangeWithDays,
   getRoutePositionsForStops,
   calculateStopsPathKm,
+  getRouteCoordinateCoverage,
+  mergeAssistantStopsIntoIdeas,
+  dailyVisitStopTarget,
   optimizeDayRouteOrder,
   optimizeItineraryRouteOrder,
   estimateCarbonFootprint,
   formatCarbonAmount,
+  detectSameDayIntercityConflict,
   checkStopOpeningHours,
   isPoiOutdoor,
   suggestIndoorAlternativesForDay,
@@ -91,12 +104,16 @@ import {
   getStopShortReason,
   computeTripBudgetSummary,
   computeDayFatigue,
+  computeItineraryResearchMetrics,
+  optimizeItineraryWithTradeoff,
   clearOverlappingVisitTimes,
   dailyVisitCapacity,
+  excludeDismissedPois,
   pacingForTrip,
   selectAutomaticPois,
   optimizeDays,
   buildFallbackRoadCorridor,
+  type OptimizationTradeoffMode,
   type RouteTransportMode,
   type TripItinerary,
   type ItineraryDay,
@@ -121,7 +138,6 @@ import TripPreferencesModal from './TripPreferencesModal';
 import { parseCategoryBudgets, type CategoryBudgets } from './tripOverviewConstants';
 import { dateAt, tripStartDate, vietnamNow } from '@/utils/tripDates';
 import PoiImage from '@/components/ui/PoiImage';
-import ExplanationModal from '@/components/poi/ExplanationModal';
 import PoiDetailSection from '@/components/poi/PoiDetailSection';
 import type { RecommendationScoreBreakdown } from '@/services/recommendations';
 import type { ValidatedTripData } from '@/services/tripService';
@@ -211,6 +227,10 @@ function categoryBudgetToRecommendationTier(value: string): ValidatedTripData['b
   return undefined;
 }
 
+function hasUserEnteredBudget(value?: number | null): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+}
+
 function withUpdatedRecommendationData(trip: UserTrip, categoryBudgets?: CategoryBudgets): UserTrip {
   const previous = trip.recommendationTripData;
   if (!previous) return trip;
@@ -218,8 +238,7 @@ function withUpdatedRecommendationData(trip: UserTrip, categoryBudgets?: Categor
   const days = Math.max(1, trip.daysCount || previous.days);
   const people = Math.max(1, trip.peopleCount || previous.num_people);
   const tier = previous.budget_tier;
-  const tierDailyAmount = tier === 'budget' ? 500_000 : tier === 'luxury' ? 3_000_000 : 1_200_000;
-  const totalBudget = trip.totalBudget ?? tierDailyAmount * days * people;
+  const totalBudget = hasUserEnteredBudget(trip.totalBudget) ? trip.totalBudget : null;
   const categoryTier = categoryBudgets
     ? categoryBudgetToRecommendationTier(
         categoryBudgets.activities !== 'any' ? categoryBudgets.activities : categoryBudgets.dining,
@@ -227,23 +246,27 @@ function withUpdatedRecommendationData(trip: UserTrip, categoryBudgets?: Categor
     : undefined;
   const startDate = tripStartDate(trip.startDate);
   const minBudget = 200_000 * days * people;
+  const budgetData = totalBudget === null ? {} : {
+    total_budget: totalBudget,
+    daily_budget_per_person: totalBudget / (days * people),
+    min_recommended_budget: minBudget,
+    is_budget_sufficient: totalBudget >= minBudget,
+    budget_warning: totalBudget >= minBudget ? null : `Ngân sách thấp hơn mức tham khảo ${minBudget.toLocaleString('vi-VN')} VNĐ.`,
+  };
 
   return {
     ...trip,
+    totalBudget: totalBudget ?? undefined,
     recommendationTripData: {
       ...previous,
       destination: trip.destination,
       days,
       num_people: people,
-      total_budget: totalBudget,
-      daily_budget_per_person: totalBudget / (days * people),
       budget_tier: categoryTier ?? tier,
       preferences: trip.preferences ?? [],
       start_date: startDate,
       end_date: startDate ? dateAt(startDate, days - 1) : null,
-      min_recommended_budget: minBudget,
-      is_budget_sufficient: totalBudget >= minBudget,
-      budget_warning: totalBudget >= minBudget ? null : `Ngân sách thấp hơn mức tham khảo ${minBudget.toLocaleString('vi-VN')} VNĐ.`,
+      ...budgetData,
     },
   };
 }
@@ -321,12 +344,18 @@ export default function TripItineraryView({
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSchedulePreview, setIsSchedulePreview] = useState(false);
+  const [saveSyncStatus, setSaveSyncStatus] = useState<'synced' | 'local' | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
-  const [saveErrorAction, setSaveErrorAction] = useState<'retry' | 'repair' | null>(null);
+  const [saveErrorAction, setSaveErrorAction] = useState<'retry' | 'repair' | 'login' | null>(null);
 
   // Tham chiếu tự động lưu
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveVersion = useRef(0);
+  const pendingSave = useRef<{ itinerary: TripItinerary; version: number } | null>(null);
+  const activeSave = useRef<Promise<ItinerarySaveResult | null> | null>(null);
+  const hasUnsyncedDraft = useRef(false);
+  const localDraftAvailable = useRef(false);
+  const syncedVersion = useRef(0);
   const latestPlan = useRef(plan);
   const savedPlan = useRef(createEmptyItinerary(trip));
   const previewBasePlan = useRef<TripItinerary | null>(null);
@@ -375,6 +404,7 @@ export default function TripItineraryView({
   );
   const [pacingOverride, setPacingOverride] = useState<'Relaxed' | 'Balanced' | 'Fast' | null>(null);
   const [assistantInsight, setAssistantInsight] = useState('');
+  const [smartScheduleUndoPlan, setSmartScheduleUndoPlan] = useState<TripItinerary | null>(null);
   const [dismissedRecommendationIds, setDismissedRecommendationIds] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem(`greentrip_dismissed_recommendations_${trip.id}`);
@@ -539,6 +569,8 @@ export default function TripItineraryView({
   }, [dismissedRecommendationIds, trip.id]);
 
   const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set());
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [showEmptySchedulePrompt, setShowEmptySchedulePrompt] = useState(false);
   const [showDistances, setShowDistances] = useState(true);
   const [preferLocalAuthentic, setPreferLocalAuthentic] = useState(false);
   const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
@@ -574,7 +606,9 @@ export default function TripItineraryView({
   const [infantsDraft, setInfantsDraft] = useState(0);
   const [petsDraft, setPetsDraft] = useState(0);
   const [categoryBudgetDraft, setCategoryBudgetDraft] = useState<CategoryBudgets>(() => parseCategoryBudgets(trip.budgetTier));
-  const [totalBudgetDraft, setTotalBudgetDraft] = useState<number | null>(trip.totalBudget ?? null);
+  const [totalBudgetDraft, setTotalBudgetDraft] = useState<number | null>(
+    hasUserEnteredBudget(trip.totalBudget) ? trip.totalBudget : null,
+  );
   const [preferencesDraft, setPreferencesDraft] = useState<string[]>(trip.preferences ?? []);
   const [preferenceTextDraft, setPreferenceTextDraft] = useState(trip.preferenceText ?? '');
   const [isSavingTripMetadata, setIsSavingTripMetadata] = useState(false);
@@ -589,6 +623,7 @@ export default function TripItineraryView({
     ]));
     const budgetTier = recommendationTrip.recommendationTripData?.budget_tier
       ?? normalizeRecommendationBudgetTier(recommendationTrip.budgetTier);
+    const hasBudget = hasUserEnteredBudget(recommendationTrip.totalBudget);
     return {
       destination: recommendationTrip.destination || 'Đà Nẵng & Huế',
       interests,
@@ -596,7 +631,9 @@ export default function TripItineraryView({
       trip_days: recommendationTrip.daysCount || plan.days.length,
       top_k: 10,
       offset: 0,
-      trip_data: recommendationTrip.recommendationTripData,
+      ...(hasBudget && recommendationTrip.recommendationTripData
+        ? { trip_data: recommendationTrip.recommendationTripData }
+        : {}),
     };
   }, [
     plan.days.length,
@@ -606,6 +643,7 @@ export default function TripItineraryView({
     recommendationTrip.preferenceText,
     recommendationTrip.preferences,
     recommendationTrip.recommendationTripData,
+    recommendationTrip.totalBudget,
   ]);
   const recommendationContextKey = JSON.stringify({ tripId: trip.id, request: recommendationRequest });
   const recommendationContextKeyRef = useRef(recommendationContextKey);
@@ -618,7 +656,6 @@ export default function TripItineraryView({
   const recommendationsSectionRef = useRef<HTMLDivElement>(null);
   const itinerarySectionRef = useRef<HTMLDivElement>(null);
   const [activeMenuStopId, setActiveMenuStopId] = useState<string | null>(null);
-  const [showItinerarySettingsMenu, setShowItinerarySettingsMenu] = useState(false);
   const [activeDayMenuNumber, setActiveDayMenuNumber] = useState<number | null>(null);
   const [dayEditor, setDayEditor] = useState<{ dayNumber: number; field: 'title' | 'note' } | null>(null);
   const [dayEditorValue, setDayEditorValue] = useState('');
@@ -685,7 +722,7 @@ export default function TripItineraryView({
             name: customName,
             city: /hue|huế/i.test(trip.destination) ? 'Huế' : 'Đà Nẵng',
             category: 'quan-an' as PoiCategory,
-            image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+            image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/17c7f7b4-2b14-4939-a1f6-4da042a320a7.webp',
             address: 'Địa điểm tự thêm',
             description: 'Địa điểm do bạn thêm vào chuyến đi.',
             lat: 16.0678,
@@ -706,6 +743,7 @@ export default function TripItineraryView({
     ? fetchedRecommendationPage.pois
     : [];
   const recommendationResults: PlannerRecommendationPoi[] = recommendations ?? fetchedRecommendations;
+  const scheduleRecommendations: Poi[] = recommendationResults;
   const currentRecommendationPage = recommendationPageInfo?.contextKey === recommendationContextKey
     ? recommendationPageInfo
     : null;
@@ -762,7 +800,7 @@ export default function TripItineraryView({
     });
     return Array.from(byId.values());
   }, [ideaPois, recommendationResults, forYouPois]);
-  const hasScheduledStops = plan.days.some((day) => day.stops.some((stop) => stop.stop_type !== 'rest'));
+  const hasPlannedStops = plan.days.some((day) => day.stops.some((stop) => stop.stop_type !== 'rest'));
   const recommendationCards = useMemo(() => {
     return uniqueTripRecommendationPois(recommendationResults);
   }, [recommendationResults]);
@@ -775,49 +813,106 @@ export default function TripItineraryView({
   const pacingLevel = pacingOverride || pacingForTrip(trip);
 
   // ─── 4. Tự động lưu và tải từ Backend / LocalStorage ───
-  const persistPlan = useCallback(
-    (nextPlan: TripItinerary) => {
-      const version = ++saveVersion.current;
-      latestPlan.current = nextPlan;
-      setPlan(nextPlan);
-      setHasUnsavedChanges(true);
-      setErrorMessage('');
-      setSaveErrorAction(null);
-
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-      if (isSchedulePreviewRef.current) return;
-      saveTimer.current = setTimeout(async () => {
-        saveTimer.current = null;
-        setIsSaving(true);
-        try {
-          const saved = await saveTripItinerary(nextPlan);
-          if (version === saveVersion.current) {
-            savedPlan.current = saved;
-            setPlan((prev) => ({ ...prev, updated_at: saved.updated_at }));
-            setHasUnsavedChanges(false);
-          }
-        } catch (cause) {
-          if (version === saveVersion.current) {
-            console.warn('Lỗi lưu lịch trình:', cause);
-            const apiError = cause as { status?: number; detail?: string; message?: string };
-            const isOverlap = apiError.status === 422 && /khung giờ bị trùng/i.test(apiError.detail || '');
-            setErrorMessage(isOverlap
-              ? apiError.detail || 'Một số hoạt động đang bị trùng giờ. Hãy chỉnh giờ hoặc dùng chức năng tự sửa.'
-              : apiError.status === 401
-                ? 'Phiên đăng nhập đã hết hạn. Đăng nhập lại để đồng bộ lịch.'
-                : apiError.status === 403
-                  ? 'Tài khoản hiện tại không có quyền sửa lịch trình này.'
-                  : `Không đồng bộ được lịch với máy chủ. Thay đổi còn trên trang này${apiError.message ? `: ${apiError.message}` : '.'}`);
-            setSaveErrorAction(isOverlap ? 'repair' : 'retry');
-          }
-        } finally {
-          if (version === saveVersion.current) setIsSaving(false);
+  const saveSnapshot = useCallback(async (snapshot: TripItinerary, version: number): Promise<ItinerarySaveResult | null> => {
+    setIsSaving(true);
+    try {
+      const result = await saveTripItineraryWithStatus(snapshot);
+      if (result.syncStatus === 'synced') syncedVersion.current = Math.max(syncedVersion.current, version);
+      if (version === saveVersion.current) {
+        savedPlan.current = result.itinerary;
+        latestPlan.current = result.itinerary;
+        setPlan((prev) => ({ ...prev, updated_at: result.itinerary.updated_at }));
+        if (result.syncStatus === 'synced') {
+          hasUnsyncedDraft.current = false;
+          localDraftAvailable.current = false;
+          setSaveSyncStatus('synced');
+          setHasUnsavedChanges(false);
+          setErrorMessage('');
+          setSaveErrorAction(null);
+        } else if (result.syncStatus === 'guest') {
+          hasUnsyncedDraft.current = true;
+          localDraftAvailable.current = true;
+          setSaveSyncStatus('local');
+          setHasUnsavedChanges(true);
+          setErrorMessage('Đã lưu nháp trên thiết bị này. Đăng nhập để đồng bộ lịch lên tài khoản.');
+          setSaveErrorAction('login');
+        } else {
+          hasUnsyncedDraft.current = true;
+          localDraftAvailable.current = true;
+          setSaveSyncStatus('local');
+          setHasUnsavedChanges(true);
+          setErrorMessage(result.syncMessage || 'Đã lưu bản nháp trên thiết bị này nhưng chưa đồng bộ lên máy chủ. Kiểm tra kết nối rồi thử lưu lại.');
+          setSaveErrorAction('retry');
         }
-      }, 350);
-    },
-    []
-  );
+      }
+      return result;
+    } catch (cause) {
+      if (version === saveVersion.current) {
+        console.warn('Lỗi lưu lịch trình:', cause);
+        const apiError = cause as { status?: number; detail?: string; message?: string };
+        const isOverlap = apiError.status === 422 && /khung giờ bị trùng/i.test(apiError.detail || '');
+        hasUnsyncedDraft.current = true;
+        setSaveSyncStatus('local');
+        setHasUnsavedChanges(true);
+        setErrorMessage(isOverlap
+          ? apiError.detail || 'Một số hoạt động đang bị trùng giờ. Hãy chỉnh giờ hoặc dùng chức năng tự sửa.'
+          : apiError.status === 401
+            ? 'Phiên đăng nhập đã hết hạn. Bản nháp còn trên thiết bị; đăng nhập lại để đồng bộ.'
+            : apiError.status === 403
+              ? 'Tài khoản hiện tại không có quyền sửa lịch này. Bản nháp còn trên thiết bị.'
+              : `Chưa đồng bộ được lịch với máy chủ. Bản nháp ${localDraftAvailable.current ? 'còn trên thiết bị' : 'chưa lưu được trên thiết bị'}${apiError.message ? `: ${apiError.message}` : '.'}`);
+        setSaveErrorAction(isOverlap ? 'repair' : apiError.status === 401 ? 'login' : 'retry');
+      }
+      return null;
+    } finally {
+      if (version === saveVersion.current) setIsSaving(false);
+    }
+  }, []);
+
+  const flushPendingSave = useCallback(async () => {
+    let lastResult: ItinerarySaveResult | null = null;
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    while (pendingSave.current || activeSave.current) {
+      if (activeSave.current) {
+        const result = await activeSave.current;
+        if (result) lastResult = result;
+        continue;
+      }
+      const queued = pendingSave.current;
+      if (!queued) return lastResult;
+      pendingSave.current = null;
+      const request = saveSnapshot(queued.itinerary, queued.version);
+      activeSave.current = request;
+      const result = await request;
+      if (result) lastResult = result;
+      if (activeSave.current === request) activeSave.current = null;
+    }
+    return lastResult;
+  }, [saveSnapshot]);
+
+  const persistPlan = useCallback((nextPlan: TripItinerary, saveDuringSchedulePreview = false) => {
+    latestPlan.current = nextPlan;
+    setPlan(nextPlan);
+    if (isSchedulePreviewRef.current && !saveDuringSchedulePreview) return;
+
+    const version = ++saveVersion.current;
+    pendingSave.current = { itinerary: nextPlan, version };
+    localDraftAvailable.current = cachePendingItinerary(nextPlan);
+    hasUnsyncedDraft.current = true;
+    setSmartScheduleUndoPlan(null);
+    setHasUnsavedChanges(true);
+    setSaveSyncStatus(localDraftAvailable.current ? 'local' : null);
+    setErrorMessage('');
+    setSaveErrorAction(null);
+
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      void flushPendingSave();
+    }, 350);
+  }, [flushPendingSave]);
 
   const persistTripMetadata = async (
     updatedTrip: UserTrip,
@@ -851,7 +946,7 @@ export default function TripItineraryView({
     setInfantsDraft(0);
     setPetsDraft(0);
     setCategoryBudgetDraft(parseCategoryBudgets(trip.budgetTier));
-    setTotalBudgetDraft(trip.totalBudget ?? null);
+    setTotalBudgetDraft(hasUserEnteredBudget(trip.totalBudget) ? trip.totalBudget : null);
     setPreferencesDraft(trip.preferences ?? []);
     setPreferenceTextDraft(trip.preferenceText ?? '');
     setTripMetadataError('');
@@ -863,11 +958,12 @@ export default function TripItineraryView({
       || nextTrip.daysCount !== trip.daysCount
       || nextTrip.startDate !== trip.startDate;
 
-    if (hasScheduledStops && scheduleInputsChanged) {
+    if (hasPlannedStops && scheduleInputsChanged) {
       if (!isSchedulePreviewRef.current) {
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = null;
         saveVersion.current += 1;
+        pendingSave.current = null;
         previewBasePlan.current = plan;
         isSchedulePreviewRef.current = true;
         setIsSchedulePreview(true);
@@ -910,7 +1006,10 @@ export default function TripItineraryView({
         .filter((poi) => poiMatchesDestination(poi, targetTrip.destination));
       const previewPacing = pacingOverride || pacingForTrip(targetTrip);
       const capacity = dailyVisitCapacity(previewPacing);
-      const selection = selectAutomaticPois(baseDays, eligibleSelectedPois, [], targetTrip, previewPacing, capacity);
+      const targetTripWithValidBudget = hasUserEnteredBudget(targetTrip.totalBudget)
+        ? targetTrip
+        : { ...targetTrip, totalBudget: undefined };
+      const selection = selectAutomaticPois(baseDays, eligibleSelectedPois, [], targetTripWithValidBudget, previewPacing, capacity);
       const scheduled = optimizeDays(baseDays, selection.selected, capacity, targetTrip.itineraryOutline || []);
       const routed = optimizeItineraryRouteOrder(scheduled.days, new Map(allPois.map((poi) => [poi.id, poi])));
       const nextPlan: TripItinerary = {
@@ -990,10 +1089,11 @@ export default function TripItineraryView({
 
   const handleSaveBudget = () => {
     const budgetTier = `dining:${categoryBudgetDraft.dining};lodging:${categoryBudgetDraft.lodging};activities:${categoryBudgetDraft.activities}`;
+    const totalBudget = hasUserEnteredBudget(totalBudgetDraft) ? totalBudgetDraft : undefined;
     void commitTripMetadata(withUpdatedRecommendationData({
       ...trip,
       budgetTier,
-      totalBudget: totalBudgetDraft ?? undefined,
+      totalBudget,
     }, categoryBudgetDraft), categoryBudgetDraft);
   };
 
@@ -1006,7 +1106,7 @@ export default function TripItineraryView({
   };
 
   const cancelSchedulePreview = useCallback(() => {
-    if (!isSchedulePreviewRef.current) return;
+    if (!isSchedulePreviewRef.current || isSaving || isSavingTripMetadata) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = null;
     saveVersion.current += 1;
@@ -1022,40 +1122,38 @@ export default function TripItineraryView({
     const hasPriorEdits = JSON.stringify(baseline) !== JSON.stringify(savedPlan.current);
     setHasUnsavedChanges(hasPriorEdits);
     if (hasPriorEdits) persistPlan(baseline);
-  }, [persistPlan]);
+  }, [isSaving, isSavingTripMetadata, persistPlan]);
 
   const confirmSchedulePreview = async () => {
     if (!isSchedulePreviewRef.current || isSaving) return;
-    setIsSaving(true);
     setErrorMessage('');
     setSaveErrorAction(null);
     try {
-      const saved = await saveTripItinerary(latestPlan.current);
-      if (pendingTripMetadata) {
-        await persistTripMetadata(pendingTripMetadata, true);
-      }
+      persistPlan(latestPlan.current, true);
+      const result = await flushPendingSave();
+      if (!result) return;
+
+      const saved = result.itinerary;
       savedPlan.current = saved;
       latestPlan.current = saved;
       setPlan(saved);
+      if (pendingTripMetadata) {
+        previewBasePlan.current = saved;
+        setIsSavingTripMetadata(true);
+        try {
+          await persistTripMetadata(pendingTripMetadata, true);
+        } finally {
+          setIsSavingTripMetadata(false);
+        }
+      }
       previewBasePlan.current = null;
       isSchedulePreviewRef.current = false;
       setIsSchedulePreview(false);
       setPendingTripMetadata(null);
-      setHasUnsavedChanges(false);
       setTripMetadataError('');
     } catch (cause) {
-      const apiError = cause as { status?: number; detail?: string; message?: string };
-      const isOverlap = apiError.status === 422 && /khung giờ bị trùng/i.test(apiError.detail || '');
-      setErrorMessage(isOverlap
-        ? apiError.detail || 'Một số hoạt động đang bị trùng giờ. Hãy chỉnh giờ hoặc dùng chức năng tự sửa.'
-        : apiError.status === 401
-          ? 'Phiên đăng nhập đã hết hạn. Đăng nhập lại để đồng bộ lịch.'
-          : apiError.status === 403
-            ? 'Tài khoản hiện tại không có quyền sửa lịch trình này.'
-            : `Không đồng bộ được lịch với máy chủ${apiError.message ? `: ${apiError.message}` : '.'}`);
-      setSaveErrorAction(isOverlap ? 'repair' : 'retry');
-    } finally {
-      setIsSaving(false);
+      const error = cause as { detail?: string; message?: string };
+      setTripMetadataError(error.detail || error.message || 'Không thể lưu thông tin chuyến đi. Vui lòng thử lại.');
     }
   };
 
@@ -1073,6 +1171,21 @@ export default function TripItineraryView({
         savedPlan.current = aligned.itinerary;
         latestPlan.current = aligned.itinerary;
         setPlan(aligned.itinerary);
+        const hasPendingDraft = hasPendingItinerarySync(trip.id);
+        hasUnsyncedDraft.current = hasPendingDraft;
+        localDraftAvailable.current = hasPendingDraft;
+        setSaveSyncStatus(hasPendingDraft ? 'local' : 'synced');
+        setHasUnsavedChanges(hasPendingDraft);
+        if (hasPendingDraft) {
+          if (hasItineraryAccountSession()) {
+            persistPlan(aligned.itinerary);
+            setErrorMessage('Đã khôi phục bản nháp. GreenTrip đang thử đồng bộ lịch lên tài khoản…');
+            setSaveErrorAction(null);
+          } else {
+            setErrorMessage('Đã khôi phục bản nháp trên thiết bị. Trang này đang ở chế độ Khách; hãy đăng nhập trên tab này để đồng bộ lịch lên tài khoản.');
+            setSaveErrorAction('login');
+          }
+        }
       } catch {
         if (isCancelled) return;
         const fresh = buildItineraryFromOutline(currentTrip.current, latestAllPois.current);
@@ -1087,9 +1200,13 @@ export default function TripItineraryView({
     void loadData();
     return () => {
       isCancelled = true;
-      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+      void flushPendingSave();
     };
-  }, [trip.id]);
+  }, [trip.id, flushPendingSave, persistPlan]);
 
   useEffect(() => {
     const incomingIdeas = Array.isArray(trip.ideas) ? trip.ideas : [];
@@ -1103,44 +1220,7 @@ export default function TripItineraryView({
 
   useEffect(() => {
     if (!externalCopilotPlan || externalCopilotPlan.trip_id !== trip.id) return;
-    if (isSchedulePreviewRef.current) {
-      persistPlan(externalCopilotPlan);
-      onExternalCopilotPlanConsumed?.(externalCopilotPlan);
-      return;
-    }
-
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = null;
-    const version = ++saveVersion.current;
-    latestPlan.current = externalCopilotPlan;
-    setPlan(externalCopilotPlan);
-    setHasUnsavedChanges(true);
-    setIsSaving(true);
-    setErrorMessage('');
-    setSaveErrorAction(null);
-    void saveTripItinerary(externalCopilotPlan)
-      .then((saved) => {
-        if (version !== saveVersion.current) return;
-        savedPlan.current = saved;
-        latestPlan.current = saved;
-        setPlan(saved);
-        setHasUnsavedChanges(false);
-      })
-      .catch((cause: unknown) => {
-        if (version !== saveVersion.current) return;
-        const apiError = cause as { status?: number; message?: string };
-        setErrorMessage((apiError.message || '').includes('quá khứ')
-          ? 'Lịch trình đang ở ngày quá khứ — hãy bấm "Dời sang hôm nay" để lưu thay đổi.'
-          : apiError.status === 401
-          ? 'Phiên đăng nhập đã hết hạn. Đăng nhập lại để đồng bộ lịch.'
-          : apiError.status === 403
-            ? 'Tài khoản hiện tại không có quyền sửa lịch trình này.'
-            : `Không đồng bộ được lịch với máy chủ. Thay đổi còn trên trang này${apiError.message ? `: ${apiError.message}` : '.'}`);
-        setSaveErrorAction('retry');
-      })
-      .finally(() => {
-        if (version === saveVersion.current) setIsSaving(false);
-      });
+    persistPlan(externalCopilotPlan);
     onExternalCopilotPlanConsumed?.(externalCopilotPlan);
   }, [externalCopilotPlan, onExternalCopilotPlanConsumed, persistPlan, trip.id]);
 
@@ -1310,7 +1390,7 @@ export default function TripItineraryView({
       if (aligned.changed) {
         latestPlan.current = aligned.itinerary;
         setPlan(aligned.itinerary);
-        if (hasScheduledStops) {
+        if (hasPlannedStops) {
           persistPlan(aligned.itinerary);
         } else {
           savedPlan.current = aligned.itinerary;
@@ -1318,7 +1398,7 @@ export default function TripItineraryView({
         }
       }
     }
-  }, [hasScheduledStops, isLoading, persistPlan, trip, plan.days.length]);
+  }, [hasPlannedStops, isLoading, persistPlan, trip, plan.days.length]);
 
   useEffect(() => {
     if (initialFocus === 'ideas') {
@@ -1326,18 +1406,19 @@ export default function TripItineraryView({
         recommendationsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 150);
       return () => clearTimeout(timer);
-    } else if (initialFocus === 'itinerary' && !isLoading && hasScheduledStops) {
+    } else if (initialFocus === 'itinerary' && !isLoading && hasPlannedStops) {
       const timer = setTimeout(() => {
         itinerarySectionRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [initialFocus, isLoading, hasScheduledStops]);
+  }, [initialFocus, isLoading, hasPlannedStops]);
 
   // ─── 5. Thao tác THỦ CÔNG (Manual Planning First) ───
 
   // Thêm ý tưởng vào ngày cụ thể
   const handleAddIdeaToDay = (dayNumber: number, poi: Poi, targetIndex?: number) => {
+    if (poi.category === 'luu-tru') return;
     setDismissedRecommendationIds((current) => current.filter((id) => id !== poi.id));
     const nextDays = plan.days.map((day) => {
       if (day.day_number !== dayNumber) return day;
@@ -1585,7 +1666,7 @@ export default function TripItineraryView({
         plan.days,
         poiById,
         trip.peopleCount || 1,
-        trip.totalBudget ?? null
+        hasUserEnteredBudget(trip.totalBudget) ? trip.totalBudget : null
       ),
     [plan.days, poiById, trip.peopleCount, trip.totalBudget]
   );
@@ -1599,9 +1680,13 @@ export default function TripItineraryView({
   const tripRouteSummary = useMemo(() => {
     let totalRoadKm = 0;
     let openingConflictCount = 0;
+    let intercityConflictCount = 0;
 
     for (const day of plan.days) {
       totalRoadKm += calculateStopsPathKm(day.stops, poiById, true);
+      if (detectSameDayIntercityConflict(day, poiById)) {
+        intercityConflictCount += 1;
+      }
       for (const stop of day.stops) {
         if (stop.stop_type === 'rest') continue;
         const matched = stop.poi_id ? poiById.get(stop.poi_id) : undefined;
@@ -1613,17 +1698,47 @@ export default function TripItineraryView({
     }
 
     const carbon = estimateCarbonFootprint(totalRoadKm * 1000, transportMode);
+    const routeCoverage = getRouteCoordinateCoverage(plan.days, poiById);
     return {
       totalRoadKm: Math.round(totalRoadKm * 10) / 10,
       carbon,
+      routeCoverage,
+      hasMeasurableDistance: routeCoverage.measurableLegs > 0,
       openingConflictCount,
+      intercityConflictCount,
     };
   }, [plan.days, poiById, transportMode]);
 
-  // Tối ưu cụm điểm giảm zig-zag cho toàn bộ các ngày
+  const [tradeoffMode, setTradeoffMode] = useState<OptimizationTradeoffMode>('fast');
+  const [lastOptimizeUndo, setLastOptimizeUndo] = useState<{
+    days: ItineraryDay[];
+    transportMode: RouteTransportMode;
+  } | null>(null);
+  const [explainPoiTarget, setExplainPoiTarget] = useState<Poi | null>(null);
+
+  const researchMetrics = useMemo(
+    () => computeItineraryResearchMetrics(plan.days, poiById, transportMode),
+    [plan.days, poiById, transportMode]
+  );
+
+  // Tối ưu cụm điểm giảm zig-zag cho toàn bộ các ngày (có lưu snapshot Hoàn tác)
   const handleOptimizeAllDays = () => {
+    const coverage = getRouteCoordinateCoverage(plan.days, poiById);
+    if (coverage.optimizableDays === 0) {
+      setOptimizeFeedback(
+        coverage.coordinateStops < coverage.totalStops
+          ? `Chưa thể tối ưu: cần ít nhất 3 điểm có tọa độ trong cùng một ngày. Hiện có tọa độ cho ${coverage.coordinateStops}/${coverage.totalStops} địa điểm.`
+          : 'Chưa thể tối ưu: cần ít nhất 3 điểm có tọa độ trong cùng một ngày.'
+      );
+      return;
+    }
+    const prevSnapshot = {
+      days: plan.days.map((day) => ({ ...day, stops: day.stops.map((stop) => ({ ...stop })) })),
+      transportMode,
+    };
     const res = optimizeItineraryRouteOrder(plan.days, poiById);
     if (res.reorderedDaysCount > 0) {
+      setLastOptimizeUndo(prevSnapshot);
       persistPlan({ ...plan, days: res.days });
       const savedCarbon = estimateCarbonFootprint(res.totalSavedKm * 1000, transportMode);
       setOptimizeFeedback(
@@ -1634,10 +1749,72 @@ export default function TripItineraryView({
     }
   };
 
+  // Tối ưu đa mục tiêu theo chế độ đánh đổi (Nhanh nhất / Tiết kiệm / Xanh & Ít đông) + Hoàn tác
+  const handleApplyTradeoffOptimize = (mode: OptimizationTradeoffMode) => {
+    setTradeoffMode(mode);
+    const prevSnapshot = {
+      days: plan.days.map((d) => ({ ...d, stops: d.stops.map((s) => ({ ...s })) })),
+      transportMode,
+    };
+    const res = optimizeItineraryWithTradeoff(
+      plan.days,
+      allPois,
+      mode,
+      transportMode,
+      trip.peopleCount || 2
+    );
+    setLastOptimizeUndo(prevSnapshot);
+    if (res.recommendedTransportMode !== transportMode) {
+      setTransportMode(res.recommendedTransportMode);
+    }
+    persistPlan({ ...plan, days: res.days });
+    setOptimizeFeedback(res.summaryText);
+  };
+
+  const handleUndoOptimize = () => {
+    if (!lastOptimizeUndo) return;
+    persistPlan({ ...plan, days: lastOptimizeUndo.days });
+    setTransportMode(lastOptimizeUndo.transportMode);
+    setLastOptimizeUndo(null);
+    setOptimizeFeedback('Đã hoàn tác về phương án lịch trình và phương tiện trước đó.');
+  };
+
+  // Dời nhanh điểm trùng giờ cao điểm sang khung sáng sớm vắng khách (07:30)
+  const handleShiftStopOffPeak = (dayNumber: number, stopId: string) => {
+    const nextDays = plan.days.map((d) => {
+      if (d.day_number !== dayNumber) return d;
+      const updatedStops = d.stops.map((s) => {
+        if (s.stop_id !== stopId) return s;
+        const dur = Math.max(45, s.duration_minutes || 90);
+        const endMins = 7 * 60 + 30 + dur;
+        const hh = String(Math.floor(endMins / 60)).padStart(2, '0');
+        const mm = String(endMins % 60).padStart(2, '0');
+        return {
+          ...s,
+          start_time: '07:30',
+          end_time: `${hh}:${mm}`,
+          comment: s.comment ? `${s.comment} · Đã dời sớm tránh giờ cao điểm` : 'Đã dời sớm 07:30 để tránh giờ cao điểm',
+        };
+      });
+      return { ...d, stops: updatedStops };
+    });
+    persistPlan({ ...plan, days: nextDays });
+    setOptimizeFeedback('Đã dời điểm tham quan sang khung 07:30 sáng sớm để tránh giờ cao điểm.');
+  };
+
   // Tối ưu cụm điểm giảm zig-zag cho một ngày cụ thể
   const handleOptimizeSingleDay = (dayNumber: number) => {
     const targetDay = plan.days.find((d) => d.day_number === dayNumber);
     if (!targetDay) return;
+    const coverage = getRouteCoordinateCoverage([targetDay], poiById);
+    if (coverage.optimizableDays === 0) {
+      setOptimizeFeedback(
+        coverage.coordinateStops < coverage.totalStops
+          ? `Chưa thể tối ưu Ngày ${dayNumber}: cần ít nhất 3 điểm có tọa độ trong cùng ngày. Hiện có tọa độ cho ${coverage.coordinateStops}/${coverage.totalStops} địa điểm.`
+          : `Chưa thể tối ưu Ngày ${dayNumber}: cần ít nhất 3 điểm có tọa độ trong ngày.`
+      );
+      return;
+    }
     const res = optimizeDayRouteOrder(targetDay, poiById);
     if (res.reordered) {
       const nextDays = plan.days.map((d) => (d.day_number === dayNumber ? res.day : d));
@@ -1664,9 +1841,12 @@ export default function TripItineraryView({
     }
     setIsSaving(true);
     try {
-      const saved = await saveTripItinerary(plan);
-      savedPlan.current = saved;
-      setHasUnsavedChanges(false);
+      await flushPendingSave();
+      if (hasUnsyncedDraft.current) {
+        setErrorMessage('Lịch đã được giữ dưới dạng bản nháp trên thiết bị nhưng chưa đồng bộ. Hãy thử lưu lại trước khi chia sẻ.');
+        setSaveErrorAction('retry');
+        return;
+      }
       if (typeof navigator !== 'undefined' && navigator.clipboard && typeof window !== 'undefined') {
         await navigator.clipboard.writeText(window.location.href).catch(() => {});
       }
@@ -1860,7 +2040,7 @@ export default function TripItineraryView({
       },
     ];
     persistPlan({ ...plan, days_count: nextDays.length, days: nextDays });
-    setShowItinerarySettingsMenu(false);
+    setShowAdvancedOptions(false);
 
     // Đồng bộ ngược ra UserTrip: daysCount & startDate (ví dụ: du lịch từ 1-5, thêm 1 ngày thành 1-6)
     if (onUpdateTrip) {
@@ -1920,45 +2100,62 @@ export default function TripItineraryView({
   };
 
   const runSmartSchedule = (requestedPacing: 'Relaxed' | 'Balanced' | 'Fast' = pacingLevel) => {
-    if (isLoading || (!ideaPois.length && !hasScheduledStops)) return;
-    if (!isSchedulePreviewRef.current) {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-      saveVersion.current += 1;
-      previewBasePlan.current = plan;
-      isSchedulePreviewRef.current = true;
-      setIsSchedulePreview(true);
-    }
+    if (isLoading) return;
     setPacingOverride(requestedPacing);
     const capacity = dailyVisitCapacity(requestedPacing);
-    const ideaIds = new Set(ideaPois.map((poi) => poi.id));
     const baseDays = plan.days.map((day) => ({
       ...day,
-      // Keep non-POI entries and selected POIs. Unselected POIs remain in Ý tưởng
-      // but do not participate in a generated schedule.
-      stops: day.stops.filter((stop) => stop.stop_type === 'rest' || !stop.poi_id || ideaIds.has(stop.poi_id)),
+      // Keep previous assistant picks so later runs can add new ideas safely.
+      stops: day.stops.map((stop) => ({ ...stop })),
     }));
+    const previousPlan: TripItinerary = {
+      ...plan,
+      days: plan.days.map((day) => ({ ...day, stops: day.stops.map((stop) => ({ ...stop })) })),
+    };
     const dismissed = new Set(dismissedRecommendationIds);
-    const availableIdeas = ideaPois.filter((poi) => !dismissed.has(poi.id));
+    const availableIdeas = excludeDismissedPois(ideaPois, dismissed);
+    const availableRecommendations = excludeDismissedPois(scheduleRecommendations, dismissed);
+    const tripWithValidBudget = hasUserEnteredBudget(trip.totalBudget)
+      ? trip
+      : { ...trip, totalBudget: undefined };
     const selection = selectAutomaticPois(
       baseDays,
       availableIdeas,
-      [],
-      trip,
+      availableRecommendations,
+      tripWithValidBudget,
       requestedPacing,
       capacity,
     );
-    const result = optimizeDays(baseDays, selection.selected, capacity, trip.itineraryOutline || []);
+    const previousStopIds = new Set(plan.days.flatMap((day) => day.stops.map((stop) => stop.stop_id)));
+    const result = optimizeDays(
+      baseDays,
+      selection.selected,
+      capacity,
+      trip.itineraryOutline || [],
+      dailyVisitStopTarget(requestedPacing),
+      trip.destination,
+    );
     const nextPlan = { ...plan, days: result.days };
     persistPlan(nextPlan);
+    setSmartScheduleUndoPlan(previousPlan);
 
     const placedCount = result.days.reduce((total, day) => total + day.stops.filter((stop) => stop.stop_type !== 'rest').length, 0);
     const restCount = result.days.reduce((total, day) => total + day.stops.filter((stop) => stop.stop_type === 'rest').length, 0);
     const addedRecommendationIds = new Set(selection.added.map((poi) => poi.id));
-    const placedRecommendationCount = result.days
+    const newVisitStops = result.days
       .flatMap((day) => day.stops)
-      .filter((stop) => stop.source === 'assistant' && stop.poi_id && addedRecommendationIds.has(stop.poi_id))
-      .length;
+      .filter((stop) => stop.stop_type !== 'rest' && !previousStopIds.has(stop.stop_id));
+    const nextIdeas = mergeAssistantStopsIntoIdeas(
+      tripIdeas,
+      result.days.flatMap((day) => day.stops),
+    );
+    if (nextIdeas.length !== tripIdeas.length) setTripIdeas(nextIdeas);
+    onUpdateTrip?.({ ...trip, pacingLevel: requestedPacing, ideas: nextIdeas });
+    const placedRecommendationCount = newVisitStops
+      .filter((stop) => stop.poi_id && addedRecommendationIds.has(stop.poi_id)).length;
+    const availableIdeaIds = new Set(availableIdeas.map((poi) => poi.id));
+    const placedIdeaCount = newVisitStops
+      .filter((stop) => stop.poi_id && availableIdeaIds.has(stop.poi_id)).length;
     const knownCostPois = selection.selected.filter((poi) => poi.estimatedCost != null && Number.isFinite(poi.estimatedCost));
     const unknownCostCount = selection.selected.length - knownCostPois.length;
     const groupSize = Math.max(1, trip.peopleCount || 1);
@@ -1974,15 +2171,64 @@ export default function TripItineraryView({
       selection.limits.destination > 0 ? `${selection.limits.destination} gợi ý nằm ngoài điểm đến của chuyến đi.` : '',
       selection.limits.category > 0 ? `${selection.limits.category} gợi ý bị lược bớt để giữ lịch đa dạng.` : '',
     ].filter(Boolean).join(' ');
-    const pickedMessage = selection.added.length
-      ? ` Trợ lý chọn thêm ${selection.added.length} gợi ý mới và xếp ${placedRecommendationCount} địa điểm vào lịch.${costMessage}`
+    const newSelectionSummary = [
+      placedIdeaCount ? `${placedIdeaCount} ý tưởng của bạn` : '',
+      placedRecommendationCount ? `${placedRecommendationCount} gợi ý mới` : '',
+    ].filter(Boolean).join(' và ');
+    const pickedMessage = newSelectionSummary
+      ? ` Lần này đã thêm ${newSelectionSummary} vào lịch.${costMessage}`
       : selection.selected.length
-        ? ` Trợ lý ưu tiên ${selection.selected.length} địa điểm trong Ý tưởng của bạn.${costMessage}`
-        : ' Không có địa điểm mới để thêm; GreenTrip giữ các hoạt động hiện tại.';
+        ? ` Không có điểm mới phù hợp để thêm; ${selection.selected.length} địa điểm trong Ý tưởng đã được giữ nguyên.${costMessage}`
+      : ' Không có địa điểm mới để thêm; GreenTrip giữ các hoạt động hiện tại.';
     const paceMessage = `Nhịp ${requestedPacing} đặt mục tiêu khoảng ${requestedPacing === 'Relaxed' ? 2 : requestedPacing === 'Fast' ? 5 : 3} điểm/ngày và tối đa ${(capacity / 60).toLocaleString('vi-VN')} giờ tham quan; lịch vẫn giới hạn 2 quán cà phê/ngày.`;
     setAssistantInsight(
-      `Đã xếp ${placedCount} địa điểm${restCount ? ` và giữ ${restCount} khoảng nghỉ` : ''}.${pickedMessage} GreenTrip ưu tiên khung giờ phù hợp, gom các điểm gần nhau và giữ giờ bạn đã tự đặt. ${paceMessage}${result.unassignedCount ? ` Còn ${result.unassignedCount} địa điểm chưa xếp do giới hạn giờ tham quan hoặc số quán cà phê.` : ''}${limitingReasons ? ` ${limitingReasons}` : ''} Khoảng cách gần nhau là đường chim bay; thời gian di chuyển thực tế có thể lâu hơn.`,
+      `Đã xếp ${placedCount} địa điểm${restCount ? ` và giữ ${restCount} khoảng nghỉ` : ''}.${pickedMessage} GreenTrip ưu tiên khung giờ phù hợp, gom các điểm gần nhau và giữ giờ bạn đã tự đặt. ${paceMessage}${result.unassignedCount ? ` Còn ${result.unassignedCount} địa điểm chưa xếp do giới hạn số điểm/ngày, giờ tham quan hoặc số quán cà phê.` : ''}${limitingReasons ? ` ${limitingReasons}` : ''} Khoảng cách gần nhau là đường chim bay; thời gian di chuyển thực tế có thể lâu hơn.`,
     );
+  };
+
+  const handlePacingChange = (level: 'Relaxed' | 'Balanced' | 'Fast') => {
+    setPacingOverride(level);
+    const hasVisitIdea = ideaPois.some((poi) => poi.category !== 'luu-tru');
+    if (hasPlannedStops || hasVisitIdea) {
+      runSmartSchedule(level);
+      return;
+    }
+    onUpdateTrip?.({ ...trip, pacingLevel: level });
+    setAssistantInsight(`Đã chọn nhịp ${level}. Lịch vẫn để trống; bấm “Gợi ý & xếp lịch” nếu bạn muốn GreenTrip đề xuất địa điểm.`);
+  };
+
+  const handleUndoSmartSchedule = () => {
+    if (!smartScheduleUndoPlan || isLoading) return;
+    const previousPlan = smartScheduleUndoPlan;
+    persistPlan(previousPlan);
+    setAssistantInsight('Đã hoàn tác lần xếp lịch thông minh gần nhất.');
+  };
+
+  const handleSmartScheduleClick = () => {
+    if (isLoading || isSaving) return;
+    if (!ideaPois.length && !hasPlannedStops) {
+      setShowEmptySchedulePrompt(true);
+      return;
+    }
+    setShowEmptySchedulePrompt(false);
+    runSmartSchedule();
+  };
+
+  const handleConfirmSmartSuggestions = () => {
+    if (isScheduleRecommendationsLoading) return;
+    if (!scheduleRecommendations.length) {
+      setRecommendationRetryKey((value) => value + 1);
+      return;
+    }
+    setShowEmptySchedulePrompt(false);
+    runSmartSchedule(pacingLevel);
+  };
+
+  const handleOpenPlacesFromEmptyPrompt = () => {
+    setShowEmptySchedulePrompt(false);
+    setActiveDayAddModal(null);
+    setModalTab('search');
+    setShowAddIdeasModal(true);
   };
 
   // Thêm địa điểm tự tạo
@@ -1996,7 +2242,7 @@ export default function TripItineraryView({
         name,
         city: /hue|huế/i.test(trip.destination) ? 'Huế' : 'Đà Nẵng',
         category: 'quan-an',
-        image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+        image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/ff000b3f-3970-4eb9-9ba4-32a800f2d800.webp',
         address: 'Địa điểm tự thêm',
         description: '',
         lat: 16.0678,
@@ -2033,22 +2279,25 @@ export default function TripItineraryView({
     persistPlan(repaired.plan);
   };
 
-  // Nút Xong: Lưu và quay lại
-  const handleDone = () => {
-    if (isSchedulePreviewRef.current && isSaving) return;
+  const finishAfterSaving = async (leave: () => void) => {
     if (isSchedulePreviewRef.current) {
+      if (isSaving || isSavingTripMetadata) return;
       cancelSchedulePreview();
-    } else {
-      persistPlan(plan);
     }
-    if (onUpdateTrip) {
-      onUpdateTrip({ ...trip, ideas: tripIdeas });
+    await flushPendingSave();
+    if (hasUnsyncedDraft.current) {
+      const draftMessage = localDraftAvailable.current
+        ? 'Lịch chưa đồng bộ lên máy chủ. Bản nháp vẫn được giữ trên trình duyệt này; khi mở lại lịch, bạn có thể thử đồng bộ lần nữa. Đóng lịch trình?'
+        : 'Lịch chưa đồng bộ lên máy chủ và không lưu được bản nháp trên thiết bị. Đóng có thể làm mất thay đổi. Đóng lịch trình?';
+      if (typeof window === 'undefined' || !window.confirm(draftMessage)) return;
     }
-    if (onClose) {
-      onClose();
-    } else {
-      onBack();
-    }
+    onUpdateTrip?.({ ...trip, ideas: tripIdeas });
+    leave();
+  };
+
+  // Đợi thao tác lưu đang chờ trước khi rời lịch trình.
+  const handleDone = () => {
+    void finishAfterSaving(() => (onClose ? onClose() : onBack()));
   };
 
   // ─── 6. Lọc POI hiển thị trên Bản đồ tương tác theo Bộ lọc ngày nổi ───
@@ -2071,7 +2320,7 @@ export default function TripItineraryView({
             name: stop.title,
             city: (stop.city as PoiCity) || 'Đà Nẵng',
             category: (stop.category as PoiCategory) || 'quan-an',
-            image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
+            image: 'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/cce05cd8-9e38-460a-b60c-485fb94261e2.webp',
             address: stop.address || '',
             description: '',
             lat: stop.latitude,
@@ -2321,7 +2570,7 @@ export default function TripItineraryView({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={onClose || onBack}
+              onClick={() => void finishAfterSaving(() => (onClose ? onClose() : onBack()))}
               className="w-9 h-9 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer"
               title="Đóng lịch trình"
             >
@@ -2329,7 +2578,7 @@ export default function TripItineraryView({
             </button>
             <button
               type="button"
-              onClick={onClose || onBack}
+              onClick={() => void finishAfterSaving(() => (onClose ? onClose() : onBack()))}
               className="w-9 h-9 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black hover:bg-gray-50 transition cursor-pointer"
               title="Quay lại"
             >
@@ -2344,7 +2593,9 @@ export default function TripItineraryView({
                   <RefreshCw size={12} className="animate-spin" /> Đang lưu...
                 </span>
               ) : hasUnsavedChanges ? (
-                <span className="text-gray-400">Chưa lưu</span>
+                <span className="text-amber-700">
+                  {saveSyncStatus === 'local' ? 'Chưa đồng bộ' : 'Chưa lưu'}
+                </span>
               ) : (
                 <span className="text-emerald-700 flex items-center gap-1">
                   <Check size={13} /> Đã lưu
@@ -2392,13 +2643,12 @@ export default function TripItineraryView({
           trip={recommendationTrip}
           activeTab={activeTab}
           onNavigateToTab={(tab) => {
-            if (tab === 'calendar' && onNavigateToCalendar) {
-              onNavigateToCalendar();
-            } else {
-              onNavigateToTab?.(tab);
-            }
+            void finishAfterSaving(() => {
+              if (tab === 'calendar' && onNavigateToCalendar) onNavigateToCalendar();
+              else onNavigateToTab?.(tab);
+            });
           }}
-          onBack={onBack}
+          onBack={() => void finishAfterSaving(onBack)}
           onOpenWhere={isSchedulePreview ? undefined : () => openTripMetadataModal('where')}
           onOpenWhen={isSchedulePreview ? undefined : () => openTripMetadataModal('when')}
           onOpenWho={isSchedulePreview ? undefined : () => openTripMetadataModal('who')}
@@ -2407,7 +2657,11 @@ export default function TripItineraryView({
           showCustomSettings={showCustomSettings}
           setShowCustomSettings={setShowCustomSettings}
           isSaving={isSaving || isSavingTripMetadata}
-          saveError={tripMetadataError || errorMessage || null}
+          saveError={
+            tripMetadataError ||
+            (saveErrorAction === 'login' ? null : errorMessage) ||
+            null
+          }
           daysCount={plan.days.length}
           rightActions={
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -2502,6 +2756,16 @@ export default function TripItineraryView({
           advisories={evaluateCentralVietnamAdvisories(trip, plan, allPois)}
           onOpenChecklist={() => setIsChecklistModalOpen(true)}
           onAddHueDay={handleAddDay}
+          onSwapOutdoorForRain={() => {
+            const targetDay =
+              plan.days.find(
+                (d) =>
+                  suggestIndoorAlternativesForDay(d, allPois, usedPoiIds, trip.destination).length > 0
+              ) || plan.days[0];
+            if (targetDay) {
+              handleSwapRainyDay(targetDay.day_number);
+            }
+          }}
           className="px-4 sm:px-6 py-2 bg-white border-b border-gray-100 shrink-0"
         />
       )}
@@ -2565,6 +2829,8 @@ export default function TripItineraryView({
             <button type="button" onClick={repairConflictingTimes} className="min-h-10 rounded-full bg-amber-100 px-3 font-semibold text-amber-950 hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800">Sửa giờ trùng</button>
           ) : saveErrorAction === 'retry' ? (
             <button type="button" onClick={retrySave} className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 font-semibold text-amber-950 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800"><RefreshCw size={14} />Thử lưu lại</button>
+          ) : saveErrorAction === 'login' ? (
+            <button type="button" onClick={() => setShowGuestSyncPrompt(true)} className="min-h-10 rounded-full bg-amber-100 px-3 font-semibold text-amber-950 hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800">Đăng nhập để đồng bộ</button>
           ) : null}
         </div>
       )}
@@ -2754,142 +3020,124 @@ export default function TripItineraryView({
           ──────────────────────────────────────────────────────── */}
           {activeTab === 'itinerary' && (
           <section ref={itinerarySectionRef} className="flex-1 flex flex-col min-h-0 mt-5">
-            {/* Header Lịch trình */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <h2 className="font-extrabold text-[17px] text-gray-950 flex items-center gap-2">
-                  <span>Lịch trình</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                    {plan.days.length} ngày
-                  </span>
-                </h2>
-
-                {/* Nút gạt Khoảng cách (Distances Toggle) */}
-                <div className="flex items-center gap-2 ml-2 pl-3 border-l border-gray-200">
-                  <span className="text-xs font-semibold text-gray-600">Khoảng cách</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowDistances(!showDistances)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      showDistances ? 'bg-black' : 'bg-gray-300'
-                    }`}
-                    role="switch"
-                    aria-checked={showDistances}
-                    title="Bật/Tắt hiển thị khoảng cách giữa các điểm"
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                        showDistances ? 'translate-x-4' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="flex items-center gap-2 text-[17px] font-extrabold text-gray-950">
+                <span>Lịch trình</span>
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                  {plan.days.length} ngày
+                </span>
+              </h2>
+              <div className="no-print flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  aria-pressed={preferLocalAuthentic}
-                  onClick={() => setPreferLocalAuthentic((prev) => !prev)}
-                  className={`min-h-[36px] px-3 rounded-full border text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
-                    preferLocalAuthentic
-                      ? 'border-emerald-800 bg-emerald-50 text-emerald-950'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
-                  }`}
-                  title="Ưu tiên gợi ý quán bản địa phía Tây sông Hàn, làng nghề và điểm ít đông"
-                >
-                  Bản địa ít đông
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2 no-print">
-                <button
-                  type="button"
-                  onClick={() => runSmartSchedule()}
-                  disabled={isLoading || isSaving || (!ideaPois.length && !hasScheduledStops)}
+                  onClick={handleSmartScheduleClick}
+                  disabled={isLoading || isSaving || (isScheduleRecommendationsLoading && (ideaPois.length > 0 || hasPlannedStops))}
                   aria-describedby="smart-schedule-help"
-                  aria-busy={isLoading}
+                  aria-busy={isScheduleRecommendationsLoading && (ideaPois.length > 0 || hasPlannedStops)}
                   className="flex min-h-10 items-center gap-1.5 rounded-full bg-gray-950 px-3 text-xs font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                 >
-                  {isLoading ? <RefreshCw size={14} className="animate-spin" aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
-                  <span>{isSchedulePreview ? 'Tạo lại bản xem trước' : hasScheduledStops ? 'Tạo lại lịch trình' : 'Tạo lịch trình'}</span>
+                  <Sparkles size={14} aria-hidden="true" />
+                  <span>{hasPlannedStops ? 'Xếp thêm địa điểm' : ideaPois.length ? 'Sắp xếp thông minh' : 'Gợi ý & xếp lịch'}</span>
                 </button>
-                {/* Menu ba chấm ... cạnh tiêu đề Lịch trình */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowItinerarySettingsMenu(!showItinerarySettingsMenu)}
-                    className="w-9 h-9 rounded-full border border-gray-200 hover:border-black flex items-center justify-center text-gray-700 hover:text-black cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-                    title="Tùy chọn lịch trình"
-                    aria-label="Tùy chọn lịch trình"
-                    aria-expanded={showItinerarySettingsMenu}
-                  >
-                    <MoreHorizontal size={15} />
-                  </button>
-
-                  {showItinerarySettingsMenu && (
-                    <div
-                      className="absolute right-0 top-10 w-48 bg-white rounded-2xl shadow-xl border border-gray-200 p-1.5 z-40 text-sm animate-fadeIn"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        onClick={handleAddDay}
-                        className="min-h-10 w-full text-left px-3 rounded-xl hover:bg-gray-100 font-semibold text-gray-900 flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-                      >
-                        <Plus size={14} /> Thêm ngày mới
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedOptions((current) => !current)}
+                  aria-expanded={showAdvancedOptions}
+                  aria-controls="itinerary-advanced-options"
+                  className="flex min-h-10 items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-800 hover:border-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                >
+                  <SlidersHorizontal size={14} aria-hidden="true" />
+                  <span>Tùy chọn</span>
+                  <ChevronDown size={14} className={showAdvancedOptions ? 'rotate-180 transition-transform' : 'transition-transform'} aria-hidden="true" />
+                </button>
               </div>
+              <p className="sr-only" id="smart-schedule-help">
+                Xếp các địa điểm bạn đã chọn. Bấm lại để xếp các ý tưởng mới; địa điểm đã có trong lịch được giữ nguyên. Nếu chưa có ý tưởng, GreenTrip sẽ hỏi trước khi thêm gợi ý vào lịch.
+              </p>
             </div>
 
-            {/* Trợ lý sắp xếp lịch trình & nhịp độ — Gọn 1 hàng để ưu tiên hiển thị lịch theo ngày */}
-            <section className="mb-2.5 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2" aria-label="Trợ lý sắp xếp lịch trình">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Chọn nhịp chuyến đi">
-                  <span className="text-xs font-bold text-gray-800 mr-1">Nhịp:</span>
-                  {([
-                    ['Relaxed', '🌿 Thong thả', '~2 điểm'],
-                    ['Balanced', '⚖️ Cân bằng', '~3 điểm'],
-                    ['Fast', '⚡ Dày đặc', '≤5 điểm'],
-                  ] as const).map(([level, label, target]) => (
-                    <button
-                      key={level}
-                      type="button"
-                      aria-pressed={pacingLevel === level}
-                      disabled={isLoading || isSaving || (!ideaPois.length && !hasScheduledStops)}
-                      onClick={() => runSmartSchedule(level)}
-                      className={`min-h-8 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 ${pacingLevel === level ? 'border-emerald-800 bg-emerald-100 text-emerald-950' : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-100'}`}
-                    >
-                      <span>{label}</span>
-                      <span className="ml-1 font-normal text-gray-600">({target})</span>
-                    </button>
-                  ))}
+            {hasPlannedStops && (
+              <p className="mb-3 text-sm leading-5 text-gray-700" role="status">
+                Địa điểm đã xếp sẽ được giữ nguyên. Bấm “Xếp thêm địa điểm” để đưa các ý tưởng mới vào lịch.
+              </p>
+            )}
+
+            {!hasPlannedStops && !showEmptySchedulePrompt && (
+              <p className="mb-3 rounded-xl bg-gray-50 px-3.5 py-3 text-sm leading-5 text-gray-700" role="status">
+                Lịch đang để trống. Thêm địa điểm vào Ý tưởng hoặc bấm “Gợi ý &amp; xếp lịch” để GreenTrip hỏi bạn trước.
+              </p>
+            )}
+
+            {showEmptySchedulePrompt && (
+              <section className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4" aria-label="Chọn cách bắt đầu lịch trình" aria-live="polite">
+                <h3 className="text-sm font-bold text-emerald-950">Chuyến đi chưa có địa điểm trong Ý tưởng</h3>
+                <p className="mt-1 text-sm leading-5 text-emerald-950">
+                  Bạn muốn GreenTrip chọn địa điểm phù hợp với điểm đến và xếp vào lịch, hay tự chọn từng nơi?
+                </p>
+                {isScheduleRecommendationsLoading && <p className="mt-2 text-sm text-emerald-950" role="status">Đang tải danh sách địa điểm gợi ý…</p>}
+                {!isScheduleRecommendationsLoading && recommendationFetchError && (
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                    <span>Không kết nối được dịch vụ gợi ý. GreenTrip có thể thử lại hoặc bạn tự chọn từ danh mục địa điểm đã tải.</span>
+                    <button type="button" onClick={() => setRecommendationRetryKey((value) => value + 1)} className="min-h-10 rounded-full px-3 font-semibold underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800">Thử lại</button>
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConfirmSmartSuggestions}
+                    disabled={isScheduleRecommendationsLoading || !scheduleRecommendations.length}
+                    className="min-h-10 rounded-full bg-gray-950 px-4 text-xs font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Có, gợi ý &amp; xếp lịch
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenPlacesFromEmptyPrompt}
+                    className="min-h-10 rounded-full border border-gray-300 bg-white px-4 text-xs font-semibold text-gray-900 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Tự thêm địa điểm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmptySchedulePrompt(false)}
+                    className="min-h-10 rounded-full px-4 text-xs font-semibold text-gray-700 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Để sau
+                  </button>
                 </div>
-                <TripExportToolbar
-                  trip={trip}
-                  plan={plan}
-                  isChecklistOpen={isChecklistModalOpen}
-                  onChecklistOpenChange={setIsChecklistModalOpen}
-                  onBeforePrint={() => setCollapsedDays(new Set())}
-                />
+              </section>
+            )}
+
+            {assistantInsight && (
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-3 rounded-xl bg-emerald-50 px-3.5 py-3 text-sm leading-5 text-emerald-950" aria-live="polite">
+                <p className="min-w-0 flex-1">
+                  <strong>Vì sao GreenTrip xếp như vậy?</strong> {assistantInsight}
+                </p>
+                {smartScheduleUndoPlan && (
+                  <button
+                    type="button"
+                    onClick={handleUndoSmartSchedule}
+                    disabled={isLoading}
+                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-emerald-800/25 bg-white px-3 font-semibold text-emerald-950 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-800"
+                  >
+                    <RotateCcw size={14} aria-hidden="true" />
+                    <span>Hoàn tác lần xếp</span>
+                  </button>
+                )}
               </div>
-              {isScheduleRecommendationsLoading && <p className="mt-1.5 text-xs text-gray-700" role="status">Đang tải gợi ý địa điểm...</p>}
-              {!isScheduleRecommendationsLoading && recommendationFetchError && <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-950" role="status"><span>Chưa tải được gợi ý từ PB09; danh sách địa điểm hiện có vẫn dùng được.</span><button type="button" onClick={() => setRecommendationRetryKey((value) => value + 1)} className="min-h-8 rounded-full px-2.5 font-semibold text-amber-950 underline underline-offset-2 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800">Thử lại</button></div>}
-              {assistantInsight && <p className="mt-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs leading-5 text-emerald-950" aria-live="polite"><strong>Vì sao GreenTrip xếp như vậy?</strong> {assistantInsight}</p>}
-            </section>
+            )}
 
             {isSchedulePreview && (
               <section className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3" aria-live="polite">
                 <div>
                   <h3 className="text-sm font-bold text-amber-950">Bản xem trước · Chưa lưu</h3>
-                  <p className="text-xs text-amber-900">Bạn có thể chỉnh sửa phương án. Lịch đã lưu chỉ đổi khi bạn sử dụng bản xem trước này.</p>
+                  <p className="text-sm text-amber-900">Bạn có thể chỉnh sửa phương án. Lịch đã lưu chỉ đổi khi bạn sử dụng bản xem trước này.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={cancelSchedulePreview}
-                    disabled={isSaving}
+                    disabled={isSaving || isSavingTripMetadata}
                     className="min-h-10 rounded-full border border-amber-800 px-4 text-xs font-semibold text-amber-950 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-800"
                   >
                     Hủy bản xem trước
@@ -2897,29 +3145,123 @@ export default function TripItineraryView({
                   <button
                     type="button"
                     onClick={() => void confirmSchedulePreview()}
-                    disabled={isSaving}
+                    disabled={isSaving || isSavingTripMetadata}
                     className="min-h-10 rounded-full bg-emerald-900 px-4 text-xs font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
                   >
-                    {isSaving ? 'Đang lưu...' : 'Sử dụng lịch trình này'}
+                    {isSaving || isSavingTripMetadata ? 'Đang lưu...' : 'Sử dụng lịch trình này'}
                   </button>
                 </div>
               </section>
             )}
 
-            {/* Bảng Tối ưu Lộ trình & Ước tính Carbon (Phần 1) */}
-            <ItineraryCarbonBudgetPanel
-              totalRoadKm={tripRouteSummary.totalRoadKm}
-              carbon={tripRouteSummary.carbon}
-              openingConflictCount={tripRouteSummary.openingConflictCount}
-              transportMode={transportMode}
-              onChangeTransportMode={setTransportMode}
-              onOptimizeAllDays={handleOptimizeAllDays}
-              budgetSummary={budgetSummary}
-              peopleCount={trip.peopleCount || 1}
-              formatVnd={formatVnd}
-              optimizeFeedback={optimizeFeedback}
-              onDismissOptimizeFeedback={() => setOptimizeFeedback(null)}
-            />
+            <section hidden={!showAdvancedOptions} id="itinerary-advanced-options" className="mb-4 space-y-3 rounded-2xl border border-gray-200 bg-gray-50/80 p-3.5" aria-label="Tùy chọn lịch trình">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-950">Tùy chỉnh lịch trình</h3>
+                    <p className="mt-1 text-sm leading-5 text-gray-700">Chọn nhịp và công cụ bổ sung. Thay đổi nhịp chỉ được áp dụng khi bạn xếp lịch.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddDay}
+                    disabled={plan.days.length >= 31}
+                    className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-800 hover:border-gray-500 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    <Plus size={14} aria-hidden="true" /> Thêm ngày
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold text-gray-700">Khoảng cách</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowDistances((current) => !current)}
+                    className={`relative inline-flex h-6 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${showDistances ? 'bg-gray-950' : 'bg-gray-300'}`}
+                    role="switch"
+                    aria-checked={showDistances}
+                    title="Bật hoặc tắt khoảng cách giữa các điểm"
+                  >
+                    <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${showDistances ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={preferLocalAuthentic}
+                    onClick={() => setPreferLocalAuthentic((current) => !current)}
+                    className={`min-h-10 rounded-full border px-3 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${preferLocalAuthentic ? 'border-emerald-800 bg-emerald-50 text-emerald-950' : 'border-gray-300 bg-white text-gray-800 hover:border-gray-500'}`}
+                    title="Ưu tiên gợi ý quán bản địa, làng nghề và điểm ít đông"
+                  >
+                    {preferLocalAuthentic ? 'Đang ưu tiên bản địa ít đông' : 'Ưu tiên bản địa ít đông'}
+                  </button>
+                </div>
+
+                <TripExportToolbar
+                  trip={trip}
+                  plan={plan}
+                  isChecklistOpen={isChecklistModalOpen}
+                  onChecklistOpenChange={setIsChecklistModalOpen}
+                  onBeforePrint={() => setCollapsedDays(new Set())}
+                />
+
+                <div className="rounded-xl border border-gray-200 bg-white p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-950">Nhịp chuyến đi</h3>
+                      <p className="mt-1 text-sm leading-5 text-gray-700" id="pacing-help">
+                        {hasPlannedStops || ideaPois.some((poi) => poi.category !== 'luu-tru')
+                          ? 'Đổi nhịp sẽ áp dụng ngay, thêm điểm theo sức chứa mới và giữ các điểm đã có.'
+                          : 'Chọn nhịp trước; lịch vẫn trống cho đến khi bạn chủ động yêu cầu gợi ý và xếp lịch.'}
+                      </p>
+                    </div>
+                    <p className="text-xs font-medium text-gray-700">Đề xuất ban đầu: {pacingForTrip(trip) === 'Relaxed' ? 'Thong thả' : pacingForTrip(trip) === 'Fast' ? 'Dày đặc' : 'Cân bằng'}</p>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label="Chọn nhịp chuyến đi">
+                    {([
+                      ['Relaxed', '🌿 Thong thả', 'Tối đa 2 điểm/ngày'],
+                      ['Balanced', '⚖️ Cân bằng', 'Tối đa 3 điểm/ngày'],
+                      ['Fast', '⚡ Dày đặc', 'Tối đa 5 điểm/ngày'],
+                    ] as const).map(([level, label, target]) => (
+                      <button
+                        key={level}
+                        type="button"
+                        aria-pressed={pacingLevel === level}
+                        disabled={isLoading || isSaving}
+                        onClick={() => handlePacingChange(level)}
+                        aria-describedby="pacing-help"
+                        className={`min-h-11 rounded-xl border px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 ${pacingLevel === level ? 'border-emerald-800 bg-emerald-100 text-emerald-950' : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-100'}`}
+                      >
+                        <span className="block">{label}</span>
+                        <span className="mt-0.5 block font-normal">{target}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {hasPlannedStops ? (
+                  <ItineraryCarbonBudgetPanel
+                    totalRoadKm={tripRouteSummary.totalRoadKm}
+                    carbon={tripRouteSummary.carbon}
+                    hasMeasurableDistance={tripRouteSummary.hasMeasurableDistance}
+                    routeCoordinateCount={tripRouteSummary.routeCoverage.coordinateStops}
+                    routeStopCount={tripRouteSummary.routeCoverage.totalStops}
+                    openingConflictCount={tripRouteSummary.openingConflictCount}
+                    transportMode={transportMode}
+                    onChangeTransportMode={setTransportMode}
+                    onOptimizeAllDays={handleOptimizeAllDays}
+                    intercityConflictCount={tripRouteSummary.intercityConflictCount}
+                    tradeoffMode={tradeoffMode}
+                    onApplyTradeoffOptimize={handleApplyTradeoffOptimize}
+                    canUndoOptimize={Boolean(lastOptimizeUndo)}
+                    onUndoOptimize={handleUndoOptimize}
+                    researchMetrics={researchMetrics}
+                    budgetSummary={budgetSummary}
+                    peopleCount={trip.peopleCount || 1}
+                    formatVnd={formatVnd}
+                    optimizeFeedback={optimizeFeedback}
+                    onDismissOptimizeFeedback={() => setOptimizeFeedback(null)}
+                  />
+                ) : (
+                  <p className="text-sm leading-5 text-gray-700">Thông tin khoảng cách, phương tiện và chi phí sẽ hiện sau khi lịch có địa điểm.</p>
+                )}
+            </section>
 
             {/* Danh sách các ngày theo chiều dọc (Chuẩn Ảnh 1, 4 - ĐÃ BỎ DẤU CỘNG Ở HEADER NGÀY) */}
             <div className="space-y-4 pb-10">
@@ -3255,26 +3597,62 @@ export default function TripItineraryView({
                                             </div>
                                           )}
 
-                                        {!isRest && matchedPoi && evaluateLocalAuthentic(matchedPoi).isCrowded && (
-                                          <div className="no-print mt-1.5 flex flex-wrap items-center gap-2">
-                                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900">
-                                              Khu vực đông khách
-                                            </span>
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setPreferLocalAuthentic(true);
-                                                setNearbyPickerTarget({
-                                                  dayNumber: day.day_number,
-                                                  stopId: stop.stop_id,
-                                                });
-                                              }}
-                                              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline underline-offset-2 cursor-pointer"
-                                            >
-                                              Đổi điểm bản địa ít đông
-                                            </button>
-                                          </div>
-                                        )}
+                                        {!isRest && matchedPoi && (() => {
+                                          const crowd = evaluateCrowdProfile(matchedPoi);
+                                          const inPeak = isTimeInCrowdPeakWindow(stop.start_time, crowd);
+                                          const isCrowded = crowd.level === 'high' || evaluateLocalAuthentic(matchedPoi).isCrowded;
+                                          return (
+                                            <div className="no-print mt-1.5 flex flex-wrap items-center gap-2">
+                                              {isCrowded && (
+                                                <span
+                                                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                                                    inPeak
+                                                      ? 'border-rose-300 bg-rose-50 text-rose-900'
+                                                      : 'border-amber-200 bg-amber-50 text-amber-900'
+                                                  }`}
+                                                  title={crowd.offPeakTip || 'Điểm phổ biến thường đông vào khung giờ cao điểm'}
+                                                >
+                                                  {inPeak
+                                                    ? `Quá tải giờ cao điểm (${crowd.peakHours})`
+                                                    : crowd.peakHours
+                                                      ? `Đông khách (${crowd.peakHours})`
+                                                      : 'Khu vực đông khách'}
+                                                </span>
+                                              )}
+                                              {inPeak && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleShiftStopOffPeak(day.day_number, stop.stop_id)}
+                                                  className="text-xs font-bold text-amber-900 hover:text-black underline underline-offset-2 cursor-pointer"
+                                                >
+                                                  Dời sang 07:30 (giờ vắng)
+                                                </button>
+                                              )}
+                                              {isCrowded && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setPreferLocalAuthentic(true);
+                                                    setNearbyPickerTarget({
+                                                      dayNumber: day.day_number,
+                                                      stopId: stop.stop_id,
+                                                    });
+                                                  }}
+                                                  className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline underline-offset-2 cursor-pointer"
+                                                >
+                                                  Đổi điểm bản địa ít đông
+                                                </button>
+                                              )}
+                                              <button
+                                                type="button"
+                                                onClick={() => setExplainPoiTarget(matchedPoi)}
+                                                className="text-xs font-semibold text-neutral-600 hover:text-emerald-900 underline underline-offset-2 cursor-pointer"
+                                              >
+                                                Vì sao chọn?
+                                              </button>
+                                            </div>
+                                          );
+                                        })()}
                                       </div>
 
                                       {/* Ghi chú Note */}
@@ -3544,10 +3922,22 @@ export default function TripItineraryView({
                                             : Footprints;
                                     return (
                                       <div className="min-h-[44px] ml-7 pl-6 border-l-2 border-[#ddd] flex flex-wrap items-center gap-2.5 text-xs text-gray-700 font-semibold animate-fadeIn">
-                                        <LegIcon size={13} className="text-emerald-700 shrink-0" aria-hidden="true" />
-                                        <span>~{transitDistKm.toFixed(1)} km</span>
-                                        <span className="text-gray-400" aria-hidden="true">·</span>
-                                        <span className="text-emerald-800">{formatCarbonAmount(legCarbon.co2Grams)}</span>
+                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold shadow-2xs">
+                                          <LegIcon size={13} className="text-emerald-700 shrink-0" aria-hidden="true" />
+                                          <span>
+                                            {transportMode === 'driving'
+                                              ? 'Ô tô'
+                                              : transportMode === 'motorcycle'
+                                                ? 'Xe máy'
+                                                : transportMode === 'transit'
+                                                  ? 'Xe buýt điện'
+                                                  : 'Đi bộ'}
+                                          </span>
+                                          <span className="text-gray-300">·</span>
+                                          <span>~{transitDistKm.toFixed(1)} km</span>
+                                          <span className="text-gray-300">·</span>
+                                          <span className="text-emerald-800">{formatCarbonAmount(legCarbon.co2Grams)}</span>
+                                        </div>
                                         <a
                                           href={getGoogleMapsDirectionsUrl(
                                             stop.latitude ?? matchedPoi?.lat,
@@ -3672,6 +4062,7 @@ export default function TripItineraryView({
             </div>
           ) : (
             <ItineraryMapPanel
+              tripId={trip.id}
               mapPurpose={activeTab === 'ideas' ? 'ideas' : 'itinerary'}
               isDetailOpen={Boolean(selectedDetailPoiId)}
               detailPanel={detailPanel}

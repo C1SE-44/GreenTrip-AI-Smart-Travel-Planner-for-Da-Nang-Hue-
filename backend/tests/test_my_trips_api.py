@@ -171,6 +171,74 @@ def test_save_and_retrieve_my_trip(client: TestClient, sample_trip_payload):
     assert stops_d1[1]["title"] == "Chợ Hàn Đà Nẵng"
 
 
+def test_upsert_persists_one_owned_trip_and_allows_non_poi_stops(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    sample_trip_payload,
+):
+    from app.db import postgres
+
+    monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", tmp_path / "upsert_my_trip.sqlite")
+    monkeypatch.setattr(postgres, "get_settings", lambda: Settings(DATABASE_URL=""))
+    monkeypatch.setattr("app.main.seed_sample_itineraries", lambda: None)
+    user_id = f"user_upsert_{uuid.uuid4().hex[:8]}"
+    headers = auth_header(user_id)
+    trip_id = sample_trip_payload["trip_id"]
+
+    with TestClient(app) as first_session:
+        first = first_session.post("/my-trips", json=sample_trip_payload, headers=headers)
+        assert first.status_code == 201
+
+        updated_payload = {
+            **sample_trip_payload,
+            "title": "Bản lịch đã chỉnh sửa",
+            "days_count": 1,
+            "days": [{
+                "day_id": f"updated-day-{trip_id}",
+                "day_number": 1,
+                "title": "Ngày nghỉ",
+                "stops": [{
+                    "stop_id": f"rest-stop-{trip_id}",
+                    "poi_id": None,
+                    "title": "Nghỉ trưa",
+                    "city": "Huế",
+                    "stop_type": "rest",
+                    "source": "manual",
+                    "sequence": 0,
+                    "duration_minutes": 90,
+                    "start_time": "12:00",
+                    "end_time": "13:30",
+                }],
+            }],
+        }
+        updated = first_session.post("/my-trips", json=updated_payload, headers=headers)
+        assert updated.status_code == 201
+        assert updated.json()["title"] == "Bản lịch đã chỉnh sửa"
+
+    with TestClient(app) as reauthenticated_session:
+        restored = reauthenticated_session.get(f"/my-trips/{trip_id}", headers=headers)
+        assert restored.status_code == 200
+        detail = restored.json()
+        assert detail["title"] == "Bản lịch đã chỉnh sửa"
+        assert detail["days_count"] == 1
+        stop = detail["days"][0]["stops"][0]
+        assert stop["title"] == "Nghỉ trưa"
+        assert stop["poi_id"] is None
+        assert stop["start_time"] == "12:00"
+
+        listed = reauthenticated_session.get("/my-trips", headers=headers)
+        assert listed.status_code == 200
+        assert len(listed.json()) == 1
+        assert listed.json()[0]["trip_id"] == trip_id
+        assert listed.json()[0]["total_stops"] == 1
+
+        other_user = reauthenticated_session.get(
+            f"/my-trips/{trip_id}",
+            headers=auth_header(f"user_other_{uuid.uuid4().hex[:8]}"),
+        )
+        assert other_user.status_code == 403
+
+
 def test_list_my_trips(client: TestClient, sample_trip_payload):
     """Test 4: User retrieves their own list of trips with accurate summaries and stop counts."""
     user_id = f"user_list_{uuid.uuid4().hex[:6]}"
@@ -349,7 +417,9 @@ def test_export_pdf_success_and_vietnamese_unicode(client: TestClient, sample_tr
     # PDF format verification
     content = res_pdf.content
     assert content.startswith(b"%PDF-")
-    assert len(content) > 5000  # Non-trivial PDF with complete styling and tables
+    assert b"/Type /Page" in content
+    assert b"startxref" in content
+    assert content.rstrip().endswith(b"%%EOF")
 
 
 def test_alternate_routes_mounted_correctly(client: TestClient, sample_trip_payload):

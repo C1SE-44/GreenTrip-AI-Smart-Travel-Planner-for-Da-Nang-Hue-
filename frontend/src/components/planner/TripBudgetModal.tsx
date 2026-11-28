@@ -196,8 +196,8 @@ export default function TripBudgetModal({
           </div>
         )}
 
-        <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-[11.5px] text-amber-900 leading-relaxed mb-5">
-          💡 <strong>Cơ chế gợi ý theo danh mục:</strong> Gợi ý Nhà hàng sẽ áp dụng ngân sách Ăn uống; Gợi ý Di tích &amp; Cảnh quan sẽ áp dụng ngân sách Hoạt động để không bị áp một mức chung cho cả chuyến đi.
+        <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-xs text-amber-900 leading-relaxed mb-5">
+          <strong>Cơ chế tính minh bạch:</strong> Tổng dự trù trên thanh lịch trình tính cho toàn bộ số khách, gồm vé tham quan và ăn uống tại các điểm dừng; chưa gồm lưu trú và vé xe/tàu liên tỉnh. Gợi ý Nhà hàng dùng ngân sách Ăn uống; gợi ý Di tích &amp; Cảnh quan dùng ngân sách Hoạt động.
         </div>
 
         {/* Nút Cập nhật góc dưới bên phải */}

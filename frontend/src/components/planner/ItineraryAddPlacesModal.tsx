@@ -331,7 +331,7 @@ export default function ItineraryAddPlacesModal({
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             onError={(e) => {
                               e.currentTarget.src =
-                                'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80';
+                                'https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/52be8ea6-571d-47f9-a9a5-375270c73243.webp';
                             }}
                           />
 

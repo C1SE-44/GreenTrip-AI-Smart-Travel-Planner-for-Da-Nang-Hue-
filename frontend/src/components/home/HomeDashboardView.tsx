@@ -1,34 +1,29 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Sparkles,
-  Compass,
   CalendarPlus,
   Send,
   Plus,
   Mic,
-  AudioWaveform as Waveform,
-  ChevronRight,
   ArrowRight,
-  MapPin,
-  Clock,
   CheckCircle2,
   X,
-  Share2,
-  MessageSquare,
-  Flame,
-  Leaf,
-  Layers,
-  Star,
 } from 'lucide-react';
 import OnboardingModal from '@/components/auth/OnboardingModal';
 import type { ExploreTabId } from '@/components/explore/exploreUtils';
+import TripPackagesSection from './TripPackagesSection';
+import type { TripPackageLaunch } from './tripPackages';
+import type { Poi } from '@/data/pois';
 
 export interface HomeDashboardViewProps {
   onNavigateToExplore: (initialTab?: ExploreTabId) => void;
   onNavigateToTrips: () => void;
   onNavigateToSaved: () => void;
+  onCreateTrip: (defaultDestination?: string, defaultTitle?: string, packageLaunch?: TripPackageLaunch) => void;
+  pois: Poi[];
+  poisLoading: boolean;
+  poisError: string | null;
   onNavigateToChat?: (initialPrompt?: string) => void;
-  onCreateTrip: (defaultDestination?: string, defaultTitle?: string) => void;
   currentUser?: { full_name?: string; email?: string } | null;
 }
 
@@ -39,45 +34,6 @@ const TOP_CATEGORIES = [
   { id: 'nature', label: 'Thiên nhiên & Biển', icon: 'ph-mountains', bg: 'bg-sky-100', text: 'text-sky-700' },
   { id: 'stays', label: 'Lưu trú xanh', icon: 'ph-bed', bg: 'bg-purple-100', text: 'text-purple-700' },
   { id: 'trips', label: 'Lịch trình', icon: 'ph-calendar-check', bg: 'bg-teal-100', text: 'text-teal-700' },
-];
-
-const MUST_TRY_PACKAGES = [
-  {
-    id: 'pkg-danang-food',
-    title: 'Ẩm thực đường phố & Cầu Rồng Đà Nẵng',
-    destination: 'Đà Nẵng',
-    duration: '1 ngày • 4 điểm ghé thăm',
-    badge: 'Must Try 🔥',
-    ecoScore: '92/100',
-    co2Saved: 'Giảm ~1.5kg CO₂',
-    image: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&auto=format&fit=crop&q=80',
-    description: 'Bánh xèo Bà Dưỡng, Cầu Rồng phun lửa, chợ đêm Sơn Trà và dạo mát sông Hàn.',
-    stops: ['Bánh xèo Bà Dưỡng', 'Cầu Rồng', 'Chợ đêm Sơn Trà', 'Cầu Tình Yêu'],
-  },
-  {
-    id: 'pkg-hue-heritage',
-    title: 'Dấu ấn Cố đô & Lăng tẩm Hoàng gia Huế',
-    destination: 'Huế',
-    duration: '2 ngày • 5 điểm ghé thăm',
-    badge: 'Di sản UNESCO 🏛️',
-    ecoScore: '95/100',
-    co2Saved: 'Giảm ~2.1kg CO₂',
-    image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&auto=format&fit=crop&q=80',
-    description: 'Khám phá Đại Nội Huế, Chùa Thiên Mụ cổ kính, Lăng Khải Định và thưởng thức cơm hến vỉa hè.',
-    stops: ['Đại Nội Huế', 'Chùa Thiên Mụ', 'Lăng Khải Định', 'Cơm Hến Bà Cam', 'Cầu Trường Tiền'],
-  },
-  {
-    id: 'pkg-green-nature',
-    title: 'Hành trình Xanh: Bán đảo Sơn Trà & Biển Mỹ Khê',
-    destination: 'Đà Nẵng',
-    duration: '1 ngày • 3 điểm ghé thăm',
-    badge: 'Xanh Sinh Thái 🌿',
-    ecoScore: '98/100',
-    co2Saved: 'Giảm ~3.0kg CO₂',
-    image: 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?w=800&auto=format&fit=crop&q=80',
-    description: 'Khám phá thiên nhiên nguyên sơ, ngắm Voọc chà vá chân nâu, viếng Chùa Linh Ứng và tắm biển.',
-    stops: ['Chùa Linh Ứng Bãi Bụt', 'Đỉnh Bàn Cờ', 'Bãi biển Mỹ Khê'],
-  },
 ];
 
 const SUGGESTED_PROMPTS = [
@@ -92,6 +48,9 @@ export default function HomeDashboardView({
   onNavigateToSaved,
   onNavigateToChat,
   onCreateTrip,
+  pois,
+  poisLoading,
+  poisError,
   currentUser,
 }: HomeDashboardViewProps) {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
@@ -103,7 +62,6 @@ export default function HomeDashboardView({
     days: string[];
     summary: string;
   } | null>(null);
-  const [showForumModal, setShowForumModal] = useState(false);
   const [activeTabFilter, setActiveTabFilter] = useState('all');
 
   const displayName = currentUser?.full_name?.split(' ')[0] || 'bạn';
@@ -253,14 +211,14 @@ export default function HomeDashboardView({
               <div className="relative w-28 h-20 group-hover:scale-105 transition-transform duration-300">
                 <div className="absolute left-0 bottom-0 w-16 h-18 rounded-lg overflow-hidden shadow-md -rotate-6 border-2 border-white/80">
                   <img
-                    src="https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=300&auto=format&fit=crop&q=80"
+                    src="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/7208b278-a7f6-43c7-af11-21aad93744c9.webp"
                     alt="Chùa Linh Ứng"
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="absolute right-0 top-0 w-16 h-18 rounded-lg overflow-hidden shadow-md rotate-6 border-2 border-white/80">
                   <img
-                    src="https://images.unsplash.com/photo-1507034589631-9433cc6bc453?w=300&auto=format&fit=crop&q=80"
+                    src="https://ydqzobtzakttljslkiez.supabase.co/storage/v1/object/public/poi-images/e6d32403-30c9-4de2-b111-96b8fddae21f.webp"
                     alt="Ẩm thực"
                     className="w-full h-full object-cover"
                   />
@@ -314,7 +272,7 @@ export default function HomeDashboardView({
 
           {/* CARD 4: DIỄN ĐÀN & GÓI ĐỊA ĐIỂM MUST-TRY (FOREST GREEN GRADIENT) */}
           <div
-            onClick={() => setShowForumModal(true)}
+            onClick={() => document.getElementById('trip-packages')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             className="h-[210px] rounded-[22px] p-5 flex flex-col justify-between relative overflow-hidden cursor-pointer group shadow-sm hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-[#1d4c2b] via-[#12361d] to-[#091f10] text-white border border-white/10"
           >
             {/* Center Graphic: Receipt / Checklist Voucher */}
@@ -332,96 +290,23 @@ export default function HomeDashboardView({
             {/* Bottom Content */}
             <div className="relative z-10">
               <h3 className="font-bold text-[14px] leading-tight text-white group-hover:text-emerald-200 transition-colors">
-                Diễn đàn & Gói Must-Try
+                Gói hành trình tuyển chọn
               </h3>
               <p className="text-[11px] text-white/70 mt-1 line-clamp-1">
-                Gói điểm đến & kinh nghiệm du lịch xanh
+                Lịch trình cụ thể và nơi lưu trú có liên hệ
               </p>
             </div>
             <div className="absolute inset-0 bg-radial from-emerald-500/10 via-transparent to-transparent pointer-events-none" />
           </div>
         </section>
 
-        {/* ─── 4. PHẦN DIỄN ĐÀN GÓI ĐỊA ĐIỂM MUST-TRY (CHO NGƯỜI DÙNG THAM KHẢO) ─── */}
-        <section className="space-y-4 pt-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-[18px] font-bold text-gray-950 flex items-center gap-2">
-                <span>Gói địa điểm Must-Try cho chuyến đi</span>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Du lịch xanh
-                </span>
-              </h2>
-              <p className="text-[13px] text-gray-500 mt-0.5">
-                Các gói hành trình được tuyển chọn kỹ lưỡng, tối ưu khoảng cách và chỉ số bảo vệ môi trường.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowForumModal(true)}
-              className="text-xs font-bold text-gray-700 hover:text-black flex items-center gap-1 cursor-pointer"
-            >
-              <span>Xem diễn đàn</span>
-              <ChevronRight size={14} />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {MUST_TRY_PACKAGES.map((pkg) => (
-              <div
-                key={pkg.id}
-                className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs hover:shadow-md transition-all overflow-hidden flex flex-col group select-none"
-              >
-                <div className="h-40 relative overflow-hidden bg-gray-100">
-                  <img
-                    src={pkg.image}
-                    alt={pkg.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"
-                  />
-                  <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-xs text-white text-[10.5px] font-bold">
-                    {pkg.badge}
-                  </div>
-                  <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs">
-                    <Leaf size={10} />
-                    <span>{pkg.co2Saved}</span>
-                  </div>
-                </div>
-
-                <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                  <div>
-                    <div className="text-[11px] font-bold text-gray-400 flex items-center gap-1.5">
-                      <MapPin size={11} className="text-gray-400" />
-                      <span>{pkg.destination}</span>
-                      <span>•</span>
-                      <Clock size={11} className="text-gray-400" />
-                      <span>{pkg.duration}</span>
-                    </div>
-                    <h3 className="font-bold text-[14px] text-gray-950 mt-1 line-clamp-1 group-hover:text-black">
-                      {pkg.title}
-                    </h3>
-                    <p className="text-[12px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">
-                      {pkg.description}
-                    </p>
-                  </div>
-
-                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                      Điểm xanh: {pkg.ecoScore}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onCreateTrip(pkg.destination, pkg.title)}
-                      className="px-3 py-1.5 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-bold transition shadow-2xs cursor-pointer active:scale-95 flex items-center gap-1"
-                    >
-                      <Plus size={12} />
-                      <span>Chọn gói này</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <TripPackagesSection
+          pois={pois}
+          isLoading={poisLoading}
+          loadError={poisError}
+          onSelectPackage={(launch) => onCreateTrip(launch.destination, launch.title, launch)}
+          onExplorePois={() => onNavigateToExplore('for-you')}
+        />
       </div>
 
       {/* ─── 5. FLOATING CHATBOT "ASK GREENTRIP" BAR (CHUẨN 1:1 MINDTRIP Ở ẢNH) ─── */}
@@ -561,66 +446,6 @@ export default function HomeDashboardView({
                 <CalendarPlus size={14} />
                 <span>Tạo lịch trình từ ý tưởng này</span>
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── MODAL DIỄN ĐÀN & CẨM NANG DU LỊCH MUST-TRY ─── */}
-      {showForumModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <i className="ph ph-chat-centered-text text-xl text-black"></i>
-                <h3 className="font-bold text-[16px] text-gray-950">
-                  Diễn đàn & Gói địa điểm Must-Try
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowForumModal(false)}
-                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-black cursor-pointer"
-              >
-                <X size={17} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-5">
-              <p className="text-[13.5px] text-gray-600 leading-relaxed">
-                Nơi tổng hợp các gói địa điểm, lịch trình chuẩn và đánh giá từ cộng đồng du khách xanh. Chọn một gói bất kỳ để đưa thẳng vào kế hoạch của bạn:
-              </p>
-
-              <div className="space-y-4">
-                {MUST_TRY_PACKAGES.map((pkg) => (
-                  <div
-                    key={pkg.id}
-                    className="p-4 rounded-2xl border border-gray-200/90 hover:border-black transition flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-white"
-                  >
-                    <div className="space-y-1 max-w-md">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          {pkg.badge}
-                        </span>
-                        <span className="text-xs text-gray-400 font-medium">{pkg.duration}</span>
-                      </div>
-                      <h4 className="font-bold text-[14px] text-gray-950">{pkg.title}</h4>
-                      <p className="text-xs text-gray-500 line-clamp-1">{pkg.description}</p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onCreateTrip(pkg.destination, pkg.title);
-                        setShowForumModal(false);
-                      }}
-                      className="px-4 py-2 rounded-full bg-black text-white text-xs font-bold hover:bg-neutral-800 transition shrink-0 cursor-pointer shadow-xs active:scale-95"
-                    >
-                      + Lên lịch trình ngay
-                    </button>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>

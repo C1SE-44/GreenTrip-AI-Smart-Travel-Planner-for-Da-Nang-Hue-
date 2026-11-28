@@ -5,6 +5,27 @@ import type { Poi } from '@/data/pois';
 import { categoryLabels, getGalleryImages, cleanPoiName, getSpecificPoiIconClass, isCuratedHighlight } from '@/data/pois';
 export { cleanPoiName, getSpecificPoiIconClass, isCuratedHighlight };
 
+export interface MapViewportBounds {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}
+
+export function isPoiInsideBounds(
+  poi: { lat: number; lng: number },
+  bounds: MapViewportBounds
+): boolean {
+  return (
+    Number.isFinite(poi.lat) &&
+    Number.isFinite(poi.lng) &&
+    poi.lat >= bounds.south &&
+    poi.lat <= bounds.north &&
+    poi.lng >= bounds.west &&
+    poi.lng <= bounds.east
+  );
+}
+
 interface PoiMapProps {
   pois: Poi[];
   selectedPoiId: string | null;
@@ -26,6 +47,10 @@ interface PoiMapProps {
   routeCoordinates?: [number, number][];
   numberedOrderMap?: Map<string, number>;
   routeDurationText?: string;
+  onSearchInArea?: (bounds: MapViewportBounds) => void;
+  activeAreaFilter?: boolean;
+  onClearAreaFilter?: () => void;
+  mobileScrollGuard?: boolean;
 }
 
 interface MarkerOffset {
@@ -1378,11 +1403,31 @@ export default function PoiMap({
   routeCoordinates,
   numberedOrderMap,
   routeDurationText,
+  onSearchInArea,
+  activeAreaFilter = false,
+  onClearAreaFilter,
+  mobileScrollGuard = true,
 }: PoiMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const [hoveredMapPinId, setHoveredMapPinId] = useState<string | null>(null);
   const [isDistantExpanded, setIsDistantExpanded] = useState<boolean>(false);
   const [isMapLoading, setIsMapLoading] = useState<boolean>(false);
+  const [hasPendingAreaSearch, setHasPendingAreaSearch] = useState<boolean>(false);
+  const [isCompactMobile, setIsCompactMobile] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
+  );
+  const [isMobileMapUnlocked, setIsMobileMapUnlocked] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 767px)');
+    const sync = () => setIsCompactMobile(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
+
+  const isMobileTouchLocked = mobileScrollGuard && isCompactMobile && !isMobileMapUnlocked;
 
   // Bộ đếm thời gian tự động đóng ô cơ bản khi dời chuột ra ngoài (450ms, không tức thì để tránh giật)
   const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1565,6 +1610,12 @@ export default function PoiMap({
         <MapResizeListener />
         <MapAutoFitter pois={pois} />
         <RouteAutoFitter routeCoordinates={routeCoordinates} />
+        <MapInteractionHooks
+          touchLocked={isMobileTouchLocked}
+          onUserMoved={() => {
+            if (onSearchInArea) setHasPendingAreaSearch(true);
+          }}
+        />
         
         <MapControlsLayer 
           isExpanded={isExpanded}
@@ -1660,8 +1711,47 @@ export default function PoiMap({
           </div>
         )}
 
+        {/* Nút bấm "Tìm trong khu vực này" đồng bộ bản đồ -> danh sách Explore */}
+        {onSearchInArea && (hasPendingAreaSearch || activeAreaFilter) && !isDistantExpanded && (
+          <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-1.5 pointer-events-auto">
+            {hasPendingAreaSearch && (
+              <button
+                type="button"
+                onClick={() => {
+                  const map = mapRef.current;
+                  if (!map) return;
+                  const b = map.getBounds();
+                  onSearchInArea({
+                    south: b.getSouth(),
+                    west: b.getWest(),
+                    north: b.getNorth(),
+                    east: b.getEast(),
+                  });
+                  setHasPendingAreaSearch(false);
+                }}
+                className="map-floating-btn min-h-[40px] px-4 py-1.5 bg-neutral-900 hover:bg-black text-white rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-md cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+              >
+                <i className="ph ph-magnifying-glass text-sm text-emerald-300" aria-hidden="true"></i>
+                <span>Tìm trong khu vực này</span>
+              </button>
+            )}
+            {activeAreaFilter && onClearAreaFilter && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClearAreaFilter();
+                  setHasPendingAreaSearch(false);
+                }}
+                className="map-floating-btn min-h-[40px] px-3.5 py-1.5 bg-white/95 hover:bg-white text-neutral-800 border border-neutral-300 rounded-full flex items-center gap-1 text-xs font-semibold shadow-md cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+              >
+                <span>Bỏ lọc vùng</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* 3-Dot Mindtrip Loading Pill: Chỉ hiển thị khi showMapLoader=true và pois.length > 20 (chế độ Khám phá), không hiển thị ở Lịch trình */}
-        {showMapLoader && pois.length > 20 && (
+        {showMapLoader && pois.length > 20 && !hasPendingAreaSearch && !activeAreaFilter && (
           <div
             className={`absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none transition-all duration-300 ease-out ${
               isMapLoading && !isDistantExpanded ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-2 scale-95 pointer-events-none'
@@ -1709,6 +1799,62 @@ export default function PoiMap({
           />
         )}
       </MapContainer>
+
+      {/* Mobile Touch Scroll Guard (< 768px): tránh xung đột vuốt cuộn trang với kéo bản đồ */}
+      {mobileScrollGuard && isCompactMobile && (
+        isMobileTouchLocked ? (
+          <div className="absolute inset-0 z-[1002] touch-pan-y flex items-end justify-center pb-4 bg-black/[0.03]">
+            <button
+              type="button"
+              onClick={() => setIsMobileMapUnlocked(true)}
+              className="min-h-[44px] px-4 py-2 rounded-full bg-neutral-900/90 hover:bg-black text-white text-xs font-semibold shadow-lg backdrop-blur-sm flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            >
+              <i className="ph ph-hand-pointing text-sm text-emerald-300" aria-hidden="true"></i>
+              <span>Chạm để di chuyển bản đồ</span>
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsMobileMapUnlocked(false)}
+            className="absolute bottom-3 left-3 z-[1002] min-h-[40px] px-3.5 py-1.5 rounded-full bg-white/95 hover:bg-white text-neutral-900 border border-neutral-300 text-xs font-semibold shadow-md flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+          >
+            <i className="ph ph-lock-simple text-sm text-emerald-700" aria-hidden="true"></i>
+            <span>Khóa bản đồ để cuộn trang</span>
+          </button>
+        )
+      )}
     </div>
   );
+}
+
+function MapInteractionHooks({
+  touchLocked,
+  onUserMoved,
+}: {
+  touchLocked: boolean;
+  onUserMoved: () => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (touchLocked) {
+      map.dragging.disable();
+      map.touchZoom.disable();
+    } else {
+      map.dragging.enable();
+      map.touchZoom.enable();
+    }
+  }, [map, touchLocked]);
+
+  useMapEvents({
+    dragend: () => {
+      onUserMoved();
+    },
+    zoomend: () => {
+      onUserMoved();
+    },
+  });
+
+  return null;
 }

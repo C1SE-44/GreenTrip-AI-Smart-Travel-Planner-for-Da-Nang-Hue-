@@ -1,4 +1,4 @@
-"""Tests for Migration 018 (3NF constraints, FKs, pg_trgm/composite indexes) and itinerary FK population."""
+"""Tests for database migrations, connection behavior, and itinerary FK population."""
 from pathlib import Path
 import sys
 import uuid
@@ -9,7 +9,8 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.config import get_settings  # noqa: E402
+from app.config import Settings, get_settings  # noqa: E402
+from app.db import postgres  # noqa: E402
 from app.db.postgres import get_connection  # noqa: E402
 from app.trips.itinerary_repository import save_itinerary  # noqa: E402
 from app.trips.schemas import ItineraryDay, ItineraryStop, TripItinerarySyncRequest  # noqa: E402
@@ -36,6 +37,37 @@ def test_migration_018_defines_expected_3nf_constraints_and_indexes() -> None:
     ]
     for token in expected_tokens:
         assert token in sql, f"Migration 018 missing required element: {token}"
+
+
+def test_migration_020_fixes_account_itinerary_upsert_and_optional_stops() -> None:
+    sql_path = BACKEND_ROOT / "migrations" / "020_fix_my_trips_itinerary_upsert.sql"
+    sql = sql_path.read_text(encoding="utf-8")
+
+    assert "CREATE UNIQUE INDEX IF NOT EXISTS idx_itineraries_trip_id" in sql
+    assert "ALTER COLUMN trip_id SET NOT NULL" in sql
+    assert "ALTER COLUMN poi_id DROP NOT NULL" in sql
+    assert "HAVING COUNT(*) > 1" in sql
+
+
+def test_configured_postgres_failure_never_falls_back_to_sqlite(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_connect(*_args, **_kwargs):
+        raise OSError("database unavailable")
+
+    monkeypatch.setattr(postgres, "get_settings", lambda: Settings(DATABASE_URL="postgresql://configured", APP_ENV="development"))
+    monkeypatch.setattr(postgres, "connect", fail_connect)
+    monkeypatch.setattr(postgres, "_POSTGRES_RETRY_AFTER", 0.0)
+
+    with pytest.raises(RuntimeError, match="không thể kết nối"):
+        postgres.get_connection()
+    with pytest.raises(RuntimeError, match="tạm thời không khả dụng"):
+        postgres.get_connection()
+
+
+def test_deployed_environment_requires_postgres_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(postgres, "get_settings", lambda: Settings(APP_ENV="production", JWT_SECRET_KEY="x" * 48, DATABASE_URL=""))
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        postgres.get_connection()
 
 
 def test_save_itinerary_populates_strict_fk_columns_and_allows_guest_stops(

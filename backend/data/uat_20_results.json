@@ -1,0 +1,222 @@
+[
+  {
+    "test_id": "UAT-01",
+    "group": "Nhóm A: Khám phá địa điểm",
+    "name": "Tìm địa điểm du lịch tại Huế",
+    "steps": "Gọi search_pois với query='lăng tẩm di tích', city='Hue', limit=5",
+    "expected": "Trả về danh sách các điểm di sản tại Huế có tọa độ và hình ảnh",
+    "actual": "Tìm thấy 2 địa điểm (Đình Làng Dương Nỗ (Di Tích Quốc Gia Đặc Biệt), Đình Làng Kim Long (Di Tích Lịch Sử – Văn Hóa Cấp Quốc Gia)). Độ trễ 14.6ms.",
+    "status": "PASS",
+    "evidence": "POI IDs: ['f5cb7e28-fbf1-4ab6-bf9b-d940f510a743', '441cf778-da7f-43e2-821c-7fb11296e789']",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-02",
+    "group": "Nhóm A: Khám phá địa điểm",
+    "name": "Tìm địa điểm du lịch tại Đà Nẵng",
+    "steps": "Gọi search_pois với query='bãi biển', city='Danang', limit=5",
+    "expected": "Trả về các điểm du lịch tại Đà Nẵng với thông tin địa chỉ và danh mục",
+    "actual": "Tìm thấy 5 địa điểm (Bãi Biển Làng Vân, Bãi biển Mân Thái (Chèo SUP đón bình minh), Bãi Biển Mỹ Khê). Độ trễ 0.5ms.",
+    "status": "PASS",
+    "evidence": "POI IDs: ['8505ac43-fc2f-4ddb-b6b3-b962b89e7df4', 'e816b509-5498-4fc6-96c7-ef5f97ec545c', '1c50e3a0-ed7c-4802-af92-77465acec471']",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-03",
+    "group": "Nhóm A: Khám phá địa điểm",
+    "name": "Lọc địa điểm theo danh mục ẩm thực",
+    "steps": "Gọi search_pois với query='ẩm thực', category='Ẩm thực và quán ăn'",
+    "expected": "Chỉ hiển thị các địa điểm thuộc phân nhóm ẩm thực/quán ăn",
+    "actual": "Tìm thấy 5 địa điểm ẩm thực. Các danh mục trả về: ['Ẩm thực và quán ăn']",
+    "status": "PASS",
+    "evidence": "Sample: ['An Nhiên Garden Vegetarian - Nhà Hàng & Cafe', 'Ăn Vặt Food Em Chang & Tré Huế Nhà Làm Hòa Food (Đã chuẩn hóa địa chỉ Tré trộn)']",
+    "severity": "Medium"
+  },
+  {
+    "test_id": "UAT-04",
+    "group": "Nhóm A: Khám phá địa điểm",
+    "name": "Xem chi tiết một địa điểm",
+    "steps": "Gọi get_poi_details với poi_id='f5cb7e28-fbf1-4ab6-bf9b-d940f510a743'",
+    "expected": "Trả về đầy đủ thông tin: tên, tọa độ, địa chỉ, mô tả, điểm xanh",
+    "actual": "Chi tiết địa điểm 'Đình Làng Dương Nỗ (Di Tích Quốc Gia Đặc Biệt)': tọa độ (16.4952, 107.6321), green_score=0.8, giờ mở cửa=None.",
+    "status": "PASS",
+    "evidence": "ID: f5cb7e28-fbf1-4ab6-bf9b-d940f510a743, Address: Thôn Dương Nỗ, Xã Phú Dương, TP. Huế (Cách trung tâm 7km về hướng biển Thuận An)",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-05",
+    "group": "Nhóm A: Khám phá địa điểm",
+    "name": "Kiểm tra tính hợp lệ của tọa độ địa lý",
+    "steps": "Đối chiếu tọa độ (lat, lng) nằm trong dải địa lý miền Trung (Đà Nẵng - Thừa Thiên Huế)",
+    "expected": "Tọa độ phải hợp lệ, không null, nằm trong vĩ độ [15.5, 16.8] và kinh độ [107.2, 108.6]",
+    "actual": "Tọa độ kiểm tra: lat=16.4952, lng=107.6321 nằm chính xác trong ranh giới địa lý miền Trung.",
+    "status": "PASS",
+    "evidence": "Lat: 16.4952, Lng: 107.6321",
+    "severity": "Critical"
+  },
+  {
+    "test_id": "UAT-06",
+    "group": "Nhóm B: Gợi ý & Giải thích",
+    "name": "Gợi ý địa điểm theo sở thích văn hóa",
+    "steps": "Gọi recommend_pois với interests=['van hoa', 'di tich'], city='Hue'",
+    "expected": "Trả về các điểm di sản Huế có điểm khớp sở thích score cao",
+    "actual": "Gợi ý 4 điểm. Điểm cao nhất: Đại Nội Huế (Hoàng Thành & Tử Cấm Thành) (score=30.0).",
+    "status": "PASS",
+    "evidence": "Gợi ý: ['Đại Nội Huế (Hoàng Thành & Tử Cấm Thành)', 'Làng sinh thái Thủy Biều', 'Làng Gốm Cổ Phước Tích']",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-07",
+    "group": "Nhóm B: Gợi ý & Giải thích",
+    "name": "Gợi ý địa điểm theo sở thích thiên nhiên & sinh thái",
+    "steps": "Gọi recommend_pois với interests=['thien nhien', 'sinh thai'], city='Danang'",
+    "expected": "Ưu tiên các điểm sinh thái bán đảo Sơn Trà, nông trại hoặc bãi biển",
+    "actual": "Gợi ý 4 điểm sinh thái. Điểm cao nhất: Khu du lịch sinh thái Ngầm Đôi.",
+    "status": "PASS",
+    "evidence": "Top: ['Khu du lịch sinh thái Ngầm Đôi', 'Khu du lịch sinh thái Suối Hoa']",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-08",
+    "group": "Nhóm B: Gợi ý & Giải thích",
+    "name": "Ưu tiên điểm xanh và cơ sở kinh doanh địa phương",
+    "steps": "Tạo lịch trình có tùy chọn sustainability_preferences=['local_authentic']",
+    "expected": "Lịch trình tích hợp cơ sở bản địa (is_local_business=True) hoặc điểm xanh cao (>=85)",
+    "actual": "Có 4 cơ sở bản địa và 4 điểm thực hành xanh cao trong hành trình.",
+    "status": "PASS",
+    "evidence": "Highlights: ['Làng rau sạch Túy Loan', 'The Local Beans - Phan Châu Trinh']",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-09",
+    "group": "Nhóm B: Gợi ý & Giải thích",
+    "name": "Xem lý do đề xuất (Explanation Service)",
+    "steps": "Gọi get_poi_explanation với poi_id='c22e260d-1ad8-4225-ad13-0cf57dcb96c8'",
+    "expected": "Trả về lời giải thích rõ ràng kèm nguồn minh bạch (live_neo4j hoặc relational_projection)",
+    "actual": "Lý do đề xuất: 'Địa điểm 'c22e260d-1ad8-4225-ad13-0cf57dcb96c8' được đề xuất dựa trên điểm đánh giá du lịch bền vững và phân bổ lộ trình xanh tối ưu.'. Nguồn giải thích: description_fallback.",
+    "status": "PASS",
+    "evidence": "POI: c22e260d-1ad8-4225-ad13-0cf57dcb96c8, Source: description_fallback",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-10",
+    "group": "Nhóm C: Tạo lịch trình",
+    "name": "Tạo lịch trình Huế 1 ngày",
+    "steps": "Gọi generate_itinerary destination='Huế', duration_days=1, travelers=2",
+    "expected": "Lịch trình 1 ngày gồm 3-4 điểm dừng với khung giờ, quãng đường và chi phí rõ ràng",
+    "actual": "Tạo thành công 1 ngày với 4 điểm dừng, tổng quãng đường 20.3km, chi phí 520,000đ.",
+    "status": "PASS",
+    "evidence": "Theme: Ngày 1: Di sản Hoàng thành & Văn hóa sông Hương",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-11",
+    "group": "Nhóm C: Tạo lịch trình",
+    "name": "Tạo lịch trình Đà Nẵng 2 ngày",
+    "steps": "Gọi generate_itinerary destination='Đà Nẵng', duration_days=2, travelers=2",
+    "expected": "Tạo lịch trình 2 ngày, mỗi ngày có điểm dừng phân bổ hợp lý theo khu vực địa lý",
+    "actual": "Tạo thành công 2 ngày: Ngày 1 (4 điểm), Ngày 2 (4 điểm). Tổng CO2: 11.67kg.",
+    "status": "PASS",
+    "evidence": "Days: ['Ngày 1: Bán đảo Sơn Trà, Bãi biển Mỹ Khê & Nhịp sống Sông Hàn', 'Ngày 2: Di tích Ngũ Hành Sơn, Bảo tàng Chăm & Làng nghề truyền thống']",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-12",
+    "group": "Nhóm C: Tạo lịch trình",
+    "name": "Tạo lịch trình liên vùng Đà Nẵng - Huế 3 ngày",
+    "steps": "Gọi generate_itinerary destination='Đà Nẵng - Huế', duration_days=3, travelers=2",
+    "expected": "Hành trình 3 ngày trải dài cả Đà Nẵng và Huế, tính toán tuyến vượt đèo/hành lang",
+    "actual": "Tạo thành công 3 ngày liên vùng: Focus cities: ['Đà Nẵng', 'Huế', 'Huế']. Tổng quãng đường: 163.3km.",
+    "status": "PASS",
+    "evidence": "Total distance: 163.3 km",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-13",
+    "group": "Nhóm C: Tạo lịch trình",
+    "name": "Tạo lịch trình với ngân sách giới hạn",
+    "steps": "Gọi generate_itinerary với budget_vnd=1500000",
+    "expected": "Tổng chi phí được kiểm soát hoặc phát cảnh báo minh bạch nếu vượt ngưỡng ngân sách",
+    "actual": "Tổng chi phí dự toán: 540,000đ cho ngân sách 1,500,000đ. Cảnh báo phát sinh: 0 thông báo.",
+    "status": "PASS",
+    "evidence": "Cost: 540000.0, Warnings: []",
+    "severity": "Medium"
+  },
+  {
+    "test_id": "UAT-14",
+    "group": "Nhóm C: Tạo lịch trình",
+    "name": "Ước tính phát thải theo phương tiện di chuyển",
+    "steps": "So sánh phát thải CO2 của lịch trình xe máy (0.072 kg/km) vs ô tô (0.171 kg/km)",
+    "expected": "Hành trình dùng xe máy có lượng phát thải CO2 thấp hơn rõ rệt so với ô tô",
+    "actual": "Xe máy: 3.86 kg CO2e vs Ô tô: 9.16 kg CO2e (giảm 5.3 kg).",
+    "status": "PASS",
+    "evidence": "Bike CO2: 3.86, Car CO2: 9.16",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-15",
+    "group": "Nhóm D: Chatbot hội thoại",
+    "name": "Tạo lịch trình qua Chatbot bằng ngôn ngữ tự nhiên",
+    "steps": "Gửi câu lệnh yêu cầu thiết kế lịch trình Huế 2 ngày ngân sách 2 triệu",
+    "expected": "Chatbot nhận diện đúng ý định, kích hoạt generate_itinerary và trả về lịch trình 2 ngày",
+    "actual": "Chatbot phản hồi: Tạo lịch trình 2 ngày, gợi ý 8 địa điểm, action_type=mutate_itinerary.",
+    "status": "PASS",
+    "evidence": "Action: mutate_itinerary, Tools: ['generate_itinerary', 'calculate_trip_cost', 'recommend_pois']",
+    "severity": "Critical"
+  },
+  {
+    "test_id": "UAT-16",
+    "group": "Nhóm D: Chatbot hội thoại",
+    "name": "Giảm bớt điểm tham quan ngày thứ hai qua hội thoại",
+    "steps": "Gửi câu lệnh 'Ngày thứ hai giảm bớt điểm tham quan' kèm trạng thái lịch trình hiện tại",
+    "expected": "Ngày 1 được giữ nguyên hoàn toàn, ngày 2 giảm bớt điểm dừng",
+    "actual": "Ngày 2 giảm từ 4 xuống 2 điểm. Mutation summary: ['Đã giảm tải Ngày 2: chỉ giữ 2 điểm dừng chính để bạn có thêm thời gian nghỉ ngơi thong thả.']",
+    "status": "PASS",
+    "evidence": "Mutation: ['Đã giảm tải Ngày 2: chỉ giữ 2 điểm dừng chính để bạn có thêm thời gian nghỉ ngơi thong thả.']",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-17",
+    "group": "Nhóm D: Chatbot hội thoại",
+    "name": "Chuyển đổi phương tiện di chuyển trong hội thoại",
+    "steps": "Gửi câu lệnh 'Chuyển sang xe máy'",
+    "expected": "Hệ thống cập nhật phương tiện sang xe máy, tính lại thời gian và phát thải CO2",
+    "actual": "Cập nhật thành công phương tiện sang xe máy. Tóm tắt: ['Đã cập nhật phương tiện di chuyển chính sang xe máy (motorcycle).']. Green impact: Chênh lệch phát thải: +0.00 kg CO2e",
+    "status": "PASS",
+    "evidence": "Impact: Chênh lệch phát thải: +0.00 kg CO2e",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-18",
+    "group": "Nhóm D: Chatbot hội thoại",
+    "name": "Điều chỉnh ngân sách mục tiêu trong hội thoại",
+    "steps": "Gửi câu lệnh 'Ngân sách chỉ còn 1 triệu rưỡi'",
+    "expected": "Hệ thống ghi nhận ngân sách 1.5 triệu và đánh giá chi phí hiện tại với ngân sách mới",
+    "actual": "Cập nhật ngân sách mục tiêu mới: Chênh lệch chi phí: +0 ₫. Tóm tắt: ['Đã cập nhật mức ngân sách mục tiêu mới: 1,000,000 ₫.'].",
+    "status": "PASS",
+    "evidence": "Budget impact: Chênh lệch chi phí: +0 ₫",
+    "severity": "Medium"
+  },
+  {
+    "test_id": "UAT-19",
+    "group": "Nhóm D: Chatbot hội thoại",
+    "name": "Bổ sung địa điểm ăn chay và cơ sở bản địa",
+    "steps": "Gửi câu lệnh 'Thêm các địa điểm ăn chay và ưu tiên cơ sở kinh doanh địa phương'",
+    "expected": "Bổ sung điểm ăn chay hoặc gắn nhãn ưu tiên cơ sở bản địa vào lịch trình",
+    "actual": "Tích hợp điểm dừng ăn uống bản địa: [\"Đã bổ sung địa điểm ăn uống bản địa 'Nhà hàng Chay An Lạc Tâm' vào Ngày 1.\"].",
+    "status": "PASS",
+    "evidence": "Mutation: [\"Đã bổ sung địa điểm ăn uống bản địa 'Nhà hàng Chay An Lạc Tâm' vào Ngày 1.\"]",
+    "severity": "High"
+  },
+  {
+    "test_id": "UAT-20",
+    "group": "Nhóm D: Chatbot hội thoại",
+    "name": "Tiếp tục hội thoại tán gẫu / kết thúc lịch sự",
+    "steps": "Gửi câu lệnh 'Cảm ơn bạn nhiều nhé!' sau chuỗi điều chỉnh",
+    "expected": "Chatbot phản hồi tự nhiên, giữ nguyên trạng thái, không gọi lại tool tạo lịch trình",
+    "actual": "Phản hồi lịch thiệp: 'Rất vui được hỗ trợ bạn! Chúc bạn có một chuyến du lịch xanh thật nhiều trải nghiệm ý nghĩa tại Đà Nẵng – Huế. Nếu cần thêm thông tin hoặc điều chỉnh bất kỳ điểm dừng nào, bạn cứ nhắn cho em nhé!'. Số tools đã dùng: 0.",
+    "status": "PASS",
+    "evidence": "Reply: Rất vui được hỗ trợ bạn! Chúc bạn có một chuyến du lịch xanh...",
+    "severity": "Low"
+  }
+]

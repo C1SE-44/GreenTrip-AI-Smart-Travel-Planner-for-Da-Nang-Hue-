@@ -2,8 +2,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, ChevronDown, ChevronUp, Clock3, Coffee, GripVertical, Lightbulb, MapPin, MessageSquare, Plus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react';
 import type { Poi } from '@/data/pois';
 import type { UserTrip } from '@/pages/ExplorePage';
-import type { DailyItineraryOutline, RestPeriod } from '@/services/tripService';
-import { clearOverlappingVisitTimes, createEmptyItinerary, getTripItinerary, saveTripItinerary, stopFromPoi, type ItineraryDay, type ItineraryStop, type TripItinerary } from '@/services/itineraryService';
+import type { RestPeriod } from '@/services/tripService';
+import {
+  clearOverlappingVisitTimes,
+  createEmptyItinerary,
+  dailyVisitCapacity,
+  dailyVisitStopTarget,
+  getTripItinerary,
+  optimizeDays,
+  pacingForTrip,
+  saveTripItinerary,
+  selectAutomaticPois,
+  stopFromPoi,
+  type ItineraryDay,
+  type ItineraryStop,
+  type TripItinerary,
+} from '@/services/itineraryService';
 
 interface ItineraryEditorProps {
   trip: UserTrip;
@@ -17,19 +31,6 @@ interface ItineraryEditorProps {
 
 function minutesFor(stop: ItineraryStop): number {
   return stop.duration_minutes || 90;
-}
-
-function pacingForTrip(trip: UserTrip): 'Relaxed' | 'Balanced' | 'Fast' {
-  if (trip.pacingLevel) return trip.pacingLevel;
-  if (trip.pacingLabel?.includes('Thong thả')) return 'Relaxed';
-  if (trip.pacingLabel?.includes('Dày đặc')) return 'Fast';
-  return 'Balanced';
-}
-
-function dailyVisitCapacity(level: 'Relaxed' | 'Balanced' | 'Fast'): number {
-  if (level === 'Relaxed') return 210;
-  if (level === 'Fast') return 330;
-  return 270;
 }
 
 function durationBetween(start: string, end: string): number | null {
@@ -73,23 +74,6 @@ function restExistsInPeriod(day: ItineraryDay, timeRange: string): boolean {
     && minutesFromTime(stop.start_time) >= start && minutesFromTime(stop.start_time) < end);
 }
 
-function insertRestInOrder(stops: ItineraryStop[], rest: ItineraryStop): void {
-  const startMinute = rest.start_time ? minutesFromTime(rest.start_time) : 12 * 60;
-  const laterTimedStop = stops.findIndex((stop) => stop.start_time && minutesFromTime(stop.start_time) >= startMinute);
-  if (laterTimedStop >= 0) {
-    stops.splice(laterTimedStop, 0, rest);
-    return;
-  }
-  const targetVisitMinutes = startMinute < 11 * 60 ? 90 : 180;
-  let accumulated = 0;
-  let insertAt = 0;
-  while (insertAt < stops.length && accumulated < targetVisitMinutes) {
-    if (stops[insertAt].stop_type !== 'rest') accumulated += minutesFor(stops[insertAt]);
-    insertAt += 1;
-  }
-  stops.splice(insertAt, 0, rest);
-}
-
 function distanceKm(a: ItineraryStop, b: ItineraryStop): number | null {
   if (a.latitude == null || a.longitude == null || b.latitude == null || b.longitude == null) return null;
   const radians = (value: number) => (value * Math.PI) / 180;
@@ -102,28 +86,6 @@ function distanceKm(a: ItineraryStop, b: ItineraryStop): number | null {
 }
 
 type VisitPeriod = 'morning' | 'afternoon' | 'evening';
-
-function preferredVisitPeriods(poi: Poi | undefined): VisitPeriod[] {
-  const hints = (poi?.best_time || []).map((hint) => hint.toLocaleLowerCase('vi-VN'));
-  const recognized = hints.flatMap((hint): VisitPeriod[] => {
-    if (/night|evening|tối|đêm/.test(hint)) return ['evening'];
-    if (/afternoon|chiều/.test(hint)) return ['afternoon'];
-    if (/morning|sáng/.test(hint)) return ['morning'];
-    const startHour = hint.match(/(?:^|\D)(\d{1,2}):\d{2}/)?.[1];
-    if (startHour != null) {
-      const hour = Number(startHour);
-      return [hour >= 17 || hour < 5 ? 'evening' : hour >= 12 ? 'afternoon' : 'morning'];
-    }
-    return [];
-  }).filter((period, index, periods) => periods.indexOf(period) === index);
-  if (recognized.length) return recognized;
-
-  const details = `${poi?.sub_category || ''} ${poi?.name || ''} ${poi?.category || ''}`.toLocaleLowerCase('vi-VN');
-  if (/cafe|cà phê|coffee/.test(details)) return ['afternoon', 'evening', 'morning'];
-  if (/quán ăn|nhà hàng|restaurant|food/.test(details)) return ['afternoon', 'evening', 'morning'];
-  if (/nightlife|bar|pub|đêm|night/.test(details)) return ['evening', 'afternoon', 'morning'];
-  return ['morning', 'afternoon', 'evening'];
-}
 
 function experienceGroup(poi: Poi | undefined, stop: ItineraryStop): string {
   const details = `${poi?.sub_category || ''} ${poi?.name || stop.title} ${poi?.category || stop.category || ''}`.toLocaleLowerCase('vi-VN');
@@ -172,138 +134,8 @@ function explainDaySchedule(day: ItineraryDay, poiById: Map<string, Poi>): strin
   return reasons.join(' ');
 }
 
-function setAssistantVisitTimes(stops: ItineraryStop[], poiById: Map<string, Poi>, restPeriods: RestPeriod[]): ItineraryStop[] {
-  const windows: Record<VisitPeriod, { start: number; end: number }> = {
-    morning: { start: 8 * 60 + 30, end: 12 * 60 },
-    afternoon: { start: 14 * 60, end: 17 * 60 + 30 },
-    evening: { start: 18 * 60, end: 22 * 60 },
-  };
-  const booked: { start: number; end: number; gap: number }[] = stops.flatMap((stop) => {
-    if (!stop.start_time || !stop.end_time) return [];
-    return [{ start: minutesFromTime(stop.start_time), end: minutesFromTime(stop.end_time), gap: stop.stop_type === 'rest' ? 0 : 30 }];
-  });
-  restPeriods.forEach((period) => {
-    const range = period.time_range.match(/(\d{2}:\d{2})\s*[–—-]\s*(\d{2}:\d{2})/);
-    if (range) booked.push({ start: minutesFromTime(range[1]), end: minutesFromTime(range[2]), gap: 0 });
-  });
-  return stops.map((stop) => {
-    if (stop.stop_type === 'rest' || stop.start_time || stop.end_time) return stop;
-    const duration = minutesFor(stop);
-    const periods = preferredVisitPeriods(stop.poi_id ? poiById.get(stop.poi_id) : undefined);
-    let slot: { start: number; end: number } | null = null;
-    for (const period of periods) {
-      const window = windows[period];
-      for (let start = window.start; start + duration <= window.end; start += 15) {
-        const end = start + duration;
-        if (booked.every((range) => end <= range.start - range.gap || start >= range.end + range.gap)) {
-          slot = { start, end };
-          break;
-        }
-      }
-      if (slot) break;
-    }
-    if (!slot) return stop;
-    booked.push({ start: slot.start, end: slot.end, gap: 30 });
-    const start = slot.start;
-    return { ...stop, start_time: timeFromMinutes(start), end_time: timeFromMinutes(start + duration) };
-  });
-}
-
 function normalizeSequence(days: ItineraryDay[]): ItineraryDay[] {
   return days.map((day) => ({ ...day, stops: day.stops.map((stop, index) => ({ ...stop, sequence: index })) }));
-}
-
-function selectAutomaticPois(
-  days: ItineraryDay[],
-  ideas: Poi[],
-  recommendations: Poi[],
-  trip: UserTrip,
-  pacing: 'Relaxed' | 'Balanced' | 'Fast',
-  dailyCapacity: number,
-): {
-  selected: Poi[];
-  added: Poi[];
-  selectedCost: number;
-  limits: { target: number; destination: number; time: number; budget: number; category: number };
-  targetStops: number;
-  budgetLimit: number;
-  people: number;
-} {
-  const people = Math.max(1, trip.peopleCount || 1);
-  const dayCount = Math.max(1, days.length);
-  const targetPerDay = pacing === 'Relaxed' ? 2 : pacing === 'Fast' ? 5 : 3;
-  const targetStops = dayCount * targetPerDay;
-  const activityBudget = trip.costBreakdown?.activities_and_tickets
-    ?? (trip.totalBudget != null ? trip.totalBudget * 0.25 : Number.POSITIVE_INFINITY);
-  const budgetLimit = Number.isFinite(activityBudget) ? activityBudget : Number.POSITIVE_INFINITY;
-  const existingStops = days.flatMap((day) => day.stops.filter((stop) => stop.stop_type !== 'rest'));
-  const placedIds = new Set(existingStops.map((stop) => stop.poi_id).filter((id): id is string => Boolean(id)));
-  const placedCustomNames = new Set(existingStops
-    .filter((stop) => stop.stop_type === 'custom')
-    .map((stop) => stop.title.trim().toLocaleLowerCase('vi-VN')));
-  const isAlreadyPlaced = (poi: Poi) => placedIds.has(poi.id)
-    || (poi.id.startsWith('custom-') && placedCustomNames.has(poi.name.trim().toLocaleLowerCase('vi-VN')));
-  const existingMinutes = existingStops.reduce((total, stop) => total + minutesFor(stop), 0);
-  const existingIdeaIds = new Set(ideas.map((poi) => poi.id));
-  const recommendationOnly = recommendations.filter((poi) => !existingIdeaIds.has(poi.id));
-  const candidates = [...ideas, ...recommendationOnly];
-  const placedPois = candidates.filter(isAlreadyPlaced);
-  const estimatedGroupCost = (poi: Poi) => Math.max(0, poi.estimatedCost || 0) * people;
-  let selectedCost = [...ideas, ...recommendationOnly.filter(isAlreadyPlaced)]
-    .reduce((total, poi) => total + estimatedGroupCost(poi), 0);
-  const selected = [...ideas];
-  const added: Poi[] = [];
-  const seen = new Set([...placedIds, ...ideas.map((poi) => poi.id)]);
-  const baseMinutes = existingMinutes + ideas.filter((poi) => !isAlreadyPlaced(poi))
-    .reduce((total, poi) => total + minutesFor(stopFromPoi(poi)), 0);
-  let remainingMinutes = Math.max(0, dayCount * dailyCapacity - baseMinutes);
-  let remainingSlots = Math.max(0, targetStops - existingStops.length - ideas.filter((poi) => !isAlreadyPlaced(poi)).length);
-  const limits = { target: 0, destination: 0, time: 0, budget: 0, category: 0 };
-  const categoryCounts = new Map<string, number>();
-  [...placedPois, ...ideas.filter((poi) => !isAlreadyPlaced(poi))].forEach((poi) => {
-    categoryCounts.set(poi.category, (categoryCounts.get(poi.category) || 0) + 1);
-  });
-  const categoryLimit = Math.max(2, dayCount);
-  const includesDaNang = /đà\s*nẵng|da\s*nang/i.test(trip.destination);
-  const includesHue = /huế|hue/i.test(trip.destination);
-
-  for (const poi of recommendationOnly) {
-    if (seen.has(poi.id)) continue;
-    if (remainingSlots <= 0) {
-      limits.target += 1;
-      continue;
-    }
-    const inDestination = (includesDaNang && /đà\s*nẵng|da\s*nang/i.test(poi.city))
-      || (includesHue && /huế|hue/i.test(poi.city))
-      || (!includesDaNang && !includesHue);
-    if (!inDestination) {
-      limits.destination += 1;
-      continue;
-    }
-    const candidateMinutes = minutesFor(stopFromPoi(poi));
-    const cost = estimatedGroupCost(poi);
-    if (candidateMinutes > remainingMinutes) {
-      limits.time += 1;
-      continue;
-    }
-    if (selectedCost + cost > budgetLimit) {
-      limits.budget += 1;
-      continue;
-    }
-    if ((categoryCounts.get(poi.category) || 0) >= categoryLimit) {
-      limits.category += 1;
-      continue;
-    }
-    selected.push(poi);
-    added.push(poi);
-    seen.add(poi.id);
-    selectedCost += cost;
-    remainingMinutes -= candidateMinutes;
-    remainingSlots -= 1;
-    categoryCounts.set(poi.category, (categoryCounts.get(poi.category) || 0) + 1);
-  }
-
-  return { selected, added, selectedCost, limits, targetStops, budgetLimit, people };
 }
 
 function alignItineraryToTrip(itinerary: TripItinerary, trip: UserTrip): { itinerary: TripItinerary; changed: boolean; warning: string } {
@@ -386,162 +218,6 @@ function normalizeLegacyLunchBreaks(itinerary: TripItinerary): { itinerary: Trip
   });
 
   return { itinerary: { ...itinerary, days: normalizeSequence(days) }, changed };
-}
-
-function orderByProximity(places: ItineraryStop[]): ItineraryStop[] {
-  if (places.length < 3 || places.some((stop) => stop.latitude == null || stop.longitude == null)) return places;
-  const remaining = places.slice(1);
-  const ordered = [places[0]];
-  while (remaining.length) {
-    const current = ordered[ordered.length - 1];
-    let closestIndex = 0;
-    let closestDistance = Number.POSITIVE_INFINITY;
-    remaining.forEach((candidate, index) => {
-      const distance = distanceKm(current, candidate) ?? Number.POSITIVE_INFINITY;
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    });
-    ordered.push(remaining.splice(closestIndex, 1)[0]);
-  }
-  return ordered;
-}
-
-function reorderNearStops(stops: ItineraryStop[]): ItineraryStop[] {
-  const places = stops.filter((stop) => stop.stop_type !== 'rest');
-  if (!places.some((stop) => stop.start_time || stop.end_time)) return orderByProximity(places);
-
-  // Giờ do người dùng đặt là mốc cố định; chỉ tối ưu các đoạn nằm giữa những mốc đó.
-  const ordered: ItineraryStop[] = [];
-  let segment: ItineraryStop[] = [];
-  const flushSegment = () => {
-    if (segment.length) ordered.push(...orderByProximity(segment));
-    segment = [];
-  };
-
-  places.forEach((stop) => {
-    if (stop.start_time || stop.end_time) {
-      flushSegment();
-      ordered.push(stop);
-    } else {
-      segment.push(stop);
-    }
-  });
-  flushSegment();
-  return ordered;
-}
-
-function optimizeDays(days: ItineraryDay[], ideas: Poi[], dailyCapacity: number, outlines: DailyItineraryOutline[] = []): { days: ItineraryDay[]; assignedCount: number; unassignedCount: number; restCount: number } {
-  const next = days.map((day) => ({ ...day, stops: [...day.stops] }));
-  const placed = new Set(next.flatMap((day) => day.stops.map((stop) => stop.poi_id).filter((id): id is string => Boolean(id))));
-  const placedCustomNames = new Set(next.flatMap((day) => day.stops
-    .filter((stop) => stop.stop_type === 'custom')
-    .map((stop) => stop.title.trim().toLocaleLowerCase('vi-VN'))));
-  const pending = ideas.filter((poi) => !placed.has(poi.id) && !(poi.id.startsWith('custom-') && placedCustomNames.has(poi.name.trim().toLocaleLowerCase('vi-VN'))));
-  const poiById = new Map(ideas.map((poi) => [poi.id, poi]));
-  let assignedCount = 0;
-  let unassignedCount = 0;
-
-  pending.forEach((poi) => {
-    const candidate = stopFromPoi(poi, 'assistant');
-    const duration = minutesFor(candidate);
-    let eligible = next
-      .map((day, index) => ({ day, index, stops: day.stops.filter((stop) => stop.stop_type !== 'rest') }))
-      .filter(({ stops }) => stops.reduce((total, stop) => total + minutesFor(stop), 0) + duration <= dailyCapacity);
-    const cafeCandidate = experienceGroup(poiById.get(poi.id), candidate) === 'cafe';
-    if (cafeCandidate) {
-      eligible = eligible.filter(({ stops }) =>
-        stops.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length < 2);
-    }
-    if (!eligible.length) {
-      unassignedCount += 1;
-      return;
-    }
-    const canAvoidAnotherCafe = cafeCandidate && eligible.some(({ stops }) =>
-      stops.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length === 0);
-    if (canAvoidAnotherCafe) {
-      const cafeFreeDays = eligible.filter(({ stops }) =>
-        stops.every((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) !== 'cafe'));
-      if (cafeFreeDays.length) {
-        eligible.splice(0, eligible.length, ...cafeFreeDays);
-      }
-    }
-    eligible.sort((a, b) => {
-      const score = (stops: ItineraryStop[]) => {
-        const load = stops.reduce((total, stop) => total + minutesFor(stop), 0);
-        const cityPenalty = stops.length && !stops.some((stop) => stop.city === candidate.city) ? 120 : 0;
-        const proximityPenalty = stops.reduce((closest, stop) => {
-          const distance = distanceKm(stop, candidate);
-          return distance == null ? closest : Math.min(closest, distance);
-        }, Number.POSITIVE_INFINITY);
-        const cafeCount = stops.filter((stop) => experienceGroup(stop.poi_id ? poiById.get(stop.poi_id) : undefined, stop) === 'cafe').length;
-        return load + cityPenalty + (Number.isFinite(proximityPenalty) ? proximityPenalty * 8 : 0) + cafeCount * 90;
-      };
-      return score(a.stops) - score(b.stops);
-    });
-    const selected = eligible[0].day;
-    selected.stops.push(candidate);
-    assignedCount += 1;
-  });
-
-  let restCount = 0;
-  const scheduled = next.map((day) => {
-    const outline = outlines.find((item) => item.day === day.day_number);
-    const periods: RestPeriod[] = outline?.rest_periods?.length ? outline.rest_periods : [{
-      time_range: '12:00–14:00',
-      activity: 'Ăn trưa chậm rãi và nghỉ tại nơi lưu trú hoặc quán cà phê yên tĩnh.',
-      duration_minutes: 90,
-    }];
-    const proximityOrdered = reorderNearStops(day.stops);
-    const orderedPlaces = setAssistantVisitTimes(proximityOrdered, poiById, periods).sort((a, b) => {
-      if (a.start_time && b.start_time) return minutesFromTime(a.start_time) - minutesFromTime(b.start_time);
-      if (a.start_time) return -1;
-      if (b.start_time) return 1;
-      return a.sequence - b.sequence;
-    });
-    const ordered = [...orderedPlaces];
-    const existingRests = day.stops.filter((stop) => stop.stop_type === 'rest');
-    existingRests.forEach((rest) => insertRestInOrder(ordered, rest));
-    const totalMinutes = orderedPlaces.reduce((total, stop) => total + minutesFor(stop), 0);
-    const shouldSuggestRest = orderedPlaces.length >= 2;
-
-    periods.forEach((period) => {
-      const rangeStart = period.time_range.match(/(\d{2}:\d{2})/)?.[1];
-      if (!shouldSuggestRest || !rangeStart) return;
-      const isShortBreak = minutesFromTime(rangeStart) < 11 * 60 && period.duration_minutes <= 60;
-      if (isShortBreak ? totalMinutes < 120 : totalMinutes < 210) return;
-      const range = period.time_range.match(/(\d{2}:\d{2})\s*[–—-]\s*(\d{2}:\d{2})/);
-      if (!range) return;
-      const inSameWindow = existingRests.some((stop) => stop.start_time && minutesFromTime(stop.start_time) >= minutesFromTime(range[1]) && minutesFromTime(stop.start_time) < minutesFromTime(range[2]));
-      if (inSameWindow) return;
-      const slot = findRestSlot({ ...day, stops: [...ordered, ...existingRests] }, period.time_range, period.duration_minutes);
-      if (!slot) return;
-
-      const rest: ItineraryStop = {
-        stop_id: isShortBreak ? `assistant-rest-${day.day_id}-morning` : `rest-${day.day_id}`,
-        poi_id: null,
-        title: isShortBreak ? 'Nghỉ ngắn & uống nước' : 'Nghỉ trưa & phục hồi',
-        city: outline?.focus_city || ordered[0]?.city || null,
-        address: null,
-        category: null,
-        stop_type: 'rest',
-        source: 'assistant',
-        sequence: 0,
-        duration_minutes: period.duration_minutes,
-        start_time: slot.start,
-        end_time: slot.end,
-        comment: period.activity,
-        latitude: null,
-        longitude: null,
-      };
-      insertRestInOrder(ordered, rest);
-      existingRests.push(rest);
-      restCount += 1;
-    });
-    return { ...day, stops: ordered };
-  });
-  return { days: normalizeSequence(scheduled), assignedCount, unassignedCount, restCount };
 }
 
 function displayDate(date: string | null): string {
@@ -765,10 +441,17 @@ export default function ItineraryEditor({ trip, ideas, recommendations = [], rec
   const optimize = (requestedPacing: 'Relaxed' | 'Balanced' | 'Fast' = pacingLevel) => {
     const capacityForPacing = dailyVisitCapacity(requestedPacing);
     const selection = selectAutomaticPois(plan.days, ideas, recommendations, trip, requestedPacing, capacityForPacing);
-    const result = optimizeDays(plan.days, selection.selected, capacityForPacing, trip.itineraryOutline);
+    const result = optimizeDays(
+      plan.days,
+      selection.selected,
+      capacityForPacing,
+      trip.itineraryOutline,
+      dailyVisitStopTarget(requestedPacing),
+      trip.destination,
+    );
     persist({ ...plan, days: result.days });
     if (selection.added.length) onSelectIdeas?.(selection.added.map((poi) => poi.id));
-    const capacityExplanation = `GreenTrip xếp theo khung giờ phù hợp của địa điểm, ưu tiên cùng thành phố và các điểm gần nhau, đồng thời giới hạn tối đa 2 quán cà phê mỗi ngày. Nhịp ${requestedPacing} giới hạn khoảng ${(capacityForPacing / 60).toLocaleString('vi-VN')} giờ tham quan/ngày; khoảng cách là đường chim bay, chưa tính giao thông thực tế.`;
+    const capacityExplanation = `GreenTrip xếp theo khung giờ phù hợp, giữ các chặng thành phố liên tiếp và ưu tiên điểm gần nhau; trợ lý xếp tối đa 1 quán cà phê/ngày. Nhịp ${requestedPacing} giới hạn khoảng ${(capacityForPacing / 60).toLocaleString('vi-VN')} giờ tham quan/ngày; khoảng cách là đường chim bay, chưa tính giao thông thực tế.`;
     const limitingReasons = [
       selection.limits.budget > 0
         ? `${selection.limits.budget} gợi ý vượt ngân sách hoạt động còn khoảng ${Math.max(0, selection.budgetLimit - selection.selectedCost).toLocaleString('vi-VN')} VNĐ sau khi tính các ý tưởng đã chọn.`
@@ -791,9 +474,9 @@ export default function ItineraryEditor({ trip, ideas, recommendations = [], rec
       const autoPicked = selection.added.length
         ? ` Trợ lý chọn thêm ${selection.added.length} gợi ý đang hợp điểm đến, thứ hạng đề xuất và ngân sách hoạt động; ước tính ${selection.selectedCost.toLocaleString('vi-VN')} VNĐ cho ${Math.max(1, trip.peopleCount || 1)} người.`
         : ' Các địa điểm đã chọn được ưu tiên trước; không cần thêm gợi ý mới.';
-      setInsight(`Đã xếp ${scheduled}.${autoPicked}${limitingReasons ? ` ${limitingReasons}` : ''}${result.unassignedCount ? ` Còn ${result.unassignedCount} địa điểm chưa xếp vì đã chạm giới hạn thời lượng hoặc giới hạn tối đa 2 quán cà phê mỗi ngày; bạn có thể chuyển bớt điểm hoặc tăng số ngày.` : ''} ${capacityExplanation}`);
+      setInsight(`Đã xếp ${scheduled}.${autoPicked}${limitingReasons ? ` ${limitingReasons}` : ''}${result.unassignedCount ? ` Còn ${result.unassignedCount} địa điểm chưa xếp vì đã chạm giới hạn thời lượng, số điểm mỗi ngày hoặc giới hạn 1 quán cà phê/ngày; bạn có thể chuyển bớt điểm hoặc tăng số ngày.` : ''} ${capacityExplanation}`);
     } else if (result.unassignedCount) {
-      setInsight(`Còn ${result.unassignedCount} địa điểm chưa xếp vì lịch đã chạm giới hạn thời lượng hoặc giới hạn tối đa 2 quán cà phê mỗi ngày. ${limitingReasons} Hãy chuyển bớt điểm, giảm thời lượng hoặc tăng số ngày. ${capacityExplanation}`);
+      setInsight(`Còn ${result.unassignedCount} địa điểm chưa xếp vì lịch đã chạm giới hạn thời lượng, số điểm mỗi ngày hoặc giới hạn 1 quán cà phê/ngày. ${limitingReasons} Hãy chuyển bớt điểm, giảm thời lượng hoặc tăng số ngày. ${capacityExplanation}`);
     } else {
       const selectionNote = selection.added.length
         ? ` Trợ lý đã chọn thêm ${selection.added.length} gợi ý, nhưng lịch chưa nhận được điểm mới. ${limitingReasons}`
@@ -893,7 +576,7 @@ export default function ItineraryEditor({ trip, ideas, recommendations = [], rec
             <h4 className="text-sm font-bold text-gray-950">Lịch theo ngày <span className="font-normal text-gray-600">{plan.days.length} ngày</span></h4>
             <button type="button" onClick={() => optimize()} disabled={isLoading || recommendationsLoading || (!ideas.length && !recommendations.length) || Boolean(scheduleWarning)} aria-describedby="smart-schedule-help" aria-busy={recommendationsLoading} className="flex min-h-10 items-center gap-2 rounded-full bg-gray-950 px-4 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">{recommendationsLoading ? <RefreshCw size={15} className="animate-spin" aria-hidden="true" /> : <Sparkles size={15} aria-hidden="true" />}{recommendationsLoading ? 'Đang lấy gợi ý' : 'Sắp xếp thông minh'}</button>
           </div>
-          <p id="smart-schedule-help" className="mb-4 text-sm leading-relaxed text-gray-700">{recommendationsLoading ? 'Trợ lý đang tìm gợi ý phù hợp với điểm đến và ngân sách của chuyến đi.' : `Trợ lý ưu tiên ý tưởng của bạn, chọn thêm từ ${recommendations.length} gợi ý phù hợp ngân sách và nhịp ${pacingLevel}, rồi xếp theo khung giờ phù hợp và cụm địa điểm gần nhau. Lịch giới hạn tối đa 2 quán cà phê mỗi ngày để hành trình đa dạng hơn. Bạn vẫn có thể kéo thả hoặc sửa từng điểm sau khi xếp.`}</p>
+          <p id="smart-schedule-help" className="mb-4 text-sm leading-relaxed text-gray-700">{recommendationsLoading ? 'Trợ lý đang tìm gợi ý phù hợp với điểm đến và ngân sách của chuyến đi.' : `Trợ lý ưu tiên ý tưởng của bạn, chọn thêm từ ${recommendations.length} gợi ý phù hợp ngân sách và nhịp ${pacingLevel}, rồi xếp theo khung giờ, cụm gần nhau và chặng thành phố liên tiếp. Trợ lý xếp tối đa 1 quán cà phê/ngày để hành trình đa dạng hơn. Bạn vẫn có thể kéo thả hoặc sửa từng điểm sau khi xếp.`}</p>
           <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-sm font-semibold text-gray-900">Chọn nhịp chuyến đi</p>

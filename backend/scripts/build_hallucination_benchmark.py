@@ -1,0 +1,635 @@
+"""Builder and validator for GreenTrip Chatbot Hallucination Benchmark (50 questions)."""
+
+import json
+from pathlib import Path
+
+BENCHMARK_FILE = Path(__file__).resolve().parents[1] / "data" / "benchmarks" / "chatbot_hallucination_benchmark.json"
+
+QUESTIONS = [
+    # --- Category 1: Da Nang Tourism (10 questions) ---
+    {
+        "id": "DN-01",
+        "category": "danang_tourism",
+        "question": "Đà Nẵng có những bãi biển xanh và điểm ngắm hoàng hôn nào đẹp?",
+        "expected_intent": "recommendation",
+        "expected_tool_usage": ["recommend_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Bãi biển Mỹ Khê và Bán đảo Sơn Trà là những điểm ngắm hoàng hôn và biển xanh hàng đầu tại Đà Nẵng.",
+        "expected_source": "data/raw/nature_heritage_danang_hue_phase2.json",
+        "critical_facts": ["Bãi biển Mỹ Khê", "Sơn Trà", "Đà Nẵng"],
+        "evaluation_criteria": "Phải nêu đúng địa danh thuộc Đà Nẵng, không nhắc địa danh ở Huế."
+    },
+    {
+        "id": "DN-02",
+        "category": "danang_tourism",
+        "question": "Bán đảo Sơn Trà có những hoạt động du lịch sinh thái gì?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Sơn Trà nổi bật với rừng nguyên sinh, ngắm Voọc chà vá chân nâu, đỉnh Bàn Cờ và chùa Linh Ứng.",
+        "expected_source": "data/raw/eco_places_danang_hue_60.json",
+        "critical_facts": ["Voọc chà vá chân nâu", "rừng nguyên sinh", "Linh Ứng"],
+        "evaluation_criteria": "Nhấn mạnh bảo tồn sinh thái và tuân thủ quy tắc không cho động vật ăn."
+    },
+    {
+        "id": "DN-03",
+        "category": "danang_tourism",
+        "question": "Cầu Rồng phun lửa và phun nước vào những ngày nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Cầu Rồng phun lửa và nước vào tối thứ Bảy, Chủ nhật và các ngày lễ lớn lúc 21:00.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["21:00", "thứ Bảy", "Chủ nhật"],
+        "evaluation_criteria": "Chính xác thời gian 21h cuối tuần."
+    },
+    {
+        "id": "DN-04",
+        "category": "danang_tourism",
+        "question": "Khu du lịch sinh thái Ngầm Đôi ở Đà Nẵng có gì hấp dẫn?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Ngầm Đôi là điểm du lịch sinh thái giao thoa của hai dòng suối rừng tự nhiên trong vắt tại Hòa Vang.",
+        "expected_source": "data/raw/eco_places_danang_hue_60.json",
+        "critical_facts": ["suối rừng", "Hòa Vang", "thiên nhiên"],
+        "evaluation_criteria": "Mô tả đúng đặc điểm suối đá và rừng tự nhiên."
+    },
+    {
+        "id": "DN-05",
+        "category": "danang_tourism",
+        "question": "Tuyến phố du lịch Hà Bổng có thực hành tiêu chí du lịch xanh không?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Phố du lịch Hà Bổng là tuyến phố du lịch xanh tiên phong hạn chế đồ nhựa một lần sát biển Mỹ Khê.",
+        "expected_source": "data/raw/eco_places_danang_hue_60.json",
+        "critical_facts": ["Hà Bổng", "hạn chế đồ nhựa", "Mỹ Khê"],
+        "evaluation_criteria": "Nêu rõ tiêu chí giảm rác thải nhựa."
+    },
+    {
+        "id": "DN-06",
+        "category": "danang_tourism",
+        "question": "Núi Ngũ Hành Sơn gồm những ngọn núi nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Ngũ Hành Sơn gồm 5 ngọn núi đá vôi: Kim Sơn, Mộc Sơn, Thủy Sơn, Hỏa Sơn và Thổ Sơn.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["Kim Sơn", "Mộc Sơn", "Thủy Sơn", "Hỏa Sơn", "Thổ Sơn"],
+        "evaluation_criteria": "Liệt kê chính xác tên 5 ngọn núi theo ngũ hành."
+    },
+    {
+        "id": "DN-07",
+        "category": "danang_tourism",
+        "question": "Bảo tàng Điêu khắc Chăm Đà Nẵng lưu giữ bộ sưu tập gì?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Bảo tàng lưu giữ bộ sưu tập nghệ thuật điêu khắc Chăm Pa lớn nhất thế giới bằng sa thạch và đất nung.",
+        "expected_source": "data/raw/nature_heritage_danang_hue_phase2.json",
+        "critical_facts": ["điêu khắc Chăm", "sa thạch", "lớn nhất"],
+        "evaluation_criteria": "Chính xác về văn hóa Chăm Pa."
+    },
+    {
+        "id": "DN-08",
+        "category": "danang_tourism",
+        "question": "Bảo tàng Đồng Đình nằm ở đâu và có phong cách gì?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Bảo tàng Đồng Đình nằm tại bán đảo Sơn Trà, được ví như khu vườn ký ức hòa quyện với rừng nguyên sinh.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["Sơn Trà", "khu vườn ký ức", "rừng"],
+        "evaluation_criteria": "Đúng vị trí bán đảo Sơn Trà."
+    },
+    {
+        "id": "DN-09",
+        "category": "danang_tourism",
+        "question": "Trải nghiệm ngắm bình minh trên biển Đà Nẵng ở bãi nào yên bình nhất?",
+        "expected_intent": "recommendation",
+        "expected_tool_usage": ["recommend_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Bãi biển Non Nước hoặc khu vực bãi tắm Mân Thái sáng sớm rất thích hợp ngắm bình minh yên ả.",
+        "expected_source": "data/raw/eco_places_danang_hue_60.json",
+        "critical_facts": ["Non Nước", "Mân Thái", "bình minh"],
+        "evaluation_criteria": "Gợi ý bãi biển phù hợp không khí tĩnh lặng."
+    },
+    {
+        "id": "DN-10",
+        "category": "danang_tourism",
+        "question": "Đèo Hải Vân nối giữa Đà Nẵng và tỉnh nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Đèo Hải Vân là ranh giới tự nhiên nối liền thành phố Đà Nẵng và tỉnh Thừa Thiên Huế.",
+        "expected_source": "data/raw/nature_heritage_danang_hue_phase2.json",
+        "critical_facts": ["Đà Nẵng", "Thừa Thiên Huế", "ranh giới"],
+        "evaluation_criteria": "Chính xác địa lý giữa Đà Nẵng và Thừa Thiên Huế."
+    },
+
+    # --- Category 2: Hue Tourism (10 questions) ---
+    {
+        "id": "HUE-01",
+        "category": "hue_tourism",
+        "question": "Đại Nội Huế bao gồm những khu vực chính nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Đại Nội Huế bao gồm Hoàng thành và Tử Cấm Thành, trung tâm chính trị của triều Nguyễn.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["Hoàng thành", "Tử Cấm Thành", "triều Nguyễn"],
+        "evaluation_criteria": "Nêu đúng hai khu vực hạt nhân của Đại Nội."
+    },
+    {
+        "id": "HUE-02",
+        "category": "hue_tourism",
+        "question": "Chùa Thiên Mụ nằm bên bờ dòng sông nào tại Huế?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Chùa Thiên Mụ tọa lạc trên đồi Hà Khê bên bờ sông Hương thơ mộng.",
+        "expected_source": "data/raw/nature_heritage_danang_hue_phase2.json",
+        "critical_facts": ["sông Hương", "đồi Hà Khê", "Thiên Mụ"],
+        "evaluation_criteria": "Chính xác sông Hương và đồi Hà Khê."
+    },
+    {
+        "id": "HUE-03",
+        "category": "hue_tourism",
+        "question": "Làng sinh thái Thủy Biều tại Huế nổi tiếng với loại cây ăn quả nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Làng Thủy Biều nổi tiếng với vườn cây thanh trà trăm tuổi và mô hình du lịch cộng đồng xanh.",
+        "expected_source": "data/raw/eco_places_danang_hue_60.json",
+        "critical_facts": ["thanh trà", "Thủy Biều", "nhà rường"],
+        "evaluation_criteria": "Chính xác đặc sản quả thanh trà."
+    },
+    {
+        "id": "HUE-04",
+        "category": "hue_tourism",
+        "question": "Cầu ngói Thanh Toàn ở Huế có niên đại và kiến trúc độc đáo gì?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Cầu ngói Thanh Toàn có tuổi đời hơn 240 năm với lối kiến trúc 'thượng gia hạ kiều' (trên nhà dưới cầu).",
+        "expected_source": "data/raw/nature_heritage_danang_hue_phase2.json",
+        "critical_facts": ["thượng gia hạ kiều", "hơn 240 năm", "Thanh Toàn"],
+        "evaluation_criteria": "Chính xác thuật ngữ 'thượng gia hạ kiều'."
+    },
+    {
+        "id": "HUE-05",
+        "category": "hue_tourism",
+        "question": "Lăng Khải Định có điểm gì khác biệt so với các lăng tẩm khác?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Lăng Khải Định là sự giao thoa kiến trúc Đông - Tây với nghệ thuật ghép sành sứ tinh xảo.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["Đông - Tây", "ghép sành sứ", "Khải Định"],
+        "evaluation_criteria": "Nêu rõ yếu tố giao thoa văn hóa Đông Tây và khảm sành sứ."
+    },
+    {
+        "id": "HUE-06",
+        "category": "hue_tourism",
+        "question": "Lăng Tự Đức mang phong cách kiến trúc và không gian như thế nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Lăng Tự Đức mang đậm chất thơ, hòa quyện với hồ sen, đồi thông và kiến trúc u nhã.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["chất thơ", "hồ Lưu Khiêm", "rừng thông"],
+        "evaluation_criteria": "Đúng tinh thần thơ mộng, u tịch của vua Tự Đức."
+    },
+    {
+        "id": "HUE-07",
+        "category": "hue_tourism",
+        "question": "Rừng Rú Chá tại Huế là hệ sinh thái rừng gì?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Rú Chá là khu rừng ngập mặn nguyên sinh quý hiếm duy nhất còn sót lại trên đầm phá Tam Giang.",
+        "expected_source": "data/raw/eco_places_danang_hue_60.json",
+        "critical_facts": ["rừng ngập mặn", "Tam Giang", "cây chá"],
+        "evaluation_criteria": "Xác định đúng rừng ngập mặn đầm phá."
+    },
+    {
+        "id": "HUE-08",
+        "category": "hue_tourism",
+        "question": "Chợ Đông Ba nằm ở đâu tại Huế?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Chợ Đông Ba nằm bên bờ bắc sông Hương, cạnh cầu Trường Tiền trên đường Trần Hưng Đạo.",
+        "expected_source": "data/raw/nature_heritage_danang_hue_phase2.json",
+        "critical_facts": ["bờ bắc sông Hương", "Trường Tiền", "Đông Ba"],
+        "evaluation_criteria": "Chính xác vị trí bên sông Hương."
+    },
+    {
+        "id": "HUE-09",
+        "category": "hue_tourism",
+        "question": "Bảo tàng Cổ vật Cung đình Huế nằm trong điện nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Bảo tàng Cổ vật Cung đình Huế đặt tại Điện Long An, một kiệt tác kiến trúc gỗ cung đình.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["Điện Long An", "gỗ cung đình", "cổ vật"],
+        "evaluation_criteria": "Nêu đúng tên Điện Long An."
+    },
+    {
+        "id": "HUE-10",
+        "category": "hue_tourism",
+        "question": "Đầm Chuồn thuộc hệ thống đầm phá nào ở Huế?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Đầm Chuồn là một phần tuyệt đẹp thuộc hệ thống đầm phá Tam Giang - Cầu Hai.",
+        "expected_source": "data/raw/eco_places_danang_hue_60.json",
+        "critical_facts": ["Tam Giang", "Đầm Chuồn", "đầm phá"],
+        "evaluation_criteria": "Xác định đúng hệ đầm phá Tam Giang."
+    },
+
+    # --- Category 3: Local Food & Specialties (8 questions) ---
+    {
+        "id": "FOOD-01",
+        "category": "food_specialties",
+        "question": "Thành phần truyền thống của một tô Mỳ Quảng Đà Nẵng gồm những gì?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Mì Quảng gồm sợi mì gạo, tôm, thịt ba chỉ, trứng cút hoặc gà, nước nhưỡng ngọt thanh và bánh tráng mè nướng.",
+        "expected_source": "data/raw/food_beverage_danang_hue_phase1.json",
+        "critical_facts": ["sợi mì gạo", "tôm thịt", "bánh tráng mè", "nước nhưỡng"],
+        "evaluation_criteria": "Đúng các thành phần chủ chốt của mì Quảng."
+    },
+    {
+        "id": "FOOD-02",
+        "category": "food_specialties",
+        "question": "Món Bún Bò Huế có hương vị đặc trưng bắt nguồn từ gia vị nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Bún Bò Huế dậy mùi thơm đặc trưng nhờ sả cây và mắm ruốc Huế nấu trong nước dùng xương bò.",
+        "expected_source": "data/raw/food_beverage_danang_hue_phase1.json",
+        "critical_facts": ["mắm ruốc", "sả", "nước dùng"],
+        "evaluation_criteria": "Bắt buộc có mắm ruốc và sả."
+    },
+    {
+        "id": "FOOD-03",
+        "category": "food_specialties",
+        "question": "Ở Huế có những món bánh truyền thống nổi tiếng nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Huế trứ danh với các món bánh: bánh bèo, bánh nậm, bánh lọc, bánh ram ít và bánh ép.",
+        "expected_source": "data/raw/food_beverage_danang_hue_phase1.json",
+        "critical_facts": ["bánh bèo", "bánh nậm", "bánh lọc", "bánh ram ít"],
+        "evaluation_criteria": "Liệt kê tối thiểu 3 loại bánh truyền thống Huế."
+    },
+    {
+        "id": "FOOD-04",
+        "category": "food_specialties",
+        "question": "Nhà hàng Chay Sân Mây ở Huế có đặc điểm ẩm thực và không gian ra sao?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Sân Mây tọa lạc tại nhà rường cổ ven Cồn Hến, phục vụ món chay thanh tịnh từ nguyên liệu sạch địa phương.",
+        "expected_source": "data/raw/food_beverage_danang_hue_phase1.json",
+        "critical_facts": ["Cồn Hến", "nhà rường", "thuần chay"],
+        "evaluation_criteria": "Mô tả đúng nhà rường và ẩm thực chay."
+    },
+    {
+        "id": "FOOD-05",
+        "category": "food_specialties",
+        "question": "Bánh tráng cuốn thịt heo Đà Nẵng dùng loại nước chấm đặc biệt nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Món ăn dùng nước chấm mắm nêm cá cơm đậm đà pha cùng dứa, tỏi, ớt giã nhuyễn.",
+        "expected_source": "data/raw/food_beverage_danang_hue_phase1.json",
+        "critical_facts": ["mắm nêm", "thịt heo hai đầu da", "rau sống"],
+        "evaluation_criteria": "Chính xác mắm nêm."
+    },
+    {
+        "id": "FOOD-06",
+        "category": "food_specialties",
+        "question": "Ẩm thực chay ở Huế bắt nguồn từ truyền thống văn hóa nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Ăn chay tại Huế bắt nguồn sâu sắc từ Phật giáo cố đô và văn hóa cung đình triều Nguyễn.",
+        "expected_source": "data/raw/food_beverage_danang_hue_phase1.json",
+        "critical_facts": ["Phật giáo", "cung đình", "thanh đạm"],
+        "evaluation_criteria": "Nêu được ảnh hưởng của Phật giáo và cung đình."
+    },
+    {
+        "id": "FOOD-07",
+        "category": "food_specialties",
+        "question": "Chè hẻm ở Huế có những loại chè độc đáo nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Chè Huế nổi tiếng với chè bột lọc heo quay, chè hạt sen long nhãn, chè khoai tía và chè đậu ngự.",
+        "expected_source": "data/raw/food_beverage_danang_hue_phase1.json",
+        "critical_facts": ["chè bột lọc heo quay", "chè sen", "chè khoai tía"],
+        "evaluation_criteria": "Nêu món chè bột lọc bọc heo quay độc đáo."
+    },
+    {
+        "id": "FOOD-08",
+        "category": "food_specialties",
+        "question": "Món Gỏi cá Nam Ô Đà Nẵng có hai cách thưởng thức nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Gỏi cá Nam Ô có hai loại: gỏi cá ướt (chấm nước mắm mè) và gỏi cá khô (trộn thính bắp rang).",
+        "expected_source": "data/raw/food_beverage_danang_hue_phase1.json",
+        "critical_facts": ["gỏi cá khô", "gỏi cá ướt", "Nam Ô"],
+        "evaluation_criteria": "Phân biệt được gỏi khô và gỏi ướt."
+    },
+
+    # --- Category 4: Cultural & Historical Knowledge (7 questions) ---
+    {
+        "id": "CULT-01",
+        "category": "cultural_history",
+        "question": "Nhã nhạc cung đình Huế được UNESCO công nhận là di sản gì?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Nhã nhạc cung đình Huế là Kiệt tác di sản phi vật thể và truyền khẩu của nhân loại được UNESCO công nhận năm 2003.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["di sản phi vật thể", "UNESCO", "2003"],
+        "evaluation_criteria": "Chính xác di sản phi vật thể đại diện nhân loại."
+    },
+    {
+        "id": "CULT-02",
+        "category": "cultural_history",
+        "question": "Thành Điện Hải ở Đà Nẵng có ý nghĩa lịch sử gì trong kháng chiến chống Pháp?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Thành Điện Hải là pháo đài quân sự ghi dấu chiến thắng đầu tiên của quân dân ta dưới sự chỉ huy của Nguyễn Tri Phương năm 1858.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["Thành Điện Hải", "Nguyễn Tri Phương", "1858"],
+        "evaluation_criteria": "Đúng sự kiện kháng chiến chống Pháp 1858."
+    },
+    {
+        "id": "CULT-03",
+        "category": "cultural_history",
+        "question": "Chùa Linh Ứng Bãi Bụt có bức tượng Phật nào nổi tiếng?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Chùa Linh Ứng Bãi Bụt có tượng Phật Quán Thế Âm Bồ Tát cao 67m hướng nhìn ra biển Đông.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["Quán Thế Âm", "67m", "hướng biển"],
+        "evaluation_criteria": "Chính xác tượng Quán Thế Âm cao 67 mét."
+    },
+    {
+        "id": "CULT-04",
+        "category": "cultural_history",
+        "question": "Ý nghĩa kiến trúc của Cột cờ Kỳ Đài trước Đại Nội Huế là gì?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Kỳ Đài là biểu tượng quyền lực triều đình Nguyễn, gồm đài cờ 3 tầng và cột cờ bề thế giữa mặt nam Kinh thành.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["Kỳ Đài", "3 tầng", "mặt nam Kinh thành"],
+        "evaluation_criteria": "Mô tả đúng đài cờ 3 tầng trước Ngọ Môn."
+    },
+    {
+        "id": "CULT-05",
+        "category": "cultural_history",
+        "question": "Nghề gốm cổ truyền Sa Huỳnh và Chăm Pa được trưng bày ở bảo tàng nào tại Đà Nẵng?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Hiện vật gốm cổ Sa Huỳnh và Chăm Pa được bảo tồn công phu tại Bảo tàng Đồng Đình và Bảo tàng Điêu khắc Chăm.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["Đồng Đình", "Điêu khắc Chăm", "Sa Huỳnh"],
+        "evaluation_criteria": "Nhắc đúng bảo tàng tại Đà Nẵng."
+    },
+    {
+        "id": "CULT-06",
+        "category": "cultural_history",
+        "question": "Văn hóa Nhà rường Huế có đặc trưng kết cấu như thế nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Nhà rường Huế kết cấu hoàn toàn bằng hệ thống cột kèo gỗ liên kết mộng không dùng đinh kim loại.",
+        "expected_source": "data/raw/eco_places_danang_hue_60.json",
+        "critical_facts": ["khớp mộng", "gỗ", "không dùng đinh"],
+        "evaluation_criteria": "Nêu đúng đặc tính liên kết mộng gỗ truyền thống."
+    },
+    {
+        "id": "CULT-07",
+        "category": "cultural_history",
+        "question": "Hội đồng đánh giá di sản đánh giá thế nào về hệ thống lăng tẩm Huế?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Hệ thống lăng tẩm Huế kết hợp hài hòa tuyệt đỉnh giữa thuật phong thủy, cảnh quan tự nhiên và nghệ thuật kiến trúc phương Đông.",
+        "expected_source": "data/raw/notebooklm_pois.csv",
+        "critical_facts": ["phong thủy", "cảnh quan tự nhiên", "phương Đông"],
+        "evaluation_criteria": "Nêu bật yếu tố phong thủy và thiên nhiên."
+    },
+
+    # --- Category 5: Sustainable & Eco Tourism (5 questions) ---
+    {
+        "id": "ECO-01",
+        "category": "eco_tourism",
+        "question": "Tiêu chí du lịch xanh của GreenTrip bao gồm những khía cạnh nào?",
+        "expected_intent": "recommendation",
+        "expected_tool_usage": ["recommend_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Tiêu chí gồm: giảm thiểu rác thải nhựa, bảo tồn thiên nhiên, ưu tiên cơ sở bản địa và phương tiện phát thải thấp.",
+        "expected_source": "data/raw/eco_places_danang_hue_60.json",
+        "critical_facts": ["giảm rác thải nhựa", "cơ sở bản địa", "phát thải thấp"],
+        "evaluation_criteria": "Nêu đủ 3 trụ cột xanh của nền tảng."
+    },
+    {
+        "id": "ECO-02",
+        "category": "eco_tourism",
+        "question": "Tại sao GreenTrip khuyến khích du khách đi tàu hỏa qua đèo Hải Vân?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["get_carbon_estimate"],
+        "expected_rag_usage": True,
+        "reference_answer": "Tuyến tàu hỏa 'Kết nối di sản miền Trung' ngắm vịnh Lăng Cô tuyệt đẹp và giảm phát thải CO2 đáng kể so với ô tô cá nhân.",
+        "expected_source": "data/raw/nature_heritage_danang_hue_phase2.json",
+        "critical_facts": ["tiết kiệm CO2", "tàu hỏa", "Lăng Cô"],
+        "evaluation_criteria": "Nhấn mạnh giảm phát thải carbon và cảnh quan."
+    },
+    {
+        "id": "ECO-03",
+        "category": "eco_tourism",
+        "question": "Mô hình du lịch nông nghiệp hữu cơ An Nhiên Farm ở Đà Nẵng có hoạt động gì?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "An Nhiên Farm tổ chức workshop làm mộc thủ công, trồng rau hữu cơ và trải nghiệm lối sống thuận tự nhiên.",
+        "expected_source": "data/raw/eco_places_danang_hue_60.json",
+        "critical_facts": ["thuận tự nhiên", "hữu cơ", "workshop"],
+        "evaluation_criteria": "Mô tả đúng tinh thần nông nghiệp hữu cơ."
+    },
+    {
+        "id": "ECO-04",
+        "category": "eco_tourism",
+        "question": "Làng rau Trà Quế có bí quyết bón phân xanh tự nhiên nào?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Nông dân Trà Quế dùng rong vớt từ đầm Trà Quế để bón lót, tạo hương vị thơm nồng tự nhiên cho rau sạch.",
+        "expected_source": "data/raw/eco_places_danang_hue_60.json",
+        "critical_facts": ["rong đầm", "hữu cơ", "rau sạch"],
+        "evaluation_criteria": "Chính xác phân bón từ rong đầm."
+    },
+    {
+        "id": "ECO-05",
+        "category": "eco_tourism",
+        "question": "Khách sạn và homestay xanh ở Đà Nẵng thực hiện biện pháp gì để tiết kiệm năng lượng?",
+        "expected_intent": "knowledge_rag",
+        "expected_tool_usage": ["search_pois"],
+        "expected_rag_usage": True,
+        "reference_answer": "Các cơ sở lưu trú xanh ứng dụng pin năng lượng mặt trời, hạn chế đồ dùng nhựa dùng một lần và phân loại rác tại nguồn.",
+        "expected_source": "data/processed/curated_stays_160.csv",
+        "critical_facts": ["năng lượng mặt trời", "hạn chế nhựa", "phân loại rác"],
+        "evaluation_criteria": "Nêu đúng thực hành xanh từ danh mục lưu trú."
+    },
+
+    # --- Category 6: Prices & Structured POI Information (5 questions) ---
+    {
+        "id": "PRICE-01",
+        "category": "prices_opening_hours",
+        "question": "Giá vé vào cổng Bảo Tàng Điêu Khắc Chăm Đà Nẵng bao nhiêu?",
+        "expected_intent": "poi_details_price",
+        "expected_tool_usage": ["get_poi_details"],
+        "expected_rag_usage": False,
+        "reference_answer": "Giá vé tham quan Bảo tàng Chăm khoảng 60.000 ₫/người lớn (thuộc phân khúc vé tiêu chuẩn 50.000 ₫ - 150.000 ₫).",
+        "expected_source": "data/processed/all_pois_cleaned.csv",
+        "critical_facts": ["60.000", "Bảo Tàng Điêu Khắc Chăm"],
+        "evaluation_criteria": "Nêu đúng mức giá hoặc khung giá tiêu chuẩn 50k - 150k."
+    },
+    {
+        "id": "PRICE-02",
+        "category": "prices_opening_hours",
+        "question": "Vé vào cổng Quần thể Di tích Cố đô Huế (Đại Nội) nằm trong khung giá nào?",
+        "expected_intent": "poi_details_price",
+        "expected_tool_usage": ["get_poi_details"],
+        "expected_rag_usage": False,
+        "reference_answer": "Vé tham quan Hoàng Cung Huế thuộc phân khúc cao cấp (khoảng 200.000 ₫/người lớn, có vé tuyến liên quan).",
+        "expected_source": "data/processed/all_pois_cleaned.csv",
+        "critical_facts": ["200.000", "Đại Nội", "Cố đô Huế"],
+        "evaluation_criteria": "Chính xác phân khúc giá vé di sản Huế."
+    },
+    {
+        "id": "PRICE-03",
+        "category": "prices_opening_hours",
+        "question": "Giá vé vào danh thắng Ngũ Hành Sơn Đà Nẵng khoảng bao nhiêu?",
+        "expected_intent": "poi_details_price",
+        "expected_tool_usage": ["get_poi_details"],
+        "expected_rag_usage": False,
+        "reference_answer": "Vé vào cổng ngọn Thủy Sơn khoảng 40.000 ₫/người lớn, thang máy 15.000 ₫/lượt.",
+        "expected_source": "data/processed/all_pois_cleaned.csv",
+        "critical_facts": ["40.000", "Ngũ Hành Sơn"],
+        "evaluation_criteria": "Nêu đúng mức giá vé phổ thông dưới 50k."
+    },
+    {
+        "id": "PRICE-04",
+        "category": "prices_opening_hours",
+        "question": "Bảo tàng Mỹ thuật Đà Nẵng mở cửa trong khung giờ nào?",
+        "expected_intent": "poi_details_price",
+        "expected_tool_usage": ["get_poi_details"],
+        "expected_rag_usage": False,
+        "reference_answer": "Bảo tàng mở cửa các ngày trong tuần từ 08:00 đến 17:00.",
+        "expected_source": "data/raw/nature_heritage_danang_hue_phase2.json",
+        "critical_facts": ["08:00", "17:00", "Mỹ thuật Đà Nẵng"],
+        "evaluation_criteria": "Đúng khung giờ mở cửa ban ngày."
+    },
+    {
+        "id": "PRICE-05",
+        "category": "prices_opening_hours",
+        "question": "Tham quan Chùa Linh Ứng Bãi Bụt Sơn Trà có mất vé vào cổng không?",
+        "expected_intent": "poi_details_price",
+        "expected_tool_usage": ["get_poi_details"],
+        "expected_rag_usage": False,
+        "reference_answer": "Chùa Linh Ứng Bãi Bụt mở cửa đón du khách hoàn toàn miễn phí vé vào cổng.",
+        "expected_source": "data/processed/all_pois_cleaned.csv",
+        "critical_facts": ["miễn phí", "Linh Ứng"],
+        "evaluation_criteria": "Khẳng định rõ ràng miễn phí vé vào cổng."
+    },
+
+    # --- Category 7: Out-of-Scope & Insufficient Information (5 questions) ---
+    {
+        "id": "OOS-01",
+        "category": "out_of_scope_insufficient",
+        "question": "Gợi ý cho mình các địa điểm du lịch nổi tiếng ở thủ đô Paris nước Pháp?",
+        "expected_intent": "general_dialogue",
+        "expected_tool_usage": [],
+        "expected_rag_usage": False,
+        "reference_answer": "GreenTrip là trợ lý du lịch xanh chuyên biệt cho khu vực Đà Nẵng và Huế, nên em chưa có dữ liệu du lịch tại Paris.",
+        "expected_source": "none",
+        "critical_facts": ["ngoài phạm vi", "Đà Nẵng", "Huế"],
+        "evaluation_criteria": "Phải lịch sự từ chối trả lời ngoài phạm vi địa lý."
+    },
+    {
+        "id": "OOS-02",
+        "category": "out_of_scope_insufficient",
+        "question": "Viết giúp mình đoạn mã Python kết nối cơ sở dữ liệu MongoDB?",
+        "expected_intent": "general_dialogue",
+        "expected_tool_usage": [],
+        "expected_rag_usage": False,
+        "reference_answer": "Em là trợ lý hỗ trợ du lịch xanh cho Đà Nẵng và Huế, không hỗ trợ tác vụ lập trình hay viết code.",
+        "expected_source": "none",
+        "critical_facts": ["trợ lý du lịch", "không hỗ trợ"],
+        "evaluation_criteria": "Từ chối câu hỏi kỹ thuật ngoài lĩnh vực du lịch."
+    },
+    {
+        "id": "OOS-03",
+        "category": "out_of_scope_insufficient",
+        "question": "Cho mình danh sách các quán ăn ngon nhất ở quận Hoàn Kiếm Hà Nội?",
+        "expected_intent": "general_dialogue",
+        "expected_tool_usage": [],
+        "expected_rag_usage": False,
+        "reference_answer": "Hiện tại hệ thống GreenTrip chỉ có dữ liệu ẩm thực tại Đà Nẵng và Huế, chưa có dữ liệu tại Hà Nội.",
+        "expected_source": "none",
+        "critical_facts": ["chưa có dữ liệu", "Hà Nội", "Đà Nẵng - Huế"],
+        "evaluation_criteria": "Nêu rõ giới hạn dữ liệu địa lý."
+    },
+    {
+        "id": "OOS-04",
+        "category": "out_of_scope_insufficient",
+        "question": "Tỷ giá đồng Yên Nhật hôm nay đổi ra VND là bao nhiêu?",
+        "expected_intent": "general_dialogue",
+        "expected_tool_usage": [],
+        "expected_rag_usage": False,
+        "reference_answer": "GreenTrip không có dữ liệu tài chính hối đoái tiền tệ trực tiếp.",
+        "expected_source": "none",
+        "critical_facts": ["không có dữ liệu", "tỷ giá"],
+        "evaluation_criteria": "Từ chối câu hỏi tài chính ngoài phạm vi."
+    },
+    {
+        "id": "OOS-05",
+        "category": "out_of_scope_insufficient",
+        "question": "Số điện thoại cá nhân riêng tư của quản lý khách sạn X là gì?",
+        "expected_intent": "general_dialogue",
+        "expected_tool_usage": [],
+        "expected_rag_usage": False,
+        "reference_answer": "GreenTrip bảo vệ quyền riêng tư và chỉ cung cấp thông tin liên hệ công khai của điểm đến.",
+        "expected_source": "none",
+        "critical_facts": ["riêng tư", "không cung cấp"],
+        "evaluation_criteria": "Từ chối tiết lộ thông tin riêng tư."
+    }
+]
+
+
+def build_and_save_benchmark() -> int:
+    BENCHMARK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(BENCHMARK_FILE, "w", encoding="utf-8") as f:
+        json.dump(QUESTIONS, f, ensure_ascii=False, indent=2)
+    print(f"Generated {len(QUESTIONS)} benchmark questions in {BENCHMARK_FILE}")
+    return len(QUESTIONS)
+
+
+if __name__ == "__main__":
+    count = build_and_save_benchmark()
+    assert count == 50, f"Expected 50 questions, got {count}"

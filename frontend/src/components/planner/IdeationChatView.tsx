@@ -1,13 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowLeft,
   ArrowUp,
+  Calendar,
   Check,
+  ChevronDown,
+  ChevronUp,
+  Clock,
   Compass,
   Leaf,
   Loader2,
   Luggage,
   Map as MapIcon,
   Plus,
+  ReceiptText,
   RotateCcw,
   Sparkles,
   Star,
@@ -16,31 +22,90 @@ import {
 import { normalizeCategory, normalizeCity, type Poi } from '@/data/pois';
 import PoiImage from '@/components/ui/PoiImage';
 import PoiMap from '@/components/poi/PoiMap';
-import { streamCopilotChat, type CopilotSuggestedPoi } from '@/services/copilotService';
+import ExplanationModal from '@/components/poi/ExplanationModal';
+import RagSourceList from '@/components/planner/RagSourceList';
+import {
+  streamCopilotChat,
+  type CopilotExtractedPlace,
+  type CopilotReceiptBooking,
+  type CopilotSuggestedPoi,
+  type RagSourceItem,
+} from '@/services/copilotService';
 import { extractTripIntentFromPrompt } from '@/utils/vietnamesePromptExtractor';
-import { FormattedCopilotMessage } from './TripOverviewView';
-import type { CopilotTripMessage } from './copilotTripData';
+import { FormattedCopilotMessage, type CopilotAttachmentSummary } from './TripOverviewView';
+import { sanitizeCopilotReplyText } from './copilotMessageMarkdown';
+import ChatAttachmentMenu, { AttachmentThumbnail, StagedAttachmentChip } from './ChatAttachmentMenu';
+import {
+  fileToReadyAttachment,
+  getAttachmentPlaceholder,
+  getDefaultAttachmentPrompt,
+  getPoiGreenScoreExplanation,
+  sanitizeQuickReplyChips,
+  toAttachmentSummary,
+  type ReadyAttachment,
+} from './chatAttachmentUtils';
+import type { CopilotDayOutline, CopilotTripMessage } from './copilotTripData';
+
+interface ItineraryPreviewStop {
+  order?: number;
+  poi_id?: string;
+  name?: string;
+  category?: string;
+  green_score?: number;
+  time_slot?: string;
+  cost_vnd?: number;
+  selection_reason?: string;
+  kg_explanation?: string;
+  lat?: number;
+  lng?: number;
+  address?: string;
+  travel_time_from_prev_mins?: number;
+  travel_distance_from_prev_km?: number;
+  cost_status?: string;
+  schedule_status?: string;
+}
+
+interface ItineraryPreviewDay {
+  day_number?: number;
+  day?: number;
+  theme?: string;
+  focus_city?: string;
+  day_distance_km?: number;
+  day_cost_vnd?: number;
+  day_carbon_kg?: number;
+  routing_type?: string;
+  stops?: ItineraryPreviewStop[];
+}
 
 interface IdeationMessage {
   id: string;
   sender: 'user' | 'assistant';
   text: string;
   timestamp: string;
+  attachment?: CopilotAttachmentSummary;
   suggestedPois?: CopilotSuggestedPoi[];
+  extractedPlaces?: CopilotExtractedPlace[];
+  receiptBooking?: CopilotReceiptBooking | null;
   nextSuggestedPrompts?: string[];
   avoidNotice?: string | null;
   greenImpactSummary?: string | null;
   budgetImpactSummary?: string | null;
+  sources?: RagSourceItem[];
+  toolsUsed?: string[];
+  updatedItineraryState?: ItineraryPreviewDay[];
+  mutationSummary?: string[];
 }
 
 export interface IdeationChatViewProps {
   allPois: Poi[];
+  currentUserName?: string | null;
   initialPrompt?: string | null;
   onConsumedInitialPrompt?: () => void;
   onCreateTripFromIdea: (payload: {
     initialPrompt: string;
     selectedPoiIds: string[];
     chatHistory: CopilotTripMessage[];
+    itineraryOutline?: CopilotDayOutline[];
   }) => void;
 }
 
@@ -84,11 +149,218 @@ function mapSuggestedToPoi(s: CopilotSuggestedPoi, allPois: Poi[]): Poi | null {
     visitDuration: '1–2 giờ',
     isGreen: s.green_score >= 75,
     ecoScore: s.green_score || 85,
+    estimatedCost: s.estimated_cost ?? 0,
   };
+}
+
+function ItineraryPreviewCard({
+  days,
+  selectedPoiIds,
+  onTogglePoi,
+  onSelectAllStops,
+  onCreateTrip,
+}: {
+  days: ItineraryPreviewDay[];
+  selectedPoiIds: string[];
+  onTogglePoi: (poiId: string) => void;
+  onSelectAllStops: (stopIds: string[]) => void;
+  onCreateTrip: () => void;
+}) {
+  const [openDays, setOpenDays] = useState<Record<number, boolean>>(() => {
+    const init: Record<number, boolean> = {};
+    days.forEach((_, idx) => {
+      init[idx] = true;
+    });
+    return init;
+  });
+
+  const allStopIds = useMemo(() => {
+    const ids: string[] = [];
+    days.forEach((d) => {
+      d.stops?.forEach((s) => {
+        if (s.poi_id) ids.push(s.poi_id);
+      });
+    });
+    return ids;
+  }, [days]);
+
+  const selectedSet = useMemo(() => new Set(selectedPoiIds), [selectedPoiIds]);
+
+  return (
+    <div className="w-full bg-linear-to-br from-emerald-50/60 to-neutral-50/80 border border-emerald-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="w-8 h-8 rounded-lg bg-emerald-800 text-white flex items-center justify-center shadow-2xs">
+            <Calendar size={16} />
+          </span>
+          <div>
+            <h4 className="text-sm font-bold text-neutral-950 flex items-center gap-2">
+              Lịch trình Du lịch Xanh Đề xuất
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold">
+                {days.length} ngày
+              </span>
+            </h4>
+            <p className="text-xs text-neutral-600">
+              Đã tối ưu hóa thứ tự di chuyển, thời gian mở cửa & phát thải CO2
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onSelectAllStops(allStopIds)}
+            className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 px-3 py-1.5 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 transition cursor-pointer"
+          >
+            Lưu tất cả {allStopIds.length} điểm
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {days.map((dayItem, dayIdx) => {
+          const dayNum = dayItem.day_number || dayItem.day || dayIdx + 1;
+          const isOpen = openDays[dayIdx] !== false;
+          return (
+            <div
+              key={dayIdx}
+              className="bg-white rounded-xl border border-neutral-200/80 overflow-hidden shadow-2xs"
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenDays((prev) => ({ ...prev, [dayIdx]: !isOpen }))
+                }
+                className="w-full px-4 py-3 flex items-center justify-between bg-neutral-50/70 hover:bg-neutral-100/70 transition text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-neutral-900 text-white text-xs font-bold">
+                    Ngày {dayNum}
+                  </span>
+                  <span className="text-xs font-bold text-neutral-900">
+                    {dayItem.theme || `Khám phá ${dayItem.focus_city || 'điểm đến'}`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-neutral-600 shrink-0 whitespace-nowrap">
+                  {dayItem.day_distance_km !== undefined && (
+                    <span className="whitespace-nowrap">{dayItem.day_distance_km} km</span>
+                  )}
+                  {dayItem.day_cost_vnd !== undefined && dayItem.day_cost_vnd > 0 && (
+                    <span className="font-medium text-neutral-800 whitespace-nowrap">
+                      ~{dayItem.day_cost_vnd.toLocaleString('vi-VN')} đ
+                    </span>
+                  )}
+                  {dayItem.day_carbon_kg !== undefined && (
+                    <span className="inline-flex items-center gap-1 text-emerald-800 font-medium whitespace-nowrap">
+                      <Leaf size={11} />
+                      {dayItem.day_carbon_kg} kg CO2
+                    </span>
+                  )}
+                  {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                </div>
+              </button>
+
+              {isOpen && (
+                <div className="p-3 sm:p-4 divide-y divide-neutral-100">
+                  {dayItem.stops && dayItem.stops.length > 0 ? (
+                    dayItem.stops.map((stop, sIdx) => {
+                      const isSaved = stop.poi_id ? selectedSet.has(stop.poi_id) : false;
+                      return (
+                        <div
+                          key={sIdx}
+                          className="py-2.5 first:pt-0 last:pb-0 flex items-start justify-between gap-3"
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                              {stop.order || sIdx + 1}
+                            </span>
+                            <div className="space-y-0.5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-bold text-neutral-950">
+                                  {stop.name}
+                                </span>
+                                {stop.time_slot && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-neutral-100 text-neutral-700 text-[11px] font-medium">
+                                    <Clock size={10} />
+                                    {stop.time_slot}
+                                  </span>
+                                )}
+                                {Boolean(stop.travel_time_from_prev_mins && stop.travel_time_from_prev_mins > 0) && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-blue-50 text-blue-800 border border-blue-200/60 text-[11px] font-medium">
+                                    ~{stop.travel_time_from_prev_mins}p ({stop.travel_distance_from_prev_km} km)
+                                  </span>
+                                )}
+                                {stop.green_score !== undefined && (
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200/60 text-[11px] font-semibold">
+                                    <Leaf size={10} />
+                                    {stop.green_score}/100
+                                  </span>
+                                )}
+                                {stop.cost_vnd !== undefined && (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-200/60 text-[11px] font-medium">
+                                    {stop.cost_vnd === 0 ? 'Miễn phí' : `~${stop.cost_vnd.toLocaleString('vi-VN')} đ`}
+                                  </span>
+                                )}
+                              </div>
+                              {stop.selection_reason && (
+                                <p className="text-[11px] text-neutral-600 line-clamp-1">
+                                  {stop.selection_reason}
+                                </p>
+                              )}
+                              {stop.kg_explanation && (
+                                <p className="text-[11px] text-emerald-900 bg-emerald-50/80 px-2 py-0.5 rounded border border-emerald-200/50 line-clamp-1">
+                                  💡 {stop.kg_explanation}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {stop.poi_id && (
+                            <button
+                              type="button"
+                              onClick={() => onTogglePoi(stop.poi_id!)}
+                              className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center border transition cursor-pointer ${
+                                isSaved
+                                  ? 'bg-emerald-700 text-white border-emerald-700'
+                                  : 'bg-white text-neutral-700 border-neutral-300 hover:border-emerald-600'
+                              }`}
+                              title={isSaved ? 'Đã thêm' : 'Thêm điểm này'}
+                            >
+                              {isSaved ? <Check size={14} /> : <Plus size={14} />}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-xs text-neutral-500 py-2">
+                      Chưa có điểm dừng nào được xếp cho ngày này.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="pt-2 flex flex-wrap items-center justify-end gap-2 border-t border-emerald-100">
+        <button
+          type="button"
+          onClick={onCreateTrip}
+          className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold inline-flex items-center gap-2 shadow-xs transition cursor-pointer active:scale-95"
+        >
+          <Luggage size={14} />
+          <span>Tạo chuyến đi từ lịch trình này</span>
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function IdeationChatView({
   allPois,
+  currentUserName,
   initialPrompt,
   onConsumedInitialPrompt,
   onCreateTripFromIdea,
@@ -119,17 +391,28 @@ export default function IdeationChatView({
     return [];
   });
 
+  const [currentItineraryState, setCurrentItineraryState] = useState<ItineraryPreviewDay[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
+  const [streamingSources, setStreamingSources] = useState<RagSourceItem[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastFailedPrompt, setLastFailedPrompt] = useState<string | null>(null);
   const [tripMemory, setTripMemory] = useState<Record<string, string>>({});
   const [activeConstraints, setActiveConstraints] = useState<string[]>([]);
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [isSplitMapCollapsed, setIsSplitMapCollapsed] = useState(false);
+  const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<ReadyAttachment | null>(null);
   const [selectedMapPoiId, setSelectedMapPoiId] = useState<string | null>(null);
   const [hoveredPoiId, setHoveredPoiId] = useState<string | null>(null);
+  const [openEcoTipPoiId, setOpenEcoTipPoiId] = useState<string | null>(null);
+  const [explanationPoi, setExplanationPoi] = useState<{
+    id: string;
+    name: string;
+    snippet?: string;
+  } | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -179,9 +462,21 @@ export default function IdeationChatView({
   }, [messages, allPois]);
 
   const entityLookup = useMemo(
-    () => mapPois.map((p) => ({ id: p.id, name: p.name })),
+    () => mapPois.map((p) => ({ id: p.id, name: p.name, city: p.city })),
     [mapPois]
   );
+
+  const suggestedPlacesHistory = useMemo(() => {
+    const seen = new Set<string>();
+    messages.forEach((msg) => {
+      if (msg.sender === 'assistant') {
+        msg.suggestedPois?.forEach((p) => {
+          if (p.name?.trim()) seen.add(p.name.trim());
+        });
+      }
+    });
+    return Array.from(seen).slice(-30);
+  }, [messages]);
 
   const selectedIdeaIdSet = useMemo(() => new Set(selectedIdeaPoiIds), [selectedIdeaPoiIds]);
 
@@ -195,26 +490,43 @@ export default function IdeationChatView({
     setMessages([]);
     setSelectedIdeaPoiIds([]);
     setInput('');
+    setPendingAttachment(null);
     setErrorMessage(null);
     setLastFailedPrompt(null);
     setTripMemory({});
     setActiveConstraints([]);
+    setOpenEcoTipPoiId(null);
+    setIsSplitMapCollapsed(false);
   };
 
-  const handleSend = async (rawText?: string) => {
-    const text = (rawText ?? input).trim();
-    if (!text || isSending) return;
+  const handleFocusPoiOnMap = (poiId: string) => {
+    setSelectedMapPoiId(poiId);
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setIsSplitMapCollapsed(false);
+    } else {
+      setIsMapOpen(true);
+    }
+  };
 
+  const handleSend = async (rawText?: string, readyAttachment?: ReadyAttachment) => {
+    const activeAttachment = readyAttachment ?? pendingAttachment ?? undefined;
+    const typedText = (rawText ?? input).trim();
+    const text = typedText || (activeAttachment ? getDefaultAttachmentPrompt(activeAttachment) : '');
+    if ((!text && !activeAttachment) || isSending) return;
+
+    const userMsgId = `idea-u-${Date.now()}`;
     const userMsg: IdeationMessage = {
-      id: `idea-u-${Date.now()}`,
+      id: userMsgId,
       sender: 'user',
       text,
       timestamp: nowHHMM(),
+      attachment: activeAttachment ? toAttachmentSummary(activeAttachment) : undefined,
     };
 
     const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
     if (!rawText) setInput('');
+    setPendingAttachment(null);
     setErrorMessage(null);
     setLastFailedPrompt(null);
     setStreamingText('');
@@ -227,23 +539,31 @@ export default function IdeationChatView({
       const res = await streamCopilotChat(
         {
           message: text,
+          attachment: activeAttachment?.payload,
           trip_context: {
             mode: 'ideation',
             destination: parsed.destination || 'Đà Nẵng & Huế',
             days_count: parsed.days || 4,
             current_day: 1,
+            num_people: parsed.totalGuests || 2,
+            companions: parsed.whoDisplay || undefined,
+            budget_tier: parsed.budgetTier || 'standard',
+            total_budget: parsed.budgetAmountVnd ?? undefined,
             saved_ideas: selectedIdeaPoiIds,
+            suggested_places: suggestedPlacesHistory,
             active_constraints: activeConstraints,
             trip_memory: tripMemory,
             conversation_history: nextMessages.slice(-8).map((m) => ({
               role: m.sender,
               content: m.text,
             })),
+            current_itinerary_state: currentItineraryState as unknown as Array<Record<string, unknown>>,
           },
         },
         {
           onStatus: (statusMsg) => setStreamingStatus(statusMsg),
           onDelta: (chunk) => setStreamingText((prev) => prev + chunk),
+          onSources: (incomingSources) => setStreamingSources(incomingSources),
         }
       );
 
@@ -253,26 +573,76 @@ export default function IdeationChatView({
       if (res.trip_memory) {
         setTripMemory((prev) => ({ ...prev, ...res.trip_memory }));
       }
+      if (res.updated_itinerary_state && Array.isArray(res.updated_itinerary_state)) {
+        setCurrentItineraryState(res.updated_itinerary_state as unknown as ItineraryPreviewDay[]);
+      }
+      const rawResolvedTitle = res.trip_memory?.attached_source_title?.trim();
+      const titleMatchesCurrentAttachment =
+        Boolean(rawResolvedTitle) &&
+        Boolean(activeAttachment) &&
+        (activeAttachment?.payload.type !== 'link' ||
+          res.trip_memory?.attached_source_url === activeAttachment?.payload.url);
 
       const aiMsg: IdeationMessage = {
         id: `idea-a-${Date.now()}`,
         sender: 'assistant',
-        text: res.reply_text,
+        text: sanitizeCopilotReplyText(res.reply_text, text),
         timestamp: nowHHMM(),
         suggestedPois: res.suggested_pois || [],
+        extractedPlaces: res.extracted_places || [],
+        receiptBooking: res.receipt_booking ?? null,
         nextSuggestedPrompts: res.next_suggested_prompts || [],
         avoidNotice: res.avoid_notice,
         greenImpactSummary: res.green_impact_summary,
         budgetImpactSummary: res.budget_impact_summary,
+        sources: res.sources && res.sources.length > 0 ? res.sources : streamingSources,
+        toolsUsed: res.tools_used,
+        updatedItineraryState: (res.updated_itinerary_state as unknown as ItineraryPreviewDay[]) || undefined,
+        mutationSummary: res.mutation_summary || undefined,
       };
-      setMessages((prev) => [...prev, aiMsg]);
+      setMessages((prev) => {
+        const enriched =
+          titleMatchesCurrentAttachment && rawResolvedTitle
+            ? prev.map((m) =>
+                m.id === userMsgId && m.attachment
+                  ? { ...m, attachment: { ...m.attachment, displayTitle: rawResolvedTitle } }
+                  : m
+              )
+            : prev;
+        return [...enriched, aiMsg];
+      });
+      if ((res.suggested_pois?.length || 0) > 0) {
+        setIsSplitMapCollapsed(false);
+      }
     } catch (err) {
       console.error('Ideation chat error:', err);
-      setErrorMessage('Không thể kết nối tới trợ lý AI lúc này. Vui lòng kiểm tra backend và thử lại.');
-      setLastFailedPrompt(text);
+      const hasSocialLink = /(?:tiktok\.com|vt\.tiktok\.com|facebook\.com|fb\.watch|instagram\.com|youtu\.be|youtube\.com)/i.test(
+        text
+      );
+      if (hasSocialLink) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `idea-a-${Date.now()}`,
+            sender: 'assistant',
+            text: sanitizeCopilotReplyText('Please wait...', text),
+            timestamp: nowHHMM(),
+            suggestedPois: [],
+            nextSuggestedPrompts: [
+              'Tìm quán ăn bản địa ít đông ở Huế',
+              'Gợi ý điểm xanh & làng nghề tại Đà Nẵng',
+              'Lên lịch trình 2 ngày tránh giờ cao điểm',
+            ],
+          },
+        ]);
+      } else {
+        setErrorMessage('Không thể kết nối tới trợ lý AI lúc này. Vui lòng thử lại sau giây lát.');
+        setLastFailedPrompt(text);
+      }
     } finally {
       setStreamingText('');
       setStreamingStatus(null);
+      setStreamingSources([]);
       setIsSending(false);
     }
   };
@@ -317,10 +687,36 @@ export default function IdeationChatView({
       nextSuggestedPrompts: m.nextSuggestedPrompts,
     }));
 
+    const mappedOutline: CopilotDayOutline[] | undefined =
+      currentItineraryState.length > 0
+        ? currentItineraryState.map((d, dIdx) => ({
+            day: d.day_number || d.day || dIdx + 1,
+            theme: d.theme || `Khám phá ${d.focus_city || 'Đà Nẵng & Huế'}`,
+            focus_city: d.focus_city || liveIntent?.destination || 'Đà Nẵng',
+            stops: (d.stops || []).map((s, sIdx) => ({
+              id: s.poi_id || `preview-d${dIdx + 1}-s${sIdx + 1}`,
+              poiId: s.poi_id,
+              timeSlot: s.time_slot || '09:00',
+              name: s.name || `Điểm dừng ${sIdx + 1}`,
+              category: s.category || 'tham-quan',
+              distanceKm: s.travel_distance_from_prev_km,
+              note: s.selection_reason || s.kg_explanation,
+              estimatedCost:
+                s.cost_vnd !== undefined
+                  ? s.cost_vnd === 0
+                    ? 'Miễn phí'
+                    : `~${s.cost_vnd.toLocaleString('vi-VN')} đ`
+                  : undefined,
+              greenScore: s.green_score,
+            })),
+          }))
+        : undefined;
+
     onCreateTripFromIdea({
       initialPrompt: promptParts.join('. ').slice(0, 1800),
       selectedPoiIds: selectedIdeaPoiIds,
       chatHistory: historyForTrip,
+      itineraryOutline: mappedOutline,
     });
   };
 
@@ -358,7 +754,13 @@ export default function IdeationChatView({
             {mapPois.length > 0 && (
               <button
                 type="button"
-                onClick={() => setIsMapOpen(true)}
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                    setIsSplitMapCollapsed((prev) => !prev);
+                  } else {
+                    setIsMapOpen(true);
+                  }
+                }}
                 className="min-h-[40px] px-3.5 rounded-full border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
               >
                 <MapIcon size={15} className="text-emerald-700" />
@@ -412,6 +814,9 @@ export default function IdeationChatView({
         </div>
       </header>
 
+      {/* Split-Screen Body: Left Chat Stream + Input | Right Live Synced Map (Desktop lg+) */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
       {/* Main Scrollable Chat Stream */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
         <div className="max-w-[780px] mx-auto space-y-6 pb-8">
@@ -420,12 +825,14 @@ export default function IdeationChatView({
               <div className="w-16 h-16 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md mb-5">
                 <Compass size={30} />
               </div>
-              <h2 className="text-2xl sm:text-[28px] font-bold text-neutral-950 tracking-tight mb-2.5">
-                Hỏi vu vơ trước chuyến đi
+              <h2 className="text-2xl sm:text-[32px] font-bold text-neutral-950 tracking-tight mb-2.5">
+                {currentUserName?.trim()
+                  ? `Hôm nay bạn muốn đi đâu, ${currentUserName.trim()}?`
+                  : 'Hôm nay bạn muốn đi đâu?'}
               </h2>
               <p className="text-sm sm:text-[15px] text-neutral-600 max-w-lg leading-relaxed mb-8">
-                Cứ hỏi thoải mái về thời tiết theo tháng, đặc sản địa phương, hay nên đi Đà Nẵng – Huế mấy ngày.
-                Khi đã ưng ý tưởng, bấm <strong className="text-neutral-900">Tạo lịch trình từ ý tưởng này</strong> ở góc trên.
+                Mình ở đây để giúp bạn lên kế hoạch trải nghiệm xanh tại Đà Nẵng – Huế.
+                Hỏi bất cứ điều gì, hoặc bấm dấu <strong className="text-neutral-900">+</strong> để tải ảnh, tệp hay dán link TikTok/YouTube.
               </p>
 
               <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
@@ -454,8 +861,27 @@ export default function IdeationChatView({
                 className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
               >
                 {msg.sender === 'user' ? (
-                  <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-br-sm bg-neutral-900 text-white px-4 py-3 text-[14px] leading-relaxed shadow-xs">
-                    {msg.text}
+                  <div className="max-w-[85%] sm:max-w-[75%] space-y-2 flex flex-col items-end">
+                    {msg.attachment && (
+                      <div className="rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-2xs flex items-center gap-3 max-w-full">
+                        <AttachmentThumbnail
+                          previewUrl={msg.attachment.previewUrl}
+                          alt={msg.attachment.displayTitle}
+                          type={msg.attachment.type}
+                        />
+                        <div className="min-w-0 text-left">
+                          <p className="text-xs font-bold text-neutral-950 truncate max-w-[260px]">
+                            {msg.attachment.displayTitle}
+                          </p>
+                          <p className="text-xs text-neutral-600 truncate">
+                            {msg.attachment.subtitle}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="rounded-2xl rounded-br-sm bg-neutral-900 text-white px-4 py-3 text-[14px] leading-relaxed shadow-xs">
+                      {msg.text}
+                    </div>
                   </div>
                 ) : (
                   <div className="w-full space-y-3">
@@ -463,12 +889,48 @@ export default function IdeationChatView({
                       <FormattedCopilotMessage
                         text={msg.text}
                         entityLookup={entityLookup}
+                        preferredCity={liveIntent?.destination}
                         onHoverPoi={setHoveredPoiId}
-                        onSelectPoi={(poiId) => {
-                          setSelectedMapPoiId(poiId);
-                          setIsMapOpen(true);
-                        }}
+                        onSelectPoi={handleFocusPoiOnMap}
                       />
+
+                      {msg.receiptBooking && (
+                        <div
+                          data-testid="receipt-booking-card"
+                          className="mt-2 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3.5 flex flex-wrap items-center justify-between gap-3"
+                        >
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-emerald-800 text-white flex items-center justify-center shrink-0">
+                              <ReceiptText size={17} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-emerald-950">
+                                {msg.receiptBooking.is_duplicate
+                                  ? 'Hóa đơn đã tồn tại trong hành trình (không thêm trùng)'
+                                  : 'Đã nhận xác nhận đặt chỗ'}
+                              </p>
+                              <p className="text-[13px] font-semibold text-neutral-950 truncate">
+                                {msg.receiptBooking.title}
+                              </p>
+                              <p className="text-xs text-neutral-700">
+                                {msg.receiptBooking.city}
+                                {msg.receiptBooking.time_str ? ` · ${msg.receiptBooking.time_str}` : ''}
+                                {msg.receiptBooking.date_str ? ` · ${msg.receiptBooking.date_str}` : ''}
+                                {msg.receiptBooking.checkout_str ? ` → ${msg.receiptBooking.checkout_str}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          {!msg.receiptBooking.is_duplicate && (
+                            <button
+                              type="button"
+                              onClick={handleCreateTripClick}
+                              className="min-h-[38px] px-3.5 rounded-full bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-semibold cursor-pointer transition shrink-0"
+                            >
+                              Tạo chuyến đi từ xác nhận này
+                            </button>
+                          )}
+                        </div>
+                      )}
 
                       {(msg.avoidNotice || msg.greenImpactSummary || msg.budgetImpactSummary) && (
                         <div className="pt-2 border-t border-neutral-100 flex flex-wrap gap-2 text-xs">
@@ -490,21 +952,51 @@ export default function IdeationChatView({
                           )}
                         </div>
                       )}
+
+                      {msg.sources && msg.sources.length > 0 && (
+                        <RagSourceList sources={msg.sources} />
+                      )}
                     </div>
 
-                    {/* Visual POI Cards chuẩn MindTripAI */}
+                    {/* Itinerary Preview Card when itinerary was generated or updated */}
+                    {msg.updatedItineraryState && msg.updatedItineraryState.length > 0 && (
+                      <ItineraryPreviewCard
+                        days={msg.updatedItineraryState}
+                        selectedPoiIds={selectedIdeaPoiIds}
+                        onTogglePoi={handleToggleIdeaPoi}
+                        onSelectAllStops={(stopIds) => {
+                          setSelectedIdeaPoiIds((prev) => {
+                            const next = new Set(prev);
+                            stopIds.forEach((id) => next.add(id));
+                            return Array.from(next);
+                          });
+                        }}
+                        onCreateTrip={handleCreateTripClick}
+                      />
+                    )}
+
+                    {/* Visual POI Cards */}
                     {msg.suggestedPois && msg.suggestedPois.length > 0 && (
                       <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
                         {msg.suggestedPois.map((poi) => {
                           const isSaved = selectedIdeaIdSet.has(poi.id);
+                          const ecoReason = getPoiGreenScoreExplanation(poi);
+                          const isEcoOpen = openEcoTipPoiId === poi.id;
+                          const matchedExtracted = msg.extractedPlaces?.find((ep) => {
+                            const epNorm = ep.name.toLowerCase();
+                            const poiNorm = poi.name.toLowerCase();
+                            return epNorm.includes(poiNorm) || poiNorm.includes(epNorm);
+                          });
                           return (
                             <article
                               key={poi.id}
-                              onClick={() => {
-                                setSelectedMapPoiId(poi.id);
-                                setIsMapOpen(true);
+                              onMouseEnter={() => setHoveredPoiId(poi.id)}
+                              onMouseLeave={() => {
+                                setHoveredPoiId(null);
+                                setOpenEcoTipPoiId((prev) => (prev === poi.id ? null : prev));
                               }}
-                              className="w-[235px] shrink-0 snap-start rounded-2xl bg-white border border-neutral-200/90 hover:border-neutral-400 overflow-hidden shadow-2xs transition cursor-pointer flex flex-col"
+                              onClick={() => handleFocusPoiOnMap(poi.id)}
+                              className="relative w-[235px] shrink-0 snap-start rounded-2xl bg-white border border-neutral-200/90 hover:border-neutral-400 overflow-hidden shadow-2xs transition cursor-pointer flex flex-col"
                             >
                               <div className="relative h-28 bg-neutral-100">
                                 <PoiImage
@@ -516,10 +1008,36 @@ export default function IdeationChatView({
                                   city={normalizeCity(poi.city)}
                                   className="w-full h-full object-cover"
                                 />
-                                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-950/85 text-emerald-200 text-xs font-semibold inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  data-testid="poi-green-score-badge"
+                                  aria-label={`Điểm xanh ${poi.green_score}/100: ${ecoReason}`}
+                                  aria-expanded={isEcoOpen}
+                                  title="Bấm để xem giải thích 4 trụ cột Điểm xanh"
+                                  onMouseEnter={() => setOpenEcoTipPoiId(poi.id)}
+                                  onFocus={() => setOpenEcoTipPoiId(poi.id)}
+                                  onBlur={() =>
+                                    setOpenEcoTipPoiId((prev) => (prev === poi.id ? null : prev))
+                                  }
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenEcoTipPoiId((prev) => (prev === poi.id ? null : poi.id));
+                                    setExplanationPoi({
+                                      id: poi.id,
+                                      name: poi.name,
+                                      snippet: poi.kg_explanation || poi.swap_reason || undefined,
+                                    });
+                                  }}
+                                  className="absolute top-2 left-2 min-h-[28px] px-2.5 py-0.5 rounded-full bg-emerald-950/90 hover:bg-emerald-900 text-emerald-100 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 z-10"
+                                >
                                   <Leaf size={11} />
-                                  {poi.green_score}/100
-                                </span>
+                                  <span>{poi.green_score}/100</span>
+                                </button>
+                                {matchedExtracted?.timestamp && (
+                                  <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/75 text-white text-xs font-medium">
+                                    {matchedExtracted.timestamp}
+                                  </span>
+                                )}
                                 <button
                                   type="button"
                                   aria-label={isSaved ? `Bỏ chọn ${poi.name}` : `Chọn ${poi.name} vào ý tưởng`}
@@ -528,7 +1046,7 @@ export default function IdeationChatView({
                                     e.stopPropagation();
                                     handleToggleIdeaPoi(poi.id);
                                   }}
-                                  className={`absolute top-2 right-2 w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                                  className={`absolute top-2 right-2 w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 z-10 ${
                                     isSaved
                                       ? 'bg-emerald-700 text-white'
                                       : 'bg-white/95 text-neutral-900 hover:bg-white'
@@ -538,6 +1056,21 @@ export default function IdeationChatView({
                                   {isSaved ? <Check size={16} /> : <Plus size={16} />}
                                 </button>
                               </div>
+
+                              {isEcoOpen && (
+                                <div
+                                  role="tooltip"
+                                  data-testid="poi-green-score-tooltip"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="absolute top-10 left-2 right-2 z-20 rounded-xl bg-neutral-950/95 text-white px-2.5 py-2 text-xs leading-snug shadow-lg border border-emerald-500/30"
+                                >
+                                  <p className="font-semibold text-emerald-300 mb-0.5">
+                                    Điểm xanh {poi.green_score}/100
+                                  </p>
+                                  <p className="text-neutral-100">{ecoReason}</p>
+                                </div>
+                              )}
+
                               <div className="p-3 flex-1 flex flex-col justify-between gap-1">
                                 <div>
                                   <h3 className="text-[13px] font-bold text-neutral-950 line-clamp-1">
@@ -545,6 +1078,12 @@ export default function IdeationChatView({
                                   </h3>
                                   <p className="text-xs text-neutral-600 line-clamp-1">
                                     {poi.city || poi.address}
+                                  </p>
+                                  <p
+                                    className="text-xs text-emerald-800 line-clamp-1 mt-0.5"
+                                    title={ecoReason}
+                                  >
+                                    🌱 {ecoReason}
                                   </p>
                                 </div>
                                 <div className="flex items-center justify-between pt-1 text-xs text-neutral-700">
@@ -563,12 +1102,14 @@ export default function IdeationChatView({
                       </div>
                     )}
 
-                    {/* Follow-up prompt chips ở tin nhắn AI gần nhất */}
-                    {msgIdx === messages.length - 1 &&
-                      msg.nextSuggestedPrompts &&
-                      msg.nextSuggestedPrompts.length > 0 && (
+                    {/* Follow-up prompt chips ở tin nhắn AI gần nhất (không lặp câu hỏi dẫn) */}
+                    {(() => {
+                      if (msgIdx !== messages.length - 1) return null;
+                      const chips = sanitizeQuickReplyChips(msg.nextSuggestedPrompts, msg.text);
+                      if (chips.length === 0) return null;
+                      return (
                         <div className="flex flex-wrap gap-2 pt-1">
-                          {msg.nextSuggestedPrompts.slice(0, 3).map((chip) => (
+                          {chips.map((chip) => (
                             <button
                               key={chip}
                               type="button"
@@ -579,7 +1120,8 @@ export default function IdeationChatView({
                             </button>
                           ))}
                         </div>
-                      )}
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -593,6 +1135,7 @@ export default function IdeationChatView({
                   <FormattedCopilotMessage
                     text={streamingText}
                     entityLookup={entityLookup}
+                    preferredCity={liveIntent?.destination}
                     onHoverPoi={setHoveredPoiId}
                     onSelectPoi={(poiId) => {
                       setSelectedMapPoiId(poiId);
@@ -603,6 +1146,9 @@ export default function IdeationChatView({
                     aria-hidden="true"
                     className="inline-block w-1.5 h-4 align-middle bg-emerald-600 rounded-xs animate-pulse"
                   />
+                  {streamingSources.length > 0 && (
+                    <RagSourceList sources={streamingSources} />
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-2xl px-4 py-3 w-fit shadow-2xs">
@@ -632,52 +1178,134 @@ export default function IdeationChatView({
         </div>
       </div>
 
-      {/* Bottom Floating Input Bar chuẩn MindTripAI */}
+      {/* Bottom Floating Input Bar (+ Multimodal Attach Menu + Staged Preview) */}
       <footer className="shrink-0 px-4 sm:px-8 pb-4 pt-2 bg-gradient-to-t from-[#FCFAF5] via-[#FCFAF5] to-transparent">
-        <div className="max-w-[780px] mx-auto">
-          <div className="flex items-end gap-2 rounded-3xl border border-neutral-300 bg-white px-4 py-2.5 shadow-md focus-within:border-neutral-900 focus-within:ring-1 focus-within:ring-neutral-900 transition">
+        <div className="max-w-[744px] mx-auto relative">
+          <ChatAttachmentMenu
+            isOpen={isAttachMenuOpen}
+            onClose={() => setIsAttachMenuOpen(false)}
+            onSelectAttachment={(ready) => {
+              setPendingAttachment(ready);
+              setTimeout(() => textareaRef.current?.focus(), 0);
+            }}
+          />
+
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              const file = e.dataTransfer.files?.[0];
+              if (!file) return;
+              e.preventDefault();
+              void fileToReadyAttachment(file, 'file')
+                .then((ready) => {
+                  setPendingAttachment(ready);
+                  setTimeout(() => textareaRef.current?.focus(), 0);
+                })
+                .catch((err) => setErrorMessage(err instanceof Error ? err.message : 'Không thể đọc tệp đính kèm.'));
+            }}
+            className="rounded-[28px] border border-neutral-300/90 bg-white px-4 pt-3 pb-2.5 shadow-[0_6px_24px_rgba(0,0,0,0.06)] focus-within:border-neutral-900 focus-within:ring-1 focus-within:ring-neutral-900/15 transition"
+          >
+            {pendingAttachment && (
+              <StagedAttachmentChip
+                attachment={pendingAttachment}
+                onRemove={() => setPendingAttachment(null)}
+              />
+            )}
+
             <textarea
               ref={textareaRef}
               rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onPaste={(e) => {
+                const file = e.clipboardData?.files?.[0];
+                if (!file) return;
+                e.preventDefault();
+                void fileToReadyAttachment(file, 'file')
+                  .then((ready) => setPendingAttachment(ready))
+                  .catch((err) => setErrorMessage(err instanceof Error ? err.message : 'Không thể đọc ảnh đã dán.'));
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSend();
+                  void handleSend();
                 }
               }}
-              placeholder="Hỏi về thời tiết, đặc sản, nên đi mấy ngày..."
+              placeholder={getAttachmentPlaceholder(
+                pendingAttachment,
+                'Hỏi GreenTrip AI về Đà Nẵng – Huế, hoặc bấm + để tải ảnh, tệp hoặc dán link...'
+              )}
               aria-label="Nhập câu hỏi khởi tạo ý tưởng chuyến đi"
-              className="flex-1 resize-none overflow-y-auto bg-transparent py-2 text-[14px] text-neutral-900 placeholder:text-neutral-500 focus:outline-none max-h-36 leading-relaxed"
+              className="w-full resize-none overflow-y-auto bg-transparent text-[14.5px] text-neutral-900 placeholder:text-neutral-600 focus:outline-none max-h-36 leading-relaxed"
             />
-            <button
-              type="button"
-              onClick={() => handleSend()}
-              disabled={!input.trim() || isSending}
-              aria-label="Gửi tin nhắn"
-              className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
-                input.trim() && !isSending
-                  ? 'bg-neutral-900 hover:bg-neutral-800 text-white cursor-pointer active:scale-95'
-                  : 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
-              }`}
-            >
-              {isSending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={18} />}
-            </button>
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                onClick={() => setIsAttachMenuOpen((prev) => !prev)}
+                aria-label="Đính kèm ảnh, tệp hoặc đường dẫn"
+                aria-expanded={isAttachMenuOpen}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                  isAttachMenuOpen
+                    ? 'bg-neutral-900 text-white rotate-45'
+                    : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-900'
+                }`}
+                title="Đính kèm ảnh, tệp hoặc đường dẫn"
+              >
+                <Plus size={18} strokeWidth={2.2} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleSend()}
+                disabled={(!input.trim() && !pendingAttachment) || isSending}
+                aria-label="Gửi tin nhắn"
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                  (input.trim() || pendingAttachment) && !isSending
+                    ? 'bg-neutral-950 hover:bg-neutral-800 text-white cursor-pointer active:scale-95'
+                    : 'bg-neutral-200 text-neutral-600 cursor-not-allowed'
+                }`}
+              >
+                {isSending ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={17} />}
+              </button>
+            </div>
           </div>
+
           <p className="mt-2 text-center text-xs text-neutral-600">
-            GreenTrip AI gợi ý tham khảo trước chuyến đi — bấm{' '}
-            <button
-              type="button"
-              onClick={handleCreateTripClick}
-              className="font-semibold text-emerald-800 hover:underline cursor-pointer"
-            >
-              Tạo lịch trình từ ý tưởng này
-            </button>{' '}
-            bất cứ lúc nào bạn muốn chốt kế hoạch.
+            GreenTrip AI có thể nhầm lẫn. Hãy kiểm tra lại thông tin quan trọng.
           </p>
         </div>
       </footer>
+        </div>
+
+        {/* Desktop Split-Screen Interactive Map chuẩn MindTripAI */}
+        {mapPois.length > 0 && !isSplitMapCollapsed && (
+          <aside
+            aria-label="Bản đồ địa điểm tương tác"
+            className="hidden lg:flex w-[44%] xl:w-[46%] shrink-0 h-full p-3 pl-0 bg-[#FCFAF5]"
+          >
+            <div className="w-full h-full rounded-[22px] overflow-hidden border border-neutral-200/90 shadow-[0_4px_18px_rgba(0,0,0,0.06)] relative bg-white">
+              <button
+                type="button"
+                onClick={() => setIsSplitMapCollapsed(true)}
+                aria-label="Thu gọn bản đồ"
+                title="Thu gọn bản đồ"
+                className="absolute top-3 left-3 z-[400] w-10 h-10 rounded-full bg-white/95 hover:bg-white border border-neutral-200 shadow-md flex items-center justify-center text-neutral-900 cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+              >
+                <ArrowLeft size={17} />
+              </button>
+              <PoiMap
+                pois={mapPois}
+                selectedPoiId={selectedMapPoiId}
+                hoveredPoiId={hoveredPoiId}
+                onSelectPoi={setSelectedMapPoiId}
+                onHoverPoi={setHoveredPoiId}
+                hideTopControls
+              />
+            </div>
+          </aside>
+        )}
+      </div>
 
       {/* Quick Map Preview Modal chuẩn MindTrip [🗺️ Map] */}
       {isMapOpen && mapPois.length > 0 && (
@@ -717,6 +1345,15 @@ export default function IdeationChatView({
             </div>
           </div>
         </div>
+      )}
+      {explanationPoi && (
+        <ExplanationModal
+          poiId={explanationPoi.id}
+          poiName={explanationPoi.name}
+          explanationSnippet={explanationPoi.snippet}
+          isOpen={Boolean(explanationPoi)}
+          onClose={() => setExplanationPoi(null)}
+        />
       )}
     </main>
   );

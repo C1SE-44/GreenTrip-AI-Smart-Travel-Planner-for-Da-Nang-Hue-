@@ -50,13 +50,20 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 * **Chỉnh sửa thông tin chuyến tại Planner:** Người dùng có thể sửa điểm đến, thời gian, số khách, ngân sách và sở thích từ Header; PB09 lấy bộ metadata mới. Nếu chuyến đã có POI trong lịch và thay đổi điểm đến/ngày, Planner tạo bản xem trước bằng engine hiện có; chỉ lưu lịch và metadata liên quan sau khi người dùng xác nhận. Số khách, ngân sách và sở thích cập nhật trên trip theo cơ chế lưu hiện tại mà không tự xáo trộn lịch đã xác nhận.
 * **F-06 — Không gian Lịch trình Split-Screen, Xếp lịch tự động & Tối ưu xanh (`PB11`):**
   * Giao diện chia đôi: Timeline theo ngày (bên trái) + Bản đồ lộ trình đánh số thứ tự & lọc theo ngày (bên phải).
-  * Trợ lý xếp lịch theo 3 nhịp độ (`Relaxed` / `Balanced` / `Fast`), tự chèn khung giờ nghỉ, kiểm tra xung đột giờ mở cửa.
-  * **Tối ưu đường đi (No Zig-zag):** Gom cụm điểm dừng giảm đi vòng, ước tính tổng km và phát thải CO₂ theo phương tiện (ô tô, xe máy, công cộng, đi bộ).
+  * Chuyến đi mới bắt đầu với các ngày chưa có điểm dừng; không tự tạo lịch mẫu. Trợ lý xếp lịch theo 3 nhịp độ Relaxed / Balanced / Fast, tự chèn khung giờ nghỉ và kiểm tra xung đột giờ mở cửa khi người dùng chủ động yêu cầu.
+  * Nếu mở lịch có bản nháp chưa đồng bộ, phiên đã đăng nhập sẽ tự thử đồng bộ lại; phiên khách giữ nguyên bản nháp và danh sách chuyến đi trên cùng trình duyệt/nguồn gốc trang web, không đồng bộ sang tài khoản. Khi lưu trữ trình duyệt bị xóa hoặc đổi thiết bị/nguồn gốc, bản nháp khách có thể không còn truy cập được.
+  * Nếu người dùng yêu cầu xếp lịch nhưng chưa có địa điểm trong Ý tưởng hoặc lịch, hỏi họ có muốn GreenTrip gợi ý và xếp địa điểm không. Chỉ thêm gợi ý sau khi người dùng xác nhận; nếu họ chọn tự thêm hoặc để sau thì lịch tiếp tục để trống.
+  * Xếp lịch thông minh theo kiểu cộng dồn: các điểm đã có không bị xóa khi chạy lại; lần chạy mới chỉ bổ sung ý tưởng/đề xuất chưa được xếp theo sức chứa còn lại. Với chuyến có POI ở nhiều thành phố, trợ lý phân bổ ngày thành các chặng thành phố liên tiếp, mỗi ngày chỉ xếp một thành phố để tránh đi qua lại Đà Nẵng–Huế; không tự thêm điểm ở thành phố khác vào ngày đã có điểm. Khi người dùng chủ động bấm Sắp xếp thông minh, điểm đã chọn có thể được chuyển sang chặng thành phố phù hợp, giữ mã điểm, giờ và ghi chú. Lịch thủ công vẫn giữ nguyên cho tới khi người dùng yêu cầu sắp xếp thông minh.
+  * Nhịp Thong thả/Cân bằng/Dày đặc lần lượt giới hạn trợ lý tự xếp tối đa 2/3/5 điểm mỗi ngày; điểm người dùng đã có luôn được giữ. Trợ lý tự xếp tối đa một quán cà phê mỗi ngày, có thể chuyển quán do trợ lý xếp sang ngày khác; nếu không còn ngày phù hợp thì giữ quán trong Ý tưởng. Không có ngày nào phải có quán cà phê. Trợ lý chỉ dùng POI có trong danh mục hoặc kết quả API, và không bịa thêm khi dữ liệu phù hợp không đủ.
+  * Điểm trợ lý xếp thành công cũng được thêm vào Ý tưởng và gắn nhãn ngày đã xếp. Nút × trên thẻ Ý tưởng gỡ điểm khỏi cả Ý tưởng lẫn lịch, đồng thời tạm loại điểm khỏi gợi ý tự động đến khi người dùng chủ động thêm lại. Cho phép hoàn tác lần xếp tự động gần nhất; mọi chỉnh sửa lịch tiếp theo sẽ ẩn thao tác hoàn tác để không ghi đè thay đổi mới.
+  * Các công cụ bổ sung như nhịp độ, khoảng cách, ưu tiên điểm bản địa, xuất lịch, thêm ngày và tối ưu đường đi được gom trong mục Tùy chọn để giữ màn hình lịch trình gọn.
+  * Tối ưu đường đi: gom cụm điểm dừng giảm đi vòng, ước tính tổng km và phát thải CO₂ theo phương tiện. Có 3 chế độ đánh đổi Nhanh nhất / Tiết kiệm / Xanh & Ít đông kèm so sánh trước–sau, hoàn tác, quy đổi CO₂ và 5 chỉ số nghiên cứu: Khả thi tuyến, Hài lòng, Đa dạng, Giảm CO₂, Cộng đồng địa phương. Cảnh báo ngày có nhiều tỉnh/thành và khuyến nghị tách lịch.
   * **Theo dõi ngân sách (`C_total` vs `B_max`):** Tính tổng chi phí dự kiến theo số khách và cảnh báo ngay khi vượt trần ngân sách.
   * **Ứng phó thời tiết 1 chạm & Cảnh báo Miền Trung:** Đổi nhanh hoạt động ngoài trời sang điểm trong nhà phù hợp kèm hoàn tác (Undo); hỗ trợ gợi ý điểm thay thế lân cận (ưu tiên **bản địa ít đông**); hiển thị cảnh báo nhẹ nếu chỉ xếp 1 ngày đi Huế từ Đà Nẵng hoặc đi vào mùa mưa tháng 9–1 (kèm lưu ý sóng biển).
 * **F-07 — Trợ lý AI Travel Copilot & Cẩm nang Bản địa Xanh (`PB14`):** Chat trực tiếp trong không gian chuyến đi (`TripOverviewView`, `/chat`) qua `POST /trips/copilot/chat` để nhận tư vấn, highlight địa điểm lên bản đồ, thêm vào Ý tưởng hoặc cập nhật lịch trình; tích hợp ngăn **Cẩm nang Bản địa Xanh** (phong thủy Cố đô, trang phục di sản, di chuyển cho người lớn tuổi, dự phòng mùa mưa).
 * **F-08 — Xuất dữ liệu ngoại tuyến (Offline Export):** Xuất lịch trình ra `.ics` (tương thích Google/Apple Calendar), xuất `.pdf` (Backend ReportLab / in PDF) và checklist hành trang du lịch xanh (tự động nhận diện mùa mưa miền Trung tháng 9–1, bổ sung áo mưa bộ và giày chống thấm).
 * **F-09 — Phân quyền RBAC 2 lớp & Cổng quản trị dữ liệu POI (`/admin`):** Kiểm tra vai trò `ADMIN` và trạng thái `ACTIVE` trực tiếp từ cơ sở dữ liệu (`401`/`403`), cung cấp màn hình quản trị `/admin` bảo vệ 2 lớp cho phép thống kê tổng quan, ẩn/hiện địa điểm, chỉnh sửa giá vé/điểm xanh kèm lưu vết kiểm toán ACID (`admin_audit_logs`).
+* **F-10 — Gói hành trình tuyển chọn:** Cung cấp ít nhất hai gói 2–3 ngày cho mỗi chủ đề đang được hỗ trợ (tiết kiệm, cao cấp, gia đình, check-in, thiên nhiên/xanh, di sản/văn hóa, ẩm thực, cà phê, tâm linh, làng nghề/mua sắm, cặp đôi, phiêu lưu, ngày mưa và tuyến Đà Nẵng–Huế). Mỗi gói phải nêu POI cụ thể theo từng ngày; ảnh bìa phải lấy từ POI thuộc chính gói. Nếu không có ảnh POI phù hợp thì dùng ảnh địa phương có sẵn hoặc placeholder, không dùng ảnh ngẫu nhiên theo thể loại. Gói chỉ hiển thị khi mọi điểm dừng cùng nơi lưu trú được đối chiếu với POI đang hoạt động; nơi lưu trú phải có thông tin liên hệ. Cho phép lọc theo điểm đến, chủ đề, thời lượng và mức ngân sách lưu trú; bộ lọc mặc định thu gọn, thanh lọc có một số chip chủ đề nhanh kèm số gói phù hợp để áp dụng bộ lọc trực tiếp; chủ đề không có kết quả trong các bộ lọc còn lại sẽ bị vô hiệu hóa. Khi có bộ lọc, người dùng có thể xóa toàn bộ điều kiện lọc từ thanh công cụ. Khi chọn gói, tạo chuyến đi với điểm tham quan trong lịch theo ngày và POI khách sạn trong Ý tưởng; bộ xếp lịch tự động không xếp khách sạn thành điểm tham quan. Giá lưu trú chỉ hiển thị theo dữ liệu tham khảo theo đêm kèm yêu cầu xác nhận trực tiếp, không giả định là giá đặt phòng hoặc tổng giá gói.
 
 ### 3.2. Ngoài phạm vi MVP / Kế hoạch giai đoạn sau (Out-of-Scope & Planned v1.1)
 * **Không làm trong v1.0:**
@@ -84,13 +91,20 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 ### Flow 3: Tạo chuyến đi & Chat cùng AI Copilot
 1. Người dùng vào `/planner` (`/trips` / `/my-trips`) → bấm **Tạo chuyến đi mới** → nhập điểm đến, ngày đi, số khách, ngân sách.
 2. Trong màn hình tổng quan chuyến đi (`TripOverviewView`), cột trái là **AI Copilot Chat**, cột phải là **Bản đồ & Drawer Ý tưởng / Lịch trình / Cẩm nang**.
+   - Tại Landing, người dùng có thể chọn và chỉnh **lịch tham khảo**; chỉ mở chuyến riêng sau khi máy chủ xác nhận đã lưu toàn bộ điểm dừng theo ngày và khung giờ vào tài khoản. Nếu đồng bộ lỗi, giữ bản nháp trên thiết bị, báo rõ trạng thái và cho thử lại; khi mở lại chuyến đi đã lưu, lịch phải hiện nguyên vẹn.
 3. Người dùng hỏi AI → nhận gợi ý địa điểm gắn liên kết bản đồ → bấm **+ Thêm vào Ý tưởng** hoặc mở **Xem lịch theo ngày**.
 
 ### Flow 4: Xếp lịch theo ngày, Tinh chỉnh, Ứng phó thời tiết & Xuất file
-1. Tại `TripItineraryView`, người dùng chọn nhịp độ (`Relaxed` / `Balanced` / `Fast`) để hệ thống xếp lịch hoặc tự thêm/xóa/sửa giờ, tiêu đề, ghi chú từng điểm dừng.
+1. Tại `TripItineraryView`, ngày mới để trống. Người dùng thêm điểm vào Ý tưởng hoặc bấm **Gợi ý & xếp lịch**; nếu chưa có địa điểm, GreenTrip hỏi trước khi gợi ý và xếp. Khi thêm ý tưởng sau khi đã có lịch, bấm **Xếp thêm địa điểm** để đưa điểm mới vào sức chứa còn lại mà vẫn giữ các điểm cũ; nhịp Thong thả/Cân bằng/Dày đặc giới hạn trợ lý thêm tối đa 2/3/5 điểm mỗi ngày. Nếu người dùng đã có nhiều hơn mức mới, các điểm cũ vẫn được giữ và trợ lý không thêm quá giới hạn. Điểm trợ lý xếp thành công đồng thời xuất hiện trong Ý tưởng. Nút × trên thẻ Ý tưởng gỡ địa điểm khỏi cả Ý tưởng và lịch, đồng thời ngăn gợi ý tự động đưa lại cho đến khi người dùng chủ động thêm lại. Có thể hoàn tác ngay lần xếp gần nhất trước khi tiếp tục chỉnh lịch. Chọn nhịp độ khi đã có điểm sẽ áp dụng ngay và xếp thêm theo sức chứa mới; nếu chuyến đi chưa có điểm, nhịp độ chỉ được chọn và lịch vẫn trống cho đến khi người dùng chủ động yêu cầu gợi ý/xếp. Người dùng có thể tự thêm/xóa/sửa giờ, tiêu đề, ghi chú từng điểm dừng.
 2. Bấm **Tối ưu đường đi** để gom cụm điểm gần nhau, đổi phương tiện để đối chiếu lượng CO₂ tiết kiệm và kiểm tra thanh tổng ngân sách.
 3. Khi gặp mưa, bấm chuyển chế độ mưa (Rainy Day Switch) để thay điểm ngoài trời bằng điểm trong nhà (có hỗ trợ Undo) hoặc chọn điểm thay thế lân cận.
 4. Lưu lịch trình (đồng bộ lên Database nếu đã đăng nhập; nếu là Guest sẽ gợi ý đăng nhập để đồng bộ) và bấm xuất `.ics` / `.pdf`.
+
+### Flow 5: Chọn gói hành trình có POI và nơi lưu trú
+1. Tại Trang chủ, người dùng lọc các gói theo điểm đến, chủ đề, số ngày/ngân sách lưu trú và mở chi tiết để xem danh sách POI theo từng ngày, nhãn ngân sách tham khảo, mùa phù hợp và nơi lưu trú.
+2. Người dùng xem ảnh, thông tin liên hệ và giá tham khảo theo đêm (nếu POI có dữ liệu), sau đó chọn dùng gói.
+3. Người dùng hoàn tất thông số chuyến đi; các POI tham quan được đưa vào lịch theo đúng ngày của gói, còn nơi lưu trú được thêm vào Ý tưởng để xem hoặc liên hệ.
+4. Người dùng có thể chỉnh sửa chuyến đi; thao tác xếp lịch tự động chỉ chọn POI tham quan và không tính nơi lưu trú thành một điểm ghé.
 
 ---
 
@@ -113,6 +127,7 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 * **Thời gian di chuyển hợp lý:** Chặng liên tỉnh Đà Nẵng ↔ Huế cần tính dư thời gian di chuyển (tối thiểu ~2,0–2,5 tiếng), tránh xếp các điểm dừng chồng lấn giờ mở cửa.
 * **Chống quá tải nhịp độ (Pacing):** Giới hạn mật độ điểm tham quan theo mức nhịp độ (`Relaxed` / `Balanced` / `Fast`) và tự động bố trí khung nghỉ ngơi/ăn uống hợp lý trong ngày.
 * **An toàn khi lỗi dịch vụ ngoài (Neo4j / Gemini):** Khi dịch vụ AI hoặc Neo4j gặp lỗi/timeout, Backend phải trả thông báo lỗi thân thiện (không rò rỉ stack trace hay secret) và giữ nguyên dữ liệu người dùng đang thao tác trên giao diện.
+* **Gói hành trình và dữ liệu POI:** Không hiển thị gói có tên địa điểm không khớp POI đang hoạt động, thiếu phương thức liên hệ nơi lưu trú hoặc ảnh bìa không liên quan đến điểm trong gói. Không dùng ảnh fallback ngẫu nhiên theo thể loại; nếu ảnh POI lỗi thì dùng ảnh thành phố có sẵn hoặc placeholder, và không hiển thị ảnh lưu trú chưa có trong dữ liệu. Không tự tạo giá phòng, giá gói hay chứng nhận xanh; giá tham khảo phải giữ nguyên đơn vị/thời hạn từ dữ liệu nguồn và kèm lưu ý cần xác nhận với cơ sở.
 
 ---
 
@@ -125,6 +140,7 @@ Khách du lịch tự túc đi tuyến **Đà Nẵng – Huế** hiện nay đan
 - [ ] **Hiệu năng & Trạng thái phản hồi:** Có đầy đủ 4 trạng thái UI (`Loading` Skeleton, `Populated`, `Empty`, `Error` có nút thử lại); không có lỗi runtime trên Console.
 - [ ] **Tương thích màn hình & WCAG 2.2 AA:** Giao diện responsive không tràn ngang trên Desktop (`≥ 1280px`) và Mobile (`320px–480px`), tuân thủ checklist 10 bước trong [AGENTS.md](AGENTS.md).
 - [ ] **Kiểm thử tự động & Phân quyền:** Pass `pytest -v backend/tests`, `npm run lint:ci && npm run typecheck && npm run test:unit && npm run build`, và xác minh các case `401`/`403`/`404`.
+- [ ] **Gói hành trình:** Mỗi thẻ hiển thị các điểm đã đối chiếu theo ngày, khoảng thời lượng 2–3 ngày, nơi lưu trú có ít nhất một cách liên hệ và giá phòng chỉ ở mức tham khảo; chọn gói tạo đúng lịch theo ngày, giữ nơi lưu trú trong Ý tưởng và loại nơi lưu trú khỏi xếp lịch tự động. Gói không đủ dữ liệu không được hiển thị như gói hoàn chỉnh.
 
 ### 6.2. Checklist kiểm tra `PRD.md` trước mỗi task mới
 - [ ] Tính năng này phục vụ **vai trò người dùng** nào ở Mục 2?

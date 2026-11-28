@@ -1,0 +1,4 @@
+﻿osm_type,osm_id,city_code,city_name,name,category_name,latitude,longitude,address,description,phone,website,opening_hours,cuisine,is_local_business,local_business_type,estimated_cost,average_visit_minutes,satisfaction_score,popularity_score,existing_name,existing_osm_type,existing_osm_id,distance_meters,review_reason
+node,14351300838,HUE,Huế,Holy Cannons of the Citadel of Hue,Cảnh quan và thiên nhiên,16.4679063,107.581225,,,,,,,False,,,,,,Holy Cannons of the Citadel of Hue,way,617944748,1.9,same normalized name within 100m of current processed Hue POI
+relation,21657722,HUE,Huế,Kinh thành Huế,Di tích lịch sử và văn hóa,16.475972,107.5726931,,,,,,,False,,,,,,Kinh thành Huế,way,1509320731,88.3,same normalized name within 100m of current processed Hue POI
+relation,21660211,HUE,Huế,Viện Cơ Mật - Tam Toà,Di tích lịch sử và văn hóa,16.4719593,107.583647,,,,,,,False,,,,,,Viện Cơ Mật - Tam Toà,way,695810698,0.0,same normalized name within 100m of current processed Hue POI

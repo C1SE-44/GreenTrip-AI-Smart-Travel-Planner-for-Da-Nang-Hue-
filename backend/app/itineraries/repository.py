@@ -357,15 +357,82 @@ def get_itinerary(itinerary_id: str) -> dict[str, Any] | None:
     return None
 
 
-def get_itinerary_day(itinerary_id: str, day_number: int) -> dict[str, Any] | None:
+def get_itinerary_day(itinerary_id: str, day_number: int, _is_retry: bool = False) -> dict[str, Any] | None:
     """Retrieve day record for an itinerary."""
     ensure_itinerary_tables()
     try:
         with get_connection() as conn:
             cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    """
+                    SELECT COALESCE(itinerary_day_id, day_id), COALESCE(itinerary_id, trip_id), day_number, theme, focus_city, custom_segment_modes
+                    FROM itinerary_days
+                    WHERE (itinerary_id = %s OR trip_id = %s) AND day_number = %s
+                    LIMIT 1
+                    """,
+                    (str(itinerary_id), str(itinerary_id), int(day_number)),
+                )
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        "itinerary_day_id": str(row[0]),
+                        "itinerary_id": str(row[1]),
+                        "day_number": int(row[2]),
+                        "theme": row[3],
+                        "focus_city": row[4],
+                        "custom_segment_modes": row[5] if len(row) > 5 else None,
+                    }
+            except Exception:
+                # Fallback nếu cột custom_segment_modes chưa có trong DB hiện tại
+                if hasattr(conn, "rollback"):
+                    conn.rollback()
+                cursor.execute(
+                    """
+                    SELECT COALESCE(itinerary_day_id, day_id), COALESCE(itinerary_id, trip_id), day_number, theme, focus_city
+                    FROM itinerary_days
+                    WHERE (itinerary_id = %s OR trip_id = %s) AND day_number = %s
+                    LIMIT 1
+                    """,
+                    (str(itinerary_id), str(itinerary_id), int(day_number)),
+                )
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        "itinerary_day_id": str(row[0]),
+                        "itinerary_id": str(row[1]),
+                        "day_number": int(row[2]),
+                        "theme": row[3],
+                        "focus_city": row[4],
+                        "custom_segment_modes": None,
+                    }
+    except Exception as exc:
+        logger.error("Error fetching day %s for itinerary %s: %s", day_number, itinerary_id, exc)
+
+    # Nếu là trip_... tự động khởi tạo nếu chưa có (chặn đệ quy vô hạn bằng _is_retry)
+    if not _is_retry and (str(itinerary_id).startswith("trip_") or str(itinerary_id).startswith("trip-")):
+        ensure_user_trip_itinerary(str(itinerary_id), max_days=max(day_number, 4))
+        return get_itinerary_day(itinerary_id, day_number, _is_retry=True)
+
+    return None
+
+
+def save_itinerary_day_custom_segment_modes(
+    itinerary_id: str,
+    day_number: int,
+    custom_modes: dict[int, str],
+) -> bool:
+    """Persist custom transport mode selections for segments on an itinerary day."""
+    import json
+
+    ensure_itinerary_tables()
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            # Fetch existing custom_segment_modes
             cursor.execute(
                 """
-                SELECT COALESCE(itinerary_day_id, day_id), COALESCE(itinerary_id, trip_id), day_number, theme, focus_city
+                SELECT custom_segment_modes
                 FROM itinerary_days
                 WHERE (itinerary_id = %s OR trip_id = %s) AND day_number = %s
                 LIMIT 1
@@ -373,23 +440,32 @@ def get_itinerary_day(itinerary_id: str, day_number: int) -> dict[str, Any] | No
                 (str(itinerary_id), str(itinerary_id), int(day_number)),
             )
             row = cursor.fetchone()
-            if row:
-                return {
-                    "itinerary_day_id": str(row[0]),
-                    "itinerary_id": str(row[1]),
-                    "day_number": int(row[2]),
-                    "theme": row[3],
-                    "focus_city": row[4],
-                }
+            existing: dict[str, str] = {}
+            if row and row[0]:
+                try:
+                    existing = json.loads(row[0])
+                except Exception:
+                    existing = {}
+
+            # Merge new custom modes (keys as strings for JSON)
+            for seg_idx, mode in custom_modes.items():
+                existing[str(seg_idx)] = str(mode)
+
+            serialized = json.dumps(existing)
+
+            cursor.execute(
+                """
+                UPDATE itinerary_days
+                SET custom_segment_modes = %s
+                WHERE (itinerary_id = %s OR trip_id = %s) AND day_number = %s
+                """,
+                (serialized, str(itinerary_id), str(itinerary_id), int(day_number)),
+            )
+            conn.commit()
+            return True
     except Exception as exc:
-        logger.error("Error fetching day %s for itinerary %s: %s", day_number, itinerary_id, exc)
-
-    # Nếu là trip_... tự động khởi tạo nếu chưa có
-    if str(itinerary_id).startswith("trip_") or str(itinerary_id).startswith("trip-"):
-        ensure_user_trip_itinerary(str(itinerary_id), max_days=max(day_number, 4))
-        return get_itinerary_day(itinerary_id, day_number)
-
-    return None
+        logger.error("Error persisting custom segment modes for day %s itinerary %s: %s", day_number, itinerary_id, exc)
+        return False
 
 
 def get_itinerary_day_stops(itinerary_day_id: str) -> list[dict[str, Any]]:

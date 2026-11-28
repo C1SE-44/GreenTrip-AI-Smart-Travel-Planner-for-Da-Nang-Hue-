@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Minus, Plus, Calendar, Loader2, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { UserTrip } from '@/pages/ExplorePage';
 import { validateTripParameters } from '@/services/tripService';
+import { getTripCoverFallback } from '@/components/explore/exploreUtils';
 
 export interface CreateTripCopilotModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ export interface CreateTripCopilotModalProps {
   onCreated?: (trip: UserTrip, options?: { openInItinerary?: boolean }) => void;
   initialPrompt?: string;
   initialChatHistory?: CopilotTripMessage[];
+  initialItineraryOutline?: CopilotDayOutline[];
   defaultOpenItinerary?: boolean;
 }
 
@@ -38,6 +40,7 @@ export default function CreateTripCopilotModal({
   onCreated,
   initialPrompt,
   initialChatHistory,
+  initialItineraryOutline,
   defaultOpenItinerary = false,
 }: CreateTripCopilotModalProps) {
   const [tripPrompt, setTripPrompt] = useState('');
@@ -327,11 +330,11 @@ export default function CreateTripCopilotModal({
     const normDest = getNormalizedDestination();
     const validDays = normDest === 'Đà Nẵng & Huế' ? Math.max(2, flexibleDays) : Math.max(1, flexibleDays);
     const validPeople = Math.max(1, adults + children);
-    const dailyRatePerPerson =
-      budgetTier === 'budget' ? 650000 : budgetTier === 'luxury' ? 2800000 : 1300000;
-    const estimatedBudget = customBudgetVnd && customBudgetVnd > 0
+    const enteredTotalBudget = typeof customBudgetVnd === 'number'
+      && Number.isSafeInteger(customBudgetVnd)
+      && customBudgetVnd > 0
       ? customBudgetVnd
-      : dailyRatePerPerson * validDays * validPeople;
+      : undefined;
 
     const startDateStr = whenTab === 'dates' && rangeStart
       ? `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, '0')}-${String(rangeStart.getDate()).padStart(2, '0')}`
@@ -356,11 +359,7 @@ export default function CreateTripCopilotModal({
         ? (tripPrompt.trim().length > 50 ? tripPrompt.trim().slice(0, 50) + '...' : tripPrompt.trim())
         : `Hành trình ${normDest} ${validDays} ngày`;
 
-      const coverImage = normDest === 'Huế'
-        ? 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=800&q=80'
-        : normDest === 'Đà Nẵng'
-        ? 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80'
-        : 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&q=80';
+      const coverImage = getTripCoverFallback(normDest);
 
       const newTrip: UserTrip = {
         id: 'trip_' + Date.now(),
@@ -375,14 +374,11 @@ export default function CreateTripCopilotModal({
         prompt: tripPrompt.trim(),
         preferences: selectedInterests,
         preferenceText: preferenceText.trim() || undefined,
-        totalBudget: estimatedBudget,
+        budgetTier,
+        totalBudget: enteredTotalBudget,
         recommendationTripData: validatedData,
-        itineraryOutline: (validatedData.itinerary_outline && validatedData.itinerary_outline.length > 0)
-          ? (validatedData.itinerary_outline as unknown as CopilotDayOutline[]).map((d: CopilotDayOutline, idx: number) => ({
-              ...d,
-              stops: d.stops || buildDefaultMindtripItinerary(normDest, validDays)[idx]?.stops || [],
-            }))
-          : buildDefaultMindtripItinerary(normDest, validDays),
+        // Only a selected package supplies an outline; normal new trips start empty.
+        itineraryOutline: initialItineraryOutline?.length ? initialItineraryOutline : [],
         copilotChatHistory: [
           ...(initialChatHistory ?? []),
           ...buildDefaultMindtripConversation(
@@ -411,9 +407,7 @@ export default function CreateTripCopilotModal({
         ? (tripPrompt.trim().length > 50 ? tripPrompt.trim().slice(0, 50) + '...' : tripPrompt.trim())
         : `Hành trình ${normDest} ${validDays} ngày`;
 
-      const coverImage = normDest === 'Huế'
-        ? 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=800&q=80'
-        : 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80';
+      const coverImage = getTripCoverFallback(normDest);
       const pacing = estimatePacing(validDays);
 
       const newTrip: UserTrip = {
@@ -429,10 +423,11 @@ export default function CreateTripCopilotModal({
         prompt: tripPrompt.trim(),
         preferences: selectedInterests,
         preferenceText: preferenceText.trim() || undefined,
-        totalBudget: estimatedBudget,
+        budgetTier,
+        totalBudget: enteredTotalBudget,
         pacingLevel: pacing.level,
         pacingLabel: pacing.label,
-        itineraryOutline: buildDefaultMindtripItinerary(normDest, validDays),
+        itineraryOutline: initialItineraryOutline?.length ? initialItineraryOutline : [],
         copilotChatHistory: [
           ...(initialChatHistory ?? []),
           ...buildDefaultMindtripConversation(

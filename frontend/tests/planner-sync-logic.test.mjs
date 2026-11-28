@@ -14,6 +14,8 @@ const tripIdeaSelectionJs = ts.transpileModule(tripIdeaSelectionSource, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 const { updateTripIdeaIds, uniqueTripRecommendationPois } = await import(`data:text/javascript;base64,${Buffer.from(tripIdeaSelectionJs).toString('base64')}`);
+const apiClientPath = path.resolve('src/lib/api.ts');
+const viteConfigPath = path.resolve('vite.config.ts');
 
 // Tái hiện chính xác hàm updateDateRangeWithDays trong itineraryService.ts để test unit độc lập
 function updateDateRangeWithDays(currentDateStr, newDaysCount = 1) {
@@ -246,18 +248,33 @@ test('PB11: Trợ lý xếp lịch dùng nhịp độ, ý tưởng, gợi ý và
   assert.ok(viewContent.includes('recommendations?: Poi[]'), 'Itinerary view accepts PB09/Thiện recommendations');
   assert.ok(viewContent.includes('fetchPoiRecommendations({'), 'Standalone itinerary view can request live PB09 suggestions through the recommendation service');
   assert.ok(viewContent.includes('selectAutomaticPois(') && viewContent.includes('optimizeDays('), 'Smart action selects and schedules POIs');
-  assert.ok(viewContent.includes('onClick={() => runSmartSchedule(level)}'), 'Each pacing preset applies a real re-schedule');
+  assert.ok(viewContent.includes('onClick={() => handlePacingChange(level)}'), 'Pacing presets immediately schedule more ideas when itinerary content exists');
+  assert.ok(viewContent.includes('setAssistantInsight(`Đã chọn nhịp ${level}. Lịch vẫn để trống;'), 'Choosing pacing on an empty trip does not create stops');
+  assert.ok(viewContent.includes('mergeAssistantStopsIntoIdeas('), 'Assistant-scheduled POIs are synced into the Ideas list');
+  assert.ok(viewContent.includes('const handleRemoveIdeaFromTrip ='), 'Removing an Idea also removes its scheduled copies');
+  assert.ok(viewContent.includes('onRemovePoi={handleRemoveIdeaFromTrip}'), 'Selected POI panel removal is connected to the full removal handler');
+  assert.ok(viewContent.includes('getRouteCoordinateCoverage('), 'Route buttons validate coordinate availability before optimizing');
+  assert.ok(viewContent.includes('onClick={handleSmartScheduleClick}'), 'Smart schedule runs only after the user requests it');
   assert.ok(viewContent.includes('aria-pressed={pacingLevel === level}'), 'Selected pacing is exposed accessibly');
   assert.ok(viewContent.includes('Vì sao GreenTrip xếp như vậy?'), 'Schedule result explains assistant choices');
-  assert.ok(serviceContent.includes("pacing === 'Relaxed' ? 2 : pacing === 'Fast' ? 5 : 3"), 'Relaxed, Balanced and Fast have different place targets');
+  assert.ok(viewContent.includes('Xếp thêm địa điểm'), 'Rerunning communicates that it adds new places');
+  assert.ok(viewContent.includes('handleUndoSmartSchedule'), 'The latest automatic schedule can be undone');
+  assert.ok(viewContent.includes('excludeDismissedPois(ideaPois, dismissed)'), 'Removed ideas stay excluded from automatic runs');
+  assert.ok(viewContent.includes('setSmartScheduleUndoPlan(null)'), 'Later itinerary edits clear stale undo state');
+  assert.ok(viewContent.includes('setSmartScheduleUndoPlan(previousPlan)'), 'Each smart run stores the previous schedule for undo');
+  assert.ok(viewContent.includes('Keep previous assistant picks'), 'Rerunning preserves previously scheduled assistant stops');
+  assert.ok(serviceContent.includes('function dailyVisitStopTarget'), 'Relaxed, Balanced and Fast have explicit daily stop targets');
+  assert.ok(viewContent.includes('dailyVisitStopTarget(requestedPacing)'), 'Smart scheduling applies the selected per-day stop target');
+  assert.ok(viewContent.includes('top_k: 10,') && viewContent.includes('offset: 0,'), 'PB09 recommendation fetch uses the first paginated result page');
   assert.ok(serviceContent.includes('function preferredVisitPeriods'), 'Scheduler uses place time-of-day preferences');
   assert.ok(serviceContent.includes('stops.filter((stop) => experienceGroup'), 'Scheduler limits repeated cafes per day');
   assert.ok(overviewContent.includes('recommendations={recommendedPois}'), 'Overview feeds its current recommendations into the new itinerary UI');
 });
 
-test('Planner schedule generation previews only selected POIs before saving', () => {
+test('Planner schedule generation includes current recommendations and previews before saving', () => {
   const viewContent = fs.readFileSync(tripItineraryViewPath, 'utf8');
-  assert.ok(viewContent.includes('selectAutomaticPois(\n      baseDays,\n      availableIdeas,\n      [],'), 'Unselected Recommendation results must not be sent to the scheduler');
+  assert.ok(viewContent.includes('const availableRecommendations = excludeDismissedPois(scheduleRecommendations, dismissed);'), 'Dismissed recommendations are excluded before scheduling');
+  assert.ok(viewContent.includes('      availableRecommendations,\n      tripWithValidBudget'), 'Current recommendation results are passed to the existing scheduler');
   assert.ok(viewContent.includes('if (isSchedulePreviewRef.current) return;'), 'Autosave must stop while a generated schedule is a draft');
   assert.ok(viewContent.includes('Hủy bản xem trước'), 'Users must be able to discard the schedule draft');
   assert.ok(viewContent.includes('Sử dụng lịch trình này'), 'Saving a generated schedule must require explicit confirmation');
@@ -312,6 +329,41 @@ test('Trip header removes the three top tabs while sidebar trip navigation remai
   assert.ok(exploreContent.includes('Gợi ý địa điểm') && exploreContent.includes('Kế hoạch chi tiết') && exploreContent.includes('Lịch'), 'Sidebar navigation still reaches the Planner views');
 });
 
+test('PB11: Guest drafts are saved locally and server failures keep a retry path', () => {
+  const serviceContent = fs.readFileSync(itineraryServicePath, 'utf8');
+  const viewContent = fs.readFileSync(tripItineraryViewPath, 'utf8');
+
+  assert.ok(serviceContent.includes('export function hasItineraryAccountSession()'), 'Itinerary sync checks the active browser session');
+  assert.ok(viewContent.includes('if (hasItineraryAccountSession())'), 'Restored drafts distinguish signed-in and guest sessions');
+  assert.ok(viewContent.includes('persistPlan(aligned.itinerary);'), 'Restored drafts are retried automatically for signed-in sessions');
+  assert.ok(viewContent.includes('setSaveErrorAction(\'login\')'), 'Guest drafts offer a direct login action');
+  assert.ok(serviceContent.includes("syncStatus: 'synced' | 'local' | 'guest'"), 'Save result distinguishes guest drafts from account sync');
+  assert.ok(serviceContent.includes('if (!context.token)'), 'Guests do not call the itinerary account API');
+  assert.ok(serviceContent.includes("fetchJson<TripItinerary>('/my-trips'"), 'Signed-in itinerary writes use the account-owned API');
+  assert.ok(serviceContent.includes('`/my-trips/${encodeURIComponent(tripId)}`'), 'Signed-in itinerary reads use the account-owned API');
+  assert.ok(serviceContent.includes('greentrip_itinerary_pending_${suffix}'), 'Pending account drafts use account-scoped local storage keys');
+  assert.ok(serviceContent.includes('Máy chủ gặp lỗi (500)'), 'HTTP 500 is reported as a retained local draft');
+  assert.ok(viewContent.includes("result.syncStatus === 'guest'"), 'Guest save status is presented as local-only');
+  assert.ok(viewContent.includes("setSaveErrorAction('login')"), 'Guest receives an action to sign in for account sync');
+  assert.ok(viewContent.includes('result.syncMessage ||'), 'Server error feedback explains the retained draft and retry option');
+});
+
+test('Landing sample keeps its saved schedule when opening Planner', () => {
+  const pageContent = fs.readFileSync(path.resolve('src/pages/ExplorePage.tsx'), 'utf8');
+  const sampleContent = fs.readFileSync(path.resolve('src/components/landing/SampleItineraryModal.tsx'), 'utf8');
+  const saveServiceContent = fs.readFileSync(path.resolve('src/services/saveLandingSample.ts'), 'utf8');
+  const launchEffectStart = pageContent.indexOf('// The landing sample is already saved with its complete day plan before navigation.');
+  const launchEffectEnd = pageContent.indexOf('const [isHovered, setIsHovered]', launchEffectStart);
+  assert.ok(launchEffectStart >= 0 && launchEffectEnd > launchEffectStart, 'Planner must identify the landing-sample launch effect');
+  const launchEffect = pageContent.slice(launchEffectStart, launchEffectEnd);
+
+  assert.ok(sampleContent.includes('await saveLandingSample(draft, attempt.current.id, token!)'), 'Landing sample must be saved before navigation');
+  assert.ok(saveServiceContent.includes('saveTripItineraryWithStatus(itinerary)'), 'Landing sample must use the account sync status');
+  assert.ok(saveServiceContent.includes("result.syncStatus !== 'synced'"), 'Landing must not report local-only drafts as account saves');
+  assert.ok(launchEffect.includes('setSelectedTripForDetails(quickTrip)'), 'Planner must open the saved sample trip');
+  assert.ok(!launchEffect.includes('persistTripItinerary(buildItineraryFromOutline(quickTrip, allPois))'), 'Opening a saved sample must not overwrite its full schedule with an empty outline');
+});
+
 test('TripOverviewView: Đồng bộ ý tưởng và tab Đã thích', () => {
   const overviewContent = fs.readFileSync(tripOverviewViewPath, 'utf8');
   assert.ok(overviewContent.includes("modalTab === 'saved'"), 'Must handle modal saved tab');
@@ -362,4 +414,13 @@ test('Planner evidence mode avoids synthesized detail facts without changing Exp
   assert.ok(detailContent.includes('!plannerEvidenceMode && typeof document'), 'Explore mobile portal behavior remains unchanged');
   assert.ok(poiContent.includes('coordinates: hasCoordinates') && poiContent.includes('gallery: Boolean(sourceImage || gallery?.length)'), 'POI normalization records coordinates and gallery provenance');
   assert.ok(detailContent.includes('container-name: poi-detail') && detailContent.includes('@container poi-detail'), 'Planner gallery and detail columns reflow by panel width');
+});
+
+test('Local frontend API requests use the same-origin Vite proxy', () => {
+  const apiContent = fs.readFileSync(apiClientPath, 'utf8');
+  const viteContent = fs.readFileSync(viteConfigPath, 'utf8');
+
+  assert.match(apiContent, /VITE_API_BASE_URL\s*\|\|\s*['"]\/api['"]/, 'The default API base is same-origin /api');
+  assert.ok(viteContent.includes("'/api':"), 'Vite forwards /api requests to the local backend');
+  assert.ok(viteContent.includes('process.env.VITE_BACKEND_TARGET'), 'The local backend target remains configurable');
 });

@@ -9,6 +9,8 @@ from psycopg import connect
 from app.cache import poi_cache
 from app.config import get_settings
 from app.db.neo4j import get_driver
+from app.db.neo4j import get_driver, is_neo4j_in_cooldown, mark_neo4j_unavailable
+from app.db.postgres import get_connection
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +137,36 @@ def _fetch_from_csv_fallback(poi_id: str) -> dict[str, Any] | None:
     return None
 
 
+def compute_green_score_pillars(
+    name: str,
+    cat_name: str | None,
+    is_local: Any,
+    green: Any,
+    eco_features: list[str] | None = None,
+    popularity_score: float | None = None,
+) -> list[dict[str, Any]]:
+    """Compute 4-pillar MCDA Green Score breakdown consistent with enrich_poi_scores.py."""
+    raw_green = float(green) if green is not None else 0.8
+    total_100 = int(round(raw_green * 100 if raw_green <= 1.0 else raw_green))
+    total_100 = max(40, min(98, total_100))
+
+    text = f"{(name or '').lower()} {(cat_name or '').lower()}"
+    feats = [str(f).lower() for f in (eco_features or [])]
+
+    nature = min(98, max(50, total_100 + (6 if any(k in text for k in ("cảnh quan", "biển", "rừng", "sơn trà", "đầm", "vườn", "sinh thái")) else -4)))
+    community = min(98, max(55, (90 if is_local else 68) + (6 if any(k in text for k in ("làng", "di tích", "chùa", "cố đô", "bản địa")) else 0)))
+    ops = min(98, max(55, total_100 + (8 if ("chay" in text or "vegan" in text or len(feats) > 0) else -3)))
+    low_crowd_bonus = 6 if (popularity_score is not None and float(popularity_score) <= 3.65) else 0
+    transit = min(98, max(55, total_100 + low_crowd_bonus - 2))
+
+    return [
+        {"key": "nature_env", "label": "Môi trường & Sinh thái", "weight_pct": 40, "score": nature},
+        {"key": "heritage_community", "label": "Cộng đồng & Di sản bản địa", "weight_pct": 25, "score": community},
+        {"key": "green_ops", "label": "Vận hành xanh & Ít rác thải", "weight_pct": 20, "score": ops},
+        {"key": "green_transit", "label": "Dễ đi bộ & Giao thông xanh", "weight_pct": 15, "score": transit},
+    ]
+
+
 def _build_facts_payload(
     poi_id: str,
     name: str | None,
@@ -182,7 +214,10 @@ def fetch_local_authentic_poi_ids() -> set[str]:
     if isinstance(cached, list):
         return {str(item) for item in cached if item is not None}
 
-    driver = get_driver()
+    if is_neo4j_in_cooldown():
+        return set()
+
+    driver = None if is_neo4j_in_cooldown() else get_driver()
     if driver is None or not LOCAL_AUTHENTIC_QUERY:
         return set()
 
@@ -197,7 +232,8 @@ def fetch_local_authentic_poi_ids() -> set[str]:
         poi_cache.set_json(cache_key, sorted(poi_ids), ttl_seconds=300)
         return poi_ids
     except Exception as exc:
-        logger.warning("Neo4j local authentic lookup failed, using SQL criteria: %s", exc)
+        mark_neo4j_unavailable()
+        logger.warning("Neo4j local authentic lookup failed, activating cooldown fallback: %s", exc)
         return set()
 
 
@@ -219,8 +255,11 @@ def fetch_poi_explanation_facts(poi_id: str) -> dict[str, Any] | None:
                     "fact_source": "NEO4J",
                 }
     except Exception:
-        logger.warning("Neo4j explanation lookup failed; trying available read-only fallbacks.")
-
+         mark_neo4j_unavailable()
+         logger.warning(
+             "Neo4j explanation lookup failed; "
+              "trying available read-only fallbacks."
+        )
     relational = _fetch_from_relational_db(clean_id)
     # A missing graph row is not proof of absence; only PostgreSQL can confirm 404.
     if relational.status == "not_found":

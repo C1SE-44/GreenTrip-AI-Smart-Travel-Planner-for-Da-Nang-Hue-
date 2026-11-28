@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "noreply@greentrip.vn"
     SMTP_FROM_NAME: str = "GreenTrip AI"
     GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_PLACES_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"
     REDIS_URL: str = ""

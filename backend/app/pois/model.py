@@ -2,6 +2,12 @@ from dataclasses import dataclass
 from typing import Any
 
 
+INACTIVE_POI_STATUSES = frozenset({
+    "INACTIVE", "CLOSED", "CLOSED_PERMANENTLY", "DELETED", "ARCHIVED",
+    "DISABLED", "UNPUBLISHED", "DRAFT", "PENDING", "SUSPENDED", "REMOVED",
+})
+
+
 @dataclass(frozen=True)
 class POI:
     id: str | int

@@ -128,6 +128,7 @@ import {
   formatTripDateRange,
 } from './tripItineraryUtils';
 import ItineraryCarbonBudgetPanel from './ItineraryCarbonBudgetPanel';
+import TransportOptionsPanel from './TransportOptionsPanel';
 import ItineraryMapPanel from './ItineraryMapPanel';
 import ItineraryAddPlacesModal from './ItineraryAddPlacesModal';
 import TripDayEditorModal from './TripDayEditorModal';
@@ -3282,6 +3283,15 @@ export default function TripItineraryView({
             </section>
 
             {/* Danh sách các ngày theo chiều dọc (Chuẩn Ảnh 1, 4 - ĐÃ BỎ DẤU CỘNG Ở HEADER NGÀY) */}
+            {hasPlannedStops && (
+              <TransportOptionsPanel
+                trip={trip}
+                itinerary={plan}
+                disabled={isLoading || isSaving}
+                onTripUpdate={onUpdateTrip}
+              />
+            )}
+
             <div className="space-y-4 pb-10">
               {plan.days.map((day) => {
                 const hasStops = day.stops.length > 0;

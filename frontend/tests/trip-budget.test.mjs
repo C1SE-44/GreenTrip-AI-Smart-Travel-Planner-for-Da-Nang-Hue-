@@ -168,7 +168,7 @@ test('trip workspace saves and reloads the original amount, scope, normalized to
     if (path === '/trip-workspaces') {
       return { items: serverTrip ? [serverTrip] : [], deleted_ids: [] };
     }
-    if (path === '/api/my-trips') return [];
+    if (path === '/my-trips') return [];
     throw new Error(`Unexpected workspace request: ${path}`);
   };
   const storage = { getItem: () => 'test-token' };

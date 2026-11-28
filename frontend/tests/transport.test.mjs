@@ -160,7 +160,7 @@ test('routed roads, labeled heuristics and complete train options can be selecte
 
 test('panel distinguishes loading, empty and API error and requires explicit Workspace apply', () => {
   const panel = fs.readFileSync(path.resolve('src/components/planner/TransportOptionsPanel.tsx'), 'utf8');
-  const workspace = fs.readFileSync(path.resolve('src/pages/ExplorePage.tsx'), 'utf8');
+  const workspace = fs.readFileSync(path.resolve('src/components/explore/exploreUtils.ts'), 'utf8');
   const itineraryView = fs.readFileSync(path.resolve('src/components/planner/TripItineraryView.tsx'), 'utf8');
 
   assert.ok(panel.includes('Đang tải chặng di chuyển'));
@@ -175,7 +175,7 @@ test('panel distinguishes loading, empty and API error and requires explicit Wor
   assert.ok(panel.includes('option.estimated_fare !== null'));
   assert.ok(!panel.includes('option.estimated_fare ?? 0'));
   assert.ok(panel.includes('không đổi POI, thứ tự hoặc thời gian itinerary'));
-  assert.ok(workspace.includes('transportPlan?: TripTransportPlan'));
+  assert.ok(workspace.includes("transportPlan?: import('@/services/transport').TripTransportPlan"));
   assert.ok(itineraryView.includes('<TransportOptionsPanel'));
   assert.ok(!panel.includes('applyAssistant('));
   assert.ok(!panel.includes('saveTripItinerary('));

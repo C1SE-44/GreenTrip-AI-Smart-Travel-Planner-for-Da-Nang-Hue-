@@ -33,6 +33,7 @@ export interface UserTrip {
   roomCount?: number | null;
   accommodationPlan?: import('@/services/accommodations').AccommodationPlan;
   transportPlan?: import('@/services/transport').TripTransportPlan;
+  workspaceRevision?: number;
   greenWeight?: number;
   budgetWeight?: number;
   itineraryOutline?: DailyItineraryOutline[];

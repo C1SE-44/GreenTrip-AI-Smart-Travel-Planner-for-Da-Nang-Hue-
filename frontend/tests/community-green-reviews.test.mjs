@@ -62,6 +62,30 @@ test('in-trip recovery posts the trip id to the reconciliation endpoint', async 
   assert.deepEqual(JSON.parse(calls[0].init.body), {trip_id: 'trip/one'});
 });
 
+test('in-trip preview sends the selected action and stop details without applying the draft', async () => {
+  const calls = [];
+  const api = loadModule('../src/services/travelAssistant.ts', async (path, init) => {
+    calls.push({path, init});
+    return {draft: {id: 'draft-1', kind: 'itinerary', itinerary: null, warnings: []}, workspace_revision: 3};
+  });
+  await api.previewInTripAdjustment({
+    tripId: 'trip/one',
+    action: 'stay_longer',
+    dayNumber: 2,
+    stopId: 'stop/one',
+    extraMinutes: 30,
+  });
+  assert.equal(calls[0].path, '/assistant/in-trip/preview');
+  assert.equal(calls[0].init.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    trip_id: 'trip/one',
+    action: 'stay_longer',
+    day_number: 2,
+    stop_id: 'stop/one',
+    extra_minutes: 30,
+  });
+});
+
 test('visited trip stops link to the own-review form and aggregate stays separate from source reviews', () => {
   const panel = readFileSync(new URL('../src/components/planner/InTripAssistancePanel.tsx', import.meta.url), 'utf8');
   const detail = readFileSync(new URL('../src/components/poi/PoiDetailSection.tsx', import.meta.url), 'utf8');

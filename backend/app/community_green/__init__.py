@@ -1,0 +1,1 @@
+"""GreenTrip community environmental feedback."""

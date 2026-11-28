@@ -346,3 +346,18 @@ def test_no_hallucinated_booking_in_tool_output():
     assert "đã thanh toán" not in out.recommendation_summary.lower()
     assert "đã đặt vé thành công" not in out.recommendation_summary.lower()
     assert "đề xuất" in out.recommendation_summary.lower() or "tối ưu" in out.recommendation_summary.lower()
+
+
+# 21. Fastest priority profile & endpoint support
+def test_fastest_priority_profile_supported():
+    opts = evaluate_segment_transport_options(
+        distance_meters=6000.0,
+        is_intercity=False,
+        profile="fastest",
+    )
+    best = next(o for o in opts if o.recommendation_type == "best_match")
+    assert best.mode in ("motorcycle", "taxi_car")
+
+    res = client.get("/itineraries/sample-danang-hue-3d/days/1/route?profile=fastest")
+    assert res.status_code == 200
+    assert res.json()["priority_profile"] == "fastest"

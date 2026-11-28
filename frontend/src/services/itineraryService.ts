@@ -103,6 +103,8 @@ export interface RouteSegment {
   options: TransportModeOption[];
 }
 
+export type TransportPriorityProfile = 'balanced' | 'eco_priority' | 'budget_constrained' | 'fastest';
+
 export interface DayRouteResponse {
   itinerary_id: string;
   day_number: number;
@@ -118,7 +120,7 @@ export interface DayRouteResponse {
   segments?: RouteSegment[];
   day_total_cost_vnd?: number;
   day_total_carbon_kg?: number;
-  priority_profile?: 'balanced' | 'eco_priority' | 'budget_constrained';
+  priority_profile?: TransportPriorityProfile;
 }
 
 /**
@@ -129,7 +131,7 @@ export async function fetchDayRoute(
   itineraryId: string,
   dayNumber: number,
   signal?: AbortSignal,
-  priorityProfile: 'balanced' | 'eco_priority' | 'budget_constrained' = 'balanced'
+  priorityProfile: TransportPriorityProfile = 'balanced'
 ): Promise<DayRouteResponse> {
   const cleanItinId = encodeURIComponent(itineraryId.trim());
   return fetchJson<DayRouteResponse>(
@@ -147,13 +149,14 @@ export async function updateSegmentTransport(
   dayNumber: number,
   segmentIndex: number,
   selectedMode: string,
-  priorityProfile: 'balanced' | 'eco_priority' | 'budget_constrained' = 'balanced'
+  priorityProfile: TransportPriorityProfile = 'balanced'
 ): Promise<DayRouteResponse> {
   const cleanItinId = encodeURIComponent(itineraryId.trim());
   return fetchJson<DayRouteResponse>(
     `/itineraries/${cleanItinId}/days/${dayNumber}/segment-transport`,
     {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         segment_index: segmentIndex,
         selected_mode: selectedMode,
@@ -161,6 +164,30 @@ export async function updateSegmentTransport(
       }),
     }
   );
+}
+
+/**
+ * Compute day route geometry & per-leg transport recommendations for live itinerary stops.
+ * Backend endpoint: POST /itineraries/compute
+ */
+export async function computeDynamicRoute(
+  stops: RouteStop[],
+  priorityProfile: TransportPriorityProfile = 'balanced',
+  itineraryId?: string,
+  dayNumber?: number,
+  signal?: AbortSignal
+): Promise<DayRouteResponse> {
+  return fetchJson<DayRouteResponse>('/itineraries/compute', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({
+      stops,
+      priority_profile: priorityProfile,
+      ...(itineraryId ? { itinerary_id: itineraryId } : {}),
+      ...(dayNumber ? { day_number: dayNumber } : {}),
+    }),
+  });
 }
 
 

@@ -26,18 +26,31 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import {
+  computeDynamicRoute,
   fetchDayRoute,
   updateSegmentTransport,
   estimateCarbonFootprint,
   formatCarbonAmount,
   type DayRouteResponse,
+  type ItineraryDay,
   type RouteStop,
   type RouteSegment,
   type RouteTransportMode,
+  type TransportPriorityProfile,
 } from '@/services/itineraryService';
+import type { Poi } from '@/data/pois';
+
+const PRIORITY_PROFILES: { id: TransportPriorityProfile; label: string }[] = [
+  { id: 'balanced', label: 'Cân bằng' },
+  { id: 'eco_priority', label: 'Xanh nhất' },
+  { id: 'budget_constrained', label: 'Tiết kiệm' },
+  { id: 'fastest', label: 'Nhanh nhất' },
+];
 
 export interface ItineraryRouteMapProps {
   itineraryId?: string;
+  days?: ItineraryDay[];
+  pois?: Poi[];
   initialDay?: number;
   totalDays?: number;
   selectedStopId?: string | null;
@@ -492,6 +505,8 @@ function calculateModeDuration(baseSec: number, distanceM: number, mode: Transpo
 
 export default function ItineraryRouteMap({
   itineraryId = 'sample-danang-hue-3d',
+  days,
+  pois,
   initialDay = 1,
   totalDays: propTotalDays,
   selectedStopId = null,
@@ -504,6 +519,43 @@ export default function ItineraryRouteMap({
   const [transportMode, setTransportMode] = useState<TransportMode>('driving');
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [showDrawerList, setShowDrawerList] = useState<boolean>(true);
+
+  const getLiveStopsForDay = useCallback(
+    (dayNum: number): RouteStop[] => {
+      if (!days || days.length === 0) return [];
+      const dayObj = days.find((d) => d.day_number === dayNum) || days[dayNum - 1];
+      if (!dayObj || !Array.isArray(dayObj.stops)) return [];
+      const resolved: RouteStop[] = [];
+      for (const s of dayObj.stops) {
+        if (s.stop_type === 'rest') continue;
+        const matchedPoi = pois?.find(
+          (p) =>
+            (s.poi_id && p.id === s.poi_id) ||
+            (s.title && p.name.toLowerCase() === s.title.toLowerCase())
+        );
+        const lat =
+          typeof s.latitude === 'number' && Number.isFinite(s.latitude)
+            ? s.latitude
+            : matchedPoi?.lat;
+        const lng =
+          typeof s.longitude === 'number' && Number.isFinite(s.longitude)
+            ? s.longitude
+            : matchedPoi?.lng;
+        if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+          continue;
+        }
+        resolved.push({
+          order: resolved.length + 1,
+          poi_id: String(s.poi_id || matchedPoi?.id || s.stop_id),
+          name: s.title || matchedPoi?.name || `Điểm dừng ${resolved.length + 1}`,
+          latitude: lat,
+          longitude: lng,
+        });
+      }
+      return resolved;
+    },
+    [days, pois]
+  );
 
   // Tự động xác định số ngày linh hoạt từ Backend hoặc Props (hỗ trợ 1..N ngày)
   const totalDays = useMemo(() => {
@@ -518,19 +570,33 @@ export default function ItineraryRouteMap({
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [activeSegmentModal, setActiveSegmentModal] = useState<RouteSegment | null>(null);
   const [isUpdatingSegment, setIsUpdatingSegment] = useState<boolean>(false);
+  const [priorityProfile, setPriorityProfile] = useState<TransportPriorityProfile>('balanced');
 
   const handleSelectSegmentMode = async (segmentIndex: number, mode: string) => {
     if (!routeData) return;
     setIsUpdatingSegment(true);
+    const liveStops = getLiveStopsForDay(activeDay);
+    const stopsKey = liveStops.map((s) => s.poi_id).join(',');
     try {
-      const updated = await updateSegmentTransport(
+      let updated = await updateSegmentTransport(
         itineraryId,
         activeDay,
         segmentIndex,
         mode,
-        'balanced'
+        priorityProfile
       );
-      routeCacheRef.current.set(activeDay, updated);
+      if (liveStops.length > 0 && (!updated.segments || updated.segments.length === 0)) {
+        updated = await computeDynamicRoute(
+          liveStops,
+          priorityProfile,
+          itineraryId,
+          activeDay
+        );
+      }
+      Array.from(routeCacheRef.current.keys()).forEach((k) => {
+        if (k.startsWith(`${activeDay}:`)) routeCacheRef.current.delete(k);
+      });
+      routeCacheRef.current.set(`${activeDay}:${priorityProfile}:${stopsKey}`, updated);
       setRouteData(updated);
       if (activeSegmentModal && activeSegmentModal.segment_index === segmentIndex) {
         const refreshedSeg = updated.segments?.find((s) => s.segment_index === segmentIndex);
@@ -557,12 +623,15 @@ export default function ItineraryRouteMap({
           const opt = s.options.find((o) => o.mode === s.selected_mode);
           return sum + (opt?.carbon_kg ?? 0);
         }, 0);
+        const newDurationSec = newSegments.reduce((sum, s) => sum + (s.duration_seconds ?? 0), 0);
         const updated = {
           ...prev,
           segments: newSegments,
           day_total_cost_vnd: newCost,
           day_total_carbon_kg: Number(newCarbon.toFixed(3)),
+          total_trip_duration_seconds: newDurationSec,
         };
+        routeCacheRef.current.set(`${activeDay}:${priorityProfile}:${stopsKey}`, updated);
         if (activeSegmentModal && activeSegmentModal.segment_index === segmentIndex) {
           const refreshedSeg = updated.segments?.find((s) => s.segment_index === segmentIndex);
           setActiveSegmentModal(refreshedSeg || null);
@@ -576,7 +645,7 @@ export default function ItineraryRouteMap({
 
   const mapRef = useRef<L.Map | null>(null);
   const markerRefs = useRef<Map<string, L.Marker>>(new Map());
-  const routeCacheRef = useRef<Map<number, DayRouteResponse>>(new Map());
+  const routeCacheRef = useRef<Map<string, DayRouteResponse>>(new Map());
 
   // Xóa cache khi đổi lịch trình
   useEffect(() => {
@@ -590,10 +659,13 @@ export default function ItineraryRouteMap({
     }
   }, [selectedStopId]);
 
-  // Tải dữ liệu lộ trình khi đổi ngày
+  // Tải dữ liệu lộ trình khi đổi ngày hoặc đổi hồ sơ ưu tiên
   const loadDayRoute = useCallback(async (dayNum: number, signal?: AbortSignal) => {
-    if (routeCacheRef.current.has(dayNum)) {
-      setRouteData(routeCacheRef.current.get(dayNum)!);
+    const liveStops = getLiveStopsForDay(dayNum);
+    const stopsKey = liveStops.map((s) => s.poi_id).join(',');
+    const cacheKey = `${dayNum}:${priorityProfile}:${stopsKey}`;
+    if (routeCacheRef.current.has(cacheKey)) {
+      setRouteData(routeCacheRef.current.get(cacheKey)!);
       setLoading(false);
       setError(null);
       return;
@@ -602,19 +674,22 @@ export default function ItineraryRouteMap({
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchDayRoute(itineraryId, dayNum, signal);
-      routeCacheRef.current.set(dayNum, data);
+      const data =
+        liveStops.length > 0
+          ? await computeDynamicRoute(liveStops, priorityProfile, itineraryId, dayNum, signal)
+          : await fetchDayRoute(itineraryId, dayNum, signal, priorityProfile);
+      routeCacheRef.current.set(cacheKey, data);
       setRouteData(data);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return;
       console.warn(`fetchDayRoute failed for day ${dayNum}, activating client fallback:`, err);
       const fallback = getClientFallbackDayRoute(itineraryId, dayNum);
-      routeCacheRef.current.set(dayNum, fallback);
+      routeCacheRef.current.set(cacheKey, fallback);
       setRouteData(fallback);
     } finally {
       setLoading(false);
     }
-  }, [itineraryId]);
+  }, [itineraryId, priorityProfile, getLiveStopsForDay]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1164,15 +1239,54 @@ export default function ItineraryRouteMap({
                 )}
               </div>
 
+              {/* Bộ lọc ưu tiên phương tiện (4 chế độ) */}
+              <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Bộ lọc ưu tiên phương tiện">
+                {PRIORITY_PROFILES.map((prof) => {
+                  const isActive = priorityProfile === prof.id;
+                  return (
+                    <button
+                      key={prof.id}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => setPriorityProfile(prof.id)}
+                      className={`min-h-[32px] px-2.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                        isActive
+                          ? 'bg-emerald-800 text-white shadow-2xs'
+                          : 'bg-white text-stone-700 border border-stone-200 hover:border-emerald-400 hover:bg-emerald-50/40'
+                      }`}
+                    >
+                      {prof.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Stops Timeline Cards */}
-              {((routeData?.day_total_cost_vnd ?? 0) > 0 || (routeData?.day_total_carbon_kg ?? 0) > 0) && (
-                <div className="mb-3 p-2.5 bg-emerald-50/70 border border-emerald-200/60 rounded-xl text-xs flex items-center justify-between">
+              {((routeData?.day_total_cost_vnd ?? 0) > 0 || (routeData?.day_total_carbon_kg ?? 0) > 0 || (routeData?.segments?.length ?? 0) > 0) && (
+                <div className="mb-3 p-2.5 bg-emerald-50/70 border border-emerald-200/60 rounded-xl text-xs flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 text-emerald-900 font-semibold">
-                    <Leaf size={14} className="text-emerald-600" />
+                    <Leaf size={14} className="text-emerald-600 shrink-0" />
                     <span>{routeData?.day_total_carbon_kg ?? 0} kg CO2</span>
                   </div>
-                  <div className="text-stone-600 font-medium">
-                    Chi phí đi lại: <span className="font-bold text-stone-900">~{(routeData?.day_total_cost_vnd ?? 0).toLocaleString('vi-VN')} đ</span>
+                  <div className="text-stone-700 font-medium">
+                    Thời gian:{' '}
+                    <span className="font-bold text-stone-900">
+                      {Math.round(
+                        (routeData?.total_trip_duration_seconds ??
+                          routeData?.segments?.reduce((s, seg) => s + (seg.duration_seconds || 0), 0) ??
+                          routeData?.duration_seconds ??
+                          0) / 60
+                      )}{' '}
+                      phút
+                    </span>
+                  </div>
+                  <div className="text-stone-700 font-medium">
+                    Chi phí đi lại:{' '}
+                    <span className="font-bold text-stone-900">
+                      {(routeData?.day_total_cost_vnd ?? 0) === 0
+                        ? '0 đ'
+                        : `~${(routeData?.day_total_cost_vnd ?? 0).toLocaleString('vi-VN')} đ`}
+                    </span>
                   </div>
                 </div>
               )}

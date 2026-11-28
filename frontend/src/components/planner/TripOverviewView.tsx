@@ -90,6 +90,7 @@ import TripLearnDrawer from './TripLearnDrawer';
 import ExpiredTripBanner from './ExpiredTripBanner';
 import TripHeader from './TripHeader';
 import PoiImage from '@/components/ui/PoiImage';
+import RagSourceList from './RagSourceList';
 
 export { FormattedCopilotMessage, type CopilotAttachmentSummary, type CopilotChatMessageItem };
 export { parseCategoryBudgets, type CategoryBudgets };
@@ -1161,6 +1162,7 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
         avoidNotice: res.avoid_notice || null,
         greenImpact: res.green_impact_summary || null,
         budgetImpact: res.budget_impact_summary || null,
+        sources: res.sources || [],
         actionType: res.action_type,
         factCheckWarning: res.fact_check_warning || null,
         mutationSummary: res.mutation_summary || [],
@@ -1674,6 +1676,11 @@ const [modalCategory, setModalCategory] = useState<string>('for-you');
                       </ul>
                     )}
                   </div>
+                )}
+
+                {/* Nguồn tham khảo RAG (Citations) */}
+                {msg.sources && msg.sources.length > 0 && (
+                  <RagSourceList sources={msg.sources} />
                 )}
 
                 {/* Tác động xanh & Ngân sách */}

@@ -40,7 +40,7 @@ from app.emission_factors import (
 TRANSPORT_EMISSION_FACTORS_G_PER_KM: dict[str, int] = {
     "driving": int(get_emission_factor_g_pkm("taxi_car")),
     "motorcycle": int(get_emission_factor_g_pkm("motorcycle")),
-    "transit": 40,
+    "transit": int(get_emission_factor_g_pkm("public_bus")),
     "walking": int(get_emission_factor_g_pkm("walking")),
 }
 

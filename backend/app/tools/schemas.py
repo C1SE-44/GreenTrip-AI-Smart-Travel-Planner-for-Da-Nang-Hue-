@@ -106,7 +106,7 @@ class GetRouteInformationInput(BaseModel):
     dest_lat: float = Field(ge=15.0, le=17.0, description="Latitude of destination coordinate")
     dest_lng: float = Field(ge=107.0, le=109.0, description="Longitude of destination coordinate")
     profile: Literal["driving", "bike", "walking"] = Field(default="driving")
-    priority_profile: Literal["balanced", "eco_priority", "budget_constrained"] = Field(
+    priority_profile: Literal["balanced", "eco_priority", "budget_constrained", "fastest"] = Field(
         default="balanced", description="Priority profile for multi-criteria transport evaluation"
     )
 
@@ -130,8 +130,8 @@ class RecommendTransportModeInput(BaseModel):
     origin_lng: float = Field(ge=107.0, le=109.0, description="Longitude of start coordinate")
     dest_lat: float = Field(ge=15.0, le=17.0, description="Latitude of destination coordinate")
     dest_lng: float = Field(ge=107.0, le=109.0, description="Longitude of destination coordinate")
-    priority_profile: Literal["balanced", "eco_priority", "budget_constrained"] = Field(
-        default="balanced", description="Hồ sơ ưu tiên: balanced, eco_priority, budget_constrained"
+    priority_profile: Literal["balanced", "eco_priority", "budget_constrained", "fastest"] = Field(
+        default="balanced", description="Hồ sơ ưu tiên: balanced, eco_priority, budget_constrained, fastest"
     )
     user_preferred_mode: str | None = Field(default=None, description="Phương tiện ưa thích nếu có")
 

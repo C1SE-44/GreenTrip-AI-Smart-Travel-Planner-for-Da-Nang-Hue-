@@ -62,8 +62,8 @@ router = APIRouter(tags=["Itineraries"])
 def get_day_route(
     itinerary_id: str = Path(..., description="Mã định danh lịch trình chuyến đi (ví dụ: 'sample-danang-hue-3d')"),
     day_number: int = Path(..., ge=1, description="Ngày thứ N trong lịch trình (bắt đầu từ 1)"),
-    profile: Literal["balanced", "eco_priority", "budget_constrained"] = Query(
-        default="balanced", description="Hồ sơ trọng số ưu tiên: balanced, eco_priority, budget_constrained"
+    profile: Literal["balanced", "eco_priority", "budget_constrained", "fastest"] = Query(
+        default="balanced", description="Hồ sơ trọng số ưu tiên: balanced, eco_priority, budget_constrained, fastest"
     ),
 ) -> DayRouteResponse:
     if day_number < 1:
@@ -73,7 +73,7 @@ def get_day_route(
         )
 
     profile_str = str(getattr(profile, "default", profile)) if not isinstance(profile, str) else profile
-    if profile_str not in ("balanced", "eco_priority", "budget_constrained"):
+    if profile_str not in ("balanced", "eco_priority", "budget_constrained", "fastest"):
         profile_str = "balanced"
 
     try:
@@ -150,7 +150,20 @@ def update_segment_transport(
     summary="Tính toán hình học tuyến đường và phân tích phương tiện theo danh sách điểm dừng bất kỳ",
 )
 def compute_route(payload: ComputeRouteRequest) -> DayRouteResponse:
-    from app.itineraries import routing_service
+    import json
+    from app.itineraries import repository, routing_service
+
+    merged_custom_modes: dict[int, str] = {}
+    if payload.itinerary_id and payload.day_number:
+        day = repository.get_itinerary_day(payload.itinerary_id, payload.day_number)
+        db_custom_raw = day.get("custom_segment_modes") if day else None
+        if db_custom_raw:
+            try:
+                parsed = json.loads(db_custom_raw)
+                if isinstance(parsed, dict):
+                    merged_custom_modes = {int(k): str(v) for k, v in parsed.items() if str(k).isdigit()}
+            except Exception:
+                merged_custom_modes = {}
 
     route_res = routing_service.compute_route_geometry(
         payload.stops, return_legs=True
@@ -162,13 +175,16 @@ def compute_route(payload: ComputeRouteRequest) -> DayRouteResponse:
         legs = []
 
     segments, day_cost, day_carbon = build_day_segments(
-        payload.stops, profile=payload.priority_profile, legs=legs
+        payload.stops,
+        profile=payload.priority_profile,
+        custom_modes=merged_custom_modes or None,
+        legs=legs,
     )
     total_trip_duration_s = sum(seg.duration_seconds for seg in segments) if segments else duration_s
 
     return DayRouteResponse(
-        itinerary_id="dynamic",
-        day_number=1,
+        itinerary_id=payload.itinerary_id or "dynamic",
+        day_number=payload.day_number or 1,
         total_days=1,
         total_stops=len(payload.stops),
         stops=payload.stops,

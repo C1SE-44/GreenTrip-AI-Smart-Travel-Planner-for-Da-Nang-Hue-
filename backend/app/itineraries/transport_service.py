@@ -4,7 +4,7 @@ GreenTrip Transport Mode Recommendation Service.
 Evaluates multi-criteria transport options for itinerary legs (segments):
 - Distance, Travel Time, Estimated Cost, Carbon Footprint (CO2e), Feasibility.
 - Distinguishes intra-city routes (Đà Nẵng / Huế) from inter-city corridor (Đà Nẵng <-> Huế).
-- Supports priority profiles: balanced, eco_priority, budget_constrained.
+- Supports priority profiles: balanced, eco_priority, budget_constrained, fastest.
 - Transparently flags estimated vs verified schedule data.
 """
 
@@ -27,7 +27,7 @@ TransportModeId = Literal[
     "private_car",
 ]
 
-PriorityProfile = Literal["balanced", "eco_priority", "budget_constrained"]
+PriorityProfile = Literal["balanced", "eco_priority", "budget_constrained", "fastest"]
 
 # ------------------------------------------------------------------------------
 # Baseline Parameters & Heuristics (Documented & Traceable)
@@ -224,6 +224,12 @@ WEIGHTS_BY_PROFILE: dict[PriorityProfile, dict[str, float]] = {
     "budget_constrained": {
         "w_time": 0.20,
         "w_cost": 0.55,
+        "w_carbon": 0.10,
+        "w_feasibility": 0.15,
+    },
+    "fastest": {
+        "w_time": 0.60,
+        "w_cost": 0.15,
         "w_carbon": 0.10,
         "w_feasibility": 0.15,
     },

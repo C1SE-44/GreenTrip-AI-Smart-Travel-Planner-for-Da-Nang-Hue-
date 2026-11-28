@@ -10,6 +10,7 @@ export interface CreateTripCopilotModalProps {
   onCreated?: (trip: UserTrip, options?: { openInItinerary?: boolean }) => void;
   initialPrompt?: string;
   initialChatHistory?: CopilotTripMessage[];
+  initialItineraryOutline?: CopilotDayOutline[];
   defaultOpenItinerary?: boolean;
 }
 
@@ -37,6 +38,7 @@ export default function CreateTripCopilotModal({
   onCreated,
   initialPrompt,
   initialChatHistory,
+  initialItineraryOutline,
   defaultOpenItinerary = false,
 }: CreateTripCopilotModalProps) {
   const [tripPrompt, setTripPrompt] = useState('');
@@ -350,7 +352,9 @@ export default function CreateTripCopilotModal({
         status: 'upcoming',
         prompt: tripPrompt.trim(),
         totalBudget: estimatedBudget,
-        itineraryOutline: (validatedData.itinerary_outline && validatedData.itinerary_outline.length > 0)
+        itineraryOutline: (initialItineraryOutline && initialItineraryOutline.length > 0)
+          ? initialItineraryOutline
+          : (validatedData.itinerary_outline && validatedData.itinerary_outline.length > 0)
           ? (validatedData.itinerary_outline as unknown as CopilotDayOutline[]).map((d: CopilotDayOutline, idx: number) => ({
               ...d,
               stops: d.stops || buildDefaultMindtripItinerary(normDest, validDays)[idx]?.stops || [],
@@ -403,7 +407,9 @@ export default function CreateTripCopilotModal({
         totalBudget: estimatedBudget,
         pacingLevel: pacing.level,
         pacingLabel: pacing.label,
-        itineraryOutline: buildDefaultMindtripItinerary(normDest, validDays),
+        itineraryOutline: (initialItineraryOutline && initialItineraryOutline.length > 0)
+          ? initialItineraryOutline
+          : buildDefaultMindtripItinerary(normDest, validDays),
         copilotChatHistory: [
           ...(initialChatHistory ?? []),
           ...buildDefaultMindtripConversation(

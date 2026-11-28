@@ -93,6 +93,8 @@ export default function ItineraryMapPanel({
             <div className="w-full h-full pt-12 md:pt-0">
               <ItineraryRouteMap
                 itineraryId={tripId}
+                days={days}
+                pois={pois}
                 initialDay={mapDayFilter === 'all' ? 1 : mapDayFilter}
                 totalDays={days.length > 0 ? days.length : 3}
                 selectedStopId={selectedMapPoiId}

@@ -44,7 +44,7 @@ import {
   toAttachmentSummary,
   type ReadyAttachment,
 } from './chatAttachmentUtils';
-import type { CopilotTripMessage } from './copilotTripData';
+import type { CopilotDayOutline, CopilotTripMessage } from './copilotTripData';
 
 interface ItineraryPreviewStop {
   order?: number;
@@ -105,6 +105,7 @@ export interface IdeationChatViewProps {
     initialPrompt: string;
     selectedPoiIds: string[];
     chatHistory: CopilotTripMessage[];
+    itineraryOutline?: CopilotDayOutline[];
   }) => void;
 }
 
@@ -240,12 +241,17 @@ function ItineraryPreviewCard({
                     {dayItem.theme || `Khám phá ${dayItem.focus_city || 'điểm đến'}`}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-neutral-600">
+                <div className="flex items-center gap-3 text-xs text-neutral-600 shrink-0 whitespace-nowrap">
                   {dayItem.day_distance_km !== undefined && (
-                    <span>{dayItem.day_distance_km} km</span>
+                    <span className="whitespace-nowrap">{dayItem.day_distance_km} km</span>
+                  )}
+                  {dayItem.day_cost_vnd !== undefined && dayItem.day_cost_vnd > 0 && (
+                    <span className="font-medium text-neutral-800 whitespace-nowrap">
+                      ~{dayItem.day_cost_vnd.toLocaleString('vi-VN')} đ
+                    </span>
                   )}
                   {dayItem.day_carbon_kg !== undefined && (
-                    <span className="inline-flex items-center gap-1 text-emerald-800 font-medium">
+                    <span className="inline-flex items-center gap-1 text-emerald-800 font-medium whitespace-nowrap">
                       <Leaf size={11} />
                       {dayItem.day_carbon_kg} kg CO2
                     </span>
@@ -288,6 +294,11 @@ function ItineraryPreviewCard({
                                   <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200/60 text-[11px] font-semibold">
                                     <Leaf size={10} />
                                     {stop.green_score}/100
+                                  </span>
+                                )}
+                                {stop.cost_vnd !== undefined && (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-200/60 text-[11px] font-medium">
+                                    {stop.cost_vnd === 0 ? 'Miễn phí' : `~${stop.cost_vnd.toLocaleString('vi-VN')} đ`}
                                   </span>
                                 )}
                               </div>
@@ -676,10 +687,36 @@ export default function IdeationChatView({
       nextSuggestedPrompts: m.nextSuggestedPrompts,
     }));
 
+    const mappedOutline: CopilotDayOutline[] | undefined =
+      currentItineraryState.length > 0
+        ? currentItineraryState.map((d, dIdx) => ({
+            day: d.day_number || d.day || dIdx + 1,
+            theme: d.theme || `Khám phá ${d.focus_city || 'Đà Nẵng & Huế'}`,
+            focus_city: d.focus_city || liveIntent?.destination || 'Đà Nẵng',
+            stops: (d.stops || []).map((s, sIdx) => ({
+              id: s.poi_id || `preview-d${dIdx + 1}-s${sIdx + 1}`,
+              poiId: s.poi_id,
+              timeSlot: s.time_slot || '09:00',
+              name: s.name || `Điểm dừng ${sIdx + 1}`,
+              category: s.category || 'tham-quan',
+              distanceKm: s.travel_distance_from_prev_km,
+              note: s.selection_reason || s.kg_explanation,
+              estimatedCost:
+                s.cost_vnd !== undefined
+                  ? s.cost_vnd === 0
+                    ? 'Miễn phí'
+                    : `~${s.cost_vnd.toLocaleString('vi-VN')} đ`
+                  : undefined,
+              greenScore: s.green_score,
+            })),
+          }))
+        : undefined;
+
     onCreateTripFromIdea({
       initialPrompt: promptParts.join('. ').slice(0, 1800),
       selectedPoiIds: selectedIdeaPoiIds,
       chatHistory: historyForTrip,
+      itineraryOutline: mappedOutline,
     });
   };
 

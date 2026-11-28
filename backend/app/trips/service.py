@@ -670,7 +670,18 @@ def _dispatch_copilot_intent(
         "travel_tips_budget": (handle_travel_tips, "morning"),
         "poi_advice": (handle_poi_advice, "morning"),
     }
-    if intent in standard_handlers:
+    # Let explicit itinerary creation prompts reach Orchestrator 2.0 (Tool Calling + RAG preview)
+    is_explicit_itinerary_gen = any(
+        k in norm_msg
+        for k in (
+            "tao lich trinh",
+            "lap lich trinh",
+            "len lich trinh",
+            "thiet ke lich trinh",
+            "ke hoach du lich",
+        )
+    )
+    if intent in standard_handlers and not is_explicit_itinerary_gen:
         handler_fn, default_slot = standard_handlers[intent]
         (
             reply_text,

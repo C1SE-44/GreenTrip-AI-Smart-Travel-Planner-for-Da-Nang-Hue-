@@ -61,7 +61,7 @@ class DayRouteResponse(BaseModel):
     )
     day_total_cost_vnd: float = Field(default=0.0, description="Tổng chi phí di chuyển ước tính trong ngày (VND)")
     day_total_carbon_kg: float = Field(default=0.0, description="Tổng lượng phát thải CO2e ước tính trong ngày (kg)")
-    priority_profile: str = Field(default="balanced", description="Hồ sơ ưu tiên được áp dụng (balanced, eco_priority, budget_constrained)")
+    priority_profile: str = Field(default="balanced", description="Hồ sơ ưu tiên được áp dụng (balanced, eco_priority, budget_constrained, fastest)")
 
 
 class UpdateSegmentTransportRequest(BaseModel):
@@ -69,7 +69,7 @@ class UpdateSegmentTransportRequest(BaseModel):
 
     segment_index: int = Field(..., ge=0, description="Chỉ số chặng cần thay đổi (0-indexed)")
     selected_mode: str = Field(..., description="Mã phương tiện mới muốn áp dụng")
-    priority_profile: Literal["balanced", "eco_priority", "budget_constrained"] = Field(
+    priority_profile: Literal["balanced", "eco_priority", "budget_constrained", "fastest"] = Field(
         default="balanced", description="Hồ sơ ưu tiên đánh giá"
     )
 
@@ -78,8 +78,10 @@ class ComputeRouteRequest(BaseModel):
     """Yêu cầu tính toán hình học tuyến đường theo danh sách điểm dừng."""
 
     stops: list[RouteStop] = Field(..., description="Danh sách các điểm dừng")
-    priority_profile: Literal["balanced", "eco_priority", "budget_constrained"] = Field(
+    priority_profile: Literal["balanced", "eco_priority", "budget_constrained", "fastest"] = Field(
         default="balanced", description="Hồ sơ ưu tiên đánh giá"
     )
+    itinerary_id: str | None = Field(default=None, description="Mã lịch trình để đồng bộ tùy chọn phương tiện đã lưu (nếu có)")
+    day_number: int | None = Field(default=None, ge=1, description="Số ngày tương ứng để khôi phục custom_segment_modes")
 
 

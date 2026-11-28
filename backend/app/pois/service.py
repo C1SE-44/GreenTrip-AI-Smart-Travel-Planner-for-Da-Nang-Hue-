@@ -1,12 +1,20 @@
 from math import ceil
+from typing import Any
 
-from app.pois.repository import list_pois
+from app.pois.repository import get_poi_identity, list_pois
 from app.pois.schemas import PaginatedPOIResponse, PaginationMetadata
 from app.pois.weights import ParsedSliderWeights
 
 
 class POIServiceUnavailable(Exception):
     """Raised when POI data cannot be retrieved."""
+
+
+def get_poi_identity_status(poi_id: str) -> dict[str, Any] | None:
+    try:
+        return get_poi_identity(poi_id)
+    except Exception as exc:
+        raise POIServiceUnavailable from exc
 
 
 def get_poi_page(

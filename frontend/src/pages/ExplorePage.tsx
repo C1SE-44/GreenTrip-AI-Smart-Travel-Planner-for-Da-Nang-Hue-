@@ -2470,7 +2470,10 @@ src={resolveTripCoverImage(trip.image || trip.coverImage, trip.destination)}
               title: safeTitle,
               destination: pendingPackageLaunch?.destination ?? newTrip.destination,
               daysCount: pendingPackageLaunch?.daysCount ?? newTrip.daysCount,
-              itineraryOutline: pendingPackageLaunch?.itineraryOutline ?? newTrip.itineraryOutline,
+              itineraryOutline: newTrip.itineraryOutline?.map((day) => ({ ...day, stops: [] })),
+              ...(pendingPackageLaunch?.itineraryOutline
+                ? { itineraryOutline: pendingPackageLaunch.itineraryOutline }
+                : {}),
               id: newTrip.id || `trip-${Date.now()}`,
               savedPlaces,
               ideas,

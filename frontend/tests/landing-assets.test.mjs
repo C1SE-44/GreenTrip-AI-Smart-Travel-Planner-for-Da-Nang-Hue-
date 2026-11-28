@@ -26,6 +26,9 @@ test('trip cover images use destination-specific local fallbacks for broken or u
   const standaloneSource=source.replace(
     /^import \{ buildDefaultMindtripItinerary, type CopilotTripMessage \} from '@\/components\/planner\/copilotTripData';\s*$/m,
     'const buildDefaultMindtripItinerary = () => [];',
+  ).replace(
+    "import { isCuratedHighlight, type Poi, type PoiCategory, type PoiCity } from '@/data/pois';",
+    'const isCuratedHighlight = () => false;',
   );
   const compiled=ts.transpileModule(standaloneSource,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
   const {getTripCoverFallback,resolveTripCoverImage}=await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);

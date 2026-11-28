@@ -7,19 +7,59 @@ from app.assistant import workspaces, planning
 from app.assistant.schemas import Context
 from app.auth.dependencies import get_current_user_id
 from app.community_green.router import router as community_green_router
-from app.db.postgres import get_connection
+from app.db.postgres import SQLiteConnectionWrapper
 from app.trips.schemas import TripItinerarySyncRequest
-from test_travel_assistant import env
-from test_assistant_acceptance import local_repository
 
 
 @pytest.fixture
-def community_client(env, local_repository, monkeypatch):
+def env(monkeypatch, tmp_path):
+    from app.assistant import store
+
+    monkeypatch.setattr(store, "PATH", tmp_path / "assistant_sessions.db")
+    store.initialize_store()
+    workspaces.initialize_store()
+
+
+@pytest.fixture
+def local_repository(monkeypatch, tmp_path):
+    import sqlite3
+    from contextlib import contextmanager
+
+    from app.trips import itinerary_repository
+    from app.trips.itinerary_repository import _ensure_local_tables
+
+    @contextmanager
+    def connection():
+        database = sqlite3.connect(tmp_path / "itineraries.db", timeout=10)
+        with SQLiteConnectionWrapper(database) as wrapped:
+            yield wrapped
+
+    monkeypatch.setattr(itinerary_repository, "get_connection", connection)
+    with connection() as database:
+        with database.cursor() as cursor:
+            _ensure_local_tables(database, cursor)
+        database.commit()
+    return itinerary_repository
+
+
+@pytest.fixture
+def community_client(env, local_repository, monkeypatch, tmp_path):
+    import sqlite3
+    from contextlib import contextmanager
+
+    from app.community_green import repository as review_repository
     from app.community_green import service
 
     monkeypatch.setattr(workspaces, "get_connection", local_repository.get_connection)
     workspaces.initialize_store()
-    with get_connection() as connection:
+    @contextmanager
+    def review_connection():
+        database = sqlite3.connect(tmp_path / "community_reviews.db", timeout=10)
+        with SQLiteConnectionWrapper(database) as wrapped:
+            yield wrapped
+
+    monkeypatch.setattr(review_repository, "get_connection", review_connection)
+    with review_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
                 """CREATE TABLE IF NOT EXISTS poi_environmental_reviews (

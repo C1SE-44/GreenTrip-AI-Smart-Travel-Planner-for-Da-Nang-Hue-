@@ -53,6 +53,49 @@ GREEN_TRANSIT_SQL_PATTERN: str = (
 )
 
 
+def get_poi_identity(poi_id: str) -> dict[str, Any] | None:
+    """Read only a POI identifier and its available active-status fields."""
+    with get_connection() as connection:
+        is_sqlite = hasattr(connection, "_conn") or type(connection).__name__ == "SQLiteConnectionWrapper"
+        with connection.cursor() as cursor:
+            if is_sqlite:
+                cursor.execute("PRAGMA table_info(pois)")
+                columns = {str(row[1]) for row in cursor.fetchall()}
+            else:
+                cursor.execute(
+                    """SELECT column_name FROM information_schema.columns
+                       WHERE table_schema = 'public' AND table_name = %s""",
+                    ("pois",),
+                )
+                columns = {str(row[0]) for row in cursor.fetchall()}
+
+        id_column = "poi_id" if "poi_id" in columns else "id" if "id" in columns else None
+        if id_column is None:
+            raise RuntimeError("public.pois has no supported identifier column")
+        active_expression = "p.is_active" if "is_active" in columns else "NULL"
+        status_expression = "p.status" if is_sqlite else "p.status::text"
+        if "status" not in columns:
+            status_expression = "NULL" if is_sqlite else "NULL::text"
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"""SELECT {active_expression} AS is_active, {status_expression} AS status
+                    FROM public.pois AS p
+                    WHERE CAST(p.{id_column} AS TEXT) = %s
+                    LIMIT 1""",
+                (str(poi_id),),
+            )
+            row = cursor.fetchone()
+
+    if row is None:
+        return None
+    is_active = row[0]
+    if isinstance(is_active, (int, float)) and is_active in (0, 1):
+        is_active = bool(is_active)
+    elif isinstance(is_active, str) and is_active.strip().casefold() in {"true", "false", "1", "0"}:
+        is_active = is_active.strip().casefold() in {"true", "1"}
+    return {"is_active": is_active, "status": row[1]}
+
+
 def list_pois(
     limit: int,
     offset: int,

@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from typing import Any
+from unittest.mock import patch
 import pytest
 from fastapi import HTTPException
 
@@ -10,12 +11,8 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app.main import app
 from app.itineraries.router import get_day_route
-from app.itineraries.repository import seed_sample_itineraries
-from app.itineraries.schemas import RouteStop, DayRouteResponse
-from app.itineraries.service import get_itinerary_day_route
-
-# Ensure sample itineraries are in DB
-seed_sample_itineraries()
+from app.itineraries import repository
+from app.itineraries.schemas import DayRouteResponse
 
 # Mocked OSRM GeoJSON response
 MOCK_OSRM_GEOJSON = {
@@ -35,6 +32,95 @@ MOCK_OSRM_GEOJSON = {
         }
     ],
 }
+
+SAMPLE_ITINERARY_DAYS = {
+    "sample-danang-hue-3d": 3,
+    "sample-empty-day-itin": 1,
+    "sample-danang-1d": 1,
+    "sample-danang-2d": 2,
+    "sample-danang-hue-5d": 5,
+    "sample-central-vietnam-7d": 7,
+}
+
+SAMPLE_DAY_STOPS = {
+    ("sample-danang-hue-3d", 1): ["poi_cau_rong", "poi_cho_han", "poi_linh_ung"],
+    ("sample-danang-hue-3d", 2): ["poi_dai_noi", "poi_thien_mu"],
+    ("sample-danang-hue-3d", 3): ["poi_my_khe"],
+    ("sample-danang-1d", 1): ["poi_cau_rong", "poi_my_khe"],
+    ("sample-danang-2d", 1): ["poi_cau_rong", "poi_cho_han"],
+    ("sample-danang-2d", 2): ["poi_ngu_hanh_son", "poi_my_khe"],
+    ("sample-danang-hue-5d", 1): ["poi_cau_rong", "poi_cho_han", "poi_linh_ung"],
+    ("sample-danang-hue-5d", 2): ["poi_ngu_hanh_son", "poi_my_khe"],
+    ("sample-danang-hue-5d", 3): ["poi_ba_na"],
+    ("sample-danang-hue-5d", 4): ["poi_dai_noi", "poi_thien_mu", "poi_dong_ba"],
+    ("sample-danang-hue-5d", 5): ["poi_khai_dinh", "poi_tu_duc"],
+}
+SAMPLE_DAY_STOPS.update(
+    {
+        ("sample-central-vietnam-7d", day_number): (
+            ["poi_cau_rong", "poi_my_khe"]
+            if day_number % 2
+            else ["poi_dai_noi", "poi_thien_mu"]
+        )
+        for day_number in range(1, 8)
+    }
+)
+
+SAMPLE_POIS = {
+    "poi_cau_rong": {"name": "Cầu Rồng", "latitude": 16.0611, "longitude": 108.2270},
+    "poi_cho_han": {"name": "Chợ Hàn", "latitude": 16.0678, "longitude": 108.2208},
+    "poi_linh_ung": {"name": "Chùa Linh Ứng", "latitude": 16.1005, "longitude": 108.2778},
+    "poi_my_khe": {"name": "Biển Mỹ Khê", "latitude": 16.0544, "longitude": 108.2478},
+    "poi_dai_noi": {"name": "Đại Nội Huế", "latitude": 16.4698, "longitude": 107.5781},
+    "poi_thien_mu": {"name": "Chùa Thiên Mụ", "latitude": 16.4538, "longitude": 107.5446},
+    "poi_ngu_hanh_son": {"name": "Ngũ Hành Sơn", "latitude": 16.0038, "longitude": 108.2632},
+    "poi_ba_na": {"name": "Bà Nà Hills", "latitude": 15.9988, "longitude": 107.9960},
+    "poi_dong_ba": {"name": "Chợ Đông Ba", "latitude": 16.4719, "longitude": 107.5878},
+    "poi_khai_dinh": {"name": "Lăng Khải Định", "latitude": 16.3982, "longitude": 107.5908},
+    "poi_tu_duc": {"name": "Lăng Tự Đức", "latitude": 16.4331, "longitude": 107.5658},
+}
+
+
+@pytest.fixture(autouse=True)
+def use_isolated_itinerary_fixtures(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep route tests independent from local/Supabase sample rows and external OSRM."""
+
+    def get_itinerary(itinerary_id: str) -> dict[str, Any] | None:
+        total_days = SAMPLE_ITINERARY_DAYS.get(itinerary_id)
+        if total_days is None:
+            return None
+        return {"itinerary_id": itinerary_id, "total_days": total_days}
+
+    def get_itinerary_day(itinerary_id: str, day_number: int) -> dict[str, Any] | None:
+        total_days = SAMPLE_ITINERARY_DAYS.get(itinerary_id)
+        if total_days is None or day_number < 1 or day_number > total_days:
+            return None
+        return {
+            "itinerary_id": itinerary_id,
+            "itinerary_day_id": f"{itinerary_id}-day-{day_number}",
+            "day_number": day_number,
+        }
+
+    def get_itinerary_day_stops(itinerary_day_id: str) -> list[dict[str, Any]]:
+        itinerary_id, day_text = itinerary_day_id.rsplit("-day-", maxsplit=1)
+        poi_ids = SAMPLE_DAY_STOPS.get((itinerary_id, int(day_text)), [])
+        return [
+            {"poi_id": poi_id, "sequence_no": sequence_no}
+            for sequence_no, poi_id in enumerate(poi_ids, start=1)
+        ]
+
+    def get_poi_by_id(poi_id: str) -> dict[str, Any] | None:
+        poi = SAMPLE_POIS.get(poi_id)
+        return {"poi_id": poi_id, **poi} if poi else None
+
+    monkeypatch.setattr(repository, "get_itinerary", get_itinerary)
+    monkeypatch.setattr(repository, "get_itinerary_day", get_itinerary_day)
+    monkeypatch.setattr(repository, "get_itinerary_day_stops", get_itinerary_day_stops)
+    monkeypatch.setattr(repository, "get_poi_by_id", get_poi_by_id)
+    monkeypatch.setattr(
+        "app.itineraries.routing_service.fetch_osrm_json",
+        lambda *_args, **_kwargs: None,
+    )
 
 
 def test_get_day_route_success_with_osrm():

@@ -2,7 +2,7 @@ import type { DestinationScope, DurationDays, ItineraryDayPlan, PlaceCatalogItem
 import type { UserTrip } from '@/pages/ExplorePage';
 import { dateAt, vietnamNow } from '@/utils/tripDates';
 import { getAccessToken } from '@/services/auth';
-import { saveTripItinerary, stopFromPoi, type TripItinerary } from '@/services/itineraryService';
+import { saveTripItineraryWithStatus, stopFromPoi, type TripItinerary } from '@/services/itineraryService';
 
 export interface SampleTripDetails {
   startDate: string;
@@ -98,7 +98,10 @@ export async function saveLandingSample(draft: SampleDraft, id: string, token: s
   };
   checkSession();
   const { trip, itinerary } = sampleTripPayload(draft, id);
-  await saveTripItinerary(itinerary);
+  const result = await saveTripItineraryWithStatus(itinerary);
+  if (result.syncStatus !== 'synced') {
+    throw new Error(result.syncMessage || 'Chuyến đi vẫn là bản nháp trên thiết bị, chưa đồng bộ lên tài khoản.');
+  }
   checkSession();
   return trip;
 }

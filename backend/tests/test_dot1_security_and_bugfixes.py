@@ -218,17 +218,15 @@ def test_postgres_connection_retries_after_cooldown(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(pg_db, "connect", fake_connect)
     try:
-        fallback = pg_db.get_connection()
-        assert isinstance(fallback, pg_db.SQLiteConnectionWrapper)
-        fallback.close()
+        with pytest.raises(RuntimeError, match="không thể kết nối"):
+            pg_db.get_connection()
 
-        # Within 30s cooldown: uses SQLite without dialing Postgres again
-        during_cooldown = pg_db.get_connection()
-        assert isinstance(during_cooldown, pg_db.SQLiteConnectionWrapper)
-        during_cooldown.close()
+        # Within 30s cooldown: refuse to save to SQLite or redial Postgres.
+        with pytest.raises(RuntimeError, match="tạm thời không khả dụng"):
+            pg_db.get_connection()
         assert attempts == 1
 
-        # After 30s cooldown expires: retries Postgres and succeeds
+        # After 30s cooldown expires: retry Postgres and succeed.
         recovered = pg_db.get_connection()
         assert recovered is fake_pg_conn
         assert attempts == 2

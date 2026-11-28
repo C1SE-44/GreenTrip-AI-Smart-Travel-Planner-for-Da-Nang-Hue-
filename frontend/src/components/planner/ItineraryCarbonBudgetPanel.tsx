@@ -13,6 +13,9 @@ import {
 interface ItineraryCarbonBudgetPanelProps {
   totalRoadKm: number;
   carbon: ReturnType<typeof estimateCarbonFootprint>;
+  hasMeasurableDistance: boolean;
+  routeCoordinateCount: number;
+  routeStopCount: number;
   openingConflictCount: number;
   intercityConflictCount?: number;
   transportMode: RouteTransportMode;
@@ -39,6 +42,9 @@ const TRADEOFF_PRESETS: ReadonlyArray<{ id: OptimizationTradeoffMode; label: str
 export default function ItineraryCarbonBudgetPanel({
   totalRoadKm,
   carbon,
+  hasMeasurableDistance,
+  routeCoordinateCount,
+  routeStopCount,
   openingConflictCount,
   intercityConflictCount = 0,
   transportMode,
@@ -65,13 +71,17 @@ export default function ItineraryCarbonBudgetPanel({
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-800">
           <span className="inline-flex items-center gap-1 font-bold text-emerald-900">
             <Leaf size={13} className="text-emerald-700 shrink-0" />
-            <span>{totalRoadKm.toFixed(1)} km</span>
+            <span>
+              {hasMeasurableDistance ? `~${totalRoadKm.toFixed(1)} km ước tính` : 'Chưa đủ tọa độ để tính km'}
+            </span>
           </span>
-          <span className="text-gray-400" aria-hidden="true">·</span>
-          <span className="font-semibold text-gray-900">
-            {formatCarbonAmount(carbon.co2Grams)}
-          </span>
-          {carbonEquiv && (
+          {hasMeasurableDistance && (
+            <>
+              <span className="text-gray-400" aria-hidden="true">·</span>
+              <span className="font-semibold text-gray-900">~{formatCarbonAmount(carbon.co2Grams)}</span>
+            </>
+          )}
+          {hasMeasurableDistance && carbonEquiv && (
             <span
               className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900"
               title="Quy đổi dựa trên mức ô tô riêng 171 g CO₂/km và khả năng hấp thụ ~60 g CO₂/ngày của 1 cây xanh trưởng thành"
@@ -163,6 +173,13 @@ export default function ItineraryCarbonBudgetPanel({
           </button>
         </div>
       </div>
+
+      <p className="text-xs leading-5 text-gray-700">
+        Quãng đường là ước tính từ tọa độ các điểm, chưa phải chỉ đường giao thông thực tế. Phương tiện chỉ thay đổi ước tính CO₂.
+        {routeStopCount > routeCoordinateCount && (
+          <> Hiện có tọa độ cho {routeCoordinateCount}/{routeStopCount} địa điểm; quãng đường chỉ tính các chặng có đủ tọa độ.</>
+        )}
+      </p>
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 border-t border-emerald-200/60">
         {onApplyTradeoffOptimize && (

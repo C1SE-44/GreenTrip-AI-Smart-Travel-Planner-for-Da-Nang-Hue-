@@ -3,6 +3,7 @@ import type {
   CopilotExtractedPlace,
   CopilotReceiptBooking,
   CopilotSuggestedPoi,
+  RagSourceItem,
 } from '@/services/copilotService';
 import { normalizeCopilotMessageSingleCta } from './chatAttachmentUtils';
 
@@ -23,6 +24,7 @@ export interface CopilotChatMessageItem {
   suggestedPois?: CopilotSuggestedPoi[];
   extractedPlaces?: CopilotExtractedPlace[];
   receiptBooking?: CopilotReceiptBooking | null;
+  sources?: RagSourceItem[];
   avoidNotice?: string | null;
   greenImpact?: string | null;
   budgetImpact?: string | null;

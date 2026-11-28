@@ -54,7 +54,7 @@ def test_anti_zigzag_and_co2_modes() -> None:
     assert metrics["saved_km"] > 0
     assert metrics["after_km"] < metrics["before_km"]
     assert metrics["reordered_days"] == [1]
-    assert metrics["co2_grams"] == round(metrics["after_km"] * 40)
+    assert metrics["co2_grams"] == round(metrics["after_km"] * 42)  # Updated: transit 42 g/km (BUG-01)
     assert metrics["saved_vs_car_percent"] > 70
 
     ctx_walk = TripContextPayload(destination="Đà Nẵng", days_count=1, transport_mode="walking")

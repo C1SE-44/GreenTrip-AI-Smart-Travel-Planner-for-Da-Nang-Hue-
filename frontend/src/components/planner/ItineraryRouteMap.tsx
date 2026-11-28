@@ -16,21 +16,41 @@ import {
   Bike,
   Bus,
   Footprints,
+  Train,
+  Leaf,
+  ShieldCheck,
+  X,
+  ArrowRight,
   ExternalLink,
   ListFilter,
   CheckCircle2
 } from 'lucide-react';
 import {
+  computeDynamicRoute,
   fetchDayRoute,
+  updateSegmentTransport,
   estimateCarbonFootprint,
   formatCarbonAmount,
   type DayRouteResponse,
+  type ItineraryDay,
   type RouteStop,
+  type RouteSegment,
   type RouteTransportMode,
+  type TransportPriorityProfile,
 } from '@/services/itineraryService';
+import type { Poi } from '@/data/pois';
+
+const PRIORITY_PROFILES: { id: TransportPriorityProfile; label: string }[] = [
+  { id: 'balanced', label: 'Cân bằng' },
+  { id: 'eco_priority', label: 'Xanh nhất' },
+  { id: 'budget_constrained', label: 'Tiết kiệm' },
+  { id: 'fastest', label: 'Nhanh nhất' },
+];
 
 export interface ItineraryRouteMapProps {
   itineraryId?: string;
+  days?: ItineraryDay[];
+  pois?: Poi[];
   initialDay?: number;
   totalDays?: number;
   selectedStopId?: string | null;
@@ -125,13 +145,63 @@ function getClientFallbackDayRoute(itineraryId: string, dayNum: number): DayRout
 
   const tIdx = Math.max(0, (dayNum - 1) % dayTemplates.length);
   const tmpl = dayTemplates[tIdx];
+  const fallbackStops = tmpl.stops.map((s, idx) => ({ ...s, order: idx + 1 }));
+  const fallbackSegments: RouteSegment[] = fallbackStops.slice(0, -1).map((s, idx) => {
+    const nextS = fallbackStops[idx + 1];
+    const segDist = Math.round(tmpl.dist / Math.max(1, fallbackStops.length - 1));
+    const segDur = Math.round(tmpl.dur / Math.max(1, fallbackStops.length - 1));
+    return {
+      segment_index: idx,
+      from_stop: s,
+      to_stop: nextS,
+      distance_meters: segDist,
+      duration_seconds: segDur,
+      is_intercity: false,
+      recommended_mode: 'motorcycle',
+      selected_mode: 'motorcycle',
+      options: [
+        {
+          mode: 'motorcycle',
+          label: 'Xe máy',
+          icon: 'Bike',
+          duration_seconds: segDur,
+          duration_text: `${Math.round(segDur / 60)} phút`,
+          distance_meters: segDist,
+          estimated_cost_vnd: 15000,
+          carbon_g: 250,
+          carbon_kg: 0.25,
+          score: 85.0,
+          is_feasible: true,
+          feasibility_note: 'Khả thi',
+          recommendation_type: 'best_match',
+          reason: 'Nhanh chóng và linh hoạt',
+        },
+        {
+          mode: 'electric_bus',
+          label: 'Xe buýt điện',
+          icon: 'Bus',
+          duration_seconds: Math.round(segDur * 1.4),
+          duration_text: `${Math.round((segDur * 1.4) / 60)} phút`,
+          distance_meters: segDist,
+          estimated_cost_vnd: 8000,
+          carbon_g: 80,
+          carbon_kg: 0.08,
+          score: 82.0,
+          is_feasible: true,
+          feasibility_note: 'Khả thi',
+          recommendation_type: 'eco_friendly',
+          reason: 'Phương tiện xanh thân thiện môi trường',
+        },
+      ],
+    };
+  });
 
   return {
     itinerary_id: itineraryId,
     day_number: dayNum,
     total_days: 5,
     total_stops: tmpl.stops.length,
-    stops: tmpl.stops.map((s, idx) => ({ ...s, order: idx + 1 })),
+    stops: fallbackStops,
     route: {
       type: 'LineString',
       coordinates: tmpl.coords,
@@ -140,8 +210,49 @@ function getClientFallbackDayRoute(itineraryId: string, dayNum: number): DayRout
     duration_seconds: tmpl.dur,
     is_fallback: true,
     routing_provider: 'client_fallback',
+    segments: fallbackSegments,
+    day_total_cost_vnd: fallbackSegments.length * 15000,
+    day_total_carbon_kg: fallbackSegments.length * 0.25,
   };
 }
+
+function getTransportIcon(mode: string) {
+  switch (mode) {
+    case 'walking':
+      return <Footprints size={14} />;
+    case 'bicycle':
+    case 'motorcycle':
+      return <Bike size={14} />;
+    case 'electric_bus':
+    case 'public_bus':
+    case 'tourist_coach':
+      return <Bus size={14} />;
+    case 'train':
+      return <Train size={14} />;
+    case 'taxi_car':
+    case 'private_car':
+    case 'driving':
+    default:
+      return <Car size={14} />;
+  }
+}
+
+function getTransportLabel(mode: string): string {
+  switch (mode) {
+    case 'walking': return 'Đi bộ';
+    case 'bicycle': return 'Xe đạp';
+    case 'motorcycle': return 'Xe máy';
+    case 'electric_bus': return 'Xe buýt điện';
+    case 'public_bus': return 'Xe buýt';
+    case 'train': return 'Tàu hỏa';
+    case 'tourist_coach': return 'Xe khách';
+    case 'taxi_car': return 'Taxi / Ô tô';
+    case 'private_car': return 'Ô tô riêng';
+    case 'driving': return 'Ô tô';
+    default: return mode;
+  }
+}
+
 
 // ─── 1. GOOGLE MAPS AUTHENTIC MARKER ICONS ───
 
@@ -394,6 +505,8 @@ function calculateModeDuration(baseSec: number, distanceM: number, mode: Transpo
 
 export default function ItineraryRouteMap({
   itineraryId = 'sample-danang-hue-3d',
+  days,
+  pois,
   initialDay = 1,
   totalDays: propTotalDays,
   selectedStopId = null,
@@ -407,6 +520,43 @@ export default function ItineraryRouteMap({
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [showDrawerList, setShowDrawerList] = useState<boolean>(true);
 
+  const getLiveStopsForDay = useCallback(
+    (dayNum: number): RouteStop[] => {
+      if (!days || days.length === 0) return [];
+      const dayObj = days.find((d) => d.day_number === dayNum) || days[dayNum - 1];
+      if (!dayObj || !Array.isArray(dayObj.stops)) return [];
+      const resolved: RouteStop[] = [];
+      for (const s of dayObj.stops) {
+        if (s.stop_type === 'rest') continue;
+        const matchedPoi = pois?.find(
+          (p) =>
+            (s.poi_id && p.id === s.poi_id) ||
+            (s.title && p.name.toLowerCase() === s.title.toLowerCase())
+        );
+        const lat =
+          typeof s.latitude === 'number' && Number.isFinite(s.latitude)
+            ? s.latitude
+            : matchedPoi?.lat;
+        const lng =
+          typeof s.longitude === 'number' && Number.isFinite(s.longitude)
+            ? s.longitude
+            : matchedPoi?.lng;
+        if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+          continue;
+        }
+        resolved.push({
+          order: resolved.length + 1,
+          poi_id: String(s.poi_id || matchedPoi?.id || s.stop_id),
+          name: s.title || matchedPoi?.name || `Điểm dừng ${resolved.length + 1}`,
+          latitude: lat,
+          longitude: lng,
+        });
+      }
+      return resolved;
+    },
+    [days, pois]
+  );
+
   // Tự động xác định số ngày linh hoạt từ Backend hoặc Props (hỗ trợ 1..N ngày)
   const totalDays = useMemo(() => {
     if (propTotalDays && propTotalDays > 0) return propTotalDays;
@@ -418,10 +568,84 @@ export default function ItineraryRouteMap({
   const [error, setError] = useState<string | null>(null);
   const [internalSelectedPoiId, setInternalSelectedPoiId] = useState<string | null>(selectedStopId);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [activeSegmentModal, setActiveSegmentModal] = useState<RouteSegment | null>(null);
+  const [isUpdatingSegment, setIsUpdatingSegment] = useState<boolean>(false);
+  const [priorityProfile, setPriorityProfile] = useState<TransportPriorityProfile>('balanced');
+
+  const handleSelectSegmentMode = async (segmentIndex: number, mode: string) => {
+    if (!routeData) return;
+    setIsUpdatingSegment(true);
+    const liveStops = getLiveStopsForDay(activeDay);
+    const stopsKey = liveStops.map((s) => s.poi_id).join(',');
+    try {
+      let updated = await updateSegmentTransport(
+        itineraryId,
+        activeDay,
+        segmentIndex,
+        mode,
+        priorityProfile
+      );
+      if (liveStops.length > 0 && (!updated.segments || updated.segments.length === 0)) {
+        updated = await computeDynamicRoute(
+          liveStops,
+          priorityProfile,
+          itineraryId,
+          activeDay
+        );
+      }
+      Array.from(routeCacheRef.current.keys()).forEach((k) => {
+        if (k.startsWith(`${activeDay}:`)) routeCacheRef.current.delete(k);
+      });
+      routeCacheRef.current.set(`${activeDay}:${priorityProfile}:${stopsKey}`, updated);
+      setRouteData(updated);
+      if (activeSegmentModal && activeSegmentModal.segment_index === segmentIndex) {
+        const refreshedSeg = updated.segments?.find((s) => s.segment_index === segmentIndex);
+        setActiveSegmentModal(refreshedSeg || null);
+      }
+    } catch (e) {
+      console.warn("Failed to call updateSegmentTransport API, updating optimistically:", e);
+      setRouteData((prev) => {
+        if (!prev || !prev.segments) return prev;
+        const newSegments = prev.segments.map((s) => {
+          if (s.segment_index !== segmentIndex) return s;
+          const opt = s.options.find((o) => o.mode === mode);
+          return {
+            ...s,
+            selected_mode: mode,
+            duration_seconds: opt?.duration_seconds ?? s.duration_seconds,
+          };
+        });
+        const newCost = newSegments.reduce((sum, s) => {
+          const opt = s.options.find((o) => o.mode === s.selected_mode);
+          return sum + (opt?.estimated_cost_vnd ?? 0);
+        }, 0);
+        const newCarbon = newSegments.reduce((sum, s) => {
+          const opt = s.options.find((o) => o.mode === s.selected_mode);
+          return sum + (opt?.carbon_kg ?? 0);
+        }, 0);
+        const newDurationSec = newSegments.reduce((sum, s) => sum + (s.duration_seconds ?? 0), 0);
+        const updated = {
+          ...prev,
+          segments: newSegments,
+          day_total_cost_vnd: newCost,
+          day_total_carbon_kg: Number(newCarbon.toFixed(3)),
+          total_trip_duration_seconds: newDurationSec,
+        };
+        routeCacheRef.current.set(`${activeDay}:${priorityProfile}:${stopsKey}`, updated);
+        if (activeSegmentModal && activeSegmentModal.segment_index === segmentIndex) {
+          const refreshedSeg = updated.segments?.find((s) => s.segment_index === segmentIndex);
+          setActiveSegmentModal(refreshedSeg || null);
+        }
+        return updated;
+      });
+    } finally {
+      setIsUpdatingSegment(false);
+    }
+  };
 
   const mapRef = useRef<L.Map | null>(null);
   const markerRefs = useRef<Map<string, L.Marker>>(new Map());
-  const routeCacheRef = useRef<Map<number, DayRouteResponse>>(new Map());
+  const routeCacheRef = useRef<Map<string, DayRouteResponse>>(new Map());
 
   // Xóa cache khi đổi lịch trình
   useEffect(() => {
@@ -435,10 +659,13 @@ export default function ItineraryRouteMap({
     }
   }, [selectedStopId]);
 
-  // Tải dữ liệu lộ trình khi đổi ngày
+  // Tải dữ liệu lộ trình khi đổi ngày hoặc đổi hồ sơ ưu tiên
   const loadDayRoute = useCallback(async (dayNum: number, signal?: AbortSignal) => {
-    if (routeCacheRef.current.has(dayNum)) {
-      setRouteData(routeCacheRef.current.get(dayNum)!);
+    const liveStops = getLiveStopsForDay(dayNum);
+    const stopsKey = liveStops.map((s) => s.poi_id).join(',');
+    const cacheKey = `${dayNum}:${priorityProfile}:${stopsKey}`;
+    if (routeCacheRef.current.has(cacheKey)) {
+      setRouteData(routeCacheRef.current.get(cacheKey)!);
       setLoading(false);
       setError(null);
       return;
@@ -447,19 +674,22 @@ export default function ItineraryRouteMap({
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchDayRoute(itineraryId, dayNum, signal);
-      routeCacheRef.current.set(dayNum, data);
+      const data =
+        liveStops.length > 0
+          ? await computeDynamicRoute(liveStops, priorityProfile, itineraryId, dayNum, signal)
+          : await fetchDayRoute(itineraryId, dayNum, signal, priorityProfile);
+      routeCacheRef.current.set(cacheKey, data);
       setRouteData(data);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return;
       console.warn(`fetchDayRoute failed for day ${dayNum}, activating client fallback:`, err);
       const fallback = getClientFallbackDayRoute(itineraryId, dayNum);
-      routeCacheRef.current.set(dayNum, fallback);
+      routeCacheRef.current.set(cacheKey, fallback);
       setRouteData(fallback);
     } finally {
       setLoading(false);
     }
-  }, [itineraryId]);
+  }, [itineraryId, priorityProfile, getLiveStopsForDay]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -740,8 +970,8 @@ export default function ItineraryRouteMap({
               {/* Duration & Distance Big Metric */}
               <div className="flex items-baseline justify-between mb-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-emerald-600 tracking-tight">
-                    {formatDuration(currentDurationSec)}
+                  <span className="text-2xl font-black text-emerald-600 tracking-tight" title={routeData.total_trip_duration_seconds ? `Thời gian lăn bánh: ${formatDuration(currentDurationSec)} • Tổng dự kiến gồm chờ xe: ${formatDuration(routeData.total_trip_duration_seconds)}` : undefined}>
+                    {formatDuration(routeData.total_trip_duration_seconds || currentDurationSec)}
                   </span>
                   <span className="text-stone-500 text-sm font-semibold">
                     ({formatDistance(routeData.distance_meters)})
@@ -1009,60 +1239,142 @@ export default function ItineraryRouteMap({
                 )}
               </div>
 
+              {/* Bộ lọc ưu tiên phương tiện (4 chế độ) */}
+              <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Bộ lọc ưu tiên phương tiện">
+                {PRIORITY_PROFILES.map((prof) => {
+                  const isActive = priorityProfile === prof.id;
+                  return (
+                    <button
+                      key={prof.id}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => setPriorityProfile(prof.id)}
+                      className={`min-h-[32px] px-2.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${
+                        isActive
+                          ? 'bg-emerald-800 text-white shadow-2xs'
+                          : 'bg-white text-stone-700 border border-stone-200 hover:border-emerald-400 hover:bg-emerald-50/40'
+                      }`}
+                    >
+                      {prof.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Stops Timeline Cards */}
+              {((routeData?.day_total_cost_vnd ?? 0) > 0 || (routeData?.day_total_carbon_kg ?? 0) > 0 || (routeData?.segments?.length ?? 0) > 0) && (
+                <div className="mb-3 p-2.5 bg-emerald-50/70 border border-emerald-200/60 rounded-xl text-xs flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-emerald-900 font-semibold">
+                    <Leaf size={14} className="text-emerald-600 shrink-0" />
+                    <span>{routeData?.day_total_carbon_kg ?? 0} kg CO2</span>
+                  </div>
+                  <div className="text-stone-700 font-medium">
+                    Thời gian:{' '}
+                    <span className="font-bold text-stone-900">
+                      {Math.round(
+                        (routeData?.total_trip_duration_seconds ??
+                          routeData?.segments?.reduce((s, seg) => s + (seg.duration_seconds || 0), 0) ??
+                          routeData?.duration_seconds ??
+                          0) / 60
+                      )}{' '}
+                      phút
+                    </span>
+                  </div>
+                  <div className="text-stone-700 font-medium">
+                    Chi phí đi lại:{' '}
+                    <span className="font-bold text-stone-900">
+                      {(routeData?.day_total_cost_vnd ?? 0) === 0
+                        ? '0 đ'
+                        : `~${(routeData?.day_total_cost_vnd ?? 0).toLocaleString('vi-VN')} đ`}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2.5">
                 {routeData?.stops.map((stop, idx) => {
                   const isSelected = internalSelectedPoiId === stop.poi_id;
                   const isFirst = idx === 0;
                   const isLast = idx === (routeData.stops.length - 1) && routeData.stops.length > 1;
+                  const seg = routeData.segments?.[idx];
 
                   return (
-                    <div
-                      key={`list-stop-${stop.order}-${stop.poi_id}`}
-                      onClick={() => handleSelectStop(stop)}
-                      className={`relative rounded-2xl p-3 border transition-all duration-200 cursor-pointer ${
-                        isSelected
-                          ? 'bg-white border-[#1a73e8] ring-2 ring-blue-200 shadow-md'
-                          : 'bg-white/80 hover:bg-white border-stone-200 hover:border-blue-300 shadow-2xs'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        {/* Number Badge */}
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
-                          isFirst
-                            ? 'bg-[#1a73e8] text-white'
-                            : isLast
-                            ? 'bg-[#ea4335] text-white'
-                            : isSelected
-                            ? 'bg-[#1a73e8] text-white'
-                            : 'bg-blue-50 text-[#1a73e8] border border-blue-200'
-                        }`}>
-                          {isFirst ? 'A' : isLast ? 'B' : stop.order}
-                        </div>
-
-                        {/* POI Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-                              {isFirst ? 'Điểm xuất phát' : isLast ? 'Điểm đến' : `Thứ tự ${stop.order}`}
-                            </span>
-                            {isSelected && (
-                              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded">
-                                Đang xem
-                              </span>
-                            )}
+                    <React.Fragment key={`list-stop-${stop.order}-${stop.poi_id}`}>
+                      <div
+                        onClick={() => handleSelectStop(stop)}
+                        className={`relative rounded-2xl p-3 border transition-all duration-200 cursor-pointer ${
+                          isSelected
+                            ? 'bg-white border-[#1a73e8] ring-2 ring-blue-200 shadow-md'
+                            : 'bg-white/80 hover:bg-white border-stone-200 hover:border-blue-300 shadow-2xs'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Number Badge */}
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
+                            isFirst
+                              ? 'bg-[#1a73e8] text-white'
+                              : isLast
+                              ? 'bg-[#ea4335] text-white'
+                              : isSelected
+                              ? 'bg-[#1a73e8] text-white'
+                              : 'bg-blue-50 text-[#1a73e8] border border-blue-200'
+                          }`}>
+                            {isFirst ? 'A' : isLast ? 'B' : stop.order}
                           </div>
-                          <h6 className="font-heading text-sm font-bold text-stone-900 truncate">
-                            {stop.name}
-                          </h6>
-                          <span className="text-[11px] text-stone-500">
-                            {stop.latitude.toFixed(4)}, {stop.longitude.toFixed(4)}
+
+                          {/* POI Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                                {isFirst ? 'Điểm xuất phát' : isLast ? 'Điểm đến' : `Thứ tự ${stop.order}`}
+                              </span>
+                              {isSelected && (
+                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded">
+                                  Đang xem
+                                </span>
+                              )}
+                            </div>
+                            <h6 className="font-heading text-sm font-bold text-stone-900 truncate">
+                              {stop.name}
+                            </h6>
+                            <span className="text-[11px] text-stone-500">
+                              {stop.latitude.toFixed(4)}, {stop.longitude.toFixed(4)}
+                            </span>
+                          </div>
+
+                          <ChevronRight size={16} className={`shrink-0 transition-colors ${isSelected ? 'text-[#1a73e8]' : 'text-stone-400'}`} />
+                        </div>
+                      </div>
+
+                      {/* Segment connector and transport recommendation pill */}
+                      {seg && (
+                        <div
+                          onClick={(e) => { e.stopPropagation(); setActiveSegmentModal(seg); }}
+                          className="my-1 py-1.5 px-3 flex items-center justify-between text-xs bg-stone-100/90 hover:bg-emerald-50 border border-stone-200/70 hover:border-emerald-300 rounded-xl transition cursor-pointer group"
+                          title="Bấm để xem và đổi phương tiện cho chặng này"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="p-1 rounded-md bg-white border border-stone-200 text-emerald-700 shadow-2xs shrink-0">
+                              {getTransportIcon(seg.selected_mode)}
+                            </span>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-stone-800 text-[11px] truncate flex items-center gap-1">
+                                <span>{getTransportLabel(seg.selected_mode)}</span>
+                                {seg.is_intercity && (
+                                  <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1 rounded">Liên tỉnh</span>
+                                )}
+                              </span>
+                              <span className="text-[10px] text-stone-500 truncate">
+                                {(seg.distance_meters / 1000).toFixed(1)} km · {Math.round(seg.duration_seconds / 60)} phút · {seg.options?.find(o => o.mode === seg.selected_mode)?.estimated_cost_vnd === 0 ? '0 đ' : `~${seg.options?.find(o => o.mode === seg.selected_mode)?.estimated_cost_vnd?.toLocaleString('vi-VN')} đ`}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-700 group-hover:text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200 shrink-0">
+                            Đổi phương tiện
                           </span>
                         </div>
-
-                        <ChevronRight size={16} className={`shrink-0 transition-colors ${isSelected ? 'text-[#1a73e8]' : 'text-stone-400'}`} />
-                      </div>
-                    </div>
+                      )}
+                    </React.Fragment>
                   );
                 })}
 
@@ -1093,6 +1405,115 @@ export default function ItineraryRouteMap({
           </div>
         )}
       </div>
+
+      {/* ─── SEGMENT TRANSPORT COMPARISON & SELECTION MODAL ─── */}
+      {activeSegmentModal && (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-stone-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-4 sm:p-5 border-b border-stone-100 flex items-center justify-between bg-stone-50/80">
+              <div>
+                <span className="text-[11px] font-bold text-forest-700 uppercase tracking-wider">
+                  Chặng {activeSegmentModal.segment_index + 1}
+                </span>
+                <h4 className="font-heading font-bold text-stone-900 text-sm sm:text-base flex items-center gap-1.5 mt-0.5">
+                  <span className="truncate max-w-[150px] sm:max-w-[190px]">{activeSegmentModal.from_stop.name}</span>
+                  <ArrowRight size={14} className="text-stone-400 shrink-0" />
+                  <span className="truncate max-w-[150px] sm:max-w-[190px]">{activeSegmentModal.to_stop.name}</span>
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveSegmentModal(null)}
+                className="p-1.5 rounded-full hover:bg-stone-200 text-stone-500 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-5 max-h-[60vh] overflow-y-auto space-y-3">
+              <div className="text-xs text-stone-500 flex items-center justify-between pb-2 border-b border-stone-100">
+                <span>Khoảng cách: {(activeSegmentModal.distance_meters / 1000).toFixed(1)} km</span>
+                <span className="font-medium text-stone-700">
+                  {activeSegmentModal.is_intercity ? 'Tuyến liên tỉnh ĐN - Huế' : 'Tuyến nội thành'}
+                </span>
+              </div>
+
+              {activeSegmentModal.options?.map((opt) => {
+                const isSelected = activeSegmentModal.selected_mode === opt.mode;
+                return (
+                  <div
+                    key={opt.mode}
+                    className={`p-3.5 rounded-2xl border transition-all ${
+                      isSelected
+                        ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-200'
+                        : 'border-stone-200 hover:border-emerald-300 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="p-2 rounded-xl bg-stone-100 text-stone-700 shrink-0">
+                          {getTransportIcon(opt.mode)}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-stone-900 text-xs sm:text-sm">{opt.label}</span>
+                            {opt.recommendation_type === 'best_match' && (
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-full">
+                                Phù hợp nhất
+                              </span>
+                            )}
+                            {opt.recommendation_type === 'eco_friendly' && (
+                              <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-1.5 py-0.5 rounded-full">
+                                Xanh nhất
+                              </span>
+                            )}
+                            {opt.recommendation_type === 'cost_saving' && (
+                              <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-full">
+                                Tiết kiệm
+                              </span>
+                            )}
+                            {opt.is_verified_schedule && (
+                              <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                <ShieldCheck size={10} /> Đã xác thực
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-stone-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                            <span>{opt.duration_text}</span>
+                            <span>·</span>
+                            <span>{opt.estimated_cost_vnd === 0 ? 'Miễn phí' : `~${opt.estimated_cost_vnd.toLocaleString('vi-VN')} đ (Giá tham khảo)`}</span>
+                            <span>·</span>
+                            <span>{opt.carbon_kg} kg CO2</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={!opt.is_feasible || isUpdatingSegment}
+                        onClick={() => handleSelectSegmentMode(activeSegmentModal.segment_index, opt.mode)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white cursor-default'
+                            : opt.is_feasible
+                            ? 'bg-stone-100 hover:bg-emerald-100 text-stone-800 hover:text-emerald-900 cursor-pointer'
+                            : 'bg-stone-100 text-stone-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {isSelected ? 'Đang chọn' : opt.is_feasible ? 'Chọn' : 'Không khả thi'}
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-stone-600 mt-2 pl-2 border-l-2 border-emerald-300">
+                      {opt.reason}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import TripCalendarView from '@/components/planner/TripCalendarView';
 import { MorphFavoriteButton, MorphAddButton } from '@/components/ui/MorphButton';
 import CreateTripCopilotModal from '@/components/planner/CreateTripCopilotModal';
 import IdeationChatView from '@/components/planner/IdeationChatView';
-import type { CopilotTripMessage } from '@/components/planner/copilotTripData';
+import type { CopilotDayOutline, CopilotTripMessage } from '@/components/planner/copilotTripData';
 import type { PoiCategory, PoiCity, Poi } from '@/data/pois';
 import { pois, normalizePois, isCuratedHighlight, evaluateLocalAuthentic } from '@/data/pois';
 import ExplorePoiCard from '@/components/explore/ExplorePoiCard';
@@ -99,6 +99,7 @@ export default function ExplorePage({ initialView = 'explore' }: { initialView?:
   const [ideationDraft, setIdeationDraft] = useState<{
     initialPrompt: string;
     chatHistory: CopilotTripMessage[];
+    itineraryOutline?: CopilotDayOutline[];
   } | null>(null);
   const [pendingChatPrompt, setPendingChatPrompt] = useState<string | null>(null);
   const [addToTripSelection, setAddToTripSelection] = useState<AddToTripSelection | null>(null);
@@ -1781,8 +1782,8 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           currentUserName={currentUser?.full_name}
           initialPrompt={pendingChatPrompt}
           onConsumedInitialPrompt={() => setPendingChatPrompt(null)}
-          onCreateTripFromIdea={({ initialPrompt, selectedPoiIds, chatHistory }) => {
-            setIdeationDraft({ initialPrompt, chatHistory });
+          onCreateTripFromIdea={({ initialPrompt, selectedPoiIds, chatHistory, itineraryOutline }) => {
+            setIdeationDraft({ initialPrompt, chatHistory, itineraryOutline });
             setPendingAddToTripPoiIds(selectedPoiIds.length > 0 ? selectedPoiIds : null);
             setIsCreateTripModalOpen(true);
           }}
@@ -2240,6 +2241,7 @@ const currentCityLabel = cityFilter === 'all' ? 'Đà Nẵng & Huế' : cityFilt
           isOpen={isCreateTripModalOpen}
           initialPrompt={ideationDraft?.initialPrompt}
           initialChatHistory={ideationDraft?.chatHistory}
+          initialItineraryOutline={ideationDraft?.itineraryOutline}
           onClose={() => {
             setIsCreateTripModalOpen(false);
             setPendingAddToTripPoiIds(null);

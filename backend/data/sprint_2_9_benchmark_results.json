@@ -1,0 +1,110 @@
+{
+  "timestamp": 1795481122.144789,
+  "benchmarks": [
+    {
+      "name": "1. API Health Response",
+      "iterations": 20,
+      "mean_ms": 9.2,
+      "median_ms": 4.21,
+      "p95_ms": 104.43,
+      "max_ms": 104.43,
+      "errors": 0
+    },
+    {
+      "name": "2. POI Search (Tool)",
+      "iterations": 20,
+      "mean_ms": 7.13,
+      "median_ms": 6.29,
+      "p95_ms": 16.9,
+      "max_ms": 16.9,
+      "errors": 0
+    },
+    {
+      "name": "3. POI Details (Tool)",
+      "iterations": 20,
+      "mean_ms": 0.05,
+      "median_ms": 0.04,
+      "p95_ms": 0.11,
+      "max_ms": 0.11,
+      "errors": 0
+    },
+    {
+      "name": "4. POI Recommendation (Tool)",
+      "iterations": 20,
+      "mean_ms": 3.14,
+      "median_ms": 3.01,
+      "p95_ms": 4.58,
+      "max_ms": 4.58,
+      "errors": 0
+    },
+    {
+      "name": "5. KG Explanation (Tool)",
+      "iterations": 20,
+      "mean_ms": 32.86,
+      "median_ms": 30.9,
+      "p95_ms": 44.87,
+      "max_ms": 44.87,
+      "errors": 0
+    },
+    {
+      "name": "6. BM25 RAG Retrieval",
+      "iterations": 20,
+      "mean_ms": 4.7,
+      "median_ms": 3.96,
+      "p95_ms": 8.15,
+      "max_ms": 8.15,
+      "errors": 0
+    },
+    {
+      "name": "7. Chatbot Response (Local)",
+      "iterations": 10,
+      "mean_ms": 7.28,
+      "median_ms": 7.36,
+      "p95_ms": 8.1,
+      "max_ms": 8.1,
+      "errors": 0
+    },
+    {
+      "name": "8. Generate/Optimize 2-Opt (5 stops)",
+      "iterations": 20,
+      "mean_ms": 0.03,
+      "median_ms": 0.02,
+      "p95_ms": 0.08,
+      "max_ms": 0.08,
+      "errors": 0
+    },
+    {
+      "name": "9. Update Itinerary (Tool)",
+      "iterations": 20,
+      "mean_ms": 0.1,
+      "median_ms": 0.04,
+      "p95_ms": 1.07,
+      "max_ms": 1.07,
+      "errors": 0
+    },
+    {
+      "name": "10. Carbon Estimate (Tool)",
+      "iterations": 20,
+      "mean_ms": 0.01,
+      "median_ms": 0.01,
+      "p95_ms": 0.09,
+      "max_ms": 0.09,
+      "errors": 0
+    }
+  ],
+  "security": {
+    "argon2": true,
+    "jwt": true,
+    "prompt_injection_guard": true,
+    "frontend_leaks": 0,
+    "sql_injection_defense": true
+  },
+  "data_integrity": {
+    "total_pois": 482,
+    "duplicate_pois": 0,
+    "invalid_coords": 0,
+    "null_critical": 0,
+    "total_trips": 7,
+    "orphan_trips": 0
+  }
+}

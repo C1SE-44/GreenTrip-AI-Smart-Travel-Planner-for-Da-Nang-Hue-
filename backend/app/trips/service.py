@@ -670,7 +670,18 @@ def _dispatch_copilot_intent(
         "travel_tips_budget": (handle_travel_tips, "morning"),
         "poi_advice": (handle_poi_advice, "morning"),
     }
-    if intent in standard_handlers:
+    # Let explicit itinerary creation prompts reach Orchestrator 2.0 (Tool Calling + RAG preview)
+    is_explicit_itinerary_gen = any(
+        k in norm_msg
+        for k in (
+            "tao lich trinh",
+            "lap lich trinh",
+            "len lich trinh",
+            "thiet ke lich trinh",
+            "ke hoach du lich",
+        )
+    )
+    if intent in standard_handlers and not is_explicit_itinerary_gen:
         handler_fn, default_slot = standard_handlers[intent]
         (
             reply_text,
@@ -772,6 +783,28 @@ def _dispatch_copilot_intent(
         )
         return upgrade_handler_response_to_mindtrip_standard(
             effective_req, raw_resp, intent_category, constraints, connection=connection
+        )
+
+    # Sprint 2.2: Advanced Orchestrator for RAG, Tool Calling and Knowledge Graph
+    from app.orchestrator.orchestrator import get_chatbot_orchestrator
+    from app.orchestrator.policy import decide_orchestration_plan
+
+    plan = decide_orchestration_plan(request.message, effective_ctx)
+    if plan.case_type in [
+        "knowledge_rag",
+        "explanation",
+        "itinerary_cost_route",
+        "poi_details_price",
+        "multi_turn_itinerary_mutation",
+        "recommendation",
+    ]:
+        orch = get_chatbot_orchestrator()
+        orch_resp = orch.orchestrate(effective_req, connection)
+        return finalize_copilot_response(
+            orch_resp,
+            effective_ctx,
+            constraints,
+            connection=connection,
         )
 
     # Universal Smart Concierge

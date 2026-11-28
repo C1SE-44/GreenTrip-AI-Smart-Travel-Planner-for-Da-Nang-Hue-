@@ -29,13 +29,13 @@ class POIFeatureExtractor:
     @staticmethod
     def _text(value: Any) -> str:
         """Convert a nullable value to stripped text."""
-        return value.strip() if isinstance(value, str) else ""
+        return value.strip().replace("_", " ") if isinstance(value, str) else ""
 
     @classmethod
     def _flatten_text(cls, value: Any) -> str:
         """Flatten JSON, array, and scalar tags into searchable text."""
         if isinstance(value, str):
-            return value.strip()
+            return value.strip().replace("_", " ")
         if isinstance(value, Mapping):
             return " ".join(
                 part

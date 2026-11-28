@@ -141,8 +141,14 @@ test('TripOverviewView & IdeationChatView wire streamCopilotChat and safe past-d
   assert.ok(overviewSource.includes('streamCopilotChat'), 'TripOverviewView must use streamCopilotChat');
   assert.ok(overviewSource.includes('streamingText'), 'TripOverviewView must render progressive streamingText');
   assert.ok(
-    overviewSource.includes('saveTripItinerary(nextPlan).catch'),
-    'TripOverviewView must catch past-date save rejection cleanly'
+    overviewSource.includes('pendingCopilotProposal')
+      && overviewSource.includes('confirmCopilotProposal')
+      && overviewSource.includes('errMsg.includes(\'quá khứ\')'),
+    'TripOverviewView must stage Copilot mutations for confirmation and handle past-date save rejection'
+  );
+  assert.ok(
+    !overviewSource.includes('saveTripItinerary(nextPlan).catch'),
+    'Copilot itinerary mutations must not save before user confirmation'
   );
   assert.ok(ideationSource.includes('streamCopilotChat'), 'IdeationChatView must use streamCopilotChat');
   assert.ok(ideationSource.includes('streamingText'), 'IdeationChatView must render progressive streamingText');

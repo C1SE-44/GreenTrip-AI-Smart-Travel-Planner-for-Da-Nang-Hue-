@@ -9,10 +9,28 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.config import Settings
+from app.db import postgres
 from app.main import app
 from app.itineraries.router import get_day_route
-from app.itineraries import repository
-from app.itineraries.schemas import DayRouteResponse
+from app.itineraries.repository import seed_sample_itineraries
+from app.itineraries import repository as itinerary_repository
+from app.itineraries.schemas import RouteStop, DayRouteResponse
+from app.itineraries.service import get_itinerary_day_route
+
+
+@pytest.fixture(autouse=True)
+def isolated_sample_itineraries(tmp_path, monkeypatch):
+    settings = Settings(
+        APP_ENV="development",
+        DATABASE_URL="",
+        SQLITE_FALLBACK_ENABLED=True,
+    )
+    monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", tmp_path / "itinerary_routes.sqlite3")
+    monkeypatch.setattr(postgres, "get_settings", lambda: settings)
+    monkeypatch.setattr(itinerary_repository, "get_settings", lambda: settings)
+    seed_sample_itineraries()
+
 
 # Mocked OSRM GeoJSON response
 MOCK_OSRM_GEOJSON = {
@@ -113,10 +131,10 @@ def use_isolated_itinerary_fixtures(monkeypatch: pytest.MonkeyPatch) -> None:
         poi = SAMPLE_POIS.get(poi_id)
         return {"poi_id": poi_id, **poi} if poi else None
 
-    monkeypatch.setattr(repository, "get_itinerary", get_itinerary)
-    monkeypatch.setattr(repository, "get_itinerary_day", get_itinerary_day)
-    monkeypatch.setattr(repository, "get_itinerary_day_stops", get_itinerary_day_stops)
-    monkeypatch.setattr(repository, "get_poi_by_id", get_poi_by_id)
+    monkeypatch.setattr(itinerary_repository, "get_itinerary", get_itinerary)
+    monkeypatch.setattr(itinerary_repository, "get_itinerary_day", get_itinerary_day)
+    monkeypatch.setattr(itinerary_repository, "get_itinerary_day_stops", get_itinerary_day_stops)
+    monkeypatch.setattr(itinerary_repository, "get_poi_by_id", get_poi_by_id)
     monkeypatch.setattr(
         "app.itineraries.routing_service.fetch_osrm_json",
         lambda *_args, **_kwargs: None,

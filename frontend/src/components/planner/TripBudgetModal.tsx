@@ -10,6 +10,8 @@ import {
 interface TripBudgetModalProps {
   categoryBudgets: CategoryBudgets;
   onChangeCategoryBudgets: React.Dispatch<React.SetStateAction<CategoryBudgets>>;
+  totalBudget?: number | null;
+  onChangeTotalBudget?: (value: number | null) => void;
   onClose: () => void;
   onSave: () => void;
 }
@@ -17,6 +19,8 @@ interface TripBudgetModalProps {
 export default function TripBudgetModal({
   categoryBudgets,
   onChangeCategoryBudgets,
+  totalBudget,
+  onChangeTotalBudget,
   onClose,
   onSave,
 }: TripBudgetModalProps) {
@@ -171,8 +175,29 @@ export default function TripBudgetModal({
         </div>
 
         {/* Chú thích thông minh */}
+        {onChangeTotalBudget && (
+          <div className="mb-5 rounded-2xl border border-gray-200/70 bg-gray-50/80 p-3.5">
+            <label htmlFor="planner-total-budget" className="mb-2 block text-[13px] font-bold text-gray-900">
+              Tổng ngân sách (VNĐ - tùy chọn)
+            </label>
+            <input
+              id="planner-total-budget"
+              type="number"
+              min={0}
+              step={500000}
+              placeholder="Ví dụ: 10400000"
+              value={totalBudget ?? ''}
+              onChange={(event) => {
+                const value = Number.parseInt(event.target.value, 10);
+                onChangeTotalBudget(Number.isFinite(value) && value > 0 ? value : null);
+              }}
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-[13.5px] text-gray-900 focus:border-black focus:outline-none"
+            />
+          </div>
+        )}
+
         <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-xs text-amber-900 leading-relaxed mb-5">
-          <strong>Cơ chế tính ngân sách minh bạch:</strong> Tổng dự trù trên thanh lịch trình được tính cho <strong>toàn bộ số khách</strong> của chuyến đi (kèm mức ước tính mỗi người), gồm vé tham quan và ăn uống các điểm dừng trong lịch; <strong>chưa gồm</strong> tiền phòng lưu trú và vé xe/tàu di chuyển liên tỉnh.
+          <strong>Cơ chế tính minh bạch:</strong> Tổng dự trù trên thanh lịch trình tính cho toàn bộ số khách, gồm vé tham quan và ăn uống tại các điểm dừng; chưa gồm lưu trú và vé xe/tàu liên tỉnh. Gợi ý Nhà hàng dùng ngân sách Ăn uống; gợi ý Di tích &amp; Cảnh quan dùng ngân sách Hoạt động.
         </div>
 
         {/* Nút Cập nhật góc dưới bên phải */}

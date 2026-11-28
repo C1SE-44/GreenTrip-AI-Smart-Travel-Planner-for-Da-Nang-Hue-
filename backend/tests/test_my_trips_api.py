@@ -20,7 +20,6 @@ def isolated_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     test_db = tmp_path / "test_my_trips.sqlite"
     monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", test_db)
     monkeypatch.setattr(postgres, "get_settings", lambda: Settings(DATABASE_URL=""))
-    monkeypatch.setattr("app.main.seed_sample_itineraries", lambda: None)
 
 
 @pytest.fixture
@@ -181,7 +180,6 @@ def test_upsert_persists_one_owned_trip_and_allows_non_poi_stops(
 
     monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", tmp_path / "upsert_my_trip.sqlite")
     monkeypatch.setattr(postgres, "get_settings", lambda: Settings(DATABASE_URL=""))
-    monkeypatch.setattr("app.main.seed_sample_itineraries", lambda: None)
     user_id = f"user_upsert_{uuid.uuid4().hex[:8]}"
     headers = auth_header(user_id)
     trip_id = sample_trip_payload["trip_id"]

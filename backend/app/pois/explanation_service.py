@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExplanationServiceUnavailable(Exception):
-    """Raised when Knowledge Graph explanation facts cannot be retrieved."""
+    """Raised when explanation facts cannot be retrieved from available sources."""
 
 
 def get_poi_explanation_facts(
@@ -41,9 +41,8 @@ def get_poi_explanation_facts(
         return POIExplanationFactsResponse(
             poi=poi,
             facts=facts,
-            explanation_source=payload.get("explanation_source"),
-            green_score_breakdown=payload.get("green_score_breakdown"),
+            fact_source=payload.get("fact_source"),
         )
     except Exception as exc:
-        logger.warning("Knowledge Graph explanation service is unavailable.")
+        logger.warning("POI explanation sources are unavailable.")
         raise ExplanationServiceUnavailable from exc

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import math
 from decimal import Decimal, InvalidOperation
@@ -13,10 +15,55 @@ from app.recommendations.poi_feature_extractor import POIFeatureExtractor
 from app.recommendations.recommender_engine import ContentBasedRecommender
 from app.recommendations.repository import list_recommendation_pois
 from app.recommendations.schemas import RecommendationRequest, RecommendationResponse
-from app.trips.schemas import ValidatedTripData
 
 
 logger = logging.getLogger(__name__)
+
+
+class RecommendationSnapshotMismatch(ValueError):
+    """Raised when the eligible ranked POIs changed during pagination."""
+
+
+def _page_recommendation_data(
+    records: list[dict[str, Any]], request: RecommendationRequest
+) -> RecommendationResponse:
+    """Sort by the score exposed to clients, then return one stable page."""
+    ordered = sorted(
+        records,
+        key=lambda item: (-float(item["match_score"]), str(item["poi_id"])),
+    )
+    unique_records: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for record in ordered:
+        poi_id = str(record["poi_id"])
+        if poi_id in seen_ids:
+            continue
+        seen_ids.add(poi_id)
+        unique_records.append(record)
+
+    snapshot_content = [
+        [str(record["poi_id"]), float(record["match_score"])]
+        for record in unique_records
+    ]
+    snapshot_id = hashlib.sha256(
+        json.dumps(snapshot_content, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    if request.snapshot_id is not None and request.snapshot_id != snapshot_id:
+        raise RecommendationSnapshotMismatch(
+            "Recommendation results changed. Restart pagination from the first page."
+        )
+
+    total = len(unique_records)
+    page = unique_records[request.offset:request.offset + request.top_k]
+    next_offset = request.offset + len(page)
+    has_more = next_offset < total
+    return RecommendationResponse(
+        total=total,
+        data=page,
+        has_more=has_more,
+        next_offset=next_offset if has_more else None,
+        snapshot_id=snapshot_id,
+    )
 
 COST_FALLBACK_BY_TIER: dict[str, Decimal] = {
     "free": Decimal(0),
@@ -27,19 +74,6 @@ COST_FALLBACK_BY_TIER: dict[str, Decimal] = {
     "unknown": Decimal(80_000),
 }
 
-# Visit-only planning capacity after allowing time for transport, meals, and
-# breaks. These are heuristics; PB09 does not create a day-by-day itinerary.
-DAILY_VISIT_MINUTES_BY_PACING: dict[str, int] = {
-    "relaxed": 210,
-    "balanced": 270,
-    # PB07 currently calls its intensive pacing option "Fast".
-    "fast": 330,
-    "intensive": 330,
-}
-DEFAULT_DAILY_VISIT_MINUTES = 270
-DEFAULT_POI_VISIT_MINUTES = Decimal(90)
-
-
 def _decimal_value(value: Any) -> Decimal | None:
     """Convert psycopg/Pydantic numeric values without float summation drift."""
     if value is None or isinstance(value, bool):
@@ -49,20 +83,6 @@ def _decimal_value(value: Any) -> Decimal | None:
     except (InvalidOperation, TypeError, ValueError):
         return None
     return number if number.is_finite() else None
-
-
-def _legacy_band_allows(poi: dict[str, Any], budget_band: int) -> bool:
-    """Retain the original per-POI bands for older frontend requests."""
-    cost = _decimal_value(
-        poi.get("effective_estimated_cost", poi.get("estimated_cost"))
-    )
-    if cost is None or cost < 0:
-        return False
-    if budget_band == 1:
-        return cost <= Decimal(100_000)
-    if budget_band == 2:
-        return cost <= Decimal(500_000)
-    return cost > Decimal(500_000)
 
 
 def _with_effective_cost(poi: dict[str, Any]) -> dict[str, Any] | None:
@@ -171,103 +191,46 @@ def _resolved_green_score(poi: dict[str, Any]) -> float:
 
 
 def _explanation(poi: dict[str, Any], interests: list[str]) -> str:
-    """Create a concise explanation from a matching category or description."""
+    """Summarize only PB09 signals present in this recommendation's score."""
     category = str(poi.get("category_name") or poi.get("category") or "địa điểm này")
-    matching_interest = next(
-        (interest for interest in interests if interest.casefold() in category.casefold()),
+    score_breakdown = poi.get("score_breakdown") or {}
+    factors = score_breakdown.get("factors") or []
+    preference_factor = next(
+        (factor for factor in factors if factor.get("key") == "preference_similarity"),
         None,
     )
-    if matching_interest:
-        return f"Phù hợp với sở thích {matching_interest} và thuộc nhóm {category}."
+    matched_interests = score_breakdown.get("matched_interests") or poi.get("matched_interests") or []
+    if (
+        interests
+        and matched_interests
+        and preference_factor
+        and (preference_factor.get("normalized_value") or 0) > 0
+    ):
+        labels = ", ".join(f"“{interest}”" for interest in matched_interests)
+        return f"PB09 ghi nhận tín hiệu nội dung phù hợp với sở thích {labels}."
+
+    budget_factor = next(
+        (factor for factor in factors if factor.get("key") == "budget_alignment"),
+        None,
+    )
+    if budget_factor:
+        return "PB09 đã tính mức phù hợp với ngân sách tham khảo trong điểm gợi ý."
 
     description = poi.get("description")
     if isinstance(description, str) and description.strip():
         snippet = " ".join(description.split())
         if len(snippet) > 145:
             snippet = snippet[:142].rstrip() + "..."
-        return f"Được gợi ý theo sở thích của bạn. {snippet}"
-    return f"Được gợi ý theo sở thích của bạn; thuộc nhóm {category}."
-
-
-def _select_with_trip_budget(
-    ranked: list[dict[str, Any]],
-    request: RecommendationRequest,
-) -> list[dict[str, Any]]:
-    """Select ranked POIs within PB07 group-budget and per-day time limits.
-
-    POIs are assigned internally to the first day with sufficient remaining
-    capacity. This deterministic first-fit allocation enforces both the total
-    visit-time budget and each day's limit without generating an itinerary.
-    The available budget remains PB07 food plus activities; meal POIs are not
-    classified reliably enough here to apply further meal-budget deductions.
-    """
-    trip_data = request.trip_data
-    if trip_data is None:
-        return []
-
-    target_count = request.top_k
-    remaining_budget = _trip_activity_budget(request)
-    num_people = _trip_num_people(request)
-    daily_capacity = Decimal(_daily_visit_capacity(trip_data))
-    total_remaining_minutes = daily_capacity * trip_data.days
-    daily_remaining = [daily_capacity for _ in range(trip_data.days)]
-    selected: list[dict[str, Any]] = []
-    selected_ids: set[str] = set()
-
-    for poi in ranked:
-        if len(selected) >= target_count:
-            break
-
-        poi_id = str(poi.get("poi_id") or "").strip()
-        if not poi_id or poi_id in selected_ids:
-            continue
-
-        per_person_cost = _decimal_value(
-            poi.get("effective_estimated_cost", poi.get("estimated_cost"))
-        )
-        # The engine normally filters this already; repeat the guard at the
-        # budget boundary so malformed repository data cannot bypass it.
-        if per_person_cost is None or per_person_cost < 0:
-            continue
-        group_cost = per_person_cost * num_people
-        if group_cost > remaining_budget:
-            continue
-
-        visit_minutes = _effective_visit_minutes(poi)
-        if visit_minutes > total_remaining_minutes:
-            continue
-        # First-fit by trip day is deterministic and ensures an individual
-        # visit never exceeds one day's allowance, even if total time remains.
-        assigned_day = next(
-            (day for day, remaining in enumerate(daily_remaining)
-             if visit_minutes <= remaining),
-            None,
-        )
-        if assigned_day is None:
-            continue
-
-        selected.append(poi)
-        selected_ids.add(poi_id)
-        remaining_budget -= group_cost
-        total_remaining_minutes -= visit_minutes
-        daily_remaining[assigned_day] -= visit_minutes
-
-    if not selected and ranked:
-        logger.info(
-            "No POIs fit PB07 group budget/time limits (budget=%s VND, people=%s, days=%d).",
-            _trip_activity_budget(request),
-            _trip_num_people(request),
-            trip_data.days,
-        )
-    return selected
+        return f"Thông tin địa điểm: {snippet}"
+    return f"PB09 xếp hạng theo dữ liệu hiện có; địa điểm thuộc nhóm {category}."
 
 
 def _rank_and_format(
     poi_list: list[dict[str, Any]], request: RecommendationRequest
 ) -> RecommendationResponse:
-    """Apply PB07/PB08 context, rank candidates, then enforce the global budget."""
+    """Rank PB09 candidates using trip context and only explicit PB08 hard limits."""
     if not poi_list:
-        return RecommendationResponse(total=0, data=[])
+        return _page_recommendation_data([], request)
 
     trip_data = request.trip_data
     interests = list(dict.fromkeys(
@@ -275,7 +238,7 @@ def _rank_and_format(
     ))
     candidates = poi_list
     if not candidates:
-        return RecommendationResponse(total=0, data=[])
+        return _page_recommendation_data([], request)
 
     slider = request.slider_weights
     green_weight = (
@@ -283,6 +246,10 @@ def _rank_and_format(
     )
     min_eco_score = slider.min_eco_score if slider is not None else 0
     max_budget = slider.max_budget if slider is not None else None
+    daily_budget_per_person = (
+        _decimal_value(trip_data.daily_budget_per_person) if trip_data else None
+    )
+    trip_budget_tier = getattr(trip_data.budget_tier, "value", trip_data.budget_tier) if trip_data else None
 
     extractor = POIFeatureExtractor()
     feature_matrix, _, vectorizer, _ = extractor.fit_transform(candidates)
@@ -293,25 +260,30 @@ def _rank_and_format(
         top_k=None,
         min_eco_score=min_eco_score,
         max_budget=max_budget,
+        budget_target_per_person=(
+            float(daily_budget_per_person)
+            if daily_budget_per_person is not None and daily_budget_per_person > 0
+            else None
+        ),
+        budget_tier_preference=request.budget_tier or trip_budget_tier,
     )
-
-    if trip_data is not None:
-        selected = _select_with_trip_budget(ranked, request)
-    else:
-        # Compatibility path for the current UI until it submits PB07 data.
-        eligible = ranked if slider is not None else [
-            poi for poi in ranked
-            if _legacy_band_allows(poi, request.budget_band)
-        ]
-        if not eligible and ranked:
-            eligible = ranked
-        selected = eligible[: request.top_k]
-
+    selected_candidates = [
+        (
+            float(poi.get("match_score") or 0.0),
+            _explanation(poi, interests),
+            poi,
+        )
+        for poi in ranked
+    ]
     data = [
         {
             "poi_id": str(poi.get("poi_id", "")),
             "name": str(poi.get("name") or ""),
             "category_name": poi.get("category_name") or poi.get("category"),
+            "sub_category": poi.get("sub_category"),
+            "average_visit_minutes": _decimal_value(poi.get("average_visit_minutes")),
+            "best_time": poi.get("best_time"),
+            "opening_hours": poi.get("opening_hours"),
             "match_score": round(score, 1),
             "estimated_cost": _resolved_cost_vnd(poi, default=50000.0),
             "satisfaction_score": poi.get("satisfaction_score"),
@@ -323,10 +295,18 @@ def _rank_and_format(
             "gallery": poi.get("gallery_urls") or poi.get("gallery") or [],
             "city": poi.get("city_name") or poi.get("city") or "Đà Nẵng",
             "explanation_snippet": snippet,
+            "score_breakdown": (
+                {
+                    **poi["score_breakdown"],
+                    "budget_time_filter_applied": False,
+                }
+                if poi.get("score_breakdown")
+                else None
+            ),
         }
         for score, snippet, poi in selected_candidates
     ]
-    return RecommendationResponse(total=len(data), data=data)
+    return _page_recommendation_data(data, request)
 
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -472,7 +452,6 @@ def _recommend_by_ideas_and_taxonomy(
 ) -> RecommendationResponse:
     candidates = [dict(p) for p in poi_list]
     ideas = [str(i).strip().lower() for i in (request.ideas or []) if str(i).strip()]
-    top_k = request.top_k or 10
 
     # Match liked POIs from ideas
     liked_pois = [
@@ -481,6 +460,12 @@ def _recommend_by_ideas_and_taxonomy(
         or str(p.get("name", "")).strip().lower() in ideas
         or any(i in str(p.get("name", "")).strip().lower() for i in ideas)
     ]
+
+    # New-trip recommendations have no saved ideas yet. Use PB09's content
+    # ranking for those requests so submitted interests and PB07 budget context
+    # affect the result from the first screen.
+    if request.trip_data is not None or (not liked_pois and request.interests):
+        return _rank_and_format(candidates, request)
 
     # STAGE 2: If user has selected ideas, use Multi-Signal Intersection with Dynamic Quota
     if liked_pois:
@@ -646,10 +631,20 @@ def _recommend_by_ideas_and_taxonomy(
             if is_local and "cộng đồng" not in snippet.lower() and "bản địa" not in snippet.lower():
                 snippet = f"{snippet} Hỗ trợ cơ sở cộng đồng địa phương."
 
-            ranked_list.append((total_score, snippet, poi))
+            ranked_list.append((total_score, snippet, poi, {
+                "algorithm": "selected_ideas_context",
+                "factors": [
+                    {"key": "geographic_proximity", "label": "Khoảng cách tới địa điểm đã chọn", "contribution_points": dist_score},
+                    {"key": "experience_balance", "label": "Cân bằng nhóm trải nghiệm", "contribution_points": bucket_score},
+                    {"key": "subcategory_behavior", "label": "Danh mục phụ đã chọn", "contribution_points": behavior_score},
+                    {"key": "satisfaction", "label": "Điểm hài lòng", "contribution_points": quality_score},
+                    {"key": "budget_alignment", "label": "Điều chỉnh theo mức ngân sách", "contribution_points": budget_adj},
+                    {"key": "vibe_harmony", "label": "Độ tương đồng sắc thái trải nghiệm", "contribution_points": vibe_score},
+                ],
+            }))
 
-        ranked_list.sort(key=lambda x: -x[0])
-        selected_candidates = ranked_list[:top_k]
+        ranked_list.sort(key=lambda item: (-item[0], str(item[2].get("poi_id", ""))))
+        selected_candidates = ranked_list
 
     # STAGE 1: Multi-objective ranking (Experience + Green + Low-Crowd + Local Community + Budget)
     else:
@@ -697,10 +692,17 @@ def _recommend_by_ideas_and_taxonomy(
                 tags.append(f"Điểm xanh {int(round(green_val * 100))}/100")
             snippet = f"{' · '.join(tags)}. {usp_hook}" if tags else usp_hook
 
-            ranked_list.append((match_score, snippet, poi))
+            ranked_list.append((match_score, snippet, poi, {
+                "algorithm": "legacy_budget_quality",
+                "factors": [
+                    {"key": "satisfaction", "label": "Điểm hài lòng", "contribution_points": sat * 0.70 * 85.0, "normalized_value": sat},
+                    {"key": "relative_popularity", "label": "Mức phổ biến", "contribution_points": pop * 0.30 * 85.0, "normalized_value": pop},
+                    {"key": "budget_alignment", "label": "Điều chỉnh theo phân khúc ngân sách", "contribution_points": budget_affinity * 85.0},
+                ],
+            }))
 
-        ranked_list.sort(key=lambda x: -x[0])
-        selected_candidates = ranked_list[:top_k]
+        ranked_list.sort(key=lambda item: (-item[0], str(item[2].get("poi_id", ""))))
+        selected_candidates = ranked_list
 
     data = [
         {
@@ -722,10 +724,11 @@ def _recommend_by_ideas_and_taxonomy(
             "gallery": poi.get("gallery_urls") or poi.get("gallery") or [],
             "city": poi.get("city_name") or poi.get("city") or "Đà Nẵng",
             "explanation_snippet": snippet,
+            "score_breakdown": breakdown,
         }
-        for score, snippet, poi in selected_candidates
+        for score, snippet, poi, breakdown in selected_candidates
     ]
-    return RecommendationResponse(total=len(data), data=data)
+    return _page_recommendation_data(data, request)
 
 
 def get_poi_recommendations(

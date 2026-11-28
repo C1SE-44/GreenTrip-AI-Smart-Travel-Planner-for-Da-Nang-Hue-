@@ -34,6 +34,7 @@ interface ItineraryIdeasCarouselProps {
   onSelectPoi: (poiId: string) => void;
   onAddIdeaToDay: (dayNumber: number, poi: Poi) => void;
   onRemoveIdeaFromTrip: (poiId: string) => void;
+  allowScheduleActions?: boolean;
 }
 
 export default function ItineraryIdeasCarousel({
@@ -48,6 +49,7 @@ export default function ItineraryIdeasCarousel({
   onSelectPoi,
   onAddIdeaToDay,
   onRemoveIdeaFromTrip,
+  allowScheduleActions = true,
 }: ItineraryIdeasCarouselProps) {
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -153,58 +155,80 @@ export default function ItineraryIdeasCarousel({
                     <ExternalLink size={13} />
                     <span className="truncate">Xem {poi.name}</span>
                   </button>
-                  {poi.category === 'luu-tru' ? (
-                    <div className="space-y-1 border-y border-gray-100 py-1">
-                      {contactLinks.map((link) => (
-                        <a
-                          key={`${poi.id}-${link.href}`}
-                          href={link.href}
-                          target={link.href.startsWith('http') ? '_blank' : undefined}
-                          rel={link.href.startsWith('http') ? 'noreferrer' : undefined}
-                          className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-medium flex items-center gap-2"
-                        >
-                          {link.href.startsWith('tel:') ? <Phone size={13} /> : <ExternalLink size={13} />}
-                          <span className="truncate">{link.label}</span>
-                        </a>
-                      ))}
-                      {contactLinks.length === 0 && (
-                        <p className="px-3 py-2 text-xs text-gray-700">Chưa có thông tin liên hệ.</p>
-                      )}
-                    </div>
-                  ) : (
-                    <>
+
+                    {/* Liên hệ nơi lưu trú */}
+                    {poi.category === 'luu-tru' && (
+                      <div className="space-y-1 border-y border-gray-100 py-1">
+                        {contactLinks.map((link) => (
+                          <a
+                            key={`${poi.id}-${link.href}`}
+                            href={link.href}
+                            target={link.href.startsWith('http') ? '_blank' : undefined}
+                            rel={link.href.startsWith('http') ? 'noreferrer' : undefined}
+                            className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-medium flex items-center gap-2"
+                          >
+                            {link.href.startsWith('tel:') ? (
+                              <Phone size={13} />
+                            ) : (
+                              <ExternalLink size={13} />
+                            )}
+                            <span className="truncate">{link.label}</span>
+                          </a>
+                        ))}
+
+                        {contactLinks.length === 0 && (
+                          <p className="px-3 py-2 text-xs text-gray-700">
+                            Chưa có thông tin liên hệ.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Nút thêm POI vào lịch trình */}
+                    {allowScheduleActions && (
                       <button
                         type="button"
                         onClick={() => {
-                          onSetActiveIdeaAddDayPoiId(activeIdeaAddDayPoiId === poi.id ? null : poi.id);
+                          onSetActiveIdeaAddDayPoiId(
+                            activeIdeaAddDayPoiId === poi.id ? null : poi.id
+                          );
                         }}
                         className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-medium flex items-center justify-between cursor-pointer"
                       >
                         <span className="flex items-center gap-2">
-                          <Clock size={13} /> Thêm vào lịch trình
+                          <Clock size={13} />
+                          Thêm vào lịch trình
                         </span>
                         <ChevronRight
                           size={13}
-                          className={activeIdeaAddDayPoiId === poi.id ? 'rotate-90 transition-transform' : 'transition-transform'}
+                          className={
+                            activeIdeaAddDayPoiId === poi.id
+                              ? 'rotate-90 transition-transform'
+                              : 'transition-transform'
+                          }
                         />
                       </button>
-                      {activeIdeaAddDayPoiId === poi.id && (
-                        <div className="pl-3 pr-1 py-1 space-y-1 bg-gray-50 rounded-xl my-1">
-                          {days.map((d) => (
-                            <button
-                              key={d.day_number}
-                              type="button"
-                              onClick={() => onAddIdeaToDay(d.day_number, poi)}
-                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-black hover:text-white text-xs font-semibold flex items-center justify-between cursor-pointer"
-                            >
-                              <span>Ngày {d.day_number}</span>
-                              <span className="text-[10px] opacity-70">{d.stops.length} điểm</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
+                    )}
+
+                    {/* Danh sách chọn ngày tham quan */}
+                    {allowScheduleActions && activeIdeaAddDayPoiId === poi.id && (
+                      <div className="pl-3 pr-1 py-1 space-y-1 bg-gray-50 rounded-xl my-1">
+                        {days.map((d) => (
+                          <button
+                            key={d.day_number}
+                            type="button"
+                            onClick={() => onAddIdeaToDay(d.day_number, poi)}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-black hover:text-white text-xs font-semibold flex items-center justify-between cursor-pointer"
+                          >
+                            <span>Ngày {d.day_number}</span>
+                            <span className="text-[10px] opacity-70">
+                              {d.stops.length} điểm
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
                   <div className="border-t border-gray-100 my-1"></div>
                   <button
                     type="button"

@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from app.config import get_settings
 from app.db.postgres import SQLiteConnectionWrapper, get_connection
 from app.trips.itinerary_repository import _ensure_local_tables
 
@@ -128,7 +129,15 @@ def _check_itinerary_exists(cursor, _conn, itin_id: str) -> bool:
 
 
 # Seed initial demo / sample itineraries if not present
-def seed_sample_itineraries():
+def seed_sample_itineraries() -> None:
+    settings = get_settings()
+    if str(settings.APP_ENV).strip().lower() != "development":
+        raise RuntimeError("Sample itinerary seeding is available only in development.")
+    if settings.DATABASE_URL.strip():
+        raise RuntimeError("Sample itinerary seeding refuses a configured PostgreSQL database.")
+    if not settings.SQLITE_FALLBACK_ENABLED:
+        raise RuntimeError("Set SQLITE_FALLBACK_ENABLED=true to explicitly enable local SQLite.")
+
     ensure_itinerary_tables()
     sample_id = "sample-danang-hue-3d"
 

@@ -3,10 +3,15 @@ Comprehensive Test Suite for GreenTrip Multi-Criteria Transport Mode Recommendat
 Tests all 20 business, mathematical, algorithmic, and integration criteria.
 """
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.config import Settings
+from app.db import postgres
+from app.itineraries import repository as itinerary_repository
 from app.itineraries.schemas import RouteStop
 from app.itineraries.transport_service import (
     evaluate_segment_transport_options,
@@ -28,6 +33,15 @@ from app.tools.implementations import (
 )
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def seeded_itinerary_database(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    settings = Settings(APP_ENV="development", DATABASE_URL="", SQLITE_FALLBACK_ENABLED=True)
+    monkeypatch.setattr(postgres, "_SQLITE_DB_PATH", tmp_path / "transport-mode.sqlite3")
+    monkeypatch.setattr(postgres, "get_settings", lambda: settings)
+    monkeypatch.setattr(itinerary_repository, "get_settings", lambda: settings)
+    itinerary_repository.seed_sample_itineraries()
 
 
 # 1. Short urban segment walking / bicycle

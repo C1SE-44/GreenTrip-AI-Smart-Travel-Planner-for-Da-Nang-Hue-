@@ -256,3 +256,39 @@ def compute_route_geometry(
     if return_legs:
         return fallback_result
     return fb
+
+
+def compute_route_leg_metrics(
+    stops: list[RouteStop],
+) -> tuple[list[dict[str, float] | None], str]:
+    """Return per-leg OSRM metrics, or clearly labeled coordinate distances on fallback."""
+    if len(stops) < 2:
+        return [], "direct" if stops else "none"
+
+    _, _, _, is_fallback, provider, leg_metrics = compute_route_geometry(stops, return_legs=True)
+    if len(leg_metrics) == len(stops) - 1:
+        return leg_metrics, "fallback" if is_fallback else provider
+
+    if is_fallback:
+        fallback_metrics: list[dict[str, float]] = []
+        for current, following in zip(stops, stops[1:]):
+            straight_distance = haversine_distance_meters(
+                current.latitude,
+                current.longitude,
+                following.latitude,
+                following.longitude,
+            )
+            detour = 1.35 if get_corridor_between_points(
+                current.latitude,
+                current.longitude,
+                following.latitude,
+                following.longitude,
+            ) else FALLBACK_DETOUR_FACTOR
+            fallback_metrics.append({
+                "distance_meters": straight_distance * detour,
+                "duration_seconds": 0.0,
+            })
+        return fallback_metrics, "fallback"
+
+    # OSRM returned only an aggregate route; do not invent a per-leg split.
+    return [None] * (len(stops) - 1), provider

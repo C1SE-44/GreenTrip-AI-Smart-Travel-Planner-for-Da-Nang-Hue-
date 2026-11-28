@@ -41,6 +41,7 @@ export interface PoiExplanationResponse {
     source: string | null;
   };
   facts: ExplanationFact[];
+  fact_source?: 'NEO4J' | 'POSTGRESQL_FALLBACK' | 'CSV_FALLBACK' | null;
   explanation_source?: string | null;
   green_score_breakdown?: GreenScorePillar[] | null;
 }

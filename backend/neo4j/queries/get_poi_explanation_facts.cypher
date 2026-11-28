@@ -1,4 +1,5 @@
 MATCH (p:POI {id: $poi_id})
+WHERE p.is_active IS NULL OR p.is_active = true
 OPTIONAL MATCH (p)-[r:IN_CATEGORY|OFFERS_ACTIVITY|LOCATED_IN]->(target)
 WITH p, r, target
 ORDER BY type(r), target.key, target.name
@@ -19,7 +20,6 @@ RETURN {
     id: p.id,
     name: p.name,
     is_local_business: p.is_local_business,
-    local_business_type: p.local_business_type,
-    source: p.source
+    local_business_type: p.local_business_type
 } AS poi,
 [fact IN raw_facts WHERE fact IS NOT NULL] AS facts;

@@ -56,6 +56,29 @@ test('Legacy cache migration requires server-confirmed ownership and keeps ideas
   assert.equal((await loadAccountTrips(db, 'bob', async () => [])).length, 0);
 });
 
+test('Server-owned duration and dates stay authoritative while local trip details are retained', async () => {
+  const db = storage();
+  db.setItem(tripStorageKey('alice'), JSON.stringify([{
+    id: 'a',
+    title: 'Trip',
+    destination: 'Huế',
+    startDate: '6 ngày • Tháng 12',
+    daysCount: 6,
+    peopleCount: 3,
+    preferences: ['beach'],
+    ideas: ['poi-1'],
+    localMetadataOverrides: { startDate: '6 ngày • Tháng 12', daysCount: 6 },
+  }]));
+  const [trip] = await loadAccountTrips(db, 'alice', async () => [
+    { trip_id: 'a', title: 'Trip', destination: 'Huế', start_date: '2026-11-01', days_count: 4 },
+  ]);
+  assert.equal(trip.startDate, '2026-11-01');
+  assert.equal(trip.daysCount, 4);
+  assert.equal(trip.peopleCount, 3);
+  assert.deepEqual(Array.from(trip.preferences), ['beach']);
+  assert.deepEqual(Array.from(trip.ideas), ['poi-1']);
+});
+
 test('Failed verification does not discard or automatically claim legacy trips', async () => {
   const db = storage();
   db.setItem('greentrip_user_trips', '[{"id":"unassigned"}]');
@@ -73,6 +96,19 @@ test('An injected account cache never overrides a server-owned list', async () =
   db.setItem(tripStorageKey('bob'), JSON.stringify([{ id: 'alice-private', ideas: ['secret'] }]));
   const rows = await loadAccountTrips(db, 'bob', async () => []);
   assert.equal(rows.length, 0);
+});
+
+test('An account cache without a pending sync record is not treated as an owned trip', async () => {
+  const db = storage();
+  db.setItem(tripStorageKey('alice'), JSON.stringify([
+    { id: 'trip_123', title: 'Alice draft', ideas: ['poi-1'] },
+    { id: 'not-owned-server-trip', title: 'Unverified' },
+  ]));
+  db.setItem(tripStorageKey('bob'), JSON.stringify([{ id: 'trip_456', title: 'Bob draft' }]));
+  const aliceTrips = await loadAccountTrips(db, 'alice', async () => []);
+  const bobTrips = await loadAccountTrips(db, 'bob', async () => []);
+  assert.deepEqual(Array.from(aliceTrips, (trip) => trip.id), []);
+  assert.deepEqual(Array.from(bobTrips, (trip) => trip.id), []);
 });
 
 test('Pending itinerary drafts reappear in the same account trip list after a failed sync', async () => {

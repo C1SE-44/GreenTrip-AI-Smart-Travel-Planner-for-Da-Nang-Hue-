@@ -6,6 +6,7 @@ import PoiCard from '../src/components/poi/PoiCard';
 import TripParametersForm from '../src/components/planner/TripParametersForm';
 import ItineraryEditor from '../src/components/planner/ItineraryEditor';
 import type { UserTrip } from '../src/pages/ExplorePage';
+import type { RecommendationScoreBreakdown } from '../src/services/recommendations';
 import { pois } from '../src/data/pois';
 import '../src/index.css';
 
@@ -91,9 +92,36 @@ window.fetch = async (input, init) => {
     await new Promise((resolve) => setTimeout(resolve, mode === 'race' && id === A ? 400 : 80));
     if (mode === 'error' || (mode === 'retry' && attempts === 1)) return Response.json({}, { status: 503 });
     if (mode === 'missing') return Response.json({}, { status: 404 });
+    const personalized = params.get('component') === 'personalized';
+    const fallbackSource = params.get('source') === 'POSTGRESQL_FALLBACK';
+    const facts = mode === 'empty' ? [] : mode === 'long'
+      ? Array.from({ length: 18 }, (_, index) => index % 3 === 0
+        ? { relationship: 'IN_CATEGORY', target_type: 'Category', target_key: `test-category-${index}`, target_name: `Danh mục dài ${index + 1}` }
+        : index % 3 === 1
+          ? { relationship: 'OFFERS_ACTIVITY', target_type: 'Activity', target_key: `test-activity-${index}`, target_name: `Hoạt động dài ${index + 1}` }
+          : { relationship: 'LOCATED_IN', target_type: 'Location', target_key: 'DANANG', target_name: 'DANANG' })
+      : personalized
+        ? params.get('matched') === 'culture'
+          ? [
+            { relationship: 'IN_CATEGORY', target_type: 'Category', target_key: 'historical_culture', target_name: 'Historical Culture' },
+            { relationship: 'OFFERS_ACTIVITY', target_type: 'Activity', target_key: 'cultural_sightseeing', target_name: 'Cultural sightseeing' },
+            { relationship: 'LOCATED_IN', target_type: 'Location', target_key: 'HUE', target_name: 'HUE' },
+          ]
+          : fallbackSource
+            ? [
+              { relationship: 'IN_CATEGORY', target_type: 'Category', target_key: 'food_dining', target_name: 'Food & dining' },
+              { relationship: 'LOCATED_IN', target_type: 'Location', target_key: 'DANANG', target_name: 'DANANG' },
+            ]
+            : [
+              { relationship: 'OFFERS_ACTIVITY', target_type: 'Activity', target_key: 'water_recreation', target_name: 'Water recreation' },
+              { relationship: 'IN_CATEGORY', target_type: 'Category', target_key: 'nature_landscape', target_name: 'Nature & landscape' },
+              { relationship: 'LOCATED_IN', target_type: 'Location', target_key: 'DANANG', target_name: 'DANANG' },
+            ]
+        : [{ relationship: 'IN_CATEGORY', target_type: 'Category', target_key: id, target_name: id === A ? 'FACT A' : 'FACT B' }];
     return Response.json({
-      poi: { id: mode === 'mismatch' ? B : id, name: `POI ${id === A ? 'A' : 'B'}`, is_local_business: true },
-      facts: mode === 'empty' ? [] : [{ relationship: 'IN_CATEGORY', target_type: 'Category', target_key: id, target_name: id === A ? 'FACT A' : 'FACT B' }],
+      poi: { id: mode === 'mismatch' ? B : id, name: `POI ${id === A ? 'A' : 'B'}`, is_local_business: true, source: null },
+      facts,
+      fact_source: fallbackSource ? 'POSTGRESQL_FALLBACK' : 'NEO4J',
     });
   }
   if (url.includes('validate-parameters')) {
@@ -164,10 +192,29 @@ function Harness() {
       onSelectIdeas={(ids) => { autoSelectedIds.splice(0, autoSelectedIds.length, ...ids); }}
       onClose={() => undefined} onAddIdea={() => undefined} />;
   }
+  if (params.get('component') === 'personalized') {
+    const scoreBreakdown: RecommendationScoreBreakdown = {
+      algorithm: 'preference_first_hybrid',
+      factors: [{
+        key: 'preference_similarity', label: 'Mức phù hợp sở thích',
+        contribution_points: 90, normalized_value: 1, source: 'taxonomy_and_tfidf',
+      }],
+      matched_interests: params.get('matched') === 'none' ? []
+        : params.get('matched') === 'culture' ? ['culture']
+          : params.get('matched') === 'food' ? ['food'] : ['beach'],
+      budget_time_filter_applied: false,
+    };
+    const selectedInterests = params.get('selected') === 'none' ? []
+      : params.get('selected') === 'culture' ? ['culture']
+        : params.get('selected') === 'food' ? ['food'] : ['beach'];
+    return <ExplanationModal poiId={A} poiName="POI A" scoreBreakdown={scoreBreakdown}
+      selectedInterests={selectedInterests} tripDestination="Đà Nẵng" isOpen onClose={() => undefined} />;
+  }
   if (params.get('component') === 'card') return <PoiCard
     poi={{ ...pois[0], id: A, name: 'POI A', image: '' }}
     onClick={() => Object.assign(window, { cardClicks: Number(Reflect.get(window, 'cardClicks')) + 1 })}
     onHover={() => undefined} onToggleFavorite={() => undefined}
+    showExplanation={params.get('show-explanation') === 'yes'}
   />;
   return <>
     <button id="open" onClick={() => setOpen(true)}>Open</button>

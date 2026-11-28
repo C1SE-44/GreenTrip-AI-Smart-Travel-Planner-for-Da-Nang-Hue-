@@ -19,6 +19,15 @@ const INLINE_FALLBACK_SVG =
       '</svg>'
   );
 
+const NEUTRAL_FALLBACK_SVG =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">' +
+      '<rect width="800" height="600" fill="#f3f4f6"/>' +
+      '<path d="M400 160c-77 0-140 62-140 139 0 102 140 230 140 230s140-128 140-230c0-77-63-139-140-139zm0 193a54 54 0 1 1 0-108 54 54 0 0 1 0 108z" fill="#9ca3af"/>' +
+    '</svg>'
+  );
+
 export interface PoiImageProps {
   src?: string | null;
   alt: string;
@@ -27,6 +36,7 @@ export interface PoiImageProps {
   category?: PoiCategory;
   city?: PoiCity;
   fallbackSeed?: string;
+  fallbackMode?: 'category' | 'neutral';
   className?: string;
   priority?: boolean;
 }
@@ -39,6 +49,7 @@ export default function PoiImage({
   category = 'canh-quan',
   city = 'Đà Nẵng',
   fallbackSeed,
+  fallbackMode = 'category',
   className = '',
   priority = false,
 }: PoiImageProps) {
@@ -55,23 +66,24 @@ export default function PoiImage({
 
   const normalizedSrc = src?.trim() || '';
   const [errorTier, setErrorTier] = useState<0 | 1 | 2>(() =>
-    normalizedSrc ? 0 : 1
+    normalizedSrc ? 0 : fallbackMode === 'neutral' ? 2 : 1
   );
 
   useEffect(() => {
-    setErrorTier(normalizedSrc ? 0 : 1);
-  }, [normalizedSrc]);
+    setErrorTier(normalizedSrc ? 0 : fallbackMode === 'neutral' ? 2 : 1);
+  }, [normalizedSrc, fallbackMode]);
 
   const activeSrc =
     errorTier === 0
       ? normalizedSrc
       : errorTier === 1
         ? deterministicFallback
-        : INLINE_FALLBACK_SVG;
+        : fallbackMode === 'neutral' ? NEUTRAL_FALLBACK_SVG : INLINE_FALLBACK_SVG;
 
   const handleError = () => {
     setErrorTier((prev) => {
       if (prev === 0) {
+        if (fallbackMode === 'neutral') return 2;
         return deterministicFallback && deterministicFallback !== normalizedSrc ? 1 : 2;
       }
       return 2;

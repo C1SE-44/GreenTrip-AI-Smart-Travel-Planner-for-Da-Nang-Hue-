@@ -1,7 +1,7 @@
 import { buildDefaultMindtripItinerary, type CopilotTripMessage } from '@/components/planner/copilotTripData';
 import type { TimeOfDay } from '@/components/poi/ExploreFilterModal';
-import type { Poi, PoiCategory, PoiCity } from '@/data/pois';
-import type { CostBreakdown, DailyItineraryOutline, MatchedPOI } from '@/services/tripService';
+import { isCuratedHighlight, type Poi, type PoiCategory, type PoiCity } from '@/data/pois';
+import type { CostBreakdown, DailyItineraryOutline, MatchedPOI, ValidatedTripData } from '@/services/tripService';
 
 export interface UserTrip {
   id: string;
@@ -21,8 +21,30 @@ export interface UserTrip {
   status?: string;
   prompt?: string;
   totalBudget?: number;
+  budgetInputAmount?: number | null;
+  budgetScope?: 'PER_PERSON' | 'TOTAL_GROUP' | null;
+  tripInputVersion?: 1;
+  dateMode?: 'dates' | 'flex';
+  endDate?: string | null;
+  adultCount?: number;
+  childCount?: number;
+  infantCount?: number;
+  petCount?: number;
+  roomCount?: number | null;
+  accommodationPlan?: import('@/services/accommodations').AccommodationPlan;
+  transportPlan?: import('@/services/transport').TripTransportPlan;
+  workspaceRevision?: number;
+  greenWeight?: number;
+  budgetWeight?: number;
   itineraryOutline?: DailyItineraryOutline[];
   matchedPois?: MatchedPOI[];
+  preferences?: string[];
+  preferenceText?: string;
+  localMetadataOverrides?: {
+    startDate?: string;
+    daysCount?: number;
+  };
+  recommendationTripData?: ValidatedTripData;
   costBreakdown?: Partial<CostBreakdown>;
   pacingLabel?: string;
   pacingLevel?: 'Relaxed' | 'Balanced' | 'Fast';
@@ -105,6 +127,47 @@ export function getDistanceFromLatLonInKm(
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+/** Reuses Explore's existing Hoàng Anh "Dành cho bạn" ranking in Planner. */
+export function rankPoisForYou(matchedPois: Poi[], allPois: Poi[], savedIds: Set<string>): Poi[] {
+  const likedPois = allPois.filter((poi) => savedIds.has(poi.id));
+  const likedCategories = new Set(likedPois.map((poi) => poi.category));
+  const likedCities = new Set(likedPois.map((poi) => poi.city));
+  const likedSubcategories = new Set(likedPois.map((poi) => poi.sub_category?.toLowerCase()).filter(Boolean));
+
+  return [...matchedPois].sort((a, b) => {
+    let scoreA = 0;
+    let scoreB = 0;
+
+    if (likedPois.length > 0) {
+      if (likedCategories.has(a.category)) scoreA += 30;
+      if (likedCategories.has(b.category)) scoreB += 30;
+      if (a.sub_category && likedSubcategories.has(a.sub_category.toLowerCase())) scoreA += 25;
+      if (b.sub_category && likedSubcategories.has(b.sub_category.toLowerCase())) scoreB += 25;
+      if (likedCities.has(a.city)) scoreA += 15;
+      if (likedCities.has(b.city)) scoreB += 15;
+    }
+
+    if (a.isGreen) scoreA += 35;
+    if (b.isGreen) scoreB += 35;
+    if (a.ecoScore) scoreA += a.ecoScore / 10;
+    if (b.ecoScore) scoreB += b.ecoScore / 10;
+
+    scoreA += (a.rating || 4.0) * 10;
+    scoreB += (b.rating || 4.0) * 10;
+
+    if (savedIds.has(a.id)) scoreA += 15;
+    if (savedIds.has(b.id)) scoreB += 15;
+
+    if (isCuratedHighlight(a)) scoreA += 25;
+    if (isCuratedHighlight(b)) scoreB += 25;
+
+    if (a.category === 'luu-tru' && !likedCategories.has('luu-tru')) scoreA -= 15;
+    if (b.category === 'luu-tru' && !likedCategories.has('luu-tru')) scoreB -= 15;
+
+    return scoreB - scoreA;
+  });
 }
 
 export function matchesTimeOfDay(poi: Poi, timeOfDayList: TimeOfDay[]): boolean {

@@ -12,7 +12,12 @@ class RecommendationRequest(BaseModel):
     """Preferences used to generate a ranked POI list."""
 
     interests: list[str] = Field(default_factory=list)
-    budget_band: int = Field(default=2, ge=1, le=3, description="1=Low, 2=Medium, 3=High")
+    budget_band: int = Field(
+        default=2,
+        ge=1,
+        le=3,
+        description="Legacy input retained for compatibility; PB09 content ranking uses PB07 budget as a soft signal.",
+    )
     budget_tier: str | None = Field(default=None, description="any, budget, standard, upgrade, luxury")
     destination: str | None = Field(default=None, description="Destination city, e.g. Đà Nẵng, Huế")
     ideas: list[str] = Field(default_factory=list, description="POI names or IDs user added to ideas")
@@ -22,7 +27,20 @@ class RecommendationRequest(BaseModel):
         default="balanced",
         description="Multi-objective trade-off preset: balanced, fast, budget, or green_local",
     )
-    top_k: int = Field(default=10, ge=1, le=50)
+    top_k: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Maximum number of ranked POIs in this response page; does not limit the total result set.",
+    )
+    offset: int = Field(default=0, ge=0, description="Zero-based offset into the fully ranked result set.")
+    snapshot_id: str | None = Field(
+        default=None,
+        min_length=64,
+        max_length=64,
+        pattern="^[a-f0-9]{64}$",
+        description="Ranking snapshot returned by the first page; required for later pages.",
+    )
     trip_data: ValidatedTripData | None = Field(
         default=None,
         description="Validated PB07 response data; submit the response's data object.",
@@ -44,7 +62,30 @@ class RecommendationRequest(BaseModel):
 
     @model_validator(mode="after")
     def require_preferences(self) -> "RecommendationRequest":
+        if self.offset > 0 and self.snapshot_id is None:
+            raise ValueError("snapshot_id is required when offset is greater than zero")
         return self
+
+
+class RecommendationScoreFactor(BaseModel):
+    key: str
+    label: str
+    contribution_points: float
+    normalized_value: float | None = None
+    source: str | None = None
+
+
+class RecommendationScoreBreakdown(BaseModel):
+    algorithm: str
+    factors: list[RecommendationScoreFactor] = Field(default_factory=list)
+    matched_interests: list[str] = Field(
+        default_factory=list,
+        description="Submitted interests with evidence used in this POI's PB09 score.",
+    )
+    budget_time_filter_applied: bool = Field(
+        default=False,
+        description="Legacy field; false for PB09 content ranking because trip budget and duration do not filter candidates.",
+    )
 
 
 class RecommendationPOI(BaseModel):
@@ -68,11 +109,15 @@ class RecommendationPOI(BaseModel):
     gallery: list[str] | None = None
     city: str | None = None
     explanation_snippet: str
+    score_breakdown: RecommendationScoreBreakdown | None = None
 
 
 class RecommendationResponse(BaseModel):
     """Response envelope returned by the recommendation endpoint."""
 
     status: Literal["success"] = "success"
-    total: int = Field(ge=0)
+    total: int = Field(ge=0, description="Total eligible POIs in the complete ranked result set.")
     data: list[RecommendationPOI]
+    has_more: bool = False
+    next_offset: int | None = Field(default=None, ge=0)
+    snapshot_id: str

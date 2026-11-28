@@ -240,7 +240,7 @@ def get_poi_explanation(params: GetPoiExplanationInput) -> GetPoiExplanationOutp
             poi_name=params.poi_id,
             is_local_business=False,
             facts=[],
-            explanation_text=f"Địa điểm '{params.poi_id}' được đề xuất dựa trên điểm đánh giá du lịch bền vững và phân bổ lộ trình xanh tối ưu.",
+            explanation_text=f"GreenTrip đề xuất '{params.poi_id}' dựa trên điểm đánh giá du lịch bền vững và phân bổ lộ trình xanh tối ưu.",
             kg_source="description_fallback",
         )
 

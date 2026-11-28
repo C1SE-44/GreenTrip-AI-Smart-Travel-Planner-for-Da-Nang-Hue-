@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -67,6 +67,13 @@ test('GreenTrip planner flows in a real Chromium browser', { timeout: 180000 }, 
       pending.set(id, { resolve, reject });
       socket.send(JSON.stringify({ id, method, params }));
     });
+    const captureModalScreenshot = async (filename) => {
+      const outputDirectory = process.env.GREEN_TRIP_MODAL_SCREENSHOT_DIR;
+      if (!outputDirectory) return;
+      const screenshot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+      await mkdir(outputDirectory, { recursive: true });
+      await writeFile(path.join(outputDirectory, filename), Buffer.from(screenshot.data, 'base64'));
+    };
     const evaluate = async (expression) => {
       const result = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
       if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
@@ -94,14 +101,18 @@ test('GreenTrip planner flows in a real Chromium browser', { timeout: 180000 }, 
       await evaluate('document.querySelector("#open").click()');
       await waitFor('!!document.querySelector("[aria-busy=true]")');
       await waitFor('document.body.innerText.includes("FACT A")');
-      assert.ok(await evaluate('document.querySelector("[role=dialog]").innerText.includes("SNIPPET A")'));
+      const text = await evaluate('document.querySelector("[role=dialog]").innerText');
+      assert.ok(text.includes("SNIPPET A"));
+      assert.ok(!text.includes("Bạn chọn Biển"), 'No PB09 score or matched interest means no personalized claim');
     });
     for (const mode of ['empty', 'missing', 'error', 'mismatch']) {
       await t.test(`${mode} state does not invent or mix facts`, async () => {
         await open(mode);
-        await waitFor(mode === 'empty' || mode === 'missing'
-          ? 'document.body.innerText.includes("Chưa có dữ liệu")'
-          : '!!document.querySelector("[role=alert]")');
+        await waitFor(mode === 'empty'
+          ? 'document.body.innerText.includes("Chưa có thông tin giải thích")'
+          : mode === 'missing'
+            ? 'document.body.innerText.includes("Không tìm thấy địa điểm đang hoạt động")'
+            : '!!document.querySelector("[role=alert]")');
         assert.ok(await evaluate('!document.body.innerText.includes("FACT B")'));
         assert.ok(await evaluate('document.body.innerText.includes("SNIPPET A")'));
       });
@@ -126,12 +137,64 @@ test('GreenTrip planner flows in a real Chromium browser', { timeout: 180000 }, 
       await waitFor('!document.querySelector("[role=dialog]")');
       assert.equal(await evaluate('document.activeElement.id'), 'open');
     });
-    await t.test('Explore card exposes KG without recommendation and does not select card', async () => {
+    await t.test('POI card explanation stays opt-in and does not select the card', async () => {
       await navigate('component=card');
+      assert.equal(await evaluate('[...document.querySelectorAll("button")].some(b => b.textContent.includes("Vì sao nơi này"))'), false,
+        'Cards do not gain the explanation action by default');
+      await navigate('component=card&show-explanation=yes');
       await evaluate('[...document.querySelectorAll("button")].find(b => b.textContent.includes("Vì sao nơi này")).click()');
       await waitFor('document.body.innerText.includes("FACT A")');
       assert.equal(await evaluate('window.cardClicks'), 0);
       assert.ok(await evaluate('!document.querySelector("[role=dialog]").innerText.includes("Lý do AI gợi ý")'));
+    });
+    await t.test('Personalization needs a selected interest, a ranking match, and a direct graph fact', async () => {
+      await navigate('component=personalized');
+      await waitFor('document.body.innerText.includes("Vui chơi dưới nước")');
+      let text = await evaluate('document.querySelector("[role=dialog]").innerText');
+      assert.ok(text.includes('Bạn chọn Biển'));
+      assert.ok(text.includes('Nguồn dữ kiện: quan hệ được đọc từ Neo4j Knowledge Graph.'));
+      assert.ok(!/PB09|TF-IDF|Cosine/i.test(text));
+      assert.ok(text.indexOf('Bạn chọn Biển') < text.indexOf('Thông tin về địa điểm'), 'Evidence appears before general graph facts');
+      assert.equal(await evaluate('document.querySelector("details")?.open'), false, 'Score details start collapsed');
+      assert.ok(!text.includes('+90.0 điểm'), 'Score contributions are hidden until expanded');
+      await evaluate('document.querySelector("details summary").click()');
+      text = await evaluate('document.querySelector("[role=dialog]").innerText');
+      assert.ok(text.includes('+90.0 điểm'));
+      assert.ok(text.includes('Mức độ: 100%.'));
+
+      await navigate('component=personalized&selected=culture');
+      await waitFor('document.body.innerText.includes("Vui chơi dưới nước")');
+      text = await evaluate('document.querySelector("[role=dialog]").innerText');
+      assert.ok(!text.includes('Bạn chọn Biển'));
+
+      await navigate('component=personalized&matched=none');
+      await waitFor('document.body.innerText.includes("Vui chơi dưới nước")');
+      text = await evaluate('document.querySelector("[role=dialog]").innerText');
+      assert.ok(!text.includes('Bạn chọn Biển'));
+    });
+    await t.test('Category and city facts use Vietnamese labels', async () => {
+      await navigate('component=personalized&selected=culture&matched=culture');
+      await waitFor('document.body.innerText.includes("Bạn chọn Văn hóa – Lịch sử")');
+      const text = await evaluate('document.querySelector("[role=dialog]").innerText');
+      assert.ok(text.includes('Danh mục: Di tích lịch sử và văn hóa'));
+      assert.ok(text.includes('Hoạt động: Tham quan văn hóa, lịch sử'));
+      assert.ok(text.includes('Vị trí: Huế'));
+      assert.ok(text.indexOf('Bạn chọn Văn hóa – Lịch sử') < text.indexOf('Thông tin về địa điểm'));
+    });
+    await t.test('Without preference evidence, show general facts without a personalized claim', async () => {
+      await navigate('component=personalized&selected=none&matched=none');
+      await waitFor('document.body.innerText.includes("Vui chơi dưới nước")');
+      const text = await evaluate('document.querySelector("[role=dialog]").innerText');
+      assert.ok(text.includes('Hoạt động: Vui chơi dưới nước'));
+      assert.ok(!text.includes('Bạn chọn Biển'));
+    });
+    await t.test('PostgreSQL fallback is never labeled as Neo4j evidence', async () => {
+      await navigate('component=personalized&source=POSTGRESQL_FALLBACK');
+      await waitFor('document.body.innerText.includes("Ẩm thực")');
+      const text = await evaluate('document.querySelector("[role=dialog]").innerText');
+      assert.ok(text.includes('Nguồn dự phòng: dữ liệu PostgreSQL.'));
+      assert.ok(!text.includes('Nguồn dữ kiện: quan hệ được đọc từ Neo4j Knowledge Graph.'));
+      assert.ok(!text.includes('Bạn chọn Biển'));
     });
     await t.test('Planner uses PB09 ID and snippet for the selected POI', async () => {
       await navigate('component=planner');
@@ -268,13 +331,34 @@ test('GreenTrip planner flows in a real Chromium browser', { timeout: 180000 }, 
       assert.deepEqual(errors, [], 'PB11 itinerary interactions have no uncaught browser errors');
     });
     await t.test('popup reflows at 320px and 1280px', async () => {
-      await open('success');
-      await waitFor('document.body.innerText.includes("FACT A")');
+      await navigate('component=personalized');
+      await waitFor('document.body.innerText.includes("Bạn chọn Biển")');
       for (const width of [320, 1280]) {
         await send('Emulation.setDeviceMetricsOverride', { width, height: 800, deviceScaleFactor: 1, mobile: false });
         assert.ok(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'));
+        await captureModalScreenshot(`explanation-modal-${width}px.png`);
       }
       assert.deepEqual(errors, [], 'No uncaught browser runtime errors');
+    });
+    await t.test('long modal content scrolls while the header stays visible on mobile', async () => {
+      await open('long');
+      await waitFor('document.body.innerText.includes("Danh mục dài 1")');
+      await send('Emulation.setDeviceMetricsOverride', { width: 320, height: 800, deviceScaleFactor: 1, mobile: false });
+      const metrics = await evaluate(`(() => {
+        const panel = document.querySelector('[role=dialog] > div');
+        const header = panel.firstElementChild;
+        panel.scrollTop = 320;
+        return {
+          clientHeight: panel.clientHeight,
+          scrollHeight: panel.scrollHeight,
+          panelTop: panel.getBoundingClientRect().top,
+          headerTop: header.getBoundingClientRect().top,
+          overflow: document.documentElement.scrollWidth > window.innerWidth,
+        };
+      })()`);
+      assert.ok(metrics.scrollHeight > metrics.clientHeight, 'Long facts use the modal scroll region');
+      assert.ok(Math.abs(metrics.headerTop - metrics.panelTop) <= 1, 'Sticky header remains at the top of the modal');
+      assert.equal(metrics.overflow, false, 'Modal has no horizontal overflow at 320px');
     });
   } finally {
     socket?.close();
